@@ -1,1 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="AEGIS — Personal AI Assistant" />
+  <meta name="theme-color" content="#07090e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AEGIS · AI Assistant</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --card: rgba(13, 17, 26, 0.85);
+      --border: rgba(255,255,255,0.08);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; }
+    h1 { font-size: 1.5rem; color: var(--accent); margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .chat-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      height: 50vh;
+      overflow-y: auto;
+    }
+    .message { margin-bottom: 1rem; }
+    .user { color: var(--accent); }
+    .assistant { color: var(--text); }
+    .input-area { display: flex; gap: 0.5rem; }
+    input {
+      flex: 1;
+      padding: 0.875rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.875rem 1.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AEGIS</h1>
+      <p class="subtitle">Personal AI Assistant</p>
+    </header>
 
+    <div class="chat-box" id="chatBox">
+      <div class="message assistant">
+        <strong>AEGIS:</strong> Hello! How can I help you today?
+      </div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+
+    <p class="status" id="status">Ready</p>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const status = document.getElementById('status');
+
+    function addMessage(text, sender = 'assistant') {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      div.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AEGIS'}:</strong> ${text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      addMessage(text, 'user');
+      userInput.value = '';
+      status.textContent = 'Sending...';
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: text })
+        });
+
+        const data = await res.j...
