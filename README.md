@@ -1,7 +1,7 @@
 # AEGIS
 ## Your Personal AI Assistant — Private, Free, Open-Source
 
-Built for Laurence Coburn · Mobile-first · iPhone 16 / iPad Air optimized
+Built for Laurence Colborne · Mobile-first · iPhone 16 / iPad Air optimized
 
 ---
 
