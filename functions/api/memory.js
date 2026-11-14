@@ -1,6 +1,5 @@
-const KEY = 'notes';
-const MAX_NOTES = 50;
-const MAX_LEN = 300;
+const MAX_HISTORY = 10;
+const MAX_TEXT = 4000;
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -8,58 +7,50 @@ const json = (obj, status = 200) =>
     headers: { 'Content-Type': 'application/json' }
   });
 
-const unavailable = () => json({ error: 'Memory storage is not connected yet.' }, 503);
-
-async function load(env) {
+async function loadNotes(env) {
+  if (!env.MEMORY) return [];
   try {
-    const list = JSON.parse((await env.MEMORY.get(KEY)) || '[]');
+    const list = JSON.parse((await env.MEMORY.get('notes')) || '[]');
     return Array.isArray(list) ? list.filter(n => typeof n === 'string') : [];
   } catch (e) {
     return [];
   }
 }
 
-export async function onRequestGet({ env }) {
-  if (!env.MEMORY) return unavailable();
-  return json({ notes: await load(env) });
-}
-
-export async function onRequestPost({ request, env }) {
-  if (!env.MEMORY) return unavailable();
+export async function onRequestPost(context) {
+  const { request, env } = context;
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: 'Invalid request' }, 400); }
 
-  const note = typeof body.note === 'string' ? body.note.trim().replace(/\s+/g, ' ').slice(0, MAX_LEN) : '';
-  if (!note) return json({ error: 'Note required' }, 400);
+  const question = typeof body.question === 'string' ? body.question.trim() : '';
+  if (!question) return json({ error: 'Prompt required' }, 400);
+  if (!env.AI) return json({ error: 'No AI provider configured' }, 503);
 
-  const notes = await load(env);
-  if (notes.includes(note)) return json({ notes });
-  if (notes.length >= MAX_NOTES) {
-    return json({ error: 'Memory is full (50 notes). Use /forget to remove some.' }, 400);
+  const history = Array.isArray(body.history)
+    ? body.history
+        .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+        .slice(-MAX_HISTORY)
+        .map(m => ({ role: m.role, content: m.content.slice(0, MAX_TEXT) }))
+    : [];
+
+  const notes = await loadNotes(env);
+  let system = 'You are AEGIS, a private personal AI assistant. Be clear, helpful and friendly.';
+  if (notes.length) {
+    system += '\n\nThings you know about the user (saved notes):\n' + notes.map(n => '- ' + n).join('\n');
   }
 
-  notes.push(note);
-  await env.MEMORY.put(KEY, JSON.stringify(notes));
-  return json({ notes });
-}
-
-export async function onRequestDelete({ request, env }) {
-  if (!env.MEMORY) return unavailable();
-
-  let body = {};
-  try { body = await request.json(); } catch (e) {}
-
-  if (Number.isInteger(body.index)) {
-    const notes = await load(env);
-    if (body.index < 1 || body.index > notes.length) {
-      return json({ error: 'There is no note with that number.' }, 400);
-    }
-    notes.splice(body.index - 1, 1);
-    await env.MEMORY.put(KEY, JSON.stringify(notes));
-    return json({ notes });
+  try {
+    const result = await env.AI.run('@cf/meta/llama-3.3-70b-instruct', {
+      messages: [
+        { role: 'system', content: system },
+        ...history,
+        { role: 'user', content: question.slice(0, MAX_TEXT) }
+      ],
+      max_tokens: 1024
+    });
+    return json(result);
+  } catch (e) {
+    return json({ error: 'The AI could not answer right now. Please try again.' }, 502);
   }
-
-  await env.MEMORY.delete(KEY);
-  return json({ notes: [] });
 }
