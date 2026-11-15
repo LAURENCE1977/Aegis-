@@ -129,7 +129,7 @@ test('denies missing scopes and resource widening', () => {
 test('write actions require an exact, unexpired, unused approval', () => {
   const manifest = writeManifest();
   const grant = grantFor(manifest, { scopes: ['github:repository:write'] });
-  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant };
+  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy(input).reasonCode, 'APPROVAL_REQUIRED');
   assert.deepEqual(evaluateCapabilityPolicy({
     ...input, approval: approvalFor(manifest),
@@ -140,7 +140,7 @@ test('approval cannot be reused for a changed payload, resource, action or versi
   const manifest = writeManifest();
   const grant = grantFor(manifest, { scopes: ['github:repository:write'], resourceIds: [resourceId, 'github:another/repo'] });
   const approval = approvalFor(manifest);
-  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant, approval };
+  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant, approval, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy({
     ...input, inputDigest: 'sha256:changed',
   }).reasonCode, 'APPROVAL_MISMATCH');
@@ -194,6 +194,23 @@ test('denies exhausted call and spend budgets', () => {
   assert.equal(evaluateCapabilityPolicy({
     ...input, budget: { remainingCalls: 1, remainingSpend: 0.1, estimatedCost: 1 },
   }).reasonCode, 'BUDGET_EXHAUSTED');
+});
+
+
+test('denies valid-looking manifests that are not the exact registered version', () => {
+  const manifest = readManifest();
+  const altered = { ...manifest, description: 'Changed description that was not reviewed.' };
+  const decision = evaluateCapabilityPolicy({
+    manifest: altered, actionId: 'discover', principalId, resourceId, inputDigest,
+    grant: grantFor(altered),
+  });
+  assert.equal(decision.reasonCode, 'MANIFEST_MISMATCH');
+
+  const unregistered = { ...manifest, id: 'unknown-capability' };
+  assert.equal(evaluateCapabilityPolicy({
+    manifest: unregistered, actionId: 'discover', principalId, resourceId, inputDigest,
+    grant: grantFor(unregistered),
+  }).reasonCode, 'CAPABILITY_NOT_REGISTERED');
 });
 
 test('invalid manifests fail closed without throwing', () => {
