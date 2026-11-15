@@ -372,3 +372,45 @@ These products overlap, but are not interchangeable:
 - "Open Outreach" was interpreted as eracle/OpenOutreach.
 - "OpenDots" was interpreted as CopilotKit/OpenDots.
 - No code, package, connector, account or service from this list has been installed or authorised.
+
+
+## Mercury Agent — persistent local-first agent runtime
+
+**Source:** [cosmicstack-labs/mercury-agent](https://github.com/cosmicstack-labs/mercury-agent)  
+**Licence:** MIT (repository package metadata, checked 15 November 2026).  
+**Package inspected:** `@cosmicstack/mercury-agent` 1.5.2; Node.js >=22.  
+**Scope reviewed:** README, package metadata, architecture, security policy, permissions implementation, bots architecture and published roadmap.
+
+**What it provides**
+- One persistent local daemon with CLI/TUI, local web dashboard and messaging-channel adapters.
+- Provider abstraction and Vercel AI SDK-based multi-step tool loop.
+- Local SQLite second-brain memory, sessions, scheduler and token budgets.
+- Permission manager with folder scopes, shell-command policy, approvals and per-turn contexts.
+- Persistent specialist bots with persona, model/provider, scoped memory, tool allow/deny lists, routines and daily/fleet budgets.
+- Git/GitHub, filesystem, shell, web fetch and MCP integrations.
+- Mercury Code with plan/checklist, background sub-agents and test/build verification intent.
+
+**AEGIS decision: high-value architecture and UX reference; do not adopt the runtime wholesale.**
+Study and selectively adapt:
+1. Permission-context propagation and explicit grants for delegated agents.
+2. Per-agent memory namespaces and explicit sharing.
+3. Durable local job queues, leases, idempotency and failure-type-aware retries.
+4. Per-agent and fleet-wide token/time/concurrency budgets.
+5. Agent roster, activity, approval and run-history UX.
+6. Provider/channel adapters and small tool contracts.
+
+**Important limitations and risk findings**
+- Mercury is a Node.js local runtime, not a Cloudflare Worker or browser-native service. The current package requires Node.js 22 or newer; a full source build also brings a substantial desktop/web/CLI dependency tree. It is not a native iOS/iPadOS or ChromeOS application. Android is documented through Termux; remote Linux hosting is possible but introduces an always-on host and operating cost.
+- Its own website explicitly says there is **no OS-level sandbox**: safety relies on approvals, blocklists and folder scopes. Do not treat permission prompts as a sandbox boundary.
+- The inspected security policy explains the permission model and lists scope limitations. The repository roadmap also records previously observed defects around evidence-gated completion, delegated-worker permission context, terminal/UI behaviour, SQLite packaging and Termux support. These are reasons to audit the exact current code and regression coverage before relying on any implementation, not proof that every issue remains present in release 1.5.2.
+- The README describes community skills as unaudited; skills must be inspected before installation.
+- The package and source include many dependencies and platform-specific paths. Importing the whole runtime would duplicate AEGIS orchestration, memory, permissions, provider routing and scheduler rather than strengthen the existing architecture.
+- Mercury's local-first memory and 24/7 daemon are useful design references, but a local daemon is not a free cloud service and does not automatically solve AEGIS's durable server-side background execution.
+
+**Recommended AEGIS treatment**
+- Keep AEGIS as the canonical control plane, policy engine, memory owner and durable job ledger.
+- Translate useful patterns into AEGIS-native capability manifests and tests; never copy permissions based solely on prompts or config claims.
+- If a Mercury adapter is ever tested, isolate it as an optional external runtime, pin a release/commit, use a disposable workspace and synthetic data, restrict network egress, require Ask-Me/approval mode, set strict token/time budgets, and do not provide production credentials.
+- Benchmark it against AEGIS's own Worker/D1/Queue runtime and specialist-agent model before considering any deployment.
+
+No Mercury package, daemon, account, provider key, skill, bot or service has been installed or connected.
