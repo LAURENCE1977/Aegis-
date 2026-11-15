@@ -729,3 +729,13 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - Future execution remains blocked until each exact capability/action is mediated by Sentinel, grants/connections are checked, exact approvals are consumed where required, and redacted audit is durable.
 - Tests added for input validation, deterministic plan generation, persistence-before-dispatch, idempotency, queue processing, status retrieval and outbox recovery. Run the full Node.js 22 suite and non-production D1/Queue integration before calling it verified.
 - Feature branch: `feature/durable-agent-orchestrator-rebased`, stacked on the current native-memory branch. No merge, production deployment, D1 migration application, secret or permission change.
+
+
+## 26. Sentinel-gated agent capability bridge — 15 November 2026
+
+- Added `workers/runtime/agent-capability-bridge.mjs` and exported it from the agent module as the only intended bridge from specialist capability requests into `runSentinelInvocation`.
+- The agent supplies only a registered capability ID, action ID, resource ID and JSON input. Principal identity comes from trusted server context; the registry supplies the canonical manifest; the adapter and policy dependencies are trusted server dependencies.
+- Input normalization rejects unsafe JSON structures/accessors, enforces manifest byte limits and computes a canonical SHA-256 digest. Sentinel performs grant, connection, approval, policy, audit and execution mediation.
+- Added tests for trusted identity, request-shape rejection, missing-dependency fail-closed behaviour, unknown capability/action, stable digest, audit redaction and input limits.
+- Fixed runtime module import, queue dispatch and scheduled outbox/lease recovery wiring; repaired the agent route block and JSON Content-Type charset matcher; added a charset/status-route regression test.
+- Important: the bridge is not yet wired to the queue consumer and does not enable agent tool execution. Durable grant/connection stores, vault, D1 audit composition, adapter router and egress isolation remain prerequisites. Agent runs remain plan-only. No deployment, migration application, secret or production side effect.
