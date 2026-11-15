@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   validateMemoryRecord,
   createMemoryStore,
+  createMemoryRepository,
 } from '../functions/lib/memory-substrate.mjs';
 
 const now = Date.parse('2026-11-15T12:00:00.000Z');
@@ -103,4 +104,107 @@ test('empty or invalid queries return no results without widening scope', () => 
   assert.deepEqual(store.search({ ownerId: 'owner-1', query: '' }), []);
   assert.deepEqual(store.search({ ownerId: '', query: 'writing' }), []);
   assert.deepEqual(store.search({ ownerId: 'owner-1', query: 'writing', projectId: '*' }), []);
+});
+
+class MemoryRepositoryD1 {
+  constructor() { this.rows = new Map(); }
+  prepare(sql) {
+    const db = this;
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        const v = this.values;
+        if (sql.includes('INSERT INTO aegis_memories')) {
+          if (db.rows.has(v[0])) throw new Error('duplicate');
+          db.rows.set(v[0], {
+            id:v[0], owner_id:v[1], project_id:v[2], kind:v[3], content:v[4],
+            source_type:v[5], source_url:v[6], source_attribution:v[7],
+            source_observed_at:v[8], confidence:v[9], sensitivity:v[10],
+            status:v[11], tags_json:v[12], created_at:v[13], updated_at:v[14],
+            expires_at:v[15],
+          });
+          return { meta:{changes:1} };
+        }
+        if (sql.includes('UPDATE aegis_memories')) {
+          const row=db.rows.get(v[2]);
+          if (!row || row.owner_id!==v[3] || row.project_id!==v[4]) return {meta:{changes:0}};
+          row.status=v[0]; row.updated_at=v[1];
+          return {meta:{changes:1}};
+        }
+        return {meta:{changes:0}};
+      },
+      async first() {
+        const v=this.values;
+        if (sql.includes('FROM aegis_memories')) {
+          const row=db.rows.get(v[0]);
+          if (!row || row.owner_id!==v[1] || row.project_id!==v[2]) return null;
+          return {...row};
+        }
+        return null;
+      },
+      async all() {
+        const v=this.values;
+        let rows=[...db.rows.values()];
+        if (sql.includes('FROM aegis_memories')) {
+          rows=rows.filter(row=>row.owner_id===v[0] && row.project_id===v[1] &&
+            row.status==='accepted' && (!row.expires_at || row.expires_at>v[2]));
+          if (sql.includes('LIKE')) {
+            const terms=v.slice(3,-1);
+            rows=rows.filter(row=>terms.every(term=>
+              (row.content+' '+row.kind+' '+row.tags_json).toLowerCase().includes(term.replaceAll('%','').toLowerCase())));
+            rows.sort((a,b)=>b.confidence-a.confidence || b.updated_at.localeCompare(a.updated_at));
+            return {results:rows.slice(0,v[v.length-1]).map(row=>({...row}))};
+          }
+          rows.sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
+          return {results:rows.slice(0,v[3]).map(row=>({...row}))};
+        }
+        return {results:[]};
+      },
+    };
+  }
+}
+
+test('D1 repository persists a memory and reads it back only in its exact owner scope', async () => {
+  const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  const saved = await repository.create(record());
+  assert.deepEqual(await repository.get(saved.id, { ownerId:'owner-1' }), saved);
+  assert.equal(await repository.get(saved.id, { ownerId:'owner-2' }), null);
+});
+
+test('D1 repository lists only accepted, unexpired records in exact project scope', async () => {
+  const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  await repository.create(record());
+  await repository.create(record({id:'candidate-record',status:'candidate'}));
+  await repository.create(record({id:'project-record',projectId:'project-a'}));
+  const personal = await repository.list({ownerId:'owner-1',now,limit:20});
+  const project = await repository.list({ownerId:'owner-1',projectId:'project-a',now,limit:20});
+  assert.deepEqual(personal.map(item=>item.id),['preferred-writing-style']);
+  assert.deepEqual(project.map(item=>item.id),['project-record']);
+});
+
+test('D1 repository searches all terms without crossing owner or project boundaries', async () => {
+  const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  await repository.create(record());
+  await repository.create(record({id:'other-owner-record',ownerId:'owner-2'}));
+  const results = await repository.search({ownerId:'owner-1',query:'concise storytelling',now});
+  assert.deepEqual(results.map(item=>item.id),['preferred-writing-style']);
+  assert.deepEqual(await repository.search({ownerId:'owner-1',projectId:'project-a',query:'concise storytelling',now}),[]);
+});
+
+test('D1 repository only permits candidate memories to be reviewed into accepted or retracted states', async () => {
+  const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  const candidate = await repository.create(record({status:'candidate'}));
+  assert.equal(await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'accepted',now}),true);
+  assert.equal((await repository.get(candidate.id,{ownerId:'owner-1'})).status,'accepted');
+  assert.equal(await repository.setStatus(candidate.id,{ownerId:'owner-2',status:'retracted',now}),false);
+  await assert.rejects(()=>repository.setStatus(candidate.id,{ownerId:'owner-1',status:'trusted',now}),/status/i);
 });
