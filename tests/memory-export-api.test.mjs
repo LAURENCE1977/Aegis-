@@ -67,9 +67,11 @@ test('owner export includes all lifecycle states and audit history without cachi
   assert.equal(data.memories[0].content,'Owner memory for export.');
   assert.equal(data.events[0].toStatus,'retracted');
   assert.equal(db.queries[0].values[0],'owner');
-  assert.equal(db.queries[0].values[1],null);
+  assert.equal(db.queries[0].values[1],1);
+  assert.equal(db.queries[0].values[2],null);
   assert.equal(db.queries[1].values[0],'owner');
-  assert.equal(db.queries[1].values[1],null);
+  assert.equal(db.queries[1].values[1],1);
+  assert.equal(db.queries[1].values[2],null);
 });
 
 test('project export verifies active owner scope and never broadens to other projects',async()=>{
@@ -80,7 +82,7 @@ test('project export verifies active owner scope and never broadens to other pro
   });
   assert.equal(response.status,200);
   const queries=db.queries.filter(query=>query.sql.includes('FROM aegis_memories')||query.sql.includes('FROM aegis_memory_events'));
-  assert.ok(queries.every(query=>query.values[0]==='owner'&&query.values[1]==='project-123'));
+  assert.ok(queries.every(query=>query.values[0]==='owner'&&query.values[1]===0&&query.values[2]==='project-123'));
 });
 
 test('memory export rejects malformed project scope',async()=>{
