@@ -236,7 +236,7 @@ function assertMemoryScope(ownerId, projectId) {
 
 function normalizeSearchTerms(query) {
   if (typeof query !== 'string' || !query.trim() || query.length > 200) return [];
-  return [...new Set(query.toLocaleLowerCase().match(/[a-z0-9-]+/g) ?? [])];
+  return [...new Set(tokenizeMemoryText(query))];
 }
 
 /**
