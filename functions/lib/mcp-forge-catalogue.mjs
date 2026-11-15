@@ -1,6 +1,6 @@
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REVISION_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
-const HOST_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/;
+const HOST_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const SCOPE_PATTERN = /^[a-z][a-z0-9-]{0,40}:[a-z][a-z0-9-]{0,50}(?::[a-z0-9._-]{1,80})?$/;
 const TRANSPORTS = new Set(['stdio', 'streamable-http', 'sse']);
 const RUNTIMES = new Set(['local-process', 'container', 'remote']);
