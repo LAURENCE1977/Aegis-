@@ -8,6 +8,7 @@ import {
   createTextRunFinishEvents,
   createTextRunErrorEvent,
   encodeAgUiSse,
+  createAgUiSseResponse,
 } from "../lib/ag-ui.mjs";
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -76,15 +77,25 @@ export async function onRequestPost(context) {
     const promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
     modelStream = await createModelStream({ env, messages: promptMessages, fetchImpl });
   } catch (error) {
-    if (error instanceof TypeError) return json({ error: "The model request is invalid." }, 400);
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
         (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
-      return json({ error: "The configured Qwen provider is not ready." }, 503);
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }),
+      ], 503);
     }
-    return json({ error: "The AI could not start this run. Please try again." }, 502);
+    if (error instanceof TypeError) {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The model request is invalid.", code: "INVALID_MODEL_REQUEST" }),
+      ], 400);
+    }
+    return createAgUiSseResponse([
+      createTextRunErrorEvent({ message: "The AI could not start this run. Please try again.", code: "AGENT_START_FAILED" }),
+    ], 502);
   }
   if (!modelStream || typeof modelStream.getReader !== "function") {
-    return json({ error: "The AI provider did not return a readable stream." }, 502);
+    return createAgUiSseResponse([
+      createTextRunErrorEvent({ message: "The AI provider did not return a readable stream.", code: "INVALID_PROVIDER_STREAM" }),
+    ], 502);
   }
 
   return createStreamingAgUiResponse(modelStream, {
