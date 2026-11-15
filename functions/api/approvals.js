@@ -30,6 +30,7 @@ function publicApproval(approval, now = Date.now()) {
     requestedAt: approval.requestedAt,
     expiresAt: approval.expiresAt,
     status: approval.status,
+    decidedBy: approval.decidedBy,
     expired: Date.parse(approval.expiresAt) <= now,
     decidedAt: approval.decidedAt,
   };
