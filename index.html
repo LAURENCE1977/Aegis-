@@ -399,6 +399,7 @@
               );
             }
             actions.append(memoryButton('History', () => showMemoryHistory(memory)));
+            actions.append(memoryButton('Delete permanently', () => purgeMemory(memory)));
             item.append(actions);
             if (memory.supersedesId) {
               const replaces = document.createElement('div');
@@ -460,6 +461,21 @@
         }
       });
       item.append(form);
+    }
+
+    async function purgeMemory(memory) {
+      if (!confirm('Permanently delete this memory? Its content and provenance will be removed from the live memory table. A minimal audit tombstone will remain.')) return;
+      memoryStatus.textContent = 'Permanently deleting memory…';
+      try {
+        await memoryApi('/' + encodeURIComponent(memory.id), {
+          method: 'DELETE',
+          body: JSON.stringify({ confirm: true, projectId: memory.projectId || null }),
+        });
+        await loadMemories();
+        memoryStatus.textContent = 'Memory content purged. A minimal lifecycle audit record is retained.';
+      } catch (error) {
+        memoryStatus.textContent = error.message;
+      }
     }
 
     async function changeMemoryStatus(memory, nextStatus) {
