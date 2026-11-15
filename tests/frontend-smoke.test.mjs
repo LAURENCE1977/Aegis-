@@ -79,6 +79,14 @@ test('Control Centre exposes Project Spaces and owner approval inbox surfaces', 
   assert.match(html, /method:\s*'POST'/);
 });
 
+
+test('Project Space cards expose a bounded handover brief that can be copied by the owner', () => {
+  assert.match(html, /Build handover brief/);
+  assert.match(html, /\/api\/workspaces\/.*\/brief/);
+  assert.match(html, /navigator\.clipboard\.writeText/);
+  assert.match(html, /briefOutput\.value\s*=\s*JSON\.stringify/);
+});
+
 test('Project Space and approval views render untrusted data as text, not HTML', () => {
   assert.match(html, /nameNode\.textContent\s*=\s*workspace\.name/);
   assert.match(html, /title\.textContent\s*=\s*approval\.operationSummary/);
