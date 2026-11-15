@@ -25,7 +25,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 
 - Owner-scoped Project Spaces API, append-only activity timeline and mobile Projects panel under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
-- AEGIS-native typed memory with owner/project-scoped D1 repository, candidate review, append-only lifecycle history, correction/supersession links, bounded owner JSON export, project-scoped Memory panel and approved-memory chat retrieval (feature branch only; shared migrations not applied; D1 not provisioned/bound; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
+- AEGIS-native typed memory with owner/project-scoped D1 repository, candidate review, append-only lifecycle history, correction/supersession links, bounded owner JSON export, explicit per-record permanent purge with minimal audit tombstones, project-scoped Memory panel and approved-memory chat retrieval (feature branch only; shared migrations not applied; D1 not provisioned/bound; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
 - Native AG-UI 1.0 text-chat compatibility endpoint (`POST /api/ag-ui`) with authenticated incremental SSE streaming, bounded text-only input and PWA client; frontend tools, ambient context, resume and multimodal content remain disabled pending Sentinel/durable-run integration (see [CopilotKit and AG-UI boundary](docs/AEGIS_COPILOTKIT_AGUI.md))
 - Installable mobile-first PWA shell with a static-only service-worker cache; authenticated API and MCP traffic are never cached offline
 
