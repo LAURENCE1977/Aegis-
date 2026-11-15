@@ -209,6 +209,16 @@ test("workspace detail and timeline return only the owner's project data", async
 });
 
 
+
+test('Project Space handover brief rejects unauthenticated access before touching storage',async()=>{
+  const response=await workspaceBriefGet({
+    request:new Request('https://aegis.example/api/workspaces/project-a/brief'),
+    env:{...envBase,AEGIS_DB:{prepare(){throw new Error('must not access D1');}}},
+    params:{id:'project-a'},
+  });
+  assert.equal(response.status,401);
+});
+
 test('owner can create a bounded Project Space handover brief from its own accepted memories and events', async()=>{
   const db=new MemoryD1();
   const created=await createWorkspacePost({
