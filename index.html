@@ -950,6 +950,19 @@
               const licenceLabel = document.createElement('label');
               licenceLabel.textContent = 'Licence review';
               licenceLabel.append(licenceSelect);
+              const licenceEvidenceUrl = document.createElement('input');
+              licenceEvidenceUrl.type = 'url';
+              licenceEvidenceUrl.placeholder = 'HTTPS link to the actual licence file (required when verified)';
+              const evidenceLabel = document.createElement('label');
+              evidenceLabel.textContent = 'Licence evidence URL';
+              evidenceLabel.append(licenceEvidenceUrl);
+              const reviewNote = document.createElement('textarea');
+              reviewNote.maxLength = 500;
+              reviewNote.placeholder = 'Record what you checked and any licence/dependency obligations (at least 10 characters)';
+              reviewNote.required = true;
+              const reviewNoteLabel = document.createElement('label');
+              reviewNoteLabel.textContent = 'Review notes';
+              reviewNoteLabel.append(reviewNote);
               const licenceConfirmed = document.createElement('input');
               licenceConfirmed.type = 'checkbox';
               const confirmationLabel = document.createElement('label');
@@ -981,11 +994,16 @@
               const saveReview = document.createElement('button');
               saveReview.type = 'submit';
               saveReview.textContent = 'Save review decision';
-              candidateReviewForm.append(licenceLabel, confirmationLabel, decisionSelect, statusSelect, reviewStatus, saveReview);
+              candidateReviewForm.append(licenceLabel, evidenceLabel, reviewNoteLabel, confirmationLabel, decisionSelect, statusSelect, reviewStatus, saveReview);
               candidateReviewForm.addEventListener('submit', async event => {
                 event.preventDefault();
-                if (licenceSelect.value === 'verified' && !licenceConfirmed.checked) {
-                  reviewStatus.textContent = 'Confirm that you checked the actual licence and dependencies.';
+                if (reviewNote.value.trim().length < 10) {
+                  reviewStatus.textContent = 'Add review notes of at least 10 characters.';
+                  return;
+                }
+                if (licenceSelect.value === 'verified' &&
+                    (!licenceConfirmed.checked || !licenceEvidenceUrl.value.trim())) {
+                  reviewStatus.textContent = 'A verified licence needs your attestation and a direct HTTPS link to the licence evidence.';
                   return;
                 }
                 if (['reuse', 'adapt', 'combine'].includes(decisionSelect.value) && licenceSelect.value !== 'verified') {
@@ -1004,6 +1022,10 @@
                       licenceReview: licenceSelect.value,
                       decision: decisionSelect.value,
                       status: statusSelect.value,
+                      licenceEvidenceUrl: licenceEvidenceUrl.value.trim() || null,
+                      reviewNote: reviewNote.value.trim(),
+                      licenceAttested: licenceConfirmed.checked,
+                      expectedUpdatedAt: candidate.updatedAt,
                     }),
                   });
                   await loadForgeCandidates();
