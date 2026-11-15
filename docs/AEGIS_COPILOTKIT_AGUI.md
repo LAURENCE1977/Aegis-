@@ -10,6 +10,7 @@ CopilotKit is a high-priority UI/protocol reference, not an AEGIS core dependenc
 - Official site: https://copilotkit.org/
 - Docs: https://docs.copilotkit.ai/
 - AG-UI protocol: https://github.com/ag-ui-protocol/ag-ui
+- Protocol source reviewed at commit `2330368a2a74573902858867072406638ba3073d` (MIT repository): [run lifecycle](https://github.com/ag-ui-protocol/ag-ui/blob/2330368a2a74573902858867072406638ba3073d/docs/spec/1.0/events/lifecycle.mdx), [text messages](https://github.com/ag-ui-protocol/ag-ui/blob/2330368a2a74573902858867072406638ba3073d/docs/spec/1.0/events/text-messages.mdx), [run input](https://github.com/ag-ui-protocol/ag-ui/blob/2330368a2a74573902858867072406638ba3073d/docs/spec/1.0/basic/run-input.mdx), [frozen 1.0 wire schema](https://github.com/ag-ui-protocol/ag-ui/blob/2330368a2a74573902858867072406638ba3073d/spec/1.0/proto-freeze.txt)
 - Reported upstream licence: MIT. Pin a commit and inspect package/dependency licences before any reuse.
 
 ## What is valuable
@@ -91,9 +92,34 @@ Do not introduce a second agent runtime or second memory store. AEGIS remains au
 - It reuses the existing signed-session authentication and same-origin check, and the same shared prompt-context builder as `/api/ask`, so approved personal and explicitly selected project memory plus registered skill context remain part of the canonical assistant.
 - An optional `projectId` is checked against an active owner-owned Project Space before the model is called. Frontend tools, ambient context, resume, multimodal messages and arbitrary state are explicitly rejected until their server-side policy and lifecycle semantics exist. The endpoint cannot execute tools.
 - Event types, identifiers, message size, body size and serialized event size are bounded. Only the six implemented event types can be emitted by the encoder.
-- Latest fully tested implementation commit `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e` passed GitHub Actions run 43744994054: **230 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43744994054.
+- AG-UI 1.0's lifecycle rules were checked against the pinned normative source: a valid stream begins with RUN_STARTED or RUN_ERROR; an output stream deliberately stopped by AEGIS's 12,000-character safety cap closes its text message and now reports RUN_FINISHED with `outcome: cancelled`, rather than falsely reporting success. A client disconnect is not converted into a successful finish.
+- Latest verified feature-branch commit `18a150b84e2304365a5cc8d7dd575391f26caad3` passed GitHub Actions run 43750239054: **285 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43750239054.
 - Cloudflare Pages preview for that commit deployed successfully at https://7aef49d9.aegis-6yk.pages.dev. Browser verification reached the AEGIS login screen; preview `/api/login` returns HTTP 503 until the two required Preview secrets are configured.
 
 ## Status and limitations
 
 This is a native protocol adapter, not an installed CopilotKit client. No CopilotKit package, React migration, cloud service, account or upstream code has been added. No production application-code deployment, data, secrets or infrastructure change has been made from this feature branch. Two separate Markdown-only commits were accidentally pushed to `main` and triggered Pages redeploys; neither changed application source, data, secrets or infrastructure. See the operational note in `AEGIS_MASTER_BLUEPRINT.md`. Token-by-token text streaming, explicit Project Space context, a Projects timeline, an owner approval inbox, memory correction/export and a static-only PWA shell are implemented on the feature branch. Durable run resume, shared agent state, generative UI, frontend tool calls and Sentinel-bound approval events remain future work. It is a first compatibility slice, not full AG-UI conformance.
+
+
+## Composio-assisted upstream review — 15 November 2026
+
+### OpenBot and OpenFuse
+
+- [CopilotKit/OpenBot](https://github.com/CopilotKit/OpenBot) is an MIT application template, but its documented stack includes a separately licensed CopilotKit Intelligence service, PostgreSQL, Kubernetes/containers, a Hono API, AG-UI Bot endpoints and dedicated computer containers. It is not a low-cost Cloudflare Pages/D1 dependency for AEGIS.
+- High-value patterns extracted from its architecture documentation: the server-side gateway is the authority boundary; evaluate current policy before every action; durably record the decision before forwarding; record failure after forwarding; computer containers do not receive application secrets or database credentials; isolate per-person/per-agent computer workspaces; enforce outbound network policy at the computer boundary; support human takeover rather than bypassing CAPTCHA or human verification.
+- [CopilotKit/openfuse](https://github.com/CopilotKit/openfuse) is MIT and explicitly described as alpha. Its README requires Node 24, pnpm, a CopilotKit Intelligence project key and a model-provider key; its documented hosted setup uses a persistent Standard service, disk and a separate browser worker. The verification document reports 154 tests and real Chromium/Docker checks for its September 2026 release; these are upstream-reported and do not prove AEGIS compatibility.
+- Useful OpenFuse concepts: durable task plans, explicit pause/resume/cancel/retry, saved receipts, approvals, per-run activity, persistent browser takeover and separation of API/task/browser/computer workers.
+- AEGIS decision: adapt the contracts and threat boundaries natively. Do not adopt either full stack, add a React migration, depend on CopilotKit Intelligence, import their code or add infrastructure. AEGIS keeps its own D1/job runtime, capability policy, Sentinel, approvals, vault and audit authoritative.
+
+### AG-UI 1.0 conformance notes
+
+- The pinned AG-UI 1.0 lifecycle specification says the first stream event MUST be RUN_STARTED or RUN_ERROR. A successful run ends with RUN_FINISHED; a producer-stopped run must declare the cancelled outcome; a consumer disconnect must not be misreported as a successful run.
+- Text messages use a matching messageId and must be opened before content, closed before RUN_FINISHED.
+- AEGIS implements only the bounded text-run subset. It rejects frontend tools, ambient context, resume, multimodal messages and arbitrary state until the corresponding backend policy, persistence and Sentinel semantics exist. This is deliberately partial conformance, not a claim of full AG-UI support.
+
+## Retrieval research adapted from local-first memory projects
+
+- [cognicore-dev/cognicore-env](https://github.com/cognicore-dev/cognicore-env) — Apache-2.0; local SQLite memory, bounded session handover briefs, curated project context and suggested-then-confirmed decisions. Its README describes lexical BM25/TF-IDF retrieval and notes vocabulary mismatch as a limitation; optional semantic retrieval adds dependencies. AEGIS adapts explicit review and compact handover ideas without adding its Python runtime or hosted MCP service.
+- [Uranid/mnem](https://github.com/Uranid/mnem) — Apache-2.0; local/offline, versioned knowledge, content-addressed records, hybrid vector/keyword/graph retrieval and token-budget reporting. Rust/CLI/embedding footprint is not suitable as a required Cloudflare Worker dependency. AEGIS keeps D1 as canonical and selectively adapts version/provenance and explicit retrieval-budget principles.
+- [MemTensor/MemOS](https://github.com/MemTensor/MemOS) — Apache-2.0; broad persistent memory and skill-reuse system. It is a larger multi-component architecture, so use as a comparison source rather than a required runtime.
+- AEGIS's new retrieval implementation uses bounded BM25-style lexical ranking, exact token boundaries, tag/kind weighting and a maximum 200-row D1 candidate set. It adds no embedding service, vector database, Python/Rust runtime or API cost. It remains scoped to accepted, unexpired, non-restricted owner/project memories.
