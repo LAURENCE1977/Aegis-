@@ -13,9 +13,9 @@ class CandidateD1 {
       async run(){
         const v=this.values;
         if(sql.includes('UPDATE forge_candidates')){
-          const row=db.rows.get(v[4]);
-          if(!row||row.owner_id!==v[5]||['archived','rejected'].includes(row.status)) return {meta:{changes:0}};
-          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.updated_at=v[3];
+          const row=db.rows.get(v[5]);
+          if(!row||row.owner_id!==v[6]||row.updated_at!==v[7]||['archived','rejected'].includes(row.status)) return {meta:{changes:0}};
+          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.metadata_json=v[3];row.updated_at=v[4];
           return {meta:{changes:1}};
         }
         if(sql.includes('INSERT INTO forge_candidates')){
@@ -122,10 +122,19 @@ test('Forge candidate review refuses unverified reuse and terminal candidate reo
   }), /verified licence/i);
   const rejected = await updateForgeCandidateReview(db, 'owner', created.candidate.id, {
     licenceReview: 'review-required', decision: 'reject', status: 'rejected',
+    licenceEvidenceUrl: null,
+    reviewNote: 'Rejected after reviewing the source architecture and security risks.',
+    licenceAttested: false,
+    expectedUpdatedAt: created.candidate.updatedAt,
   });
   assert.equal(rejected.status, 'rejected');
+  assert.equal(rejected.metadata.licenceReviewHistory[0].note, 'Rejected after reviewing the source architecture and security risks.');
   const reopened = await updateForgeCandidateReview(db, 'owner', created.candidate.id, {
     licenceReview: 'verified', decision: 'reuse', status: 'approved',
+    licenceEvidenceUrl: 'https://github.com/example/agent/blob/main/LICENSE',
+    reviewNote: 'Reviewed the upstream licence and direct dependencies.',
+    licenceAttested: true,
+    expectedUpdatedAt: rejected.updatedAt,
   });
   assert.equal(reopened, null);
 });
