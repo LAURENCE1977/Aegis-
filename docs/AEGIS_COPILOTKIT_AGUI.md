@@ -85,13 +85,15 @@ Do not introduce a second agent runtime or second memory store. AEGIS remains au
 ## Implemented native slice
 
 - `functions/lib/ag-ui.mjs` emits a bounded AG-UI 1.0 text-run lifecycle and encodes allowlisted event frames as SSE.
-- Authenticated `POST /api/ag-ui` accepts a bounded protocol 1.0 run containing plain-text user/assistant messages and returns RUN_STARTED, TEXT_MESSAGE_START, TEXT_MESSAGE_CONTENT, TEXT_MESSAGE_END and RUN_FINISHED events.
-- The existing mobile PWA chat now sends AG-UI 1.0 runs and parses the SSE lifecycle; it no longer calls the legacy `/api/ask` JSON route directly.
+- Authenticated `POST /api/ag-ui` accepts a bounded protocol 1.0 run containing plain-text user/assistant messages, calls Workers AI with `stream: true`, parses provider SSE frames (including frames split across network chunks), and emits RUN_STARTED, TEXT_MESSAGE_START, incremental TEXT_MESSAGE_CONTENT events, TEXT_MESSAGE_END and RUN_FINISHED.
+- Provider output is bounded to 12,000 characters. A mid-stream provider failure emits a safe RUN_ERROR event without leaking provider exception details.
+- The existing mobile PWA chat now sends AG-UI 1.0 runs, consumes `ReadableStream` chunks and appends each text delta as it arrives; it no longer calls the legacy `/api/ask` JSON route directly.
 - It reuses the existing signed-session authentication, same-origin check and AEGIS `/api/ask` path, so approved memory and registered skill context remain part of the canonical assistant.
 - Frontend tools, ambient context, resume, multimodal messages and arbitrary state are explicitly rejected until their server-side policy and lifecycle semantics exist. The endpoint cannot execute tools.
 - Event types, identifiers, message size, body size and serialized event size are bounded. Only the five implemented event types can be emitted by the encoder.
-- Latest branch head `26e96f593313441bfadc100a8bba114a537097b6` passed GitHub Actions run 43743243590: **212 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43743243590.
+- Latest branch head `a042fb2f100505945166d7cdeee96799b2ea1a88` passed GitHub Actions run 43743962701: **215 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43743962701.
+- Cloudflare Pages preview for that commit deployed successfully at https://7aef49d9.aegis-6yk.pages.dev. Browser verification reached the AEGIS login screen; preview `/api/login` returns HTTP 503 until the two required Preview secrets are configured.
 
 ## Status and limitations
 
-This is a native protocol adapter, not an installed CopilotKit client. No CopilotKit package, React migration, cloud service, account or upstream code has been added. No production deployment or infrastructure change has occurred. The current route performs a complete text response then emits the protocol lifecycle; token-by-token streaming, durable run resume, shared state, generative UI, frontend tool calls and Sentinel-bound approval events remain future work. It is a first compatibility slice, not full AG-UI conformance.
+This is a native protocol adapter, not an installed CopilotKit client. No CopilotKit package, React migration, cloud service, account or upstream code has been added. No production deployment or infrastructure change has occurred. Token-by-token text streaming is now implemented. Durable run resume, shared state, generative UI, frontend tool calls and Sentinel-bound approval events remain future work. It is a first compatibility slice, not full AG-UI conformance.
