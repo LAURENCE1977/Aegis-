@@ -134,18 +134,23 @@ export async function authorizeSentinelInvocation({
     if (!approval || !approvalDb) {
       return { allowed: false, reasonCode: 'APPROVAL_REQUIRED', inputDigest };
     }
-    const consumed = await consumeApproval(approvalDb, {
-      id: approval.id,
-      principalId,
-      capabilityId: manifest.id,
-      capabilityVersion: manifest.version,
-      actionId,
-      resourceId,
-      operationSummary: approval.operationSummary,
-      connectionId: connection?.id ?? null,
-      inputDigest,
-      now,
-    });
+    let consumed;
+    try {
+      consumed = await consumeApproval(approvalDb, {
+        id: approval.id,
+        principalId,
+        capabilityId: manifest.id,
+        capabilityVersion: manifest.version,
+        actionId,
+        resourceId,
+        operationSummary: approval.operationSummary,
+        connectionId: connection?.id ?? null,
+        inputDigest,
+        now,
+      });
+    } catch {
+      return { allowed: false, reasonCode: 'APPROVAL_STORE_UNAVAILABLE', inputDigest };
+    }
     if (!consumed) {
       return { allowed: false, reasonCode: 'APPROVAL_CONSUMPTION_FAILED', inputDigest };
     }
