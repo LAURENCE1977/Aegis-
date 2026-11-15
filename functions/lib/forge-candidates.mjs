@@ -233,34 +233,3 @@ export async function listForgeCandidateEvents(db, ownerId, id, limit = 50) {
     };
   });
 }
-
-
-export async function listForgeCandidateEvents(db, ownerId, candidateId, limit = 50) {
-  assertDatabase(db);
-  requireOwner(ownerId);
-  if (typeof candidateId !== 'string' || !ID_PATTERN.test(candidateId)) {
-    throw new TypeError('Invalid Forge candidate identifier');
-  }
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-    throw new TypeError('Forge candidate event limit must be between 1 and 100');
-  }
-  const result = await db.prepare(`
-    SELECT id, candidate_id, owner_id, event_type, from_status, to_status,
-      from_decision, to_decision, occurred_at
-    FROM forge_candidate_events
-    WHERE candidate_id = ? AND owner_id = ?
-    ORDER BY occurred_at DESC, id ASC
-    LIMIT ?
-  `).bind(candidateId, ownerId, limit).all();
-  return (result?.results ?? []).map(row => ({
-    id: row.id,
-    candidateId: row.candidate_id,
-    ownerId: row.owner_id,
-    type: row.event_type,
-    fromStatus: row.from_status,
-    toStatus: row.to_status,
-    fromDecision: row.from_decision,
-    toDecision: row.to_decision,
-    occurredAt: row.occurred_at,
-  }));
-}
