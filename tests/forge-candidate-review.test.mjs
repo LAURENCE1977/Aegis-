@@ -21,10 +21,10 @@ class ReviewD1 {
           db.rows.set(row.id,row);db.events.push({type:'created',id:row.id});return {meta:{changes:1}};
         }
         if(sql.includes('UPDATE forge_candidates')){
-          const row=db.rows.get(v[4]);
-          if(!row||row.owner_id!==v[5]||['archived','rejected'].includes(row.status))return {meta:{changes:0}};
+          const row=db.rows.get(v[5]);
+          if(!row||row.owner_id!==v[6]||row.updated_at!==v[7]||['archived','rejected'].includes(row.status))return {meta:{changes:0}};
           const old={...row};
-          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.updated_at=v[3];
+          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.metadata_json=v[3];row.updated_at=v[4];
           if(old.licence_review!==row.licence_review||old.decision!==row.decision)db.events.push({type:'review_changed',id:row.id,from:old.licence_review,to:row.licence_review,decision:row.decision});
           if(old.status!==row.status)db.events.push({type:'status_changed',id:row.id,from:old.status,to:row.status});
           return {meta:{changes:1}};
@@ -37,7 +37,7 @@ class ReviewD1 {
           return [...db.rows.values()].find(row=>row.owner_id===v[0]&&row.source_url===v[1]&&row.version===v[2])||null;
         }
         if(sql.includes('FROM forge_candidates')&&sql.includes('WHERE id = ?')){
-          const row=db.rows.get(v[0]);return row?{...row}:null;
+          const row=db.rows.get(v[0]);return row&&row.owner_id===v[1]?{...row}:null;
         }
         if(sql.includes('UPDATE forge_candidates')&&sql.includes('RETURNING')){
           const row=db.rows.get(v[4]);return row?{...row}:null;
@@ -58,9 +58,13 @@ test('Forge reuse and adaptation decisions require explicit verified licence rev
   const db=new ReviewD1();const created=await createForgeCandidate(db,'owner',source);
   await assert.rejects(()=>updateForgeCandidateReview(db,'owner',created.candidate.id,{
     licenceReview:'review-required',decision:'reuse',status:'assessed',
+    licenceEvidenceUrl:null,reviewNote:'Licence has not yet been reviewed.',licenceAttested:false,
+    expectedUpdatedAt:created.candidate.updatedAt,
   }),/licence/i);
   await assert.rejects(()=>updateForgeCandidateReview(db,'owner',created.candidate.id,{
     licenceReview:'review-required',decision:'unassessed',status:'approved',
+    licenceEvidenceUrl:null,reviewNote:'Licence has not yet been reviewed.',licenceAttested:false,
+    expectedUpdatedAt:created.candidate.updatedAt,
   }),/approved/i);
 });
 
@@ -68,6 +72,9 @@ test('owner can record verified licence review and approve an assessed native-us
   const db=new ReviewD1();const created=await createForgeCandidate(db,'owner',source);
   const updated=await updateForgeCandidateReview(db,'owner',created.candidate.id,{
     licenceReview:'verified',decision:'adapt',status:'approved',
+    licenceEvidenceUrl:'https://github.com/example/repo/blob/main/LICENSE',
+    reviewNote:'Reviewed upstream licence and dependency obligations.',
+    licenceAttested:true,expectedUpdatedAt:created.candidate.updatedAt,
   });
   assert.equal(updated.licence.review,'verified');
   assert.equal(updated.decision,'adapt');
@@ -80,11 +87,20 @@ test('Forge candidate review is owner-scoped and terminal candidates cannot be r
   const db=new ReviewD1();const created=await createForgeCandidate(db,'owner',source);
   assert.equal(await updateForgeCandidateReview(db,'other-owner',created.candidate.id,{
     licenceReview:'verified',decision:'reuse',status:'approved',
+    licenceEvidenceUrl:'https://github.com/example/repo/blob/main/LICENSE',
+    reviewNote:'Reviewed upstream licence and dependency obligations.',
+    licenceAttested:true,expectedUpdatedAt:created.candidate.updatedAt,
   }),null);
   await updateForgeCandidateReview(db,'owner',created.candidate.id,{
     licenceReview:'verified',decision:'reject',status:'rejected',
+    licenceEvidenceUrl:'https://github.com/example/repo/blob/main/LICENSE',
+    reviewNote:'Rejected after licence and security review.',
+    licenceAttested:true,expectedUpdatedAt:created.candidate.updatedAt,
   });
   assert.equal(await updateForgeCandidateReview(db,'owner',created.candidate.id,{
     licenceReview:'verified',decision:'reuse',status:'approved',
+    licenceEvidenceUrl:'https://github.com/example/repo/blob/main/LICENSE',
+    reviewNote:'Reviewed upstream licence and dependency obligations.',
+    licenceAttested:true,expectedUpdatedAt:created.candidate.updatedAt,
   }),null);
 });
