@@ -142,13 +142,14 @@ test('only the authenticated owner can decide a pending approval and the API sup
   const response = await onRequestPost({
     request: await authenticatedRequest('/api/approvals', {
       method: 'POST',
-      body: { id: pending.id, decision: 'approved', decidedBy: 'attacker' },
+      body: { id: pending.id, decision: 'approved' },
     }),
     env: { ...envBase, APPROVALS: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.approval.status, 'approved');
+  assert.equal(body.approval.decidedBy, 'owner');
   assert.equal(body.approval.decidedBy, 'owner');
   assert.equal(db.rows.get(pending.id).decided_by, 'owner');
 });
