@@ -81,6 +81,55 @@ export function validateMemoryRecord(record, now = Date.now()) {
   return true;
 }
 
+
+function tokenizeMemoryText(value) {
+  return String(value || '').toLocaleLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+
+function rankMemoryRecords(records, terms, limit) {
+  if (!records.length || !terms.length) return [];
+  const documents = records.map((record) => {
+    const frequencies = new Map();
+    let length = 0;
+    const addTokens = (tokens, weight) => {
+      length += tokens.length * weight;
+      for (const token of tokens) {
+        frequencies.set(token, (frequencies.get(token) || 0) + weight);
+      }
+    };
+    addTokens(tokenizeMemoryText(record.content), 1);
+    addTokens(tokenizeMemoryText(record.kind), 1.5);
+    addTokens(tokenizeMemoryText((record.tags || []).join(' ')), 2);
+    return { record, frequencies, length };
+  });
+  const averageLength = documents.reduce((sum, item) => sum + item.length, 0) / documents.length || 1;
+  const documentFrequency = new Map(terms.map((term) => [
+    term,
+    documents.reduce((count, item) => count + (item.frequencies.has(term) ? 1 : 0), 0),
+  ]));
+  const k1 = 1.2;
+  const b = 0.75;
+  return documents.map((item) => {
+    let score = 0;
+    for (const term of terms) {
+      const frequency = item.frequencies.get(term) || 0;
+      if (!frequency) continue;
+      const df = documentFrequency.get(term) || 0;
+      const inverseFrequency = Math.log(1 + (documents.length - df + 0.5) / (df + 0.5));
+      const normalization = frequency + k1 * (1 - b + b * item.length / averageLength);
+      score += inverseFrequency * (frequency * (k1 + 1)) / normalization;
+    }
+    return { record: item.record, score };
+  })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score ||
+      b.record.confidence - a.record.confidence ||
+      b.record.updatedAt.localeCompare(a.record.updatedAt) ||
+      a.record.id.localeCompare(b.record.id))
+    .slice(0, limit)
+    .map((item) => clone(item.record));
+}
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -134,22 +183,12 @@ export function createMemoryStore(records = []) {
       if (!validScope(ownerId, projectId) || typeof query !== 'string' ||
           !query.trim() || query.length > 200 || !Number.isFinite(now)) return [];
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid memory result limit');
-      const terms = [...new Set(query.toLocaleLowerCase().match(/[a-z0-9-]+/g) ?? [])];
+      const terms = [...new Set(tokenizeMemoryText(query))];
       if (!terms.length) return [];
-      return [...byId.values()]
-        .filter((record) => inScope(record, ownerId, projectId) && isRetrievable(record, now) && record.sensitivity !== 'restricted')
-        .map((record) => {
-          const haystack = [record.content, record.kind, ...record.tags].join(' ').toLocaleLowerCase();
-          const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0);
-          return { record, score };
-        })
-        .filter((item) => item.score > 0)
-        .sort((a, b) => b.score - a.score ||
-          b.record.confidence - a.record.confidence ||
-          b.record.updatedAt.localeCompare(a.record.updatedAt) ||
-          a.record.id.localeCompare(b.record.id))
-        .slice(0, limit)
-        .map((item) => clone(item.record));
+      const candidates = [...byId.values()]
+        .filter((record) => inScope(record, ownerId, projectId) &&
+          isRetrievable(record, now) && record.sensitivity !== 'restricted');
+      return rankMemoryRecords(candidates, terms, limit);
     },
   });
 }
@@ -278,10 +317,11 @@ export function createMemoryRepository(db) {
       const terms = normalizeSearchTerms(query);
       if (!terms.length) return [];
       const predicates = terms.map(() => "LOWER(content || ' ' || kind || ' ' || tags_json) LIKE ?");
+      const candidateLimit = 200;
       const bindings = [
         ownerId, projectId, new Date(now).toISOString(),
         ...terms.map((term) => '%' + term + '%'),
-        limit,
+        candidateLimit,
       ];
       const result = await db.prepare(`
         SELECT * FROM aegis_memories
@@ -293,7 +333,8 @@ export function createMemoryRepository(db) {
         ORDER BY confidence DESC, updated_at DESC, id ASC
         LIMIT ?
       `).bind(...bindings).all();
-      return (result?.results ?? []).map(mapMemoryRow);
+      const candidates = (result?.results ?? []).map(mapMemoryRow);
+      return rankMemoryRecords(candidates, terms, limit);
     },
 
 
