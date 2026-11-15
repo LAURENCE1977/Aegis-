@@ -52,6 +52,10 @@ Candidate and knowledge records preserve source versions, licence review, attrib
 
 See [docs/FORGE_INTELLIGENCE.md](docs/FORGE_INTELLIGENCE.md) and the [Research Source Register](docs/RESEARCH_SOURCE_REGISTER.md).
 
+## Durable agent orchestration (plan-only foundation)
+
+The separate runtime Worker now has a durable specialist-run API, D1-backed run/event records, idempotent queue submission, lease/outbox recovery and a deterministic plan-only orchestrator. It does not execute tools or call models. Any future execution must pass through Sentinel and exact-operation approvals. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md). The new runtime migration and Worker source are not deployed.
+
 ## MCP Bridge (initial read-only phase)
 
 The first AEGIS Bridge slice exposes the current stateless MCP Streamable HTTP protocol at `POST /mcp`. It supports `server/discover`, `tools/list` and `tools/call`, with read-only status, module and skills tools. It does not yet provide OAuth 2.1/PKCE, per-client scopes, write operations or a general outbound connector manager. See [docs/AEGIS_BRIDGE.md](docs/AEGIS_BRIDGE.md) for the protocol, authentication boundary and current limitations. The endpoint fails closed until an authorised bearer secret or valid AEGIS session is configured.
