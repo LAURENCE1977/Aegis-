@@ -12,7 +12,8 @@ This is an evaluation register, not an integration claim. No external package, a
 | Vstorm AgenticOS | Governed-agent architecture, shared knowledge, budgets, approvals, audit and operator console | Study and selectively adapt; do not deploy wholesale |
 | Google ARTEMIS | Android UI automation, real-device testing, MCP-driven test execution and diagnostic traces | High-value optional mobile QA adapter if AEGIS ships/tests an Android client; not an AEGIS runtime dependency |
 | TruffleHog | Secret discovery in AEGIS repositories, history and CI artifacts | High-priority security control to evaluate for isolated CI scans; do not automatically verify or expose detected credentials |
-| Harness (assumed Harness.io platform) | Governed CI/CD, security testing, release controls, policy, audit and cost governance | Architecture reference; defer platform integration because it is broader and likely heavier than AEGIS needs |
+| OpenHarness (assumed autonomous-ai/openharness) | Multi-agent workspace, remote machine daemons, agent sessions and cross-machine coordination | Strong architecture candidate to study; desktop/daemon stack is not directly deployable on the current Chromebook-first Cloudflare setup |
+| Harness.io platform (alternate interpretation of “Harness”) | Governed CI/CD, security testing, release controls, policy, audit and cost governance | Architecture reference; defer platform integration because it is broader and likely heavier than AEGIS needs |
 | BLA (assumed qybaihe/bla, Blind LLM Agents) | Protect shipped binaries and bundles from automated reverse engineering | Niche optional release-hardening experiment only if AEGIS ships valuable client-side artifacts |
 | SolidCraft | Parametric 3D CAD, browser/desktop modelling, CLI and MCP-driven model creation | Future Media Studio / 3D asset capability reference; unrelated to current core runtime |
 | Dev.to | Discover practitioner articles, implementation notes and emerging patterns | Research input only; verify claims against primary sources |
@@ -104,7 +105,24 @@ AEGIS decision:
 - Scanner findings are sensitive security incidents: record file/commit references and remediation status, not raw credential material. Rotate/revoke exposed credentials rather than merely deleting the visible line.
 - A clean scan is not proof that no secrets exist; combine with least-privilege secret storage, secret rotation and review of CI logs/artifacts.
 
-## Harness (provisional identity: Harness.io)
+## OpenHarness and Harness (identity unresolved)
+
+Two materially different candidates surfaced; do not conflate them:
+
+### OpenHarness — autonomous-ai/openharness
+
+Primary candidate:
+- https://github.com/autonomous-ai/openharness
+- Repository reports MIT licensing; pin and verify the exact commit and all bundled third-party licences before reuse.
+- Describes a desktop command centre for running coding agents across multiple machines, with per-machine daemons, persistent agent sessions, remote coordination and end-to-end encrypted links. The repository includes app, CLI, daemon, relay and device components.
+
+AEGIS decision:
+- Highly relevant architecture reference for the user's long-term goal of coordinating multiple agent harnesses and machines while keeping work running independently of a chat session.
+- Study its session lifecycle, daemon connectivity, encrypted transport, machine pairing, permissions and failure recovery. Do not assume its relay, desktop app or local agent processes can be transplanted into Cloudflare Workers.
+- Its documented build/install path targets macOS or Linux and includes native desktop/toolchain requirements; it is not a direct Chromebook-only browser solution. Treat it as a possible optional operator/worker node, not AEGIS's core host.
+- Before any integration, inspect security model, key management, relay trust boundaries, update mechanism, data retention, supported agent adapters and whether the daemon can run headlessly on a low-cost host.
+
+### Harness.io platform — alternate interpretation
 
 Primary candidate:
 - https://www.harness.io/products/platform
@@ -115,7 +133,8 @@ AEGIS decision:
 - Study its governance model: policy enforcement at execution boundaries, worker agents with bounded permissions, evidence-backed audit, release verification and rollback.
 - Do not adopt the full platform as an AEGIS dependency. It is a broad commercial DevOps platform aimed at organisational delivery environments, not a lightweight personal runtime.
 - Reproduce the useful principles in AEGIS-native controls and keep CI provider-neutral.
-- This entry assumes the user means Harness.io. If “Harness” refers to a different GitHub project or agent framework, resolve the exact URL before further evaluation.
+
+The user has not supplied an exact Harness URL, so the intended project remains unconfirmed.
 
 ## BLA — Blind LLM Agents (provisional identity: qybaihe/bla)
 
@@ -208,7 +227,7 @@ Retrieved text, code, issue comments, prompts and tool schemas are untrusted dat
 
 1. Continue the durable runtime and security foundation; do not add a platform dependency before it is needed.
 2. Evaluate TruffleHog as a pinned, redacted, detection-only CI security gate.
-3. Study Harness governance patterns and AgenticOS's budget/approval/audit model; implement only the lightweight AEGIS-native controls that fit.
+3. Study OpenHarness for multi-machine agent lifecycle/coordination and AgenticOS/Harness.io for budgets, approvals, policy and audit; implement only lightweight AEGIS-native controls that fit.
 4. Keep ARTEMIS as an optional Android QA adapter if an Android client becomes a target; it does not cover iOS.
 5. Keep BLA and SolidCraft outside the core: consider only for concrete release-hardening or 3D-asset use cases.
 6. Use AI SDK documentation as a design reference for the future provider/tool/UI layer; first verify the current frontend and Worker compatibility.
