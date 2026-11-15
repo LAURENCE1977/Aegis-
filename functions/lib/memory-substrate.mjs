@@ -297,6 +297,38 @@ export function createMemoryRepository(db) {
     },
 
 
+    async exportAll({ ownerId, projectId, memoryLimit = 500, eventLimit = 2000 } = {}) {
+      requireId(ownerId, 'owner identifier');
+      if (projectId !== undefined && projectId !== null) requireId(projectId, 'project identifier');
+      if (!Number.isInteger(memoryLimit) || memoryLimit < 1 || memoryLimit > 1000 ||
+          !Number.isInteger(eventLimit) || eventLimit < 1 || eventLimit > 5000) {
+        throw new TypeError('Invalid memory export limits');
+      }
+      const allScopes = projectId === undefined ? 1 : 0;
+      const scopeId = projectId ?? null;
+      const [memoryResult, eventResult] = await Promise.all([
+        db.prepare(`
+          SELECT * FROM aegis_memories
+          WHERE owner_id = ? AND (? = 1 OR project_id IS ?)
+          ORDER BY created_at ASC, id ASC
+          LIMIT ?
+        `).bind(ownerId, allScopes, scopeId, memoryLimit + 1).all(),
+        db.prepare(`
+          SELECT * FROM aegis_memory_events
+          WHERE owner_id = ? AND (? = 1 OR project_id IS ?)
+          ORDER BY occurred_at ASC, id ASC
+          LIMIT ?
+        `).bind(ownerId, allScopes, scopeId, eventLimit + 1).all(),
+      ]);
+      const memoryRows = memoryResult?.results ?? [];
+      const eventRows = eventResult?.results ?? [];
+      return {
+        memories: memoryRows.slice(0, memoryLimit).map(mapMemoryRow),
+        events: eventRows.slice(0, eventLimit).map(mapMemoryEventRow),
+        truncated: memoryRows.length > memoryLimit || eventRows.length > eventLimit,
+      };
+    },
+
     async listEvents(id, { ownerId, projectId = null, limit = 50 } = {}) {
       assertMemoryScope(ownerId, projectId);
       requireId(id, 'identifier');
