@@ -21,7 +21,7 @@ class MemoryD1 {
           const [id, principal, capability, version, resource, scopes, createdBy, createdAt, expiresAt] = v;
           if ([...db.rows.values()].some(row =>
             row.principal_id === principal && row.capability_id === capability &&
-            row.capability_version === version && row.resource_id === resource)) {
+            row.capability_version === version && row.resource_id === resource && row.status === 'active')) {
             throw new Error('unique constraint');
           }
           db.rows.set(id, { id, principal_id: principal, capability_id: capability,
