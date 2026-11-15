@@ -39,7 +39,7 @@ class MemoryD1 {
       },
       async first() {
         const v = this.values;
-        if (sql.includes('SELECT * FROM capability_grants WHERE principal_id')) {
+        if (sql.includes('WHERE principal_id')) {
           const [principal, capability, version, resource, now] = v;
           const row = [...db.rows.values()].find(item =>
             item.principal_id === principal && item.capability_id === capability &&
