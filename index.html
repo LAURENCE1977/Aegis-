@@ -91,6 +91,8 @@
     .workspace-detail textarea { width: 100%; min-height: 4rem; padding: .7rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
     .toolbar { flex-wrap: wrap; }
     .toolbar button { min-width: 5rem; }
+    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
+    .project-context select { min-width: 0; flex: 1; padding: .65rem; border-radius: .65rem; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; }
     @media (max-width: 420px) {
       .logout { position: static; margin-top: .75rem; }
       .input-area button { padding-inline: 1rem; }
@@ -188,6 +190,7 @@
     const approvalStatus = document.getElementById('approvalStatus');
     const approvalList = document.getElementById('approvalList');
     const chatSection = document.getElementById('chatSection');
+    const chatProjectSelect = document.getElementById('chatProjectSelect');
     const memorySection = document.getElementById('memorySection');
     const memoryForm = document.getElementById('memoryForm');
     const memoryKind = document.getElementById('memoryKind');
@@ -256,6 +259,7 @@
       chatBox.replaceChildren();
       loadHistory();
       addMessage('Hello! How can I help you today?');
+      loadChatProjects();
       history.forEach(m => addMessage(m.content, m.role));
       userInput.focus();
     }
@@ -513,6 +517,29 @@
       }
       if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
       return data;
+    }
+
+    async function loadChatProjects() {
+      const selected = chatProjectSelect.value;
+      chatProjectSelect.replaceChildren();
+      const personal = document.createElement('option');
+      personal.value = '';
+      personal.textContent = 'Personal memory only';
+      chatProjectSelect.append(personal);
+      try {
+        const data = await controlApi('/api/workspaces');
+        (data.workspaces || []).forEach(workspace => {
+          const option = document.createElement('option');
+          option.value = workspace.id;
+          option.textContent = workspace.name;
+          chatProjectSelect.append(option);
+        });
+        if ([...chatProjectSelect.options].some(option => option.value === selected)) {
+          chatProjectSelect.value = selected;
+        }
+      } catch (error) {
+        // Chat remains available without the optional Project Space database.
+      }
     }
 
     async function loadWorkspaces() {
