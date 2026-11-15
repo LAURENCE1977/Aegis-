@@ -148,5 +148,5 @@ test('Forge candidate review UI requires an explicit owner licence decision', ()
   assert.match(html, /method:\s*'PATCH'/);
   assert.match(html, /licenceReview/);
   assert.match(html, /review-required/);
-  assert.match(html, /approved candidate requires/i);
+  assert.match(html, /Choose an engineering decision before approval/);
 });
