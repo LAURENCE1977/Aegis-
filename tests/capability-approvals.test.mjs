@@ -64,7 +64,7 @@ const binding = {
   actionId: 'update-description',
   resourceId: 'github:repo:owner/project',
   connectionId: 'connection-1',
-  inputDigest: 'sha256:0123456789abcdef',
+  inputDigest: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 };
 const future = new Date(Date.now() + 60_000).toISOString();
 const request = (overrides = {}) => ({
@@ -114,7 +114,7 @@ test('approval cannot be consumed for a different principal, target or payload',
     id: pending.id, ...binding, resourceId: 'github:repo:owner/other', now: Date.now(),
   }), null);
   assert.equal(await consumeApproval(db, {
-    id: pending.id, ...binding, inputDigest: 'sha256:abcdef0123456789', now: Date.now(),
+    id: pending.id, ...binding, inputDigest: 'sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789', now: Date.now(),
   }), null);
 });
 
