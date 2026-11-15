@@ -321,3 +321,8 @@ New candidates evaluated 15 November 2026 are recorded in [docs/RESEARCH_SOURCE_
 - OpenOutreach is a specialised outbound-sales agent, not core OS functionality. No external messaging, lead purchase or email sending is authorised by this research.
 
 **Non-duplication rule:** AEGIS owns canonical job IDs, state, approvals, policies and audit. Any external engine is an execution adapter behind this boundary. Do not run multiple orchestration systems for the same workload without a measured reason, clear ownership and migration plan.
+
+
+## 15. Capability System architecture
+
+The governed capability lifecycle and implementation contract are specified in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). This is an architecture proposal, not implemented functionality. It separates sources, candidates, capabilities, adapters, connections, grants, approvals, invocations and agent definitions. Discovery and registration never grant execution rights. A central policy gate, exact-operation approvals, isolated adapters, encrypted secret references, durable audit, revocation, idempotency, SSRF protections and cost limits are required before general tool execution. The current runtime remains health-check-only; do not widen its task allowlist until the MVP gates and tests are delivered.
