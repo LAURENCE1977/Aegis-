@@ -40,13 +40,14 @@ test('project brief excludes restricted, candidate and cross-project memories an
       memory(),
       memory({id:'restricted',sensitivity:'restricted',content:'restricted secret'}),
       memory({id:'candidate',status:'candidate',content:'unreviewed content'}),
+      memory({id:'expired',expiresAt:'2026-11-15T11:59:00.000Z',content:'expired memory'}),
       memory({id:'other-project',projectId:'project-b',content:'other project content'}),
     ],
     now:Date.parse('2026-11-15T12:00:00.000Z'),
   });
   const serialized=JSON.stringify(brief);
   assert.deepEqual(brief.memories.map(item=>item.id),['memory-a']);
-  assert.doesNotMatch(serialized,/restricted secret|unreviewed content|other project content/);
+  assert.doesNotMatch(serialized,/restricted secret|unreviewed content|expired memory|other project content/);
   assert.doesNotMatch(serialized,/private\.example\/source|raw event body/);
 });
 
