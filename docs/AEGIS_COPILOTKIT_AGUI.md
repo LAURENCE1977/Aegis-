@@ -93,7 +93,7 @@ Do not introduce a second agent runtime or second memory store. AEGIS remains au
 - An optional `projectId` is checked against an active owner-owned Project Space before the model is called. Frontend tools, ambient context, resume, multimodal messages and arbitrary state are explicitly rejected until their server-side policy and lifecycle semantics exist. The endpoint cannot execute tools.
 - Event types, identifiers, message size, body size and serialized event size are bounded. Only the six implemented event types can be emitted by the encoder.
 - AG-UI 1.0's lifecycle rules were checked against the pinned normative source: a valid stream begins with RUN_STARTED or RUN_ERROR; an output stream deliberately stopped by AEGIS's 12,000-character safety cap closes its text message and now reports RUN_FINISHED with `outcome: cancelled`, rather than falsely reporting success. A client disconnect is not converted into a successful finish.
-- Latest verified feature-branch commit `b644c5f34d3737e787e30c9d72ef60d81cbf5939` passed GitHub Actions run 43751112398: **289 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43751112398.
+- Latest verified feature-branch commit `637174f3ffa6c083d40faee3a1a2ef81e0d780f4` passed GitHub Actions run 43752010145: **296 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43752010145.
 - Cloudflare Pages preview for that commit deployed successfully at https://7aef49d9.aegis-6yk.pages.dev. Browser verification reached the AEGIS login screen; preview `/api/login` returns HTTP 503 until the two required Preview secrets are configured.
 
 ## Status and limitations
