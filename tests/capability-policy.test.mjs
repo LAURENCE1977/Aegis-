@@ -158,7 +158,7 @@ test('approval cannot be reused for a changed payload, resource, action or versi
 test('expired, denied or consumed approvals are rejected', () => {
   const manifest = writeManifest();
   const grant = grantFor(manifest, { scopes: ['github:repository:write'] });
-  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant };
+  const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy({
     ...input, approval: approvalFor(manifest, 'update', { expiresAt: new Date(Date.now() - 1000).toISOString() }),
   }).reasonCode, 'APPROVAL_EXPIRED');
