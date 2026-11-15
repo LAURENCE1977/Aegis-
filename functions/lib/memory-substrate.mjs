@@ -329,6 +329,21 @@ export function createMemoryRepository(db) {
       };
     },
 
+    async listProjectEvents({ ownerId, projectId, limit = 100 } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      if (projectId === null) throw new TypeError('A Project Space identifier is required');
+      if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+        throw new TypeError('Invalid project memory event limit');
+      }
+      const result = await db.prepare(`
+        SELECT * FROM aegis_memory_events
+        WHERE owner_id = ? AND project_id = ?
+        ORDER BY occurred_at ASC, id ASC
+        LIMIT ?
+      `).bind(ownerId, projectId, limit).all();
+      return (result?.results ?? []).map(mapMemoryEventRow);
+    },
+
     async listEvents(id, { ownerId, projectId = null, limit = 50 } = {}) {
       assertMemoryScope(ownerId, projectId);
       requireId(id, 'identifier');
