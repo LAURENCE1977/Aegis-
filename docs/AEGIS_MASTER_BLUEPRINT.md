@@ -365,3 +365,12 @@ The latest source evaluations are recorded in `docs/RESEARCH_SOURCE_REGISTER.md`
 The intended OpenMuse source is https://github.com/OpenMuseAgent/OpenMuse, whose README identifies https://github.com/nano-muse/nanoMuse as its maintained successor. The archived OpenMuse v0.6.0 repository was MIT; current nanoMuse is GPL-3.0-or-later and must not be treated as MIT or copied into AEGIS without a licensing decision. Open WebUI remains a separate, distinct source.
 
 nanoMuse is a high-priority architecture reference for AEGIS's Sentinel: mandatory model-to-tool mediation, risk classification, approval/deny, vault-backed secret resolution, taint/egress tracking, redaction, sandboxed execution, durable goals and cross-device UI events. AEGIS will independently implement these ideas within its own capability registry, canonical job runtime, approval records, project memory and audit. nanoMuse's Python/local/device stack is not a drop-in Cloudflare Worker or PWA dependency. No code, package, app or service installed.
+
+
+## AEGIS Sentinel implementation
+
+The first Sentinel enforcement library slice is being developed in PR #23, stacked on the Project Spaces and owner-approval work. It adds deterministic server-side operation hashing and a fail-closed gate that resolves the exact registered manifest/action, evaluates the existing policy, loads approval records from AEGIS storage and atomically consumes a matching one-time approval before permitting a protected invocation to proceed.
+
+Sentinel does not execute adapters or external effects. Persistent grants/connections, a single adapter invocation boundary, append-only invocation audit, cancellation/timeouts/idempotency, and the human-facing approval UI remain follow-on work. The gate must receive server-authoritative grant/connection state and the adapter must execute the exact same normalized operation that was hashed. No general write or shell capability is enabled.
+
+Implementation notes: [AEGIS_SENTINEL.md](AEGIS_SENTINEL.md). PR #23 is draft, unmerged and not deployed. Its exact-head CI status must be verified before the tests are described as passing.
