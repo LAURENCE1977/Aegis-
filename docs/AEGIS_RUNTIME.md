@@ -15,13 +15,13 @@ The initial allowlist contains exactly one harmless task: `aegis.health_check`. 
 - **Lease recovery:** a two-minute lease lets Cron recover a consumer that died after claiming a job.
 - **Attempt fencing:** the claim atomically returns its own incremented attempt number (`UPDATE ... RETURNING attempts`); completion/retry updates are conditional on that captured value. A stale worker cannot adopt a newer consumer's attempt after lease recovery.
 - **Idempotency:** optional `Idempotency-Key` prevents duplicate job creation for the same request key.
-- **Dead-letter queue:** the consumer config routes repeatedly undeliverable messages to `aegis-jobs-dlq`.
+- **Dead-letter queue:** repeatedly undeliverable messages are routed to `aegis-jobs-dlq`, which has its own consumer registration in the same Worker. The handler identifies the source queue using `MessageBatch.queue` and processes DLQ messages separately from normal jobs.
 
 The job states are:
 
 `pending_dispatch → queued → running → succeeded | failed`
 
-A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it.
+A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it. A DLQ delivery conditionally marks only non-terminal jobs as `failed` with `JOB_DELIVERY_EXHAUSTED`, clears the lease and records a `delivery_exhausted` audit event. A deterministic audit event ID makes redelivery safe: it can repair a missing audit insert without duplicating the event. Already-succeeded or already-failed jobs are not overwritten; malformed or unknown job IDs are acknowledged without changing state.
 
 ## API contract
 
@@ -139,6 +139,6 @@ References:
 
 CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
 
-The initial runtime branch test run completed with **82 tests passed, 0 failed**. Tests cover strict job validation, UUIDs, terminal states, auth fail-closed behavior, hostile Origin rejection, readiness checks, durable submission, idempotency, successful queue execution and a lease-recovery race regression. The regression failed against the old implementation (82 passed, 1 failed) and passed after the atomic-claim fix (83 passed, 0 failed). This is source-level test evidence, not a live Cloudflare integration test.
+The initial runtime branch test run completed with **83 tests passed, 0 failed** after the atomic-claim fix. The dead-letter regression was first added separately and failed against the implementation without a DLQ consumer. The follow-up implementation adds idempotent DLQ state transition/audit handling, a terminal-job protection test and a second Wrangler consumer registration. The current full-suite CI result must be checked against the latest PR head before this change is considered verified. This remains source-level test evidence, not a live Cloudflare D1/Queue integration test.
 
 Next: add D1/Queue integration tests against a disposable non-production environment, then provision and deploy only after the free-tier and resource configuration are checked.
