@@ -15,6 +15,7 @@ AEGIS owns its memory model, provenance, policy, storage and retrieval. Kytheros
   - `PATCH /api/memories/:id` — accept, supersede or retract.
   - `GET /api/memories/:id/events` — immutable lifecycle history.
   - `GET /api/memories/export` — authenticated JSON export of all owner memories and lifecycle history; `?projectId=` exports personal scope and `?projectId=<id>` exports one active Project Space.
+  - `DELETE /api/memories/:id` — permanently purges one owner-scoped memory only after an explicit confirmation body; a minimal immutable audit tombstone remains.
 - Candidate memories are excluded from normal retrieval. Only accepted, unexpired, non-restricted records are eligible for chat recall.
 - Bounded lexical retrieval supports partial-term matches and exact owner/project scope.
 - Chat `POST /api/ag-ui` retrieves up to eight approved personal memories by default. When the owner explicitly selects a Project Space, it retrieves up to four relevant personal and four relevant project memories, after verifying the project is active and owner-scoped. The maximum JSON context block is 6,000 characters. Provenance accompanies each record; the system prompt explicitly treats memory as untrusted reference data, never instructions.
@@ -34,10 +35,11 @@ Apply **one ordered directory** to the shared Project Spaces + Memory database:
 4. `migrations/shared/0004_memory_corrections.sql`
 5. `migrations/shared/0005_forge_candidates.sql`
 6. `migrations/shared/0006_forge_candidate_review.sql`
+7. `migrations/shared/0007_memory_purge.sql`
 
 This avoids running multiple nested directories that reuse migration numbers. The original `migrations/workspaces` and `migrations/memory` files are feature-source copies; do not independently apply them to the same D1 database in addition to `migrations/shared`.
 
-The shared database now also includes the owner-scoped Forge candidate registry and its append-only event log. The runtime job database is a separate service/database and keeps its own migration directory.
+The shared database now also includes the owner-scoped Forge candidate registry and its append-only event log. Migration 0007 rebuilds the memory event table without a foreign key to memory rows, so owner purges can delete content while preserving an append-only minimal tombstone. The runtime job database is a separate service/database and keeps its own migration directory.
 
 ## Security model and limitations
 
@@ -48,6 +50,7 @@ The shared database now also includes the owner-scoped Forge candidate registry 
 - Memory content is untrusted data, never an instruction or permission. Retrieved text cannot grant tools or bypass Sentinel.
 - Memory history stores IDs, scope, lifecycle states and timestamps, not the memory content.
 - Owner export includes all lifecycle states (including retracted, superseded, expired and restricted records), provenance and audit events. It is bounded to 500 memory records and 2,000 lifecycle events per export; the response indicates if it was truncated. Exports are `no-store` attachments.
+- Permanent purge removes the selected memory row and its content/provenance from live D1. Any correction rows that reference it are atomically unlinked first. The append-only event log retains only the memory ID, owner/project scope, lifecycle status and timestamp; it does not retain the deleted content or source URL. This does not make claims about provider backup retention.
 - No automatic model extraction is enabled. New records enter the candidate queue and require owner acceptance.
 - Search is lexical, not vector/embedding-based. This avoids paid APIs and GPU dependencies.
 - The legacy `/api/memory` KV notes endpoint remains separate for backward compatibility.
@@ -68,8 +71,8 @@ This is feature-branch code and preview deployment only. D1 has **not** been pro
 ## Next implementation work
 
 1. Verify the newest chat-memory and frontend smoke-test commits in CI.
-2. Add retention and owner deletion controls with explicit confirmation and audit.
-3. Validate the correction migration against SQLite and test the full migration chain.
+2. Add an owner-configurable retention policy and optional automatic expiry cleanup; per-record permanent purge is implemented.
+3. Keep migration validation in CI and verify the seven-migration sequence against a real preview D1 before activation.
 4. Build project timeline ↔ memory linking into the broader Control Centre.
 5. Add optional embeddings/reranking only after a reproducible benchmark proves improvement over lexical retrieval.
 6. Provision one free-tier D1 database only after checking current account-wide usage and limits; apply the canonical shared migrations, configure `AEGIS_DB` and test on preview before any production promotion.
