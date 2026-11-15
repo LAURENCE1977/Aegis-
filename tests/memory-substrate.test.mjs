@@ -239,3 +239,13 @@ test('D1 review listing can include candidates without changing normal retrieval
   assert.deepEqual((await repository.list({ownerId:'owner-1',now})),[]);
   assert.deepEqual((await repository.list({ownerId:'owner-1',now,includeCandidates:true})).map(item=>item.status),['candidate']);
 });
+
+
+test('D1 retrieval accepts partial-term matches but never returns restricted memories', async () => {
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  await repository.create(record());
+  await repository.create(record({id:'restricted-memory',sensitivity:'restricted',content:'private storytelling memory'}));
+  const results = await repository.search({ownerId:'owner-1',query:'storytelling unrelated',now});
+  assert.deepEqual(results.map(item=>item.id),['preferred-writing-style']);
+});
