@@ -58,7 +58,7 @@ class MemoryD1 {
         if (sql.includes('FROM aegis_memory_events')) return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         let rows=[...db.memories.values()].filter(row=>
-          row.owner_id===v[0] && row.project_id===v[1] && row.status==='accepted' &&
+          row.owner_id===v[0] && row.project_id===v[1] && (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) &&
           (!row.expires_at || row.expires_at>v[2]));
         if (sql.includes('LIKE')) {
           const terms=v.slice(3,-1);
@@ -231,4 +231,24 @@ test('memory lifecycle history is authenticated and does not expose another scop
     env:{...envBase,AEGIS_DB:db},params:{id:memory.id},
   });
   assert.equal(denied.status,401);
+});
+
+
+test('owner review queue includes candidates but normal memory reads do not', async()=>{
+  const db=new MemoryD1();
+  const created=await onRequestPost({
+    request:await request('/api/memories',{method:'POST',body:memoryInput}),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  const {memory}=await created.json();
+  const ordinary=await onRequestGet({
+    request:await request('/api/memories'),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  assert.equal((await ordinary.json()).total,0);
+  const review=await onRequestGet({
+    request:await request('/api/memories?review=1'),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  assert.equal((await review.json()).memories[0].id,memory.id);
 });
