@@ -129,7 +129,7 @@ test('Forge Control Centre provides safe read-only repository inspection and sou
   assert.match(html, /controlApi\('\/api\/forge\/read'/);
   assert.match(html, /controlApi\('\/api\/forge\/candidates'/);
   assert.match(html, /candidateNode\.textContent\s*=\s*candidate\.metadata\.fullName/);
-  assert.match(html, /reviewSummary\.textContent\s*=\s*'Latest owner review:'/);
+  assert.match(html, /reviewSummary\.textContent\s*=\s*'Latest owner review:'\s*\+/);
   assert.match(html, /forgeFilePreview\.textContent\s*=\s*data\.content/);
   assert.match(html, /Nothing is executed|Nothing is run/);
 });
