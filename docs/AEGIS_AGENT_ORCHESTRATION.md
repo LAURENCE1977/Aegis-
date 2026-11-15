@@ -108,4 +108,4 @@ A passing local/CI run and a non-production D1/Queue integration check are requi
 
 **Operational boundary:** this is an integration seam and testable library bridge, not an enabled tool executor. The runtime queue still produces plan-only runs and does not call the bridge. Persistent grant/connection stores, secret vault, concrete D1 invocation-audit writer, trusted adapter router and egress isolation are not yet provisioned or composed. No capability can be executed by an agent until those controls are implemented and explicitly wired.
 
-Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. Full Node.js 22 CI remains unverified.
+Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. GitHub Actions run 43752335315 on commit e1beff9b86d7f250a43c5a4c2e7f791079c1fac9 passed the full Node.js 22 suite: 308 tests, 0 failures.
