@@ -13,7 +13,7 @@ The initial allowlist contains exactly one harmless task: `aegis.health_check`. 
 - **Queue:** asynchronous delivery to the Worker consumer.
 - **Outbox recovery:** jobs are first committed as `pending_dispatch`; a once-per-minute Cron sweep retries dispatch if the request died between the D1 write and Queue send.
 - **Lease recovery:** a two-minute lease lets Cron recover a consumer that died after claiming a job.
-- **Attempt fencing:** every claim increments an attempt counter; completion/retry updates are conditional on that exact attempt so an expired worker cannot overwrite a newer attempt.
+- **Attempt fencing:** the claim atomically returns its own incremented attempt number (`UPDATE ... RETURNING attempts`); completion/retry updates are conditional on that captured value. A stale worker cannot adopt a newer consumer's attempt after lease recovery.
 - **Idempotency:** optional `Idempotency-Key` prevents duplicate job creation for the same request key.
 - **Dead-letter queue:** the consumer config routes repeatedly undeliverable messages to `aegis-jobs-dlq`.
 
@@ -139,6 +139,6 @@ References:
 
 CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
 
-The initial runtime branch test run completed with **82 tests passed, 0 failed**. Tests cover strict job validation, UUIDs, terminal states, auth fail-closed behavior, hostile Origin rejection, readiness checks, durable submission, idempotency and successful queue execution. This is source-level test evidence, not a live Cloudflare integration test.
+The initial runtime branch test run completed with **82 tests passed, 0 failed**. Tests cover strict job validation, UUIDs, terminal states, auth fail-closed behavior, hostile Origin rejection, readiness checks, durable submission, idempotency, successful queue execution and a lease-recovery race regression. The regression failed against the old implementation (82 passed, 1 failed) and passed after the atomic-claim fix (83 passed, 0 failed). This is source-level test evidence, not a live Cloudflare integration test.
 
 Next: add D1/Queue integration tests against a disposable non-production environment, then provision and deploy only after the free-tier and resource configuration are checked.
