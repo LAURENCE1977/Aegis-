@@ -17,7 +17,7 @@ test('Forge inspection pins a public repository tree and returns useful source f
       license:{spdx_id:'MIT',name:'MIT License'},
     });
     return response({
-      sha:'tree-sha',
+      sha:'1'.repeat(40),
       truncated:false,
       tree:[
         {path:'README.md',type:'blob',sha:'a'.repeat(40),size:100},
@@ -31,7 +31,7 @@ test('Forge inspection pins a public repository tree and returns useful source f
   };
   const result=await inspectGitHubRepository('https://github.com/example/agent',fetchImpl);
   assert.equal(result.fullName,'example/agent');
-  assert.equal(result.treeSha,'tree-sha');
+  assert.equal(result.treeSha,'1'.repeat(40));
   assert.deepEqual(result.files.map(file=>file.path),['README.md','package.json','src/agent.ts']);
   assert.equal(result.files[0].sha,'a'.repeat(40));
   assert.equal(calls.length,2);
@@ -44,7 +44,7 @@ test('Forge inspection reports a truncated repository tree without claiming comp
       full_name:'example/agent',html_url:'https://github.com/example/agent',
       default_branch:'main',private:false,
     });
-    return response({sha:'tree-sha',truncated:true,tree:[]});
+    return response({sha:'1'.repeat(40),truncated:true,tree:[]});
   };
   const result=await inspectGitHubRepository('https://github.com/example/agent',fetchImpl);
   assert.equal(result.truncated,true);
