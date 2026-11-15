@@ -160,3 +160,49 @@ test('memory writes and deletes reject unauthenticated requests', async () => {
   assert.equal(post.status, 401);
   assert.equal(del.status, 401);
 });
+
+
+test('login rejects requests without an Origin header', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(response.status, 403);
+});
+
+test('memory writes reject cross-origin requests before changing KV', async () => {
+  const token = await createSessionToken(secret);
+  let writes = 0;
+  const response = await memoryPost({
+    request: new Request('https://aegis.example/api/memory', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://attacker.example',
+        Cookie: '__Host-aegis_session=' + token,
+      },
+      body: JSON.stringify({ note: 'private note' }),
+    }),
+    env: { ...configuredEnv, MEMORY: { get: async () => '[]', put: async () => { writes += 1; } } },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(writes, 0);
+});
+
+test('memory deletes reject cross-origin requests before changing KV', async () => {
+  const token = await createSessionToken(secret);
+  let deletes = 0;
+  const response = await memoryDelete({
+    request: new Request('https://aegis.example/api/memory', {
+      method: 'DELETE',
+      headers: { Origin: 'https://attacker.example', Cookie: '__Host-aegis_session=' + token },
+    }),
+    env: { ...configuredEnv, MEMORY: { get: async () => '[]', put: async () => {}, delete: async () => { deletes += 1; } } },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(deletes, 0);
+});
