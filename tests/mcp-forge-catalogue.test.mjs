@@ -21,6 +21,7 @@ const record = {
     description: 'Search public documentation',
     effect: 'read',
     risk: 'low',
+    approvalPolicy: 'none',
     requiredScopes: ['docs:public:read'],
   }],
   status: 'candidate',
