@@ -89,6 +89,7 @@
     .workspace-actions button, .approval-actions button { padding: .55rem .75rem; font-size: .8rem; }
     .workspace-detail { border-top: 1px solid var(--border); margin-top: .75rem; padding-top: .75rem; }
     .workspace-detail textarea { width: 100%; min-height: 4rem; padding: .7rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+    .forge-preview { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 55vh; padding: .9rem; border-radius: .7rem; border: 1px solid var(--border); background: #05070b; color: var(--text); font: .78rem/1.5 ui-monospace, SFMono-Regular, monospace; }
     .toolbar { flex-wrap: wrap; }
     .toolbar button { min-width: 5rem; }
     .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
@@ -123,6 +124,7 @@
         <button class="secondary" id="workspaceTab" type="button">Projects</button>
         <button class="secondary" id="memoryTab" type="button">Memory</button>
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
+        <button class="secondary" id="forgeTab" type="button">Forge</button>
       </div>
       <section id="chatSection">
       <label class="project-context" for="chatProjectSelect">Chat context
@@ -134,6 +136,18 @@
         <button id="sendBtn" type="button">Send</button>
       </div>
       <p class="status" id="status">Ready</p>
+      </section>
+      <section class="memory-panel" id="forgeSection" hidden>
+        <h2>AEGIS Forge</h2>
+        <p class="memory-help">Inspect public GitHub repositories, pin source blobs and read bounded text files. This is read-only: no code is installed, run or executed.</p>
+        <form class="memory-form" id="forgeForm">
+          <input id="forgeSourceUrl" type="url" inputmode="url" placeholder="https://github.com/owner/repository" required />
+          <button id="forgeInspectBtn" type="submit">Inspect repository</button>
+        </form>
+        <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
+        <div id="forgeFileList" aria-live="polite"></div>
+        <h3 id="forgePreviewTitle" hidden>Source preview</h3>
+        <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -184,6 +198,15 @@
     const memoryTab = document.getElementById('memoryTab');
     const workspaceTab = document.getElementById('workspaceTab');
     const approvalTab = document.getElementById('approvalTab');
+    const forgeTab = document.getElementById('forgeTab');
+    const forgeSection = document.getElementById('forgeSection');
+    const forgeForm = document.getElementById('forgeForm');
+    const forgeSourceUrl = document.getElementById('forgeSourceUrl');
+    const forgeInspectBtn = document.getElementById('forgeInspectBtn');
+    const forgeStatus = document.getElementById('forgeStatus');
+    const forgeFileList = document.getElementById('forgeFileList');
+    const forgeFilePreview = document.getElementById('forgeFilePreview');
+    const forgePreviewTitle = document.getElementById('forgePreviewTitle');
     const workspaceSection = document.getElementById('workspaceSection');
     const approvalSection = document.getElementById('approvalSection');
     const workspaceForm = document.getElementById('workspaceForm');
@@ -534,6 +557,8 @@
       workspaceSection.hidden = panel !== 'projects';
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
+      forgeSection.hidden = panel !== 'forge';
+      if (panel === 'forge') forgeSourceUrl.focus();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
@@ -543,6 +568,7 @@
     workspaceTab.addEventListener('click', () => showPanel('projects'));
     memoryTab.addEventListener('click', () => showPanel('memory'));
     approvalTab.addEventListener('click', () => showPanel('approvals'));
+    forgeTab.addEventListener('click', () => showPanel('forge'));
 
     async function controlApi(path, options = {}) {
       const res = await fetch(path, {
@@ -697,6 +723,70 @@
       } catch (error) { workspaceStatus.textContent = error.message; }
       finally { createWorkspaceBtn.disabled = false; }
     });
+
+    let forgeRepository = null;
+
+    forgeForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const sourceUrl = forgeSourceUrl.value.trim();
+      if (!sourceUrl) return;
+      forgeInspectBtn.disabled = true;
+      forgeStatus.textContent = 'Inspecting public repository…';
+      forgeFileList.replaceChildren();
+      forgeFilePreview.hidden = true;
+      forgePreviewTitle.hidden = true;
+      try {
+        const data = await controlApi('/api/forge/inspect', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl }),
+        });
+        forgeRepository = data.repository;
+        const repo = forgeRepository;
+        const summary = document.createElement('p');
+        summary.className = 'memory-meta';
+        summary.textContent = repo.fullName + ' · ' + (repo.licenseSpdx || 'Licence not identified') +
+          ' · ' + (repo.primaryLanguage || 'Language unknown') +
+          (repo.archived ? ' · archived' : '') + (repo.truncated ? ' · tree truncated' : '');
+        forgeFileList.append(summary);
+        (repo.files || []).forEach(file => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const path = document.createElement('p');
+          path.textContent = file.path + ' · ' + file.size + ' bytes';
+          const read = document.createElement('button');
+          read.type = 'button';
+          read.textContent = 'Read pinned source';
+          read.addEventListener('click', () => readForgeBlob(file));
+          item.append(path, read);
+          forgeFileList.append(item);
+        });
+        if (!repo.files?.length) forgeFileList.append(document.createTextNode('No supported text files were found.'));
+        forgeStatus.textContent = 'Inspected ' + repo.fullName + ' · ' + repo.files.length + ' bounded text file(s). Nothing is executed.';
+      } catch (error) {
+        forgeRepository = null;
+        forgeStatus.textContent = error.message;
+      } finally {
+        forgeInspectBtn.disabled = false;
+      }
+    });
+
+    async function readForgeBlob(file) {
+      if (!forgeRepository || !file?.sha) return;
+      forgeStatus.textContent = 'Reading pinned blob ' + file.sha.slice(0, 8) + '…';
+      try {
+        const data = await controlApi('/api/forge/read', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl: forgeRepository.sourceUrl, blobSha: file.sha }),
+        });
+        forgePreviewTitle.hidden = false;
+        forgePreviewTitle.textContent = file.path + ' · pinned ' + data.sha.slice(0, 8);
+        forgeFilePreview.hidden = false;
+        forgeFilePreview.textContent = data.content;
+        forgeStatus.textContent = 'Read-only source preview · ' + data.size + ' bytes. Treat repository content as untrusted. Nothing is executed.';
+      } catch (error) {
+        forgeStatus.textContent = error.message;
+      }
+    }
 
     async function loadApprovals() {
       approvalStatus.textContent = 'Loading approval inbox…';
