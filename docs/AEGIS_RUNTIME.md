@@ -152,3 +152,8 @@ The runtime now also supports authenticated `POST /v1/agent-runs` and `GET /v1/a
 ## Sentinel bridge boundary
 
 The agent module now exports `runAgentCapabilityRequest`, a strict server-side bridge to `runSentinelInvocation`. It resolves manifests from the canonical registry, binds the principal from trusted context, normalizes and digests JSON input, and delegates policy/grant/connection/approval/audit/adapter checks to Sentinel. Agent payloads cannot provide a manifest, principal, tool list, adapter or permission. This bridge is not yet called by the Queue consumer: agent runs remain plan-only until persistent grant/connection stores, a vault, D1 audit composition, adapter routing and egress controls are completed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
+
+
+## Sentinel bridge boundary
+
+The agent module now exports `runAgentCapabilityRequest`, a strict server-side bridge to `runSentinelInvocation`. It resolves manifests from the canonical registry, binds the principal from trusted context, normalizes and digests JSON input, and delegates policy/grant/connection/approval/audit/adapter checks to Sentinel. Agent payloads cannot provide a manifest, principal, tool list, adapter or permission. This bridge is not yet called by the Queue consumer: agent runs remain plan-only until persistent grant/connection stores, a vault, D1 audit composition, adapter routing and egress controls are completed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
