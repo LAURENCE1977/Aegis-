@@ -97,6 +97,17 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
  * Expired requests remain visible so the owner can see why they can no longer
  * be decided; decideApprovalRequest still rejects them atomically.
  */
+export async function getApprovalRequest(db, id) {
+  if (!db || typeof db.prepare !== 'function') {
+    throw new TypeError('Approval database is required');
+  }
+  requiredId(id, 'request identifier');
+  const row = await db.prepare(
+    'SELECT * FROM capability_approvals WHERE id = ?',
+  ).bind(id).first();
+  return mapApproval(row);
+}
+
 export async function listPendingApprovals(db, limit = 50) {
   if (!db || typeof db.prepare !== 'function') {
     throw new TypeError('Approval database is required');
