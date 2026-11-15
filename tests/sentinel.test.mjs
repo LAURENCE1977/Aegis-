@@ -125,7 +125,13 @@ test('requires atomic approval consumption before any human-gated action execute
   const h = harness({
     registryLookup: () => writeManifest,
     loadGrant: async () => writeGrant,
-    loadApproval: async () => ({ id: 'approval-1' }),
+    loadApproval: async () => ({
+      id: 'approval-1', status: 'approved', principalId,
+      capabilityId: writeManifest.id, capabilityVersion: writeManifest.version,
+      actionId: 'update', resourceId, connectionId: null, inputDigest,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(), consumedAt: null,
+      operationSummary: 'Update repository metadata',
+    }),
     consumeApproval: async () => { h.calls.consume += 1; return null; },
   });
   const result = await runSentinelInvocation(writeRequest, h.dependencies);
