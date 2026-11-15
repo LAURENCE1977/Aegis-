@@ -30,7 +30,7 @@ class MemoryD1 {
       async first() {
         const v = this.values;
         if (sql.includes('UPDATE capability_approvals') && sql.includes("status = 'approved'") && sql.includes("status = 'consumed'")) {
-          const [consumedAt, id, principal, capability, version, action, resource, connection, digest, now] = v;
+          const [consumedAt, id, now, principal, capability, version, action, resource, connection, digest] = v;
           const row = db.rows.get(id);
           if (!row || row.status !== 'approved' || row.consumed_at || row.expires_at <= now ||
               row.principal_id !== principal || row.capability_id !== capability ||
@@ -143,4 +143,29 @@ test('expired and denied approvals cannot be consumed', async () => {
   assert.equal(await consumeApproval(db, {
     id: denied.id, ...binding, now: Date.now(),
   }), null);
+});
+
+test('two concurrent consumers cannot both claim the same approval', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, request(), Date.now());
+  await decideApprovalRequest(db, {
+    id: pending.id, decision: 'approved', decidedBy: 'owner', now: Date.now(),
+  });
+  const attempts = await Promise.all([
+    consumeApproval(db, { id: pending.id, ...binding, now: Date.now() }),
+    consumeApproval(db, { id: pending.id, ...binding, now: Date.now() }),
+  ]);
+  assert.equal(attempts.filter(Boolean).length, 1);
+});
+
+test('an expired pending request cannot be approved', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, request({
+    expiresAt: new Date(Date.now() + 1000).toISOString(),
+  }), Date.now());
+  const result = await decideApprovalRequest(db, {
+    id: pending.id, decision: 'approved', decidedBy: 'owner',
+    now: Date.now() + 2000,
+  });
+  assert.equal(result, null);
 });
