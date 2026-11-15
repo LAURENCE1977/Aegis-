@@ -679,19 +679,32 @@
       const prior = card.querySelector('.workspace-detail');
       if (prior) { prior.remove(); return; }
       try {
-        const data = await controlApi('/api/workspaces/' + encodeURIComponent(id));
+        const [data, timelineData] = await Promise.all([
+          controlApi('/api/workspaces/' + encodeURIComponent(id)),
+          controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events'),
+        ]);
         const detail = document.createElement('div');
         detail.className = 'workspace-detail';
         const heading = document.createElement('h3');
         heading.textContent = 'Project timeline';
         const timeline = document.createElement('ol');
         timeline.className = 'memory-history';
-        (data.events || []).forEach(event => {
+        (timelineData.events || []).forEach(event => {
           const entry = document.createElement('li');
-          entry.textContent = event.type + ' · ' + event.summary + ' · ' + new Date(event.createdAt).toLocaleString();
+          const source = event.source === 'memory' ? 'Memory' : 'Project';
+          const when = event.occurredAt || event.createdAt;
+          entry.textContent = source + ' · ' + event.type + ' · ' +
+            (event.summary || (event.fromStatus ? event.fromStatus + ' → ' + event.toStatus : 'Lifecycle event')) +
+            ' · ' + new Date(when).toLocaleString();
           timeline.append(entry);
         });
         if (!timeline.children.length) timeline.textContent = 'No timeline events yet.';
+        if (timelineData.memoryEventsAvailable === false) {
+          const note = document.createElement('p');
+          note.className = 'memory-help';
+          note.textContent = 'Memory lifecycle events are unavailable until the shared memory migration is applied.';
+          timeline.after(note);
+        }
         const form = document.createElement('form');
         form.className = 'memory-form';
         const summary = document.createElement('input');
