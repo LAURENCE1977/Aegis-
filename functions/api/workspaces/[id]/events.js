@@ -8,6 +8,7 @@ import {
   appendWorkspaceEvent,
   listWorkspaceEvents,
 } from "../../../lib/project-spaces.mjs";
+import { createMemoryRepository } from "../../../lib/memory-substrate.mjs";
 
 const OWNER_ID = "owner";
 
@@ -22,9 +23,40 @@ export async function onRequestGet({ request, env, params }) {
     return jsonResponse({ error: "Workspace not found." }, 404);
   }
   try {
-    const events = await listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, id, 50);
-    if (!events) return jsonResponse({ error: "Workspace not found." }, 404);
-    return jsonResponse({ events, total: events.length });
+    const workspaceEvents = await listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, id, 100);
+    if (!workspaceEvents) return jsonResponse({ error: "Workspace not found." }, 404);
+
+    let memoryEvents = [];
+    let memoryEventsAvailable = true;
+    try {
+      memoryEvents = await createMemoryRepository(env.AEGIS_DB).listProjectEvents({
+        ownerId: OWNER_ID,
+        projectId: id,
+        limit: 500,
+      });
+    } catch {
+      // Older or partially migrated databases still return the workspace timeline.
+      memoryEventsAvailable = false;
+    }
+
+    const events = [
+      ...workspaceEvents.map(event => ({
+        ...event,
+        source: "workspace",
+        occurredAt: event.createdAt,
+      })),
+      ...memoryEvents.map(event => ({
+        id: event.id,
+        source: "memory",
+        type: "memory_" + event.type,
+        memoryId: event.memoryId,
+        fromStatus: event.fromStatus,
+        toStatus: event.toStatus,
+        summary: event.type === "created" ? "Memory added" : "Memory status changed to " + event.toStatus,
+        occurredAt: event.occurredAt,
+      })),
+    ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || a.id.localeCompare(b.id)).slice(0, 100);
+    return jsonResponse({ events, total: events.length, memoryEventsAvailable });
   } catch {
     return jsonResponse({ error: "Workspace timeline is temporarily unavailable." }, 503);
   }

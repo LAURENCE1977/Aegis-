@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "AEGIS Personal AI Operating System",
+  "short_name": "AEGIS",
+  "description": "Private, owner-controlled AI workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/aegis.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
