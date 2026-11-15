@@ -541,7 +541,11 @@ These are three distinct source tracks, not interchangeable products.
 
 ### Native implementation status
 
-- `docs/AEGIS_MEMORY_SUBSTRATE.md` specifies the AEGIS-owned memory model and integration gates.
-- `functions/lib/memory-substrate.mjs` is a pure in-memory read-model prototype with typed records, provenance, owner/project scoping, lifecycle filtering and lexical retrieval.
-- It is not persistent, is not wired to an API or chat, and does not enforce authentication itself. The API must derive owner identity from the verified session and verify project membership before calling it.
+- PR #27: https://github.com/LAURENCE1977/Aegis-/pull/27 — open, draft, unmerged; stacked on PR #26.
+- AEGIS-native memory validation, D1 repository, authenticated APIs, owner review queue, append-only D1 lifecycle audit triggers, history endpoint, chat retrieval and mobile review UI are implemented on `feature/native-memory-substrate`.
+- Canonical ordered shared D1 migrations: `migrations/shared/0001_project_spaces.sql`, `0002_memories.sql`, `0003_memory_lifecycle_audit.sql`. Do not independently apply nested workspace/memory feature-source copies to the same database.
+- Chat retrieves only accepted, unexpired, non-restricted personal memories; owner/project scope is applied in SQL. Retrieved memory is bounded JSON reference data, never tool instructions.
+- Latest fully verified test run at commit `b02f4f5fa3d8841c6eee58246e7bdcbf35e6fe7b`: **194 passed, 0 failed**. Later frontend smoke-test and documentation commits require another CI run.
+- Cloudflare Pages preview build succeeded for the earlier verified memory UI commit. Production is unchanged.
+- D1 has not been provisioned or bound, migrations have not been applied to the user's Cloudflare account, and no memory data has been persisted in production.
 - No external source package, daemon, model, browser agent, account or credential has been installed or connected.
