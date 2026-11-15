@@ -26,6 +26,7 @@ const record = (overrides = {}) => ({
   createdAt: '2026-11-15T11:00:00.000Z',
   updatedAt: '2026-11-15T11:00:00.000Z',
   expiresAt: null,
+  supersedesId: null,
   ...overrides,
 });
 
