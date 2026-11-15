@@ -732,7 +732,11 @@
             open.type = 'button';
             open.textContent = 'Open timeline';
             open.addEventListener('click', () => openWorkspace(workspace.id, card));
-            actions.append(open);
+            const buildBrief = document.createElement('button');
+            buildBrief.type = 'button';
+            buildBrief.textContent = 'Build handover brief';
+            buildBrief.addEventListener('click', () => loadWorkspaceBrief(workspace.id, card));
+            actions.append(open, buildBrief);
             card.append(nameNode, descriptionNode, metaNode, actions);
             workspaceList.append(card);
           });
@@ -742,6 +746,60 @@
         workspaceStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Project Spaces are not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
           : error.message;
+      }
+    }
+
+    async function loadWorkspaceBrief(id, card) {
+      let panel = card.querySelector('.workspace-brief');
+      if (!panel) {
+        panel = document.createElement('section');
+        panel.className = 'workspace-detail workspace-brief';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Agent handover brief';
+        const status = document.createElement('p');
+        status.className = 'memory-help';
+        const output = document.createElement('textarea');
+        output.readOnly = true;
+        output.rows = 10;
+        output.setAttribute('aria-label', 'Project Space handover brief JSON');
+        output.placeholder = 'The brief will appear here.';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.textContent = 'Copy brief';
+        copy.addEventListener('click', async () => {
+          if (!output.value) return;
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            output.focus();
+            output.select();
+            status.textContent = 'Select the brief above and copy it.';
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(output.value);
+            status.textContent = 'Handover brief copied. It contains only this Project Space and approved, non-restricted memories.';
+          } catch (error) {
+            output.focus();
+            output.select();
+            status.textContent = 'Clipboard access was unavailable. Select the brief above and copy it.';
+          }
+        });
+        panel.append(heading, status, output, copy);
+        card.append(panel);
+      }
+      const status = panel.querySelector('.memory-help');
+      const output = panel.querySelector('textarea');
+      status.textContent = 'Building a bounded brief from this Project Space…';
+      output.value = '';
+      try {
+        const data = await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/brief?maxChars=6000');
+        const brief = data.brief;
+        output.value = JSON.stringify(brief, null, 2);
+        status.textContent = 'About ' + brief.budget.estimatedTokens + ' tokens · ' +
+          brief.memories.length + ' approved memory item(s) · ' +
+          brief.recentEvents.length + ' recent event(s)' +
+          (brief.budget.truncated ? ' · trimmed to fit the context budget' : '');
+      } catch (error) {
+        status.textContent = error.message;
       }
     }
 
