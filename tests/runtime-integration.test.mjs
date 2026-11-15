@@ -167,6 +167,7 @@ test('queue consumer executes only the persisted health-check job and acknowledg
   let acked = false;
   let retried = false;
   await runtime.queue({
+    queue: 'aegis-jobs',
     messages: [{
       body: { jobId: job.id },
       ack() { acked = true; },
@@ -230,5 +231,27 @@ test('dead-letter delivery never overwrites a succeeded job', async () => {
   assert.equal(saved.status, 'succeeded');
   assert.deepEqual(JSON.parse(saved.result_json), { ok: true });
   assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
+  assert.equal(acked, true);
+});
+
+
+test('unknown queue batches are acknowledged without executing jobs', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'queued';
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'unexpected-queue',
+    messages: [{
+      body: { jobId: job.id },
+      ack() { acked = true; },
+      retry() {},
+    }],
+  }, env);
+
+  assert.equal(saved.status, 'queued');
   assert.equal(acked, true);
 });
