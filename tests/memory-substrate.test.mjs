@@ -77,6 +77,17 @@ test('search is isolated to the requested owner and personal/project scope', () 
   }).map((item) => item.id), ['project-memory']);
 });
 
+
+test('memory retrieval ranks exact token matches and rejects misleading substring hits', () => {
+  const store = createMemoryStore([
+    record({id:'full-match',content:'Concise storytelling creates a clear structure.',tags:['writing']}),
+    record({id:'partial-match',content:'Storytelling keeps the narrative human.',tags:['narrative']}),
+    record({id:'substring-only',content:'Partial artifice in the artist profile.',tags:['artwork']}),
+  ]);
+  const results = store.search({ownerId:'owner-1',query:'art concise storytelling',now});
+  assert.deepEqual(results.map(item=>item.id),['full-match','partial-match']);
+});
+
 test('search excludes candidate, retracted, superseded and expired memories by default', () => {
   const store = createMemoryStore([
     record(),
