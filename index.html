@@ -300,6 +300,9 @@
             item.append(content, meta);
             const actions = document.createElement('div');
             actions.className = 'memory-actions';
+            if (memory.status === 'accepted') {
+              actions.append(memoryButton('Correct', () => showCorrectionForm(memory)));
+            }
             if (memory.status === 'candidate') {
               actions.append(
                 memoryButton('Approve', () => changeMemoryStatus(memory.id, 'accepted'), false),
@@ -308,6 +311,12 @@
             }
             actions.append(memoryButton('History', () => showMemoryHistory(memory.id)));
             item.append(actions);
+            if (memory.supersedesId) {
+              const replaces = document.createElement('div');
+              replaces.className = 'memory-meta';
+              replaces.textContent = 'Correction of previous memory ' + memory.supersedesId;
+              item.append(replaces);
+            }
             const history = document.createElement('ol');
             history.className = 'memory-history';
             history.hidden = true;
@@ -322,6 +331,49 @@
           ? 'Persistent memory is not active yet. The D1 database and binding still need to be provisioned.'
           : error.message;
       }
+    }
+
+
+    function showCorrectionForm(memory) {
+      const existing = document.getElementById('correction-' + memory.id);
+      if (existing) { existing.hidden = !existing.hidden; return; }
+      const item = [...memoryList.querySelectorAll('.memory-item')].find(node =>
+        node.querySelector('.memory-meta')?.textContent.includes(memory.id) ||
+        node.textContent.includes(memory.content)
+      );
+      if (!item) return;
+      const form = document.createElement('form');
+      form.className = 'memory-form';
+      form.id = 'correction-' + memory.id;
+      const textarea = document.createElement('textarea');
+      textarea.maxLength = 4000;
+      textarea.required = true;
+      textarea.value = memory.content;
+      textarea.setAttribute('aria-label', 'Corrected memory content');
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.textContent = 'Save correction for review';
+      form.append(textarea, save);
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const content = textarea.value.trim();
+        if (!content) return;
+        save.disabled = true;
+        memoryStatus.textContent = 'Saving correction as a candidate…';
+        const scope = memory.projectId ? '?projectId=' + encodeURIComponent(memory.projectId) : '';
+        try {
+          await memoryApi('/' + encodeURIComponent(memory.id) + '/corrections' + scope, {
+            method: 'POST',
+            body: JSON.stringify({ content })
+          });
+          await loadMemories();
+          memoryStatus.textContent = 'Correction saved. Approve the new candidate to replace the previous memory.';
+        } catch (error) {
+          memoryStatus.textContent = error.message;
+          save.disabled = false;
+        }
+      });
+      item.append(form);
     }
 
     async function changeMemoryStatus(id, nextStatus) {
