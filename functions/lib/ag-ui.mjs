@@ -1,11 +1,6 @@
 const EVENT_TYPES = new Set([
-  'TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END','TEXT_MESSAGE_CHUNK',
-  'TOOL_CALL_START','TOOL_CALL_ARGS','TOOL_CALL_END','TOOL_CALL_CHUNK','TOOL_CALL_RESULT',
-  'STATE_SNAPSHOT','STATE_DELTA','MESSAGES_SNAPSHOT','ACTIVITY_SNAPSHOT','ACTIVITY_DELTA',
-  'RAW','CUSTOM','RUN_STARTED','RUN_FINISHED','RUN_ERROR','STEP_STARTED','STEP_FINISHED',
-  'REASONING_START','REASONING_MESSAGE_START','REASONING_MESSAGE_CONTENT',
-  'REASONING_MESSAGE_END','REASONING_MESSAGE_CHUNK','REASONING_END',
-  'REASONING_ENCRYPTED_VALUE','SUBAGENT_STARTED','SUBAGENT_FINISHED','SUBAGENT_ERROR',
+  'TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END',
+  'RUN_STARTED','RUN_FINISHED',
 ]);
 
 const MAX_IDENTIFIER = 128;
@@ -28,7 +23,7 @@ export function createTextRunEvents({ threadId, runId, message, now = Date.now()
   if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
 
   const timestamp = now;
-  const messageId = runId + '-message';
+  const messageId = runId;
   return [
     { type: 'RUN_STARTED', threadId, runId, protocolVersion: '1.0', timestamp },
     { type: 'TEXT_MESSAGE_START', messageId, role: 'assistant', timestamp },
@@ -47,10 +42,20 @@ export function encodeAgUiSse(events) {
         !EVENT_TYPES.has(event.type)) {
       throw new TypeError('Invalid AG-UI event');
     }
+    const valid = event.type === 'RUN_STARTED'
+      ? typeof event.threadId === 'string' && typeof event.runId === 'string' && event.protocolVersion === '1.0'
+      : event.type === 'RUN_FINISHED'
+        ? typeof event.threadId === 'string' && typeof event.runId === 'string'
+        : event.type === 'TEXT_MESSAGE_START'
+          ? typeof event.messageId === 'string' && (event.role === undefined || event.role === 'assistant')
+          : event.type === 'TEXT_MESSAGE_CONTENT'
+            ? typeof event.messageId === 'string' && typeof event.delta === 'string'
+            : typeof event.messageId === 'string';
+    if (!valid) throw new TypeError('Invalid AG-UI event payload');
     let serialized;
     try { serialized = JSON.stringify(event); }
     catch { throw new TypeError('Invalid AG-UI event payload'); }
-    if (typeof serialized !== 'string' || serialized.length > MAX_EVENT_BYTES) {
+    if (typeof serialized !== 'string' || new TextEncoder().encode(serialized).byteLength > MAX_EVENT_BYTES) {
       throw new TypeError('AG-UI event exceeds size limit');
     }
     return 'data: ' + serialized + '\n\n';
