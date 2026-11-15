@@ -46,7 +46,6 @@ export function buildProjectBrief({
     memory.projectId === workspace.id &&
     memory.status === 'accepted' &&
     memory.sensitivity !== 'restricted' &&
-    (!memory.expiresAt || (validTimestamp(memory.expiresAt) && Date.parse(memory.expiresAt) > now)) &&
     typeof memory.content === 'string' &&
     memory.content.trim()
   ).sort((a, b) =>
@@ -89,38 +88,44 @@ export function buildProjectBrief({
 
   // Reserve room for final budget counters and serialization metadata.
   const selectionBudget = maxChars - 160;
+  let memoryContentTruncated = false;
   for (const memory of eligibleMemories) {
-    const rawContent = boundedText(memory.content, 4000);
-    const entry = {
+    const content = boundedText(memory.content, 1200);
+    const createEntry = (text) => ({
       id: memory.id,
       kind: memory.kind,
-      content: '',
-      contentTruncated: false,
+      content: text,
       confidence: memory.confidence,
       source: boundedText(memory.source?.attribution, 160) || 'Unattributed',
       observedAt: validTimestamp(memory.source?.observedAt) ? memory.source.observedAt : null,
       updatedAt: validTimestamp(memory.updatedAt) ? memory.updatedAt : null,
       trust: 'untrusted-reference',
-    };
-    brief.memories.push(entry);
-    const available = selectionBudget - measure(brief);
-    if (available < 80) {
+    });
+
+    // Preserve higher-priority knowledge by shortening it to the remaining budget
+    // before considering whether to omit it entirely.
+    let low = 0;
+    let high = content.length;
+    let bestLength = -1;
+    while (low <= high) {
+      const candidateLength = Math.floor((low + high) / 2);
+      brief.memories.push(createEntry(content.slice(0, candidateLength)));
+      const fits = measure(brief) <= selectionBudget;
       brief.memories.pop();
+      if (fits) {
+        bestLength = candidateLength;
+        low = candidateLength + 1;
+      } else {
+        high = candidateLength - 1;
+      }
+    }
+
+    if (bestLength < 0) {
       brief.budget.omittedMemories += 1;
       continue;
     }
-    let contentLimit = Math.min(1200, available);
-    entry.content = rawContent.slice(0, contentLimit);
-    entry.contentTruncated = rawContent.length > contentLimit;
-    while (measure(brief) > selectionBudget && contentLimit > 80) {
-      contentLimit = Math.max(80, Math.floor(contentLimit * 0.8));
-      entry.content = rawContent.slice(0, contentLimit);
-      entry.contentTruncated = rawContent.length > contentLimit;
-    }
-    if (measure(brief) > selectionBudget) {
-      brief.memories.pop();
-      brief.budget.omittedMemories += 1;
-    }
+    brief.memories.push(createEntry(content.slice(0, bestLength)));
+    if (bestLength < content.length) memoryContentTruncated = true;
   }
 
   for (const event of eligibleEvents) {
@@ -141,8 +146,7 @@ export function buildProjectBrief({
   brief.budget.omittedMemories += memories.length - eligibleMemories.length;
   brief.budget.omittedEvents += events.length - eligibleEvents.length;
   brief.budget.truncated = brief.budget.omittedMemories > 0 ||
-    brief.budget.omittedEvents > 0 ||
-    brief.memories.some((entry) => entry.contentTruncated);
+    brief.budget.omittedEvents > 0 || memoryContentTruncated;
 
   brief.budget.usedChars = measure(brief);
   brief.budget.estimatedTokens = Math.ceil(brief.budget.usedChars / 4);
