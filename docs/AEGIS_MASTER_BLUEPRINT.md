@@ -326,3 +326,13 @@ New candidates evaluated 15 November 2026 are recorded in [docs/RESEARCH_SOURCE_
 ## 15. Capability System architecture
 
 The governed capability lifecycle and implementation contract are specified in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). This is an architecture proposal, not implemented functionality. It separates sources, candidates, capabilities, adapters, connections, grants, approvals, invocations and agent definitions. Discovery and registration never grant execution rights. A central policy gate, exact-operation approvals, isolated adapters, encrypted secret references, durable audit, revocation, idempotency, SSRF protections and cost limits are required before general tool execution. The current runtime remains health-check-only; do not widen its task allowlist until the MVP gates and tests are delivered.
+
+
+## 16. Agent-runtime and modern-web knowledge sources
+
+Two additional Forge candidates have been evaluated and recorded in [RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md):
+
+- **Mercury Agent:** high-value reference for persistent local agents, scoped memory, permission-context propagation, specialist bots, budgets, schedules and run history. Do not adopt wholesale: it is a Node.js local runtime, duplicates AEGIS core responsibilities and explicitly has no OS-level sandbox. Any useful patterns must become AEGIS-native, tested contracts under central policy.
+- **Google Chrome Modern Web Guidance:** very high-priority source for current browser-platform expertise, accessibility, performance, responsive UI, browser compatibility and agent-evaluation methodology. Prefer targeted retrieval of published skills/guides and selective use of its legacy scan/evaluation patterns; do not import its full authoring/evaluation toolchain into the runtime.
+
+**Implementation direction:** add a provenance-aware Modern Web Guidance knowledge adapter and use selected guidance as acceptance criteria for the Chromebook/iPhone/iPad PWA. Apply Mercury's permission, memory and bot ideas only through the AEGIS Capability System and durable job architecture. Neither source has been installed or connected.

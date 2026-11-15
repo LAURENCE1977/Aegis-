@@ -135,3 +135,33 @@ No second workflow engine should be deployed until a benchmark establishes a nee
 ## Capability System governance
 
 The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). Forge may discover and evaluate sources, but only reviewed AEGIS-native manifests become registry entries; registration does not enable execution or grant permission. Capability risk is assigned per action, not per provider. Central policy must validate principal, scope, resource, connection, risk, budget and approval immediately before every invocation. Keep adapter execution isolated from the control plane, secrets outside manifests and logs, and all write/external-impact operations behind explicit approval. The design is currently documentation only.
+
+
+## Mercury Agent — agent-runtime reference
+
+Mercury Agent is a useful reference for a persistent local daemon, tool permission manager, scoped second-brain memory, specialist bots, budgets, scheduler, provider/channel adapters and run-oriented UX. Its MIT licence permits review and selective adaptation subject to preserving licence/provenance notices.
+
+Do not import Mercury wholesale. It is Node.js 22+ and local-runtime oriented, duplicates AEGIS's core responsibilities, and explicitly documents that it has no OS-level sandbox. Its own roadmap/security material warrants additional scrutiny of delegated permission contexts, evidence-gated completion, SQLite packaging and platform support. Community skills are not audited.
+
+Potential Forge extracts are architectural patterns, not copied authority: per-agent scope manifests, permission-context inheritance tests, private-by-default memory namespaces, bounded bot concurrency, durable leases/idempotency, token/time budgets and inspectable run history. Re-express each as an AEGIS-native contract, with regression tests and a central policy check before every invocation. See [RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md).
+
+## Google Chrome Modern Web Guidance — browser-platform knowledge and evaluation
+
+[GoogleChrome/modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) is the source/authoring repository for [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance). It supplies coding-agent skills for modern browser APIs, CSS/layout, accessibility, performance, forms, PWA behaviour, privacy and built-in browser AI. The source repository contains authoring and build tools, a RAG/use-case search and retrieval CLI, deterministic legacy-pattern analysis, browser compatibility data and an evaluation harness using Playwright and multiple coding agents.
+
+**Licensing is mixed by content:** source software is Apache-2.0; guide content under `guides/` is CC BY 4.0, with some content derived from MDN and web standards. Preserve attribution and source provenance when adapting guidance. Google Open Source contributions require a CLA; new guide topics/significant changes require a proposal first. The project documents a source repo plus a separate read-only distribution repo and regular publication flow.
+
+**AEGIS decision: very high priority knowledge source and web-development quality gate; integrate selectively.**
+- Use published skill/CLI retrieval for targeted web tasks rather than cloning or embedding the entire source authoring toolchain.
+- Add a Modern Web Guidance retrieval adapter to Forge/Knowledge: query by task, retrieve selected guide IDs, record package version, guide ID, source URL, licence, retrieval date and compatibility caveats.
+- Use its deterministic legacy scan as an optional audit, not as a complete code-quality or security scan; the project says it covers only a subset of the guidance corpus.
+- Borrow its Playwright-based task/evaluation methodology for AEGIS's own responsive UI, accessibility, browser-compatibility and agent coding evaluations.
+- Make browser support a capability matrix and verify actual feature support; modern APIs require fallbacks and must not be assumed to exist on every browser/device.
+
+**Operational caveats**
+- The inspected source repository requires Node.js >=22.18 and pnpm; full preflight includes build, typecheck, lint and tests. Its source authoring/evaluation harness is far heavier than the compact published skills.
+- The CLI documentation describes anonymous usage telemetry, including installation counts, guide retrieval IDs and search queries; it documents `DISABLE_TELEMETRY=1` as an opt-out. Confirm the exact release's telemetry behaviour and privacy requirements before use.
+- Keep this as guidance data and an optional analysis tool, not a runtime dependency or a source of executable browser privileges.
+- The source project is actively governed; don't fork or redistribute modified guidance without following its licence, attribution and contribution rules.
+
+No package, CLI, plugin or repository code has been installed or run in AEGIS.
