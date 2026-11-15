@@ -187,12 +187,18 @@ test('workspace detail and timeline return only the owner's project data', async
   assert.equal(timeline.status, 200);
   assert.equal((await timeline.json()).total, 1);
 
-  const privateLookup = await workspaceGet({
-    request: await authenticatedRequest('/api/workspaces/' + workspace.id),
-    env: { ...envBase, AEGIS_DB: db },
-    params: { id: workspace.id },
+  const otherId = 'other-owner-space';
+  db.spaces.set(otherId, {
+    id: otherId, owner_id: 'another-owner', name: 'Not yours',
+    description: '', status: 'active',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
-  assert.equal(privateLookup.status, 200);
+  const privateLookup = await workspaceGet({
+    request: await authenticatedRequest('/api/workspaces/' + otherId),
+    env: { ...envBase, AEGIS_DB: db },
+    params: { id: otherId },
+  });
+  assert.equal(privateLookup.status, 404);
 });
 
 test('workspace event writes reject missing origin and invalid event types', async () => {
