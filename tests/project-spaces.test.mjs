@@ -97,7 +97,7 @@ test('rejects invalid workspace names and oversized descriptions', async () => {
   }), /description/i);
 });
 
-test('lists only the owner's active workspaces with a bounded limit', async () => {
+test("lists only the owner's active workspaces with a bounded limit", async () => {
   const db = new MemoryD1();
   await createWorkspace(db, 'owner', { name: 'Mine' });
   await createWorkspace(db, 'another-owner', { name: 'Not mine' });
