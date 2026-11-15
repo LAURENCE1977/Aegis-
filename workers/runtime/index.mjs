@@ -82,11 +82,13 @@ async function dispatchPending(env, limit = 25) {
   for (const row of result.results || []) {
     try {
       await env.JOBS.send({ jobId: row.id });
-      await env.DB.prepare(
+      const updated = await env.DB.prepare(
         "UPDATE jobs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
       ).bind(new Date().toISOString(), row.id).run();
-      await audit(env, row.id, 'queued');
-      dispatched += 1;
+      if (updated.meta?.changes) {
+        await audit(env, row.id, 'queued');
+        dispatched += 1;
+      }
     } catch {
       // Leave the durable outbox row pending; the next scheduled sweep retries it.
     }
@@ -147,6 +149,7 @@ async function submitJob(request, env) {
 }
 
 async function getJob(request, env, id) {
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
   if (!isJobId(id)) return json({ error: 'Invalid job identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM jobs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Job not found.' }, 404);
