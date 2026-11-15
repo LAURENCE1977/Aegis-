@@ -53,7 +53,7 @@ class MemoryD1 {
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
         }
-        if (sql.includes(\"SET status = 'failed'\")) {
+        if (sql.includes("SET status = 'failed'")) {
           const row = db.jobs.get(v[1]);
           if (row && !['succeeded', 'failed'].includes(row.status)) {
             row.status = 'failed'; row.error_code = 'JOB_DELIVERY_EXHAUSTED'; row.lease_until = null; row.updated_at = v[0];
