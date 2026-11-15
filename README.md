@@ -21,6 +21,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 - Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
+- First AEGIS Sentinel invocation-gate library under review: server-derived canonical operation digests, policy evaluation and one-time exact-approval consumption; no adapter execution is enabled (see [Sentinel](docs/AEGIS_SENTINEL.md))
 
 
 - Owner-scoped Project Spaces API and append-only activity timeline under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
