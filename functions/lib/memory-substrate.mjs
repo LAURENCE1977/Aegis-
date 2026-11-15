@@ -136,13 +136,13 @@ export function createMemoryStore(records = []) {
       const terms = [...new Set(query.toLocaleLowerCase().match(/[a-z0-9-]+/g) ?? [])];
       if (!terms.length) return [];
       return [...byId.values()]
-        .filter((record) => inScope(record, ownerId, projectId) && isRetrievable(record, now))
+        .filter((record) => inScope(record, ownerId, projectId) && isRetrievable(record, now) && record.sensitivity !== 'restricted')
         .map((record) => {
           const haystack = [record.content, record.kind, ...record.tags].join(' ').toLocaleLowerCase();
           const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0);
           return { record, score };
         })
-        .filter((item) => item.score === terms.length)
+        .filter((item) => item.score > 0)
         .sort((a, b) => b.score - a.score ||
           b.record.confidence - a.record.confidence ||
           b.record.updatedAt.localeCompare(a.record.updatedAt) ||
@@ -285,8 +285,9 @@ export function createMemoryRepository(db) {
         SELECT * FROM aegis_memories
         WHERE owner_id = ? AND project_id IS ?
           AND status = 'accepted'
+          AND sensitivity <> 'restricted'
           AND (expires_at IS NULL OR expires_at > ?)
-          AND ${predicates.join(' AND ')}
+          AND (${predicates.join(' OR ')})
         ORDER BY confidence DESC, updated_at DESC, id ASC
         LIMIT ?
       `).bind(...bindings).all();
