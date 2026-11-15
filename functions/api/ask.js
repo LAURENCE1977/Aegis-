@@ -23,8 +23,23 @@ export async function onRequestPost(context) {
   if (!question) return json({ error: "Prompt required" }, 400);
   if (!env.AI) return json({ error: "No AI provider configured" }, 503);
 
-  const history = Array.isArray(body.history)
-    ? body.history
+  const messages = await buildAskMessages(env, question, body.history);
+
+  try {
+    const result = await env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+      messages,
+      max_tokens: 1024
+    });
+    return json(result);
+  } catch (e) {
+    return json({ error: "The AI could not answer right now. Please try again." }, 502);
+  }
+}
+
+
+export async function buildAskMessages(env, question, history = []) {
+  const safeHistory = Array.isArray(history)
+    ? history
       .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .slice(-MAX_HISTORY)
       .map(m => ({ role: m.role, content: m.content.slice(0, MAX_TEXT) }))
@@ -40,16 +55,7 @@ export async function onRequestPost(context) {
     system += "\n\nRelevant AEGIS skills (guidance only; no extra tool permissions are granted):\n" +
       skillContext.map(skill => `## ${skill.name}\n${skill.guidance}`).join("\n\n");
   }
-
-  try {
-    const result = await env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
-      messages: [{ role: "system", content: system }, ...history, { role: "user", content: question.slice(0, MAX_TEXT) }],
-      max_tokens: 1024
-    });
-    return json(result);
-  } catch (e) {
-    return json({ error: "The AI could not answer right now. Please try again." }, 502);
-  }
+  return [{ role: "system", content: system }, ...safeHistory, { role: "user", content: question.slice(0, MAX_TEXT) }];
 }
 
 async function loadNotes(env) {
