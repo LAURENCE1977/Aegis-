@@ -109,7 +109,7 @@ test('AG-UI stream parser handles provider frames split across arbitrary network
       ]);}},
     },
   });
-  const events=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  const events=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['split frame']);
 });
 
@@ -129,7 +129,7 @@ test('AG-UI reports a safe terminal error if the provider stream breaks mid-run'
     request:await request(input()),
     env:{...envBase,AI:{async run(){return brokenStream;}}},
   });
-  const frames=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  const frames=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.equal(frames[2].delta,'partial');
   assert.equal(frames[3].type,'RUN_ERROR');
   assert.doesNotMatch(JSON.stringify(frames),'provider internals');
