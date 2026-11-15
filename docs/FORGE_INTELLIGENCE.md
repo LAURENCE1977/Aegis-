@@ -152,3 +152,10 @@ The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.m
 ## Sentinel-native implementation
 
 The first clean-room Sentinel invocation gate is being built as `functions/lib/sentinel.mjs`, using the existing capability registry and pure policy evaluator. It is designed to ensure agents cannot call adapters directly: a trusted server composition root supplies policy-context loaders, durable audit, exact-approval consumption and the executor. Missing dependencies fail closed. The implementation is intentionally not wired to a public API until grant/connection persistence, vault, audit, revocation and isolated adapter execution are ready. See [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md).
+
+## New Forge intake lanes: MCP servers, free tiers and build-from-first-principles
+
+- **MCP discovery:** ingest Awesome MCP Servers as untrusted catalogue metadata; normalize and inspect each upstream server independently. Keep directory licence separate from server licence. No bulk installation.
+- **Cost discovery:** ingest free-for.dev as candidate provider metadata; verify all quotas, duration, billing triggers and commercial-use terms against official sources before use. A missing repository licence means do not copy its content wholesale.
+- **Reverse-engineering curriculum:** use Build Your Own X to select small foundational builds. Record the concept, upstream tutorial/source, rights, architecture notes, acceptance tests, prototype result and decision to adopt/adapt/reject.
+- **Native implementation sequence:** MCP catalogue → server admission scanner → Free-Tier Ledger → Build Lab exercises. Sentinel remains the only authority for invoking admitted capabilities.
