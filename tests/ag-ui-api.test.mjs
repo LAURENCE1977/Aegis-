@@ -132,5 +132,5 @@ test('AG-UI reports a safe terminal error if the provider stream breaks mid-run'
   const frames=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.equal(frames[2].delta,'partial');
   assert.equal(frames[3].type,'RUN_ERROR');
-  assert.doesNotMatch(JSON.stringify(frames),'provider internals');
+  assert.doesNotMatch(JSON.stringify(frames),/provider internals/);
 });
