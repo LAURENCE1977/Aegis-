@@ -117,6 +117,10 @@ test('owner review can verify a licence and approve an assessed Forge decision',
   const response=await onRequestPatch({
     request:await request('/api/forge/candidates/'+candidate.id,{
       licenceReview:'verified',decision:'adapt',status:'approved',
+      licenceEvidenceUrl:'https://github.com/example/agent/blob/main/LICENSE',
+      reviewNote:'Reviewed the upstream licence and direct dependency licences.',
+      licenceAttested:true,
+      expectedUpdatedAt:candidate.updatedAt,
     },{method:'PATCH'}),
     env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
   });
@@ -125,6 +129,24 @@ test('owner review can verify a licence and approve an assessed Forge decision',
   assert.equal(data.candidate.licence.review,'verified');
   assert.equal(data.candidate.decision,'adapt');
   assert.equal(data.candidate.status,'approved');
+});
+
+test('Forge cannot mark a licence verified without an explicit owner attestation and evidence URL',async()=>{
+  const db=new CandidateD1();
+  const created=await onRequestPost({
+    request:await request('/api/forge/candidates',{sourceUrl:'https://github.com/example/agent'}),
+    env:{...envBase,AEGIS_DB:db},fetchImpl:githubFetch,
+  });
+  const candidate=(await created.json()).candidate;
+  const response=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'verified',decision:'adapt',status:'approved',
+      licenceEvidenceUrl:null,reviewNote:'I have not checked the licence.',licenceAttested:false,
+      expectedUpdatedAt:candidate.updatedAt,
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(response.status,400);
 });
 
 test('Forge review rejects reuse without licence verification and refuses terminal reopening',async()=>{
@@ -144,6 +166,10 @@ test('Forge review rejects reuse without licence verification and refuses termin
   const rejected=await onRequestPatch({
     request:await request('/api/forge/candidates/'+candidate.id,{
       licenceReview:'review-required',decision:'reject',status:'rejected',
+      licenceEvidenceUrl:null,
+      reviewNote:'Rejected after reviewing the source architecture and security risks.',
+      licenceAttested:false,
+      expectedUpdatedAt:candidate.updatedAt,
     },{method:'PATCH'}),
     env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
   });
