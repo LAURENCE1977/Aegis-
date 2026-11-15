@@ -99,8 +99,9 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
   }
 
   let inputDigest;
+  let safeInput;
   try {
-    const safeInput = normalizeJson(agentRequest.input);
+    safeInput = normalizeJson(agentRequest.input);
     inputDigest = await digestInput(safeInput);
     if (new TextEncoder().encode(canonicalJson(safeInput)).byteLength > manifest.limits.maxRequestBytes) {
       return { allowed: false, reasonCode: 'INPUT_TOO_LARGE' };
