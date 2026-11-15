@@ -371,3 +371,21 @@ nanoMuse is a high-priority architecture reference for AEGIS's Sentinel: mandato
 A first AEGIS-native Sentinel primitive is being added on `feature/sentinel-invocation-gate`, stacked on Project Spaces PR #22. `runSentinelInvocation` is the intended single server-side path from agent request to adapter: load current policy context, evaluate the exact registered manifest/action, persist a redacted decision event, atomically consume any exact-operation approval, then invoke the adapter. Missing policy dependencies fail closed. Raw payloads, secret values and provider exception text are excluded from audit events.
 
 This is not yet a complete security boundary or enabled executor. Persistent grant/connection stores, encrypted vault and late-bound secret resolution, concrete D1 invocation audit, adapter isolation/egress controls, revocation checks and a trusted composition root remain outstanding. The function is not wired to an API or agent runtime. Tests are authored; CI verification is pending. No production resources or deployments changed.
+
+## Forge ecosystem intelligence and native build curriculum
+
+AEGIS now treats three community resources as discovery/learning inputs rather than runtime dependencies:
+
+- [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers): discover candidate integrations. Directory MIT licence does not apply to individual servers. Each server requires independent source, licence, maintenance, permission, transport, dependency and security review.
+- [free-for.dev](https://github.com/ripienaar/free-for-dev): discover developer free tiers. Its own README describes qualifying SaaS/PaaS/IaaS offerings; it is not a self-hosted software catalogue. A repository licence was not found in this inspection. Recheck official provider pricing/terms and current quotas before use; free does not mean unlimited or zero-risk.
+- [Build Your Own X](https://github.com/codecrafters-io/build-your-own-x): learning map for implementing foundational technologies. README declares CC0 dedication; individual linked tutorials have their own rights/terms. Build small, tested native AEGIS components rather than importing tutorial code.
+
+### Native AEGIS components to build from these references
+1. **MCP Forge Catalogue:** searchable, provenance-aware MCP server inventory with per-server licence/security/runtime metadata and tool schema inspection.
+2. **MCP admission pipeline:** source pinning, manifest validation, dependency/advisory scan, transport/auth checks, declared effects, network allowlists, risk score and sandbox test before a connector can be proposed.
+3. **Free-Tier Ledger:** versioned provider allowance records, official terms links, expiry/review timestamps, budget/overage flags and manual verification before provisioning.
+4. **Build Lab:** small reproducible learning projects for AEGIS scheduler, event bus, permission engine, storage abstractions, browser shell, model router and retrieval pipeline.
+5. **Capability Centre integration:** only admitted capabilities can be proposed to Sentinel; directory metadata, upstream claims or MCP annotations never bypass policy or exact-operation approvals.
+
+### AEGIS OS scope clarification
+The AEGIS OS is an application-level AI operating environment with a browser/PWA shell and replaceable execution adapters. It is not a new Linux/Windows kernel. Kernel/OS tutorials are educational references only. The first practical OS milestone is a usable Control Centre shell over canonical identity, Project Spaces, jobs, capabilities, approvals, audit and agent status.
