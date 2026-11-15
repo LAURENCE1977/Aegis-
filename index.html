@@ -807,30 +807,30 @@
           historyButton.addEventListener('click', async () => {
             const existing = item.querySelector('.candidate-history');
             if (existing) { existing.remove(); return; }
-            const candidateHistory = document.createElement('ol');
-            candidateHistory.className = 'candidate-history memory-history';
+            const history = document.createElement('ol');
+            history.className = 'candidate-history memory-history';
             const loading = document.createElement('li');
             loading.textContent = 'Loading review history…';
-            candidateHistory.append(loading);
-            item.append(candidateHistory);
+            history.append(loading);
+            item.append(history);
             try {
               const result = await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id) + '/events');
-              candidateHistory.replaceChildren();
+              history.replaceChildren();
               (result.events || []).forEach(event => {
                 const entry = document.createElement('li');
                 entry.textContent = event.type + ' · ' +
                   (event.fromStatus || 'new') + ' → ' + event.toStatus +
                   ' · ' + (event.fromDecision || 'unassessed') + ' → ' + event.toDecision +
                   ' · ' + new Date(event.occurredAt).toLocaleString();
-                candidateHistory.append(entry);
+                history.append(entry);
               });
-              if (!candidateHistory.children.length) {
+              if (!history.children.length) {
                 const empty = document.createElement('li');
                 empty.textContent = 'No review history recorded.';
-                candidateHistory.append(empty);
+                history.append(empty);
               }
             } catch (error) {
-              candidateHistory.textContent = error.message;
+              history.textContent = error.message;
             }
           });
           item.append(historyButton);
