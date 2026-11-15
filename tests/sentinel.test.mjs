@@ -85,6 +85,7 @@ test('executes only after policy approval and a durable pre-execution audit even
   });
   assert.equal(h.calls.execute, 1);
   assert.deepEqual(h.events.map((event) => event.type), [
+    'invocation_policy_allowed',
     'invocation_authorized',
     'invocation_succeeded',
   ]);
@@ -169,4 +170,37 @@ test('never invokes an adapter when the exact approval cannot be atomically cons
   assert.equal(result.allowed, true);
   assert.equal(h.calls.consume, 1);
   assert.equal(h.calls.execute, 1);
+});
+
+test('does not consume an approval when the audit store is unavailable', async () => {
+  const writeManifest = {
+    ...manifest,
+    actions: [{
+      id: 'update',
+      capability: 'github.repository-update',
+      effect: 'write',
+      risk: 'medium',
+      approval: 'human-always',
+      requiredScopes: ['github:repository:write'],
+    }],
+  };
+  const approval = {
+    id: 'approval-2', status: 'approved', principalId,
+    capabilityId: writeManifest.id, capabilityVersion: writeManifest.version,
+    actionId: 'update', resourceId, connectionId: null, inputDigest,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(), consumedAt: null,
+    operationSummary: 'Update repository metadata',
+  };
+  const h = harness({
+    registryLookup: () => writeManifest,
+    loadGrant: async () => ({ ...grant, scopes: ['github:repository:write'] }),
+    loadApproval: async () => approval,
+    recordAudit: async () => { throw new Error('audit unavailable'); },
+    consumeApproval: async () => { h.calls.consume += 1; return { ...approval, status: 'consumed' }; },
+  });
+  const result = await runSentinelInvocation({ ...request, manifest: writeManifest, actionId: 'update' }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'AUDIT_UNAVAILABLE');
+  assert.equal(h.calls.consume, 0);
+  assert.equal(h.calls.execute, 0);
 });
