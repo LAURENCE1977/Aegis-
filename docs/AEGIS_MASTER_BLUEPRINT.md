@@ -380,3 +380,14 @@ Xiryn (https://github.com/SouravBeraAkaSpeed/xiryn) has been evaluated as a high
 **Platform warning:** Xiryn needs a Node/Docker-capable computer; it is not an iPhone/iPad host or Cloudflare Worker. ChromeOS Linux compatibility and actual resource headroom remain unverified. Local models use host compute. Configured model providers, Firecrawl, Telegram and temporary Cloudflare tunnels are external data paths.
 
 **Decision:** high-priority reference; defer installation. First continue AEGIS's own durable runtime and capability/approval foundation. Later test Xiryn on a disposable dedicated host and compare a narrowly scoped worker adapter against AEGIS's native runtime. No Xiryn code or service is currently installed or connected.
+
+
+## 21. DevToys — developer utility toolkit research
+
+DevToys (https://github.com/DevToys-app/DevToys) is an MIT-licensed cross-platform desktop toolbox with converters, encoders/decoders, formatters, hash/checksum generators, regex/JSONPath testers and text/image utilities. It has an extension ecosystem and a separately installed CLI for supported terminal/CI tools. It is not a browser-native/PWA service or an iOS/iPadOS app; ChromeOS Linux support is not officially established.
+
+**AEGIS decision:** adopt the small-tool design pattern, not the desktop dependency. Implement high-value utilities as browser-native, offline-capable AEGIS modules with pure-function tests, responsive UI and no unnecessary network calls. Prioritise JSON formatting/validation, safe encoding/decoding, JWT inspection (not unkeyed signature verification), hashes/checksums, date/number conversion, bounded regex testing and text diff. Keep them local-first and do not expose them as agent capabilities until a concrete use case is defined and the Capability System classifies the action.
+
+**Security note:** upstream advisory GHSA-ggxr-h6fm-p2qh identifies a high-severity extension-installation path-traversal flaw in DevToys v2.0.0.0–2.0.8.0 and lists v2.0.9.0 as patched; the inspected release page labels that release a pre-release. Verify a stable patched build and package integrity before any optional trial. Third-party extensions and clipboard contents are trust boundaries.
+
+No DevToys application, CLI, package, extension or service has been installed or connected.
