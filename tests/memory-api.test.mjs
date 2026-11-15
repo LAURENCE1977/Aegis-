@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestGet, onRequestPost } from '../functions/api/memories.js';
+import { onRequestGet as memoryEventsGet } from '../functions/api/memories/[id]/events.js';
 import {
   onRequestGet as memoryGet,
   onRequestPatch as memoryPatch,
@@ -11,7 +12,7 @@ const secret = 'memory-api-test-session-secret-with-enough-entropy';
 const envBase = { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: secret };
 
 class MemoryD1 {
-  constructor() { this.memories = new Map(); this.projects = new Map(); }
+  constructor() { this.memories = new Map(); this.projects = new Map(); this.events = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -26,13 +27,16 @@ class MemoryD1 {
             source_observed_at:v[8], confidence:v[9], sensitivity:v[10],
             status:v[11], tags_json:v[12], created_at:v[13], updated_at:v[14], expires_at:v[15],
           });
+          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],project_id:v[2],event_type:'created',from_status:null,to_status:v[11],occurred_at:v[13]});
           return {meta:{changes:1}};
         }
         if (sql.includes('UPDATE aegis_memories')) {
           const row=db.memories.get(v[2]);
           if (!row || row.owner_id!==v[3] || row.project_id!==v[4] ||
               !['candidate','accepted'].includes(row.status)) return {meta:{changes:0}};
+          const previous=row.status;
           row.status=v[0]; row.updated_at=v[1];
+          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
           return {meta:{changes:1}};
         }
         return {meta:{changes:0}};
@@ -51,6 +55,7 @@ class MemoryD1 {
       },
       async all() {
         const v=this.values;
+        if (sql.includes('FROM aegis_memory_events')) return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         let rows=[...db.memories.values()].filter(row=>
           row.owner_id===v[0] && row.project_id===v[1] && row.status==='accepted' &&
@@ -200,4 +205,30 @@ test('retracted memories cannot be retrieved through the collection search', asy
     env:{...envBase,AEGIS_DB:db},
   });
   assert.equal((await response.json()).total,0);
+});
+
+
+test('memory lifecycle history is authenticated and does not expose another scope', async()=>{
+  const db=new MemoryD1();
+  const created=await onRequestPost({
+    request:await request('/api/memories',{method:'POST',body:memoryInput}),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  const {memory}=await created.json();
+  await memoryPatch({
+    request:await request('/api/memories/'+memory.id,{method:'PATCH',body:{status:'accepted'}}),
+    env:{...envBase,AEGIS_DB:db},params:{id:memory.id},
+  });
+  const history=await memoryEventsGet({
+    request:await request('/api/memories/'+memory.id+'/events'),
+    env:{...envBase,AEGIS_DB:db},params:{id:memory.id},
+  });
+  assert.equal(history.status,200);
+  const {events}=await history.json();
+  assert.deepEqual(events.map(event=>event.toStatus),['candidate','accepted']);
+  const denied=await memoryEventsGet({
+    request:new Request('https://aegis.example/api/memories/'+memory.id+'/events'),
+    env:{...envBase,AEGIS_DB:db},params:{id:memory.id},
+  });
+  assert.equal(denied.status,401);
 });
