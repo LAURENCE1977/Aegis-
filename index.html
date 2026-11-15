@@ -152,6 +152,7 @@
     const MAX_SAVED = 40;
     let history = [];
     let busy = false;
+    const threadId = 'aegis-' + crypto.randomUUID();
 
     function loadHistory() {
       try {
@@ -503,6 +504,29 @@
       return false;
     }
 
+    async function readAgUiReply(response) {
+      const body = await response.text();
+      let reply = '';
+      let runStarted = false;
+      let runFinished = false;
+      for (const frame of body.split(/\\r?\\n\\r?\\n/)) {
+        const line = frame.split(/\\r?\\n/).find(part => part.startsWith('data: '));
+        if (!line) continue;
+        let event;
+        try { event = JSON.parse(line.slice(6)); }
+        catch (error) { throw new Error('The agent stream contained invalid event data.'); }
+        if (event.type === 'RUN_STARTED') runStarted = true;
+        if (event.type === 'TEXT_MESSAGE_CONTENT') {
+          if (typeof event.delta !== 'string') throw new Error('The agent stream contained invalid text.');
+          reply += event.delta;
+        }
+        if (event.type === 'RUN_ERROR') throw new Error(event.message || 'The agent run failed.');
+        if (event.type === 'RUN_FINISHED') runFinished = true;
+      }
+      if (!runStarted || !runFinished) throw new Error('The agent stream ended before the run completed.');
+      return reply;
+    }
+
     async function sendMessage() {
       const text = userInput.value.trim();
       if (!text || busy) return;
@@ -519,20 +543,38 @@
           return;
         }
 
-        const res = await fetch('/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: text, history: history.slice(-MAX_SENT) })
+        const messages = history.slice(-MAX_SENT).map(message => ({
+          id: 'message-' + crypto.randomUUID(),
+          role: message.role,
+          content: message.content.slice(0, 4000),
+        }));
+        messages.push({
+          id: 'message-' + crypto.randomUUID(),
+          role: 'user',
+          content: text.slice(0, 4000),
         });
-        let data = {};
-        try { data = await res.json(); } catch (e) {}
+        const res = await fetch('/api/ag-ui', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify({
+            threadId,
+            runId: 'run-' + crypto.randomUUID(),
+            protocolVersion: '1.0',
+            messages,
+            tools: [],
+            context: [],
+          })
+        });
         if (res.status === 401) {
           showLogin('Your session has expired. Sign in again.');
           return;
         }
-        if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
-
-        const reply = extractReply(data);
+        if (!res.ok) {
+          let data = {};
+          try { data = await res.json(); } catch (error) {}
+          throw new Error(data.error || ('Error ' + res.status));
+        }
+        const reply = await readAgUiReply(res);
         addMessage(reply, 'assistant');
         history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
         saveHistory();
