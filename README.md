@@ -57,3 +57,7 @@ node --test tests/*.test.mjs
 ```
 
 The current prototype does not yet contain the full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine or production Forge sandbox. These remain separate, testable capabilities on the roadmap.
+
+## Project blueprint and AI handover
+
+The canonical architecture, operating principles, verified baseline, roadmap and fresh-session handover are maintained in [docs/AEGIS_MASTER_BLUEPRINT.md](docs/AEGIS_MASTER_BLUEPRINT.md). AI and engineering agents must read [AGENTS.md](AGENTS.md) before making changes. These documents are living records; always verify live repository and deployment state before relying on status notes.
