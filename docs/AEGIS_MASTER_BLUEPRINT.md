@@ -532,3 +532,12 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 3. Add audit-backed memory export and owner deletion/retention controls.
 4. Wire approval consumption and adapter execution through Sentinel end-to-end before enabling any frontend tool calls.
 5. Verify the PWA on actual Chromebook, iPhone and iPad browsers.
+
+
+## 18. Project-aware chat context — 15 November 2026
+
+- The chat PWA now offers an explicit Project Space selector. The default is personal memory only; project context is never silently inferred.
+- `POST /api/ag-ui` accepts an optional `projectId`, verifies that it identifies an active workspace owned by the signed-in single owner, and rejects unknown or unavailable scopes before invoking the model.
+- Chat retrieval includes up to four relevant accepted personal memories and four relevant accepted memories from only the selected project. Restricted, candidate, expired and other-project memories remain excluded.
+- Memory remains bounded JSON reference data with provenance, explicitly marked untrusted; project selection grants no capability or tool permissions.
+- API and repository tests cover scope isolation and unknown project rejection. Latest code CI is running on the current head; update this verification after the run completes.
