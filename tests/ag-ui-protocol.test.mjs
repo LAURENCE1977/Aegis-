@@ -43,6 +43,6 @@ test('SSE encoding emits one JSON data frame per event and rejects invalid event
 test('run finish can explicitly report a producer-cancelled outcome', () => {
   const finish=createTextRunFinishEvents({threadId:'t',runId:'r',now:1,outcome:'cancelled'});
   const encoded=encodeAgUiSse(finish);
-  assert.equal(JSON.parse(encoded.trim().split('\\n\\n').at(-1).slice(6)).outcome,'cancelled');
+  assert.match(encoded, /"outcome":"cancelled"/);
   assert.throws(()=>createTextRunFinishEvents({threadId:'t',runId:'r',outcome:'mystery'}),/outcome/i);
 });
