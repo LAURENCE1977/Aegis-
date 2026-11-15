@@ -74,7 +74,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.APPROVALS || typeof env.APPROVALS.prepare !== "function") {
     return json({ error: "Approval storage is not configured." }, 503);
   }
-  if (!(request.headers.get("Content-Type") || "").toLowerCase().startsWith("application/json")) {
+  if ((request.headers.get("Content-Type") || "").toLowerCase().split(";")[0].trim() !== "application/json") {
     return json({ error: "JSON content type required." }, 415);
   }
 
@@ -101,7 +101,8 @@ export async function onRequestPost({ request, env }) {
   }
   if (!body || typeof body !== "object" || Array.isArray(body) ||
       Object.keys(body).some((key) => !["id", "decision"].includes(key)) ||
-      typeof body.id !== "string" || !["approved", "denied"].includes(body.decision)) {
+      typeof body.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.id) ||
+      !["approved", "denied"].includes(body.decision)) {
     return json({ error: "A request ID and approved/denied decision are required." }, 400);
   }
 
