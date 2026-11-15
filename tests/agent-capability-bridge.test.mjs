@@ -106,17 +106,17 @@ test('canonical input digest is stable across object key order and audit exclude
   const [first, second] = await Promise.all([
     runAgentCapabilityRequest({
       capabilityId: manifest.id, actionId: 'discover', resourceId,
-      input: { repository: 'LAURENCE1977/Aegis-', include: ['issues', 'pulls'] },
+      input: { repository: 'LAURENCE1977/Aegis-', include: ['issues', 'pulls'], privateMarker: 'PRIVATE_PAYLOAD_MARKER' },
     }, { principalId }, a.dependencies),
     runAgentCapabilityRequest({
       capabilityId: manifest.id, actionId: 'discover', resourceId,
-      input: { include: ['issues', 'pulls'], repository: 'LAURENCE1977/Aegis-' },
+      input: { privateMarker: 'PRIVATE_PAYLOAD_MARKER', include: ['issues', 'pulls'], repository: 'LAURENCE1977/Aegis-' },
     }, { principalId }, b.dependencies),
   ]);
   assert.equal(first.allowed, true);
   assert.equal(second.allowed, true);
   assert.equal(a.events[0].inputDigest, b.events[0].inputDigest);
-  assert.equal(JSON.stringify(a.events).includes('LAURENCE1977/Aegis-'), false);
+  assert.equal(JSON.stringify(a.events).includes('PRIVATE_PAYLOAD_MARKER'), false);
 });
 
 test('rejects oversized and non-JSON input before Sentinel or adapter execution', async () => {
