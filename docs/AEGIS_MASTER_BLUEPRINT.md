@@ -744,3 +744,17 @@ Adapted CogniCore's compact project-context/handover idea into a deterministic A
 - The context builder omits raw event bodies and includes only bounded type, summary and timestamp fields, labelled untrusted reference data. Project event loading is optional; missing timeline migrations do not break chat.
 - Tests verify selected-project isolation and that raw event content and other-project summaries never enter the model context.
 - Latest verified code commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed GitHub Actions run 43752415969: 297 tests, 0 failures under Node.js 22.
+
+
+## AEGIS Intelligence & Token Engine — 15 November 2026
+
+PR #33: https://github.com/LAURENCE1977/Aegis-/pull/33 — draft, stacked on PR #32. The first native planning library is implemented in `functions/lib/intelligence-engine.mjs` with six focused tests:
+- conservative UTF-8 byte-based token estimation (budget heuristic, not an exact tokenizer);
+- task/context/output/cost/priority-aware model selection;
+- trusted provider availability and remaining-token quota filtering;
+- complete-message context fitting that preserves the system instruction and newest messages;
+- fail-closed behavior when no route meets the requested limits.
+
+TDD evidence: test-only RED commit `8c8206212aad1f10727a6b03915a6c0a941fb668` failed as expected; implementation commit `f90e42c16ce6d15dceddb73ea4b651ecb3cb0564` passed full Node.js 22 CI run `43754887238` with 0 failures.
+
+This is not yet a live model router. It is not wired to existing Workers AI/Qwen streaming, AG-UI or the agent queue. There is no provider catalogue ingestion, persistent token ledger, quota reservation/reconciliation, automatic failover, new provider, API key, migration or deployment. See [AEGIS Intelligence & Token Engine](AEGIS_INTELLIGENCE_TOKEN_ENGINE.md). Do not claim million-token context unless a verified model/provider and adapter support it. External free-model catalogues are candidate discovery only; official provider terms, quotas and endpoints must be verified before activation.
