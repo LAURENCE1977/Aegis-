@@ -116,6 +116,7 @@ test('approval inbox returns pending exact-operation details without exposing th
   assert.equal(body.approvals[0].id, record.id);
   assert.equal(body.approvals[0].actionId, binding.actionId);
   assert.equal(body.approvals[0].resourceId, binding.resourceId);
+  assert.equal(body.approvals[0].operationSummary, binding.operationSummary);
   assert.equal('inputDigest' in body.approvals[0], false);
 });
 
@@ -178,4 +179,13 @@ test('approval decisions reject malformed JSON and invalid decision values', asy
     env: { ...envBase, APPROVALS: new MemoryD1() },
   });
   assert.equal(invalid.status, 400);
+
+  const invalidId = await onRequestPost({
+    request: await authenticatedRequest('/api/approvals', {
+      method: 'POST',
+      body: { id: '../other', decision: 'approved' },
+    }),
+    env: { ...envBase, APPROVALS: new MemoryD1() },
+  });
+  assert.equal(invalidId.status, 400);
 });
