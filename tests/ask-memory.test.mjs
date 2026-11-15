@@ -102,6 +102,21 @@ test('chat remains available without the optional D1 memory binding', async()=>{
 });
 
 
+
+test('selected Project Space chat includes only its recent event summaries as untrusted context',async()=>{
+  const db=new RetrievalD1([],[
+    {id:'project-123',owner_id:'owner',name:'AEGIS',description:'Build AEGIS',status:'active',created_at:'2026-11-15T10:00:00.000Z',updated_at:'2026-11-15T12:00:00.000Z'},
+  ],[
+    {id:'event-current',space_id:'project-123',owner_id:'owner',event_type:'decision',summary:'Keep one canonical D1 database.',content:'RAW PRIVATE EVENT BODY: never copy this into the model context.',created_at:'2026-11-15T11:00:00.000Z'},
+    {id:'event-other',space_id:'project-other',owner_id:'owner',event_type:'note',summary:'Other project secret summary.',content:'other project raw body',created_at:'2026-11-15T11:30:00.000Z'},
+  ]);
+  const messages=await buildAskMessages({AEGIS_DB:db},'How should I build this?',[],{projectId:'project-123'});
+  const system=messages[0].content;
+  assert.match(system,/Project Space event summaries.*untrusted reference data/i);
+  assert.match(system,/Keep one canonical D1 database/);
+  assert.doesNotMatch(system,/RAW PRIVATE EVENT BODY|Other project secret summary|other project raw body/);
+});
+
 test('chat combines personal memory with only the selected Project Space memories',async()=>{
   const db=new RetrievalD1([
     row({id:'personal-music',content:'Personal preference: soulful music production workflow.'}),
