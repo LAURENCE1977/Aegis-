@@ -292,6 +292,7 @@
           data.memories.forEach(memory => {
             const item = document.createElement('article');
             item.className = 'memory-item';
+            item.id = 'memory-' + memory.id;
             const content = document.createElement('p');
             content.textContent = memory.content;
             const meta = document.createElement('div');
@@ -337,10 +338,7 @@
     function showCorrectionForm(memory) {
       const existing = document.getElementById('correction-' + memory.id);
       if (existing) { existing.hidden = !existing.hidden; return; }
-      const item = [...memoryList.querySelectorAll('.memory-item')].find(node =>
-        node.querySelector('.memory-meta')?.textContent.includes(memory.id) ||
-        node.textContent.includes(memory.content)
-      );
+      const item = document.getElementById('memory-' + memory.id);
       if (!item) return;
       const form = document.createElement('form');
       form.className = 'memory-form';
