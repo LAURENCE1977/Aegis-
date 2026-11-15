@@ -201,17 +201,15 @@ async function processJob(message, env) {
   }
 
   const startedAt = new Date().toISOString();
-  // Capture the attempt number from the same atomic claim statement.
-  // A later SELECT could observe a newer consumer's attempt after lease recovery,
-  // allowing this stale worker to impersonate that newer attempt.
-  const claim = await env.DB.prepare(
-    "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
-  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId).first();
-  if (!claim) {
+  const claimed = await env.DB.prepare(
+    "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch')"
+  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId).run();
+  if (!claimed.meta?.changes) {
     message.ack();
     return;
   }
-  const attempt = Number(claim.attempts);
+  const claimedRow = await env.DB.prepare('SELECT attempts FROM jobs WHERE id = ?').bind(jobId).first();
+  const attempt = Number(claimedRow?.attempts || 0);
   await audit(env, jobId, 'running', { attempt });
 
   try {
