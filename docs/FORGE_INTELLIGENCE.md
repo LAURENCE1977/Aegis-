@@ -163,3 +163,7 @@ The first clean-room Sentinel invocation gate is being built as `functions/lib/s
 ## MCP Forge implementation milestone
 
 The first native module is functions/lib/mcp-forge-catalogue.mjs with focused tests in tests/mcp-forge-catalogue.test.mjs. It validates provenance-pinned metadata and declared per-action effects, exposes list/get/search over defensive copies, and intentionally has no execute/connect/install method. This is the catalogue layer only; the admission scanner and isolated ingestion worker are not implemented yet. See AEGIS_MCP_FORGE.md.
+
+## Free-Tier Ledger implementation milestone
+
+The first native module is functions/lib/free-tier-ledger.mjs with focused tests in tests/free-tier-ledger.test.mjs. It validates offer and quota metadata, official pricing/terms links, commercial-use and overage status, and verification freshness; list/get/search return defensive copies. It has no account-creation or provisioning methods. See AEGIS_FREE_TIER_LEDGER.md.
