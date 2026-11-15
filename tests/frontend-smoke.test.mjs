@@ -178,3 +178,14 @@ test('Project Space timeline renders memory lifecycle events from the merged eve
   assert.match(html, /event\.source\s*===\s*'memory'/);
   assert.match(html, /event\.occurredAt\s*\|\|\s*event\.createdAt/);
 });
+
+test('Security Centre exposes read-only capability and module inventory without granting permissions', () => {
+  for (const id of ['securityTab','securitySection','securityStatus','moduleList','capabilityList']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing Security Centre element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/modules'/);
+  assert.match(html, /controlApi\('\/api\/capabilities'/);
+  assert.match(html, /capabilityNode\.textContent\s*=\s*capability\.name/);
+  assert.match(html, /moduleNode\.textContent\s*=\s*module\.name/);
+  assert.match(html, /No grants are created by this inventory/);
+});
