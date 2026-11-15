@@ -44,3 +44,10 @@ test('AG-UI frontend parser splits real SSE frame boundaries', () => {
   assert.match(html, /body\.split\(\/\\r\?\\n\\r\?\\n\/\)/);
   assert.match(html, /frame\.split\(\/\\r\?\\n\/\)/);
 });
+
+
+test('chat UI consumes AG-UI SSE incrementally and appends deltas as they arrive', () => {
+  assert.match(html, /response\.body\.getReader\(\)/);
+  assert.match(html, /onDelta\(event\.delta\)/);
+  assert.match(html, /assistantText\.textContent\s*\+=\s*delta/);
+});
