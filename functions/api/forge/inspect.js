@@ -1,4 +1,5 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../../lib/auth.mjs";
+import { readBoundedText } from "../../lib/request-body.mjs";
 import { inspectGitHubRepository, GitHubSourceError } from "../../lib/github-discovery.mjs";
 
 const MAX_BODY_BYTES = 4096;
@@ -16,8 +17,8 @@ export async function onRequestPost({ request, env, fetchImpl = fetch }) {
   }
 
   let raw;
-  try { raw = await request.text(); } catch { return json({ error: "Request body could not be read." }, 400); }
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: "Request body is too large." }, 413);
+  try { raw = await readBoundedText(request, MAX_BODY_BYTES); }
+  catch (error) { return json({ error: error.message }, error.status || 400); }
   let body;
   try { body = JSON.parse(raw); } catch { return json({ error: "Request body must contain valid JSON." }, 400); }
   if (!body || typeof body !== "object" || Array.isArray(body) ||
