@@ -541,3 +541,15 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Chat retrieval includes up to four relevant accepted personal memories and four relevant accepted memories from only the selected project. Restricted, candidate, expired and other-project memories remain excluded.
 - Memory remains bounded JSON reference data with provenance, explicitly marked untrusted; project selection grants no capability or tool permissions.
 - API and repository tests cover scope isolation and unknown project rejection. Latest code CI is running on the current head; update this verification after the run completes.
+
+
+## 19. Owner memory export — 15 November 2026
+
+- Added `GET /api/memories/export`, authenticated through the owner session.
+- Default export includes all owner memory scopes and all lifecycle states; `?projectId=` exports personal scope; `?projectId=<id>` exports one active owner Project Space.
+- Export includes typed memory content, provenance, sensitivity, confidence, expiry, supersession links and immutable lifecycle event history.
+- Bounded to 500 memories and 2,000 lifecycle events per export. JSON response reports truncation; `Cache-Control: no-store` and attachment disposition are set.
+- Memory review panel has an Export this scope button; downloaded JSON remains on the user's device.
+- Export does not mutate or delete stored data. Owner retention and deletion controls remain to be built.
+- Tests cover authentication before storage access, all-scope export, personal/project isolation, invalid project IDs and safe response headers.
+- CI at code commit `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: **230 tests passed, 0 failed**, Node.js 22: https://github.com/LAURENCE1977/Aegis-/actions/runs/43744994054.
