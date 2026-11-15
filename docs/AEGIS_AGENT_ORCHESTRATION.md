@@ -2,7 +2,7 @@
 
 ## Status
 
-The first durable orchestration slice is implemented on `feature/durable-agent-orchestrator`. It is a plan-only workflow, not autonomous tool execution. It reuses the existing AEGIS Runtime Worker, D1 database and Queue; it does not add a competing scheduler or execution host.
+The first durable orchestration slice is implemented on `feature/durable-agent-orchestrator-rebased` (draft PR #29). It is a plan-only workflow, not autonomous tool execution. It reuses the existing AEGIS Runtime Worker, D1 database and Queue; it does not add a competing scheduler or execution host.
 
 ## Flow
 
@@ -108,4 +108,9 @@ A passing local/CI run and a non-production D1/Queue integration check are requi
 
 **Operational boundary:** this is an integration seam and testable library bridge, not an enabled tool executor. The runtime queue still produces plan-only runs and does not call the bridge. Persistent grant/connection stores, secret vault, concrete D1 invocation-audit writer, trusted adapter router and egress isolation are not yet provisioned or composed. No capability can be executed by an agent until those controls are implemented and explicitly wired.
 
-Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. GitHub Actions run 43752335315 on commit e1beff9b86d7f250a43c5a4c2e7f791079c1fac9 passed the full Node.js 22 suite: 308 tests, 0 failures.
+Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. Latest branch head 4b2239654971cd6c5770565980058b36cfd7a622 passed GitHub Actions run 43753045125 under Node.js 22: 314 tests, 0 failures.
+
+
+## Stack reconciliation warning
+
+PR #29 currently targets snapshot branch stack/native-memory-substrate-20261115 at a331454830feb0f473e07adf49ee16884b47033b. The current PR #27 memory/Forge branch has advanced beyond that snapshot. Keep PR #29 draft and reconcile/rebase its base before merge; its 314-test run validates the orchestrator branch against the snapshot, not the combined latest PR #27 tree.
