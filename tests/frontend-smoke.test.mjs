@@ -15,7 +15,7 @@ test('mobile AEGIS page has a chat and memory review surface', () => {
 });
 
 test('all inline JavaScript parses before a preview can be promoted', () => {
-  const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)];
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
   assert.ok(scripts.length > 0, 'expected at least one inline script');
   for (const [, source] of scripts) {
     assert.doesNotThrow(() => new vm.Script(source), 'inline script must parse');
