@@ -57,15 +57,15 @@ test('Qwen provider builds a fixed regional endpoint and streams OpenAI-compatib
 
 test('Qwen provider rejects arbitrary hosts, unsupported regions and invalid model names',async()=>{
   const base={AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'};
-  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_WORKSPACE_ID:'evil.example'},messages:[]}),/workspace/i);
-  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_REGION:'evil-region'},messages:[]}),/region/i);
-  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_MODEL:'qwen;drop'},messages:[]}),/model/i);
+  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_WORKSPACE_ID:'evil.example'},messages:[{role:'user',content:'hello'}]}),/workspace/i);
+  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_REGION:'evil-region'},messages:[{role:'user',content:'hello'}]}),/region/i);
+  await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_MODEL:'qwen;drop'},messages:[{role:'user',content:'hello'}]}),/model/i);
 });
 
 test('unknown providers fail closed and provider errors are not surfaced to callers',async()=>{
-  await assert.rejects(()=>createModelStream({env:{AEGIS_MODEL_PROVIDER:'unknown'},messages:[]}),/unsupported/i);
+  await assert.rejects(()=>createModelStream({env:{AEGIS_MODEL_PROVIDER:'unknown'},messages:[{role:'user',content:'hello'}]}),/unsupported/i);
   await assert.rejects(()=>createModelStream({
     env:{AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'},
-    messages:[],fetchImpl:async()=>new Response('sensitive provider diagnostic',{status:401}),
+    messages:[{role:'user',content:'hello'}],fetchImpl:async()=>new Response('sensitive provider diagnostic',{status:401}),
   }),/provider request failed/i);
 });
