@@ -86,3 +86,17 @@ A delegated task is a child of one canonical AEGIS job. It records requested wor
 ## Licensing and provenance
 
 LangAlpha's repository identifies Apache-2.0; OpenCompany's repository identifies MIT. AEGIS records these as source licences only. This implementation uses independently authored AEGIS contracts and code. If future work copies any upstream code or substantial text, it must separately preserve the relevant notices and licence obligations. No packages, desktop apps, containers, connectors or upstream agent definitions have been installed.
+
+
+## Bounded agent handover briefs
+
+- Owner-authenticated read-only endpoint: GET /api/workspaces/:id/brief.
+- Requires an active Project Space owned by the signed-in deployment owner and the shared AEGIS_DB binding.
+- Default output budget is 6,000 characters; the optional maxChars query parameter is bounded to 1,000–12,000 characters.
+- The brief includes project name/goal, recent event summaries and accepted, unexpired, non-restricted memories from that exact Project Space only. It excludes personal memories, other projects, candidates, retracted/superseded/expired records, restricted memories, raw event bodies and source URLs.
+- Memory content and event summaries carry an explicit untrusted-reference marker. They are context, not instructions, permissions, approvals or authoritative job state.
+- Decisions and procedures are prioritized; long memory content is shortened to preserve the highest-priority context. The response reports included/omitted counts, truncation and an approximate token count (characters divided by four; not a model tokenizer).
+- The Projects panel provides a Build handover brief action and an explicit Copy brief button. Copying is a user gesture; clipboard failure falls back to selectable text.
+- This is a deterministic extractive snapshot, not an LLM-generated summary. It does not create a task, grant a capability, start an agent or send data to an external provider.
+
+- When a Project Space is selected in AG-UI chat, AEGIS also supplies up to eight recent event summaries from that exact owner/project scope. Raw event bodies are never included; the summaries are explicitly marked untrusted reference data. Missing timeline tables degrade to no event context without breaking chat.
