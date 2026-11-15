@@ -83,3 +83,12 @@ test('rejects future verification timestamps and oversized records', () => {
   assert.throws(() => validateFreeTierRecord({ ...record, verifiedAt: '2099-01-01T00:00:00.000Z' }, Date.parse('2026-11-15T00:00:00.000Z')));
   assert.throws(() => validateFreeTierRecord({ ...record, allowance: 'x'.repeat(3000) }));
 });
+test('rejects blank, oversized and control-character text fields', () => {
+  for (const patch of [
+    { provider: '   ' },
+    { service: 'x'.repeat(161) },
+    { allowance: 'requests\nwith hidden control character' },
+  ]) {
+    assert.throws(() => validateFreeTierRecord({ ...record, ...patch }));
+  }
+});
