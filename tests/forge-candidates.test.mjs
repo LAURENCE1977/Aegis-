@@ -64,7 +64,7 @@ test('Forge candidate records pin the inspected source and require licence revie
   const db=new CandidateD1();
   const result=await createForgeCandidate(db,'owner',repository());
   assert.equal(result.created,true);
-  assert.equal(result.candidate.fullName,'example/agent');
+  assert.equal(result.candidate.metadata.fullName,'example/agent');
   assert.equal(result.candidate.version,'a'.repeat(40));
   assert.equal(result.candidate.licence.identifier,'MIT');
   assert.equal(result.candidate.licence.review,'review-required');
