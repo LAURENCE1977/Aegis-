@@ -597,3 +597,16 @@ The Forge register now includes Qwen/Alibaba, AgentMemory, K-Dense Scientific Ag
 - **Muelle** and **Eli Cactus** remain unidentified from the names supplied; no guessed project or licence is recorded.
 
 Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md`.
+
+
+## 20. Forge source inspection and candidate intake — 15 November 2026
+
+- Native authenticated Forge inspection APIs are implemented: POST /api/forge/inspect lists up to 100 bounded public GitHub text files with pinned Git blob SHAs; POST /api/forge/read returns one UTF-8 blob up to 32 KiB.
+- Canonical HTTPS GitHub repository URLs only; redirects rejected; public API rate limits apply. No private repository credentials.
+- The Forge Control Centre tab now inspects repositories and displays source previews using textContent. No repository code, package scripts, shell commands, containers or MCP servers are executed.
+- Owner-scoped candidate intake/list API: POST/GET /api/forge/candidates. Candidates are deduplicated by owner, canonical source URL and default-branch tree SHA.
+- New candidates start with decision unassessed, status inspected and licence review-required. GitHub's reported SPDX value is metadata only, not legal verification. Reuse/adaptation remains blocked by the existing Forge validator until licence review is verified.
+- New shared D1 migration: migrations/shared/0005_forge_candidates.sql, with candidate metadata and append-only created-event audit. Add it after migrations 0001–0004 in the single shared database.
+- Candidate review/decision updates, diff/AST analysis and sandboxed execution are not implemented. No code execution or production deployment has occurred.
+- Full verification of the newest candidate-registry commits is pending; the previous complete run at 72518c845fad8850508a5fef3929007ee4ebaed3 passed 247/247 Node.js 22 tests.
+- Detailed design and limitations: docs/AEGIS_FORGE.md.
