@@ -132,3 +132,11 @@ test('Forge Control Centre provides safe read-only repository inspection and sou
   assert.match(html, /forgeFilePreview\.textContent\s*=\s*data\.content/);
   assert.match(html, /Nothing is executed|Nothing is run/);
 });
+
+
+test('Forge candidate review UI requires an explicit licence decision and records an owner review', () => {
+  assert.match(html, /controlApi\('\/api\/forge\/candidates\/'\s*\+/);
+  assert.match(html, /licenceReview:\s*licenceSelect\.value/);
+  assert.match(html, /licenceConfirmed\.checked/);
+  assert.match(html, /candidateReviewForm\.addEventListener\('submit'/);
+});
