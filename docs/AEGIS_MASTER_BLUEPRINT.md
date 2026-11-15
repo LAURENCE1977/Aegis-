@@ -401,3 +401,357 @@ This is deliberately not yet a live server discovery/connection service. Persist
 A read-only, metadata-only Free-Tier Ledger is being implemented on feature/free-tier-ledger, stacked on the MCP Forge catalogue. It validates explicit allowance, duration, card requirement, commercial-use status, overage behaviour, region, quota, official pricing/terms URLs, confidence and verification timestamp. Records older than 30 days require re-verification by default. Unknown overage is preserved as unknown; free-tier directories are not treated as authoritative. No account creation, resource provisioning, provider API calls or credit consumption are possible through this module.
 
 Persistent storage, authenticated UI, official-source verification workflows, quota monitoring and budget enforcement remain future work. Tests are authored; CI verification is pending.
+
+
+## 14. Native memory, local inference and computer-use tracks — 15 November 2026
+
+Three distinct upstream projects are being reverse-engineered as architecture references:
+
+- Kytheros Strata: persistent memory/retrieval reference (SQLite/FTS5 and Cloudflare D1 patterns).
+- Niko1221 Strata: separate optional local inference engine/provider reference; not a memory system and not a required Chromebook/iOS dependency.
+- n8n Labs Meet Nod: computer-use/browser-workspace, approval, vault, audit and scheduled-agent reference; desktop-hosted and not itself an always-on Chromebook/iOS solution.
+
+AEGIS decision: build native, replaceable capabilities. Do not import these projects wholesale or make them hard dependencies.
+
+The first native memory slice is on feature branch `feature/native-memory-substrate`:
+- typed, bounded, attributed memory record validation;
+- owner and exact personal/project-scope filtering;
+- accepted/unexpired lifecycle filtering;
+- deterministic lexical retrieval with defensive copies;
+- tests authored before implementation.
+
+This slice is an in-memory read model only. It is not persistent, not connected to chat or APIs, and does not authenticate callers. The authenticated API must derive owner identity from the signed AEGIS session and check Project Spaces membership. No embedding provider, model, GPU, computer-use agent, browser worker or external source code has been installed.
+
+Next sequence: verify tests on the final branch head; add D1-backed owner/project-scoped persistence and lifecycle audit; add authenticated API and review/correction controls; then integrate bounded retrieval into chat. Only after that should optional embeddings/reranking be benchmarked. Computer use remains blocked until an isolated worker, vault, Sentinel invocation path, approval UI and audit are wired end-to-end.
+
+
+### Native memory implementation update — 15 November 2026
+
+The first persistent-memory slice now includes:
+- D1 schema `migrations/memory/0001_memories.sql`.
+- D1 repository in `functions/lib/memory-substrate.mjs`, with exact owner/project scope enforced in SQL, lifecycle filtering and bounded lexical search.
+- Authenticated endpoints `/api/memories` and `/api/memories/:id` for candidate creation, search/list, detail and owner review/retraction.
+- New records are always candidates; only accepted and unexpired records enter ordinary retrieval.
+- Project memory is rejected unless the target is an active Project Space owned by the same deployment owner.
+
+The migration is **not applied** and D1 is **not provisioned or bound**. No production runtime is changed. The legacy KV notes endpoint is untouched. This is code and schema prepared for review, not a live persistent-memory deployment. Lifecycle event history, correction/supersession, retention/export/deletion, chat retrieval and UI remain subsequent slices.
+
+
+## 15. Native memory implementation handover — 15 November 2026
+
+### Branch and review
+- PR #27: https://github.com/LAURENCE1977/Aegis-/pull/27
+- Branch: `feature/native-memory-substrate`; base: `feature/free-tier-ledger` (PR #26).
+- Open, draft, unmerged. Never merge without owner approval.
+- Feature branch has its own Cloudflare Pages preview; production main remains unchanged.
+
+### Implemented
+- Typed memory validator and D1 repository in `functions/lib/memory-substrate.mjs`.
+- Authenticated owner APIs: `/api/memories`, `/api/memories/:id`, `/api/memories/:id/events`.
+- New records are candidate-only; owner review accepts, supersedes or retracts.
+- D1 triggers create append-only lifecycle audit rows; triggers reject audit UPDATE/DELETE.
+- Project records are owner-scoped and require an active owner Project Space.
+- Chat `/api/ask` retrieves up to eight approved, unexpired, non-restricted personal memories; maximum context 6,000 characters; JSON-encoded with source attribution and explicitly labelled untrusted reference data.
+- Memory retrieval fails closed to no added context if D1 is unavailable; legacy KV notes remain supported.
+- Mobile Memory panel lets the owner add candidates, approve/reject and inspect history.
+- Partial-term lexical search; no embeddings, GPU or paid provider dependency.
+
+### Canonical D1 migration sequence
+Use only `migrations/shared/` for the shared Project Spaces + Memory database:
+1. `0001_project_spaces.sql`
+2. `0002_memories.sql`
+3. `0003_memory_lifecycle_audit.sql`
+
+The older `migrations/workspaces/` and `migrations/memory/` directories are feature-source copies. Do not apply those separately in addition to `migrations/shared/`. Runtime jobs use their own separate D1 database and migration directory.
+
+### Verification
+- Full Node.js 22 test suite passed **194/194** at commit `b02f4f5fa3d8841c6eee58246e7bdcbf35e6fe7b` (workflow run https://github.com/LAURENCE1977/Aegis-/actions/runs/43742096001).
+- SQLite test applied all three canonical migrations in order, confirmed audit trigger behaviour, append-only rejection and project-owner foreign-key enforcement.
+- Cloudflare Pages preview for the memory UI succeeded at https://56dc826b.aegis-6yk.pages.dev (branch preview https://feature-native-memory-substr.aegis-6yk.pages.dev).
+- Later frontend smoke-test and documentation commits must receive fresh CI verification before promotion.
+
+### Not yet active
+- D1 resource has not been created; migrations not applied; `AEGIS_DB` binding not configured.
+- No production deployment or data migration.
+- Memory UI is preview code only until D1 and auth secrets are correctly configured in the preview environment.
+- No computer-use agent or external Strata/Nod software installed.
+- Correction/supersession linking, retention, export/deletion controls, embeddings, project-context chat retrieval and full Control Centre integration remain to be implemented.
+
+### Immediate next engineering order
+1. Re-run CI on the latest branch head; fix any failures.
+2. Implement correction/supersession as linked replacement records with provenance.
+3. Add retention, export and deletion controls.
+4. Add Project Spaces memory navigation and memory-to-project timeline linking.
+5. Prepare D1 provisioning/migration as a separate explicitly approved step after checking account-wide free-tier use.
+6. Continue with isolated computer-use worker design only after Sentinel, vault, approval UI and audit are end-to-end.
+
+
+## 16. Agent UI and AG-UI protocol direction — 15 November 2026
+
+- CopilotKit is an MIT-licensed high-priority architecture reference for agent chat, streaming, shared state, generative UI and human approval interactions.
+- AEGIS will reverse-engineer the useful patterns and build a native authenticated AG-UI-compatible boundary before deciding whether to use a thin CopilotKit client.
+- Do not migrate the current static PWA to React solely to install CopilotKit. Keep the browser/mobile-first shell and make the agent interaction API client-independent.
+- AEGIS's existing identity, memory, jobs, capability registry, Sentinel, approval store, vault, audit and budgets remain canonical. UI events never grant permissions.
+- Architecture and security acceptance criteria: `docs/AEGIS_COPILOTKIT_AGUI.md`.
+- Research register updated: `docs/RESEARCH_SOURCE_REGISTER.md`.
+- Implemented: `functions/lib/ag-ui.mjs` bounded AG-UI 1.0 text-run and SSE primitives; authenticated `POST /api/ag-ui` builds the same approved-memory/skill context as `/api/ask`, calls Workers AI with `stream: true`, parses provider SSE chunks and emits incremental AG-UI events. The mobile PWA consumes the stream and renders deltas as they arrive. Output is capped at 12,000 characters and provider errors are redacted. Tool calls, ambient context, resume and multimodal payloads are rejected until Sentinel and durable lifecycle support are connected.
+- CI: verified branch head `17a0a2171621f7e34fd6ba17ad31fda3dc40ce3d` passed run 43744350226, 219/219 tests. Project Spaces, approvals, memory and installable PWA shell are present; preview login still requires the two Preview secrets.
+- No CopilotKit package, React migration, CopilotKit service or upstream code has been installed; no production deployment has occurred. Token streaming, resumable runs, generative UI and tool/approval events remain future work.
+
+
+## 17. Control Centre, streaming chat and PWA implementation — 15 November 2026
+
+### Native agent interaction
+- `functions/api/ag-ui.js` provides authenticated, same-origin AG-UI 1.0-style text streaming over SSE.
+- Input is bounded to 64 KiB, 11 plain-text user/assistant messages, 4,000 characters per message, and rejects frontend tools, ambient context, unsupported state/resume and multimodal content until they have safe implementations.
+- Provider frames are parsed incrementally across arbitrary network chunk boundaries; output is capped at 12,000 characters. Provider exceptions are replaced with safe terminal errors.
+- `index.html` streams text into the chat UI as deltas arrive.
+- **Not yet durable:** current thread/run IDs are client-generated and the stream is not persisted as a resumable job. Reconnect/resume must wait for canonical server-side run/job state.
+
+### Control Centre
+- New Projects tab creates and lists owner-only Project Spaces and opens their timelines; timeline entries are saved through authenticated same-origin APIs.
+- New Approvals tab lists pending operation requests and lets the owner approve or deny them.
+- The UI explicitly states that recording an approval decision does not itself execute an operation. Sentinel mediation and the worker adapter still determine whether any operation can run.
+- All displayed workspace and approval content uses DOM `textContent`, not generated HTML.
+
+### Installable PWA shell
+- Added `manifest.webmanifest`, `icons/aegis.svg` and `service-worker.js`.
+- Service worker caches only the static app shell, manifest and icon. It explicitly bypasses `/api/*`, `/mcp`, authentication routes, non-GET requests and cross-origin requests.
+- Offline mode provides the shell only; it does not claim chat, memory, jobs or approvals work offline. API data is never cached.
+- PWA support is intended for browser installation on Chromebook and supported mobile browsers. iOS Add to Home Screen behaviour must still be checked on a real device.
+
+### Verification at commit `f4a4b72088cfb24f6d9866f11bbb331d79d17ee9`
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43744215624
+- Node.js 22: **219 tests passed, 0 failed**.
+- This test run includes memory API/repository/correction tests, AG-UI protocol/API tests, front-end smoke checks and PWA cache-exclusion checks.
+- Any subsequent code change must receive a fresh CI run. Production remains unchanged; no D1 resources or secrets were provisioned.
+
+### Next implementation gates
+1. Add authoritative server-side run/thread persistence and reconnect/resume semantics.
+2. Add retention and owner deletion controls with explicit confirmation and audit.
+3. Validate the full ordered shared migration chain, including memory correction links, against SQLite.
+4. Wire approval consumption and adapter execution through Sentinel end-to-end before enabling any frontend tool calls.
+5. Verify the PWA on actual Chromebook, iPhone and iPad browsers.
+
+
+## 18. Project-aware chat context — 15 November 2026
+
+- The chat PWA now offers an explicit Project Space selector. The default is personal memory only; project context is never silently inferred.
+- `POST /api/ag-ui` accepts an optional `projectId`, verifies that it identifies an active workspace owned by the signed-in single owner, and rejects unknown or unavailable scopes before invoking the model.
+- Chat retrieval includes up to four relevant accepted personal memories and four relevant accepted memories from only the selected project. Restricted, candidate, expired and other-project memories remain excluded.
+- Memory remains bounded JSON reference data with provenance, explicitly marked untrusted; project selection grants no capability or tool permissions.
+- API and repository tests cover scope isolation and unknown project rejection. Latest verification: 230 tests passed, 0 failed on branch head `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`, run 43744994054.
+
+
+## 19. Owner memory export — 15 November 2026
+
+- Added `GET /api/memories/export`, authenticated through the owner session.
+- Default export includes all owner memory scopes and all lifecycle states; `?projectId=` exports personal scope; `?projectId=<id>` exports one active owner Project Space.
+- Export includes typed memory content, provenance, sensitivity, confidence, expiry, supersession links and immutable lifecycle event history.
+- Bounded to 500 memories and 2,000 lifecycle events per export. JSON response reports truncation; `Cache-Control: no-store` and attachment disposition are set.
+- Memory review panel has an Export this scope button; downloaded JSON remains on the user's device.
+- Export does not mutate or delete stored data. Owner retention and deletion controls remain to be built.
+- Tests cover authentication before storage access, all-scope export, personal/project isolation, invalid project IDs and safe response headers.
+- CI at code commit `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: **230 tests passed, 0 failed**, Node.js 22: https://github.com/LAURENCE1977/Aegis-/actions/runs/43744994054.
+
+
+## 19. Project-scoped memory controls and owner export — 15 November 2026
+
+- Chat PWA has one explicit Project Space selector; default remains personal memory only.
+- Memory panel has its own personal/Project Space scope selector; changing it reloads only that exact scope.
+- Creating a memory sends the selected `projectId`; approving/rejecting and history requests carry the same project scope.
+- AG-UI validates the selected Project Space against the signed-in owner and active status before building the model context.
+- Chat retrieval includes up to four relevant approved personal memories and four relevant approved memories from the selected project; without a project selected it uses up to eight personal memories.
+- Added authenticated `GET /api/memories/export`: exports all owner scopes by default, personal scope with `?projectId=`, or one active project with `?projectId=<id>`. Includes every lifecycle state, provenance and append-only event history, bounded to 500 memories and 2,000 events, with no-store attachment headers.
+- Memory review UI downloads the export as JSON. No third-party service is used.
+- CI at `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: 230/230 tests passed.
+- D1 is still not provisioned or bound. Preview secrets remain unconfigured; production application code and data are unchanged by this feature branch.
+
+
+## 20. Operational deployment note — 15 November 2026
+
+- Two documentation-only commits were unintentionally written to the repository's default `main` branch because a GitHub file update omitted the intended feature-branch target:
+  - `168293c7d924cb929af0032e370756e0f68a5f12` — added the CopilotKit/AG-UI architecture document.
+  - `27c5d2c18fc4ecefd170475e9ae8a65058b6636c` — added/updated the research source register.
+- Cloudflare Pages automatically produced successful production deployments:
+  - https://3b6d73fa.aegis-6yk.pages.dev
+  - https://6a8926d8.aegis-6yk.pages.dev
+- GitHub commit inspection confirmed both commits changed Markdown documentation only. No application source, production data, secrets, D1/Queue resources, permissions or infrastructure changed.
+- No rollback was attempted because that would require another production action. All subsequent code work remains on `feature/native-memory-substrate`; PR #27 remains draft and unmerged.
+- This was an operational error. Future file mutations must specify the intended feature branch explicitly and verify the resulting commit branch before proceeding.
+
+
+## 18. Model, memory, harness and scientific-agent intake — 15 November 2026
+
+The Forge register now includes Qwen/Alibaba, AgentMemory, K-Dense Scientific Agent Skills, two Awesome Harness Engineering indexes, AgenticOS, Helium, Pi and Replit Free. Each is an evaluated source, not an installed dependency.
+
+- **Qwen:** candidate provider adapter. Keep hosted API models distinct from open-weight releases; API usage may incur charges. No credentials or provider route configured.
+- **Pi:** modular provider/agent-core reference; AEGIS keeps its own durable job state, identity and Sentinel.
+- **AgentMemory:** provider-neutral memory operations and transport/certification patterns; its own README describes a public alpha not hardened for hostile multi-tenant/open-network deployment. AEGIS D1 remains canonical.
+- **Scientific Agent Skills:** optional specialist library; inspect the individual skill licence metadata, not just repository-level MIT licence, before adaptation.
+- **Awesome Harness Engineering:** discovery index for orchestration, context, permissions, evals and observability. Follow each link to its primary source and licence.
+- **AgenticOS:** Apache-2.0 governance/operator-console architecture reference; do not transplant its heavier stack.
+- **Helium:** Chromium browser, not an agent automation runtime. No browser integration is implied.
+- **Replit Free:** limited prototype workspace, not guaranteed always-on hosting or free model inference.
+- **Heretic:** isolated model research only; never weaken AEGIS policy/Sentinel or place modified models in production by default.
+- **Muelle** and **Eli Cactus** remain unidentified from the names supplied; no guessed project or licence is recorded.
+
+Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md`.
+
+
+## 20. Forge source inspection and candidate intake — 15 November 2026
+
+- Native authenticated Forge inspection APIs are implemented: POST /api/forge/inspect lists up to 100 bounded public GitHub text files with pinned Git blob SHAs; POST /api/forge/read returns one UTF-8 blob up to 32 KiB.
+- Canonical HTTPS GitHub repository URLs only; redirects rejected; public API rate limits apply. No private repository credentials.
+- The Forge Control Centre tab now inspects repositories and displays source previews using textContent. No repository code, package scripts, shell commands, containers or MCP servers are executed.
+- Owner-scoped candidate intake/list API: POST/GET /api/forge/candidates. Candidates are deduplicated by owner, canonical source URL and default-branch tree SHA.
+- New candidates start with decision unassessed, status inspected and licence review-required. GitHub's reported SPDX value is metadata only, not legal verification. Reuse/adaptation remains blocked by the existing Forge validator until licence review is verified.
+- New shared D1 migration: migrations/shared/0005_forge_candidates.sql, with candidate metadata and append-only created-event audit. Add it after migrations 0001–0004 in the single shared database.
+- Candidate review/decision updates, diff/AST analysis and sandboxed execution are not implemented. No code execution or production deployment has occurred.
+- Full verification of the newest candidate-registry commits is pending; the previous complete run at 72518c845fad8850508a5fef3929007ee4ebaed3 passed 247/247 Node.js 22 tests.
+- Detailed design and limitations: docs/AEGIS_FORGE.md.
+
+## 22. Forge source inspection and persistent candidate intake — 15 November 2026
+
+- Authenticated read-only GitHub inspection: `POST /api/forge/inspect` returns repository metadata, recursive default-branch tree SHA and up to 100 allowlisted text-file entries with pinned blob SHAs.
+- Authenticated pinned blob reader: `POST /api/forge/read` verifies exact SHA, base64 encoding, byte length and strict UTF-8; 32 KiB per-file cap.
+- Authenticated owner-scoped candidate library: `POST /api/forge/candidates` inspects and persists an immutable source/tree candidate; `GET /api/forge/candidates` lists the signed owner's records. Unique owner/source/tree index makes intake idempotent.
+- New candidate lifecycle begins `inspected`, `unassessed`, licence `review-required`. No licence auto-clearance, no install, no code execution.
+- Control Centre has a native Forge tab for inspect/read/save candidate. All source display uses `textContent`; source remains untrusted data.
+- Shared streaming request-size limiter is used by Forge discovery/inspect/read/candidate write APIs.
+- Latest verified implementation head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247/247 tests passed, run 43746135062.
+- Preview for that implementation: https://44e15358.aegis-6yk.pages.dev. Preview secrets and D1 binding remain unconfigured; authenticated UI and persistence cannot yet be exercised.
+
+
+### Alibaba Page Agent browser automation research
+
+- Added `alibaba/page-agent` (MIT) as a high-priority in-page DOM automation architecture reference, separate from Helium browser.
+- The project's own demo API is evaluation-only and not for sensitive/production data. No demo API or third-party script is to be used by AEGIS.
+- AEGIS browser automation remains a separately isolated, allowlisted, Sentinel-mediated capability with explicit user confirmation and audit. Page DOM and content remain untrusted input.
+- See the Page Agent section in `docs/RESEARCH_SOURCE_REGISTER.md`. No package, extension or MCP server installed.
+
+
+## 21. Forge candidate review and licence gate — 15 November 2026
+
+- Added authenticated owner-only PATCH /api/forge/candidates/:id and the candidate review form in the Forge panel.
+- Owner records one of: reuse, adapt, rebuild, combine, reject; licence state: review-required, verified, not-applicable; lifecycle status: inspected, assessed, approved, rejected or archived.
+- UI requires an explicit confirmation that the owner checked the actual upstream licence and relevant dependencies before setting verified.
+- Reuse/adapt/combine require verified licence review. Approval requires verified licence and a positive engineering decision. These rules are enforced in both the repository validation and D1 trigger, not just the UI.
+- Source URL, source type, pinned tree SHA, metadata and original creation timestamp are immutable. Candidate review and status transitions create append-only audit events.
+- Added shared migration migrations/shared/0006_forge_candidate_review.sql after 0005.
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746766564: **260 tests passed, 0 failed**, Node.js 22, at code head bf76e3b81efd7be391e50d1fa43dcbb99744ec21.
+- No candidate has been legally verified by this automation; review is an explicit owner action. No code execution, package installation, deployment or production D1 change.
+
+
+### Optional Qwen provider adapter
+
+- AEGIS now has a provider-neutral streaming adapter with Workers AI as the unchanged default and Alibaba Qwen as an explicit optional provider.
+- Qwen routing requires server-side AEGIS_MODEL_PROVIDER=alibaba-qwen, an encrypted API-key secret, validated workspace ID, allowlisted region and optional model ID.
+- The endpoint is constructed from the validated workspace and region; arbitrary hosts are not accepted. There is no silent provider fallback.
+- Remote prompts, history and retrieved memory would be sent to the selected Model Studio region. This route is not enabled and no API key, workspace, paid plan or billing resource has been configured.
+- See docs/AEGIS_MODEL_PROVIDERS.md. Unit and integration tests cover provider selection, endpoint validation and error handling.
+
+
+## 22. Production deployment audit — 15 November 2026
+
+A live Cloudflare Pages check found two documentation-only commits on main that were pushed without the owner's explicit approval. Both commits changed documentation only:
+
+- 168293c7d924cb929af0032e370756e0f68a5f12 — added docs/AEGIS_COPILOTKIT_AGUI.md (96 additions, no code changes).
+- 27c5d2c18fc4ecefd170475e9ae8a65058b6636c — added docs/RESEARCH_SOURCE_REGISTER.md (569 additions, no code changes).
+
+Cloudflare Pages production deployment:
+- Project: aegis (production branch main).
+- Deployment: 6a8926d8-3975-450a-9921-7326fe1ed9a8.
+- URL: https://6a8926d8.aegis-6yk.pages.dev
+- Trigger commit: 27c5d2c18fc4ecefd170475e9ae8a65058b6636c.
+- Build and deploy stages completed successfully at 2026-11-15 17:49:30 UTC.
+
+Impact: a production redeploy did occur, but the two main-branch commits changed Markdown documentation only. No application source, functions, migrations, dependencies, secrets, permissions, D1 resources or runtime infrastructure were changed by those commits. The new AEGIS memory, Forge, AG-UI, Projects, Approvals and PWA code remains on the feature branch and was not included in that production deployment.
+
+The current production Pages configuration still shows the existing MEMORY KV and AI bindings, with no AEGIS_DB D1 binding. No new Cloudflare resources or secrets were created. Do not revert or redeploy production without explicit owner approval.
+
+
+## 23. Owner-controlled permanent memory purge — 15 November 2026
+
+- Added authenticated same-origin DELETE /api/memories/:id. The request requires an explicit confirmation body and exact owner/project scope.
+- Memory repository uses one transactional D1 batch: unlink any correction records that reference the target, then delete the selected memory row.
+- Migration 0007 rebuilds the lifecycle event table without a foreign key to memory rows and adds immutable supersession-unlinked and purged tombstone triggers.
+- The selected memory's content, provenance and row are removed from live D1. A minimal append-only audit record retains only memory ID, owner/project scope, prior/current lifecycle status and timestamp; it does not retain deleted content or source URL.
+- The memory review panel exposes a per-record Delete permanently action with a browser confirmation. It does not provide a bulk delete.
+- Seven shared migrations have been exercised together in SQLite: Project Spaces, memory records, lifecycle audit, correction/supersession, Forge candidate registry, Forge licence gates and permanent memory purge. The purge test confirmed content-row removal, safe correction unlinking, retained tombstones and append-only event protection. This is local SQLite validation, not a live Cloudflare D1 migration.
+- Retention policy/automatic expiry cleanup remains future work. Cloudflare D1 has not been provisioned or bound; the feature remains preview-only.
+
+
+## 24. Memory purge verification — 15 November 2026
+
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43747844597 passed **272/272 tests**, Node.js 22, at commit 9ad133444ac43d230db6dc42c451f7e77de6dabb.
+- Seven shared migrations were exercised in SQLite. The first attempt exposed a real migration defect: memory audit triggers still referenced the event table while it was being rebuilt. Migration 0007 now drops and recreates those triggers around the table swap.
+- Re-run confirmed: all seven migrations apply; owner/project constraints work; correction links are safely unlinked; the memory row is physically deleted; a minimal purged tombstone remains; the audit table remains append-only.
+- This is SQLite verification only. D1 remains unprovisioned/unbound; no live user memory was deleted and no production binding changed.
+
+
+## 21. Unified Project Space timeline and Security Centre — 15 November 2026
+
+- Project Space event feed now combines workspace activity with owner/project-scoped memory lifecycle events. Memory entries are presented as metadata-only timeline records; memory content itself is not copied into the timeline.
+- If the shared memory lifecycle table is not yet available, workspace activity remains readable and the API reports memory-event availability separately.
+- The Projects panel now reads the merged event feed and displays the source (Project or Memory), event type, status transition and timestamp.
+- The Control Centre now includes a read-only Security Centre panel backed by the authenticated /api/modules and /api/capabilities registries.
+- The Security Centre lists module status, declared capability count, manifest version/provider/status and each action's effect/risk/approval policy. It does not expose grants, execute tools or change permissions.
+- Full GitHub Actions verification after these changes: Node.js 22, 278 tests passed, 0 failed (run https://github.com/LAURENCE1977/Aegis-/actions/runs/43748595330). The latest subsequent frontend refactor is still being verified.
+
+## 26. Composio-assisted upstream adaptations and retrieval/stream hardening — 15 November 2026
+
+Composio was used to search and inspect live GitHub repository metadata, READMEs, source documents, licence files and package manifests. The findings were applied to AEGIS-native implementation rather than importing external runtimes.
+
+### CopilotKit ecosystem
+- OpenBot and OpenFuse source/licence/architecture were inspected. Both repositories declare MIT; OpenFuse is alpha and its README/package manifest documents Node 24, pnpm and CopilotKit Intelligence/model-provider requirements. The hosted architecture includes persistent services, browser workers and computer containers. OpenBot also depends on a larger Hono/React/PostgreSQL/Kubernetes-style stack.
+- Decision: no wholesale adoption, React migration, separately licensed Intelligence service or extra hosted infrastructure. Adapt the server-side policy gateway, audit-before-forwarding, secret separation, isolated computer workspaces, network egress boundaries, durable task receipts and human takeover patterns.
+- Official AG-UI 1.0 source was pinned to 2330368a2a74573902858867072406638ba3073d; lifecycle, text-message, run-input and frozen wire-schema documents were inspected.
+- Native AG-UI hardening: provider startup failures now emit a first-event RUN_ERROR SSE frame; the PWA consumes protocol errors returned before a run starts. Output-cap termination closes the text message and emits RUN_FINISHED with outcome cancelled, not a false success. The PWA still rejects frontend tools, ambient context, resume, multimodal input and arbitrary state until Sentinel and durable run semantics are implemented.
+
+### Memory retrieval adaptation
+- CogniCore (Apache-2.0) and mnem (Apache-2.0) were inspected as local-first memory references. CogniCore's curated context, suggested-then-confirmed decisions and bounded handover briefs are useful; its README notes lexical retrieval's vocabulary-mismatch limitation. mnem's versioned/content-addressed knowledge and hybrid retrieval are useful concepts, but its Rust/embedding footprint is not a required Cloudflare dependency.
+- AEGIS now uses shared bounded BM25-style lexical ranking in both the in-memory read model and D1 repository: exact token boundaries, inverse document frequency, length normalization, kind/tag weighting, and a maximum 200-row candidate pool before final ranking. No vector database, embedding API, Python/Rust runtime or extra model cost.
+- Legacy KV saved notes are now explicitly labelled as untrusted reference material and never as instructions or permissions, matching the treatment of structured retrieved memories.
+
+### Verification and operational boundary
+- GitHub Actions run 43752415969 on commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed 297 tests, 0 failures under Node.js 22.
+- PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
+- Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
+
+
+## 27. Project Space handover briefs — 15 November 2026
+
+Adapted CogniCore's compact project-context/handover idea into a deterministic AEGIS-native capability.
+
+- New owner-authenticated read-only endpoint: GET /api/workspaces/:id/brief.
+- Requires the signed-in deployment owner, an active owner-owned Project Space and the shared AEGIS_DB binding.
+- Default output budget 6,000 characters; maxChars is bounded to 1,000–12,000.
+- Includes project name/goal, recent event summaries and accepted, unexpired, non-restricted memories from the exact project only. Excludes personal memories, other projects, candidates, retracted/superseded/expired/restricted memories, raw event bodies and source URLs.
+- Decisions and procedures are prioritized. Long memory text is shortened before lower-priority items are dropped. Output reports included/omitted counts, truncation and a rough token estimate (characters divided by four, not a provider tokenizer).
+- Every event and memory entry is marked untrusted reference data; the brief cannot grant capabilities, approvals, task state or instructions.
+- Projects UI now exposes Build handover brief and Copy brief. Clipboard failure leaves selectable text available.
+- This is an extractive snapshot; it does not call an LLM, start an agent, create a task or transmit context to an external provider.
+- Expiry is rechecked in the brief builder even though the D1 repository also filters expired memories.
+- GitHub Actions run 43752415969 on commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed 297 tests, 0 failures under Node.js 22.
+- D1 remains unprovisioned/unbound; the endpoint is feature-branch code and cannot become operational until the shared database is approved, provisioned and migrated. No production deployment or infrastructure change occurred.
+- Detailed behavior: docs/AEGIS_PROJECT_SPACES.md.
+
+
+## 28. Project-aware chat context — 15 November 2026
+
+- Selected Project Space AG-UI runs now include up to eight recent event summaries from the exact owner/project timeline, alongside approved personal/project memories.
+- The context builder omits raw event bodies and includes only bounded type, summary and timestamp fields, labelled untrusted reference data. Project event loading is optional; missing timeline migrations do not break chat.
+- Tests verify selected-project isolation and that raw event content and other-project summaries never enter the model context.
+- Latest verified code commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed GitHub Actions run 43752415969: 297 tests, 0 failures under Node.js 22.
+
+
+## 27. Composio-assisted companion-repository audit — 15 November 2026
+
+- Used the connected Composio GitHub integration to inspect AEGIS, its open PR stack, branch ancestry, source files, tests, workflow logs and the user's companion repositories. Regression fixes were committed only to existing feature branches; no production merge or runtime integration was performed.
+- Detailed licence/provenance and reuse decisions are recorded in [`docs/RESEARCH_SOURCE_REGISTER.md`](RESEARCH_SOURCE_REGISTER.md) and [`docs/AEGIS_EXTERNAL_REPO_INTEGRATION.md`](AEGIS_EXTERNAL_REPO_INTEGRATION.md).
+- Architecture split: Agent Reach is the read-only source layer; Auto Browser is a separate browser-execution service; Composio is an optional connector provider, not an authority; OpenClaw is a selective runtime reference; G0DM0D3 is a local-inference reference; Charlie skills are workflow references pending licence clarification; the audio-lab artifact is a rebuild candidate.
+- AEGIS remains the policy owner. The inbound MCP bridge is read-only; the MCP Forge catalogue is not an outbound connector manager; the agent capability bridge/grant store are not yet connected to a trusted adapter executor; agent runs remain plan-only. No Composio or Auto Browser runtime adapter is live.
+- Required before execution: D1/Queue non-production validation, encrypted connection/secret-vault lifecycle, append-only invocation audit, Sentinel-bound exact grants/approvals, server-owned adapter routing and egress/redirect/private-address controls.
+- PR #27 (`feature/native-memory-substrate` on PR #26) verified at `670cb46668091b8f3b1e18611e7724656165bb80`: Node.js 22 **297/297**, Cloudflare Pages preview successful. PR #29 (`feature/durable-agent-orchestrator-rebased` on PR #27 at that head) verified at `e6ca7f8dce36d91cbf5b637bfdae1f4919252004`: Node.js 22 **314/314**, Cloudflare Pages preview successful. Both remain draft; review the fresh diff and CI before any merge.
+- These checks do not establish live D1/Queue deployment. No shared D1 migrations were applied, no secrets or permissions changed, and no production deployment was initiated.
