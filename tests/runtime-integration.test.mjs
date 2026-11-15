@@ -61,6 +61,15 @@ class MemoryD1 {
           }
           return { meta: { changes: 0 } };
         }
+        if (sql.includes("SET status = 'failed'") && sql.includes("JOB_DELIVERY_EXHAUSTED")) {
+          const row = db.jobs.get(v[1]);
+          const expiredLease = row?.status === 'running' && (!row.lease_until || row.lease_until <= v[2]);
+          if (row && (['queued', 'pending_dispatch'].includes(row.status) || expiredLease)) {
+            row.status = 'failed'; row.error_code = 'JOB_DELIVERY_EXHAUSTED'; row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
         if (sql.includes("SET status = 'queued'")) {
           const row = db.jobs.get(v[1]);
           if (row && row.status === 'pending_dispatch') { row.status = 'queued'; row.updated_at = v[0]; return { meta: { changes: 1 } }; }
@@ -144,7 +153,7 @@ test('a stale worker cannot adopt a newer attempt number after its lease is recl
   DB.afterClaim = simulateNewerAttempt;
   DB.afterAttemptRead = simulateNewerAttempt;
   let acked = false;
-  await runtime.queue({ messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }] }, env);
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }] }, env);
   assert.equal(DB.jobs.get(job.id).status, 'running');
   assert.equal(DB.jobs.get(job.id).attempts, 2);
   assert.equal(DB.jobs.get(job.id).result_json, undefined);
