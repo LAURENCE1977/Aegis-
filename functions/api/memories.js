@@ -44,9 +44,10 @@ export async function onRequestGet({ request, env }) {
     }
     const repository = createMemoryRepository(env.AEGIS_DB);
     const query = url.searchParams.get("q");
+    const includeCandidates = url.searchParams.get("review") === "1";
     const memories = query
       ? await repository.search({ ownerId: OWNER_ID, projectId, query, limit })
-      : await repository.list({ ownerId: OWNER_ID, projectId, limit });
+      : await repository.list({ ownerId: OWNER_ID, projectId, limit, includeCandidates });
     return jsonResponse({ memories, total: memories.length });
   } catch {
     return jsonResponse({ error: "Memory search is temporarily unavailable." }, 503);
