@@ -29,3 +29,12 @@ test('memory UI uses authenticated API routes and safe text rendering', () => {
   assert.match(html, /method:\s*'PATCH'/);
   assert.match(html, /\/events/);
 });
+
+
+test('chat UI uses the authenticated AG-UI 1.0 transport rather than the legacy JSON route', () => {
+  assert.match(html, /fetch\('\/api\/ag-ui'/);
+  assert.match(html, /protocolVersion:\s*'1\.0'/);
+  assert.match(html, /TEXT_MESSAGE_CONTENT/);
+  assert.match(html, /RUN_FINISHED/);
+  assert.doesNotMatch(html, /fetch\('\/api\/ask'/);
+});
