@@ -10,6 +10,34 @@ import {
 
 const MAX_BODY_BYTES = 2048;
 
+async function readLimitedBody(request) {
+  if (!request.body) return { text: "" };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return { tooLarge: true };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { invalid: true };
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { text: new TextDecoder().decode(bytes) };
+}
+
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: {
@@ -83,19 +111,13 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Request body is too large." }, 413);
   }
 
-  let raw;
-  try {
-    raw = await request.text();
-  } catch {
-    return json({ error: "Invalid request body." }, 400);
-  }
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
-    return json({ error: "Request body is too large." }, 413);
-  }
+  const read = await readLimitedBody(request);
+  if (read.tooLarge) return json({ error: "Request body is too large." }, 413);
+  if (read.invalid) return json({ error: "Invalid request body." }, 400);
 
   let body;
   try {
-    body = JSON.parse(raw);
+    body = JSON.parse(read.text);
   } catch {
     return json({ error: "Invalid JSON request." }, 400);
   }
