@@ -507,3 +507,41 @@ Source: https://github.com/codecrafters-io/build-your-own-x. The README identifi
 
 ### Cross-source operating rule
 These directories help discover and learn; they do not approve dependencies. Every candidate must pass provenance, licence, maintenance, security, platform, cost and test review. AEGIS should extract ideas, build its own adapters and native components, and keep Sentinel as the enforcement boundary.
+
+
+## Persistent memory, local inference and computer-use agents
+
+These are three distinct source tracks, not interchangeable products.
+
+### Kytheros Strata — persistent memory architecture
+
+- Source: https://github.com/kytheros/strata
+- Reported licence: Apache-2.0; verify the pinned commit and bundled dependency licences before any code reuse.
+- Relevant ideas: SQLite/FTS5 local-first retrieval, Cloudflare Workers/D1 adapter, typed memories, provenance, hybrid retrieval and memory quality gates.
+- AEGIS decision: high-priority architecture reference. Rebuild selected concepts in the native memory substrate; keep AEGIS owner/project identity, Sentinel policy, storage schema and audit authoritative.
+- Security caveat: a caller-supplied identity header is not authentication. Any multi-tenant HTTP deployment needs a verified authentication boundary. Do not expose a raw memory service publicly.
+
+### Niko1221 Strata — optional local inference engine
+
+- Source: https://github.com/Niko1221/Strata
+- Reported licence: MIT; verify the exact release and bundled model/runtime licences independently.
+- Relevant ideas: local model serving and OpenAI/Anthropic-compatible provider interfaces.
+- AEGIS decision: optional future local-model provider adapter for capable hardware. It is not the Kytheros memory project and is not suitable as a required runtime for the current Chromebook/iPhone/iPad-first target. Do not require GPU hardware or local model downloads for the first release.
+
+### Meet Nod — computer-use architecture
+
+- Source: https://github.com/n8n-io/nod
+- Official product overview: https://blog.n8n.io/meet-nod/
+- Documentation: https://nod.n8n.io/docs/
+- Reported licence: Apache-2.0; pin and inspect exact source and third-party components before reuse.
+- Relevant ideas: isolated browser/workspace, user approval for consequential actions, credential isolation, action audit, budgets and scheduled work.
+- AEGIS decision: high-priority architecture reference, not a direct runtime dependency. Build a provider-neutral computer-use capability with a separately isolated worker, Sentinel mediation, scoped vault references, explicit approvals, redacted audit, time/cost limits and durable server-side jobs.
+- Platform caveat: a desktop-hosted agent does not itself deliver Chromebook/iOS-native operation or always-on execution when its host sleeps. AEGIS's browser-first control plane and server-side job runtime remain canonical.
+- Security boundary: never expose unrestricted browser, shell, filesystem or host-control tools to an agent. Retrieved page content and browser output are untrusted data, not instructions.
+
+### Native implementation status
+
+- `docs/AEGIS_MEMORY_SUBSTRATE.md` specifies the AEGIS-owned memory model and integration gates.
+- `functions/lib/memory-substrate.mjs` is a pure in-memory read-model prototype with typed records, provenance, owner/project scoping, lifecycle filtering and lexical retrieval.
+- It is not persistent, is not wired to an API or chat, and does not enforce authentication itself. The API must derive owner identity from the verified session and verify project membership before calling it.
+- No external source package, daemon, model, browser agent, account or credential has been installed or connected.
