@@ -128,7 +128,7 @@ export function validateCapabilityManifest(manifest) {
   }
   if (manifest.auth.mode === 'secret-reference') {
     if (typeof manifest.auth.secretRef !== 'string' ||
-        !/^secret:\/\/[a-z0-9][a-z0-9._/-]{2,120}$/.test(manifest.auth.secretRef) ||
+        !/^secret:\/\/[A-Za-z0-9][A-Za-z0-9._/-]{2,120}$/.test(manifest.auth.secretRef) ||
         manifest.auth.secretRef.includes('..')) {
       throw new TypeError('Invalid secret reference; store only a secret identifier, never a secret value');
     }
