@@ -35,7 +35,7 @@ test('Forge inspection endpoint returns pinned source tree metadata without exec
         full_name:'example/agent',html_url:'https://github.com/example/agent',
         default_branch:'main',private:false,
       });
-      return response({sha:'tree-sha',truncated:false,tree:[
+      return response({sha:'1'.repeat(40),truncated:false,tree:[
         {path:'README.md',type:'blob',sha:'a'.repeat(40),size:100},
       ]});
     },
