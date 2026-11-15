@@ -69,6 +69,6 @@ test('Control Centre exposes Project Spaces and owner approval inbox surfaces', 
 
 test('Project Space and approval views render untrusted data as text, not HTML', () => {
   assert.match(html, /nameNode\.textContent\s*=\s*workspace\.name/);
-  assert.match(html, /summaryNode\.textContent\s*=\s*approval\.operationSummary/);
+  assert.match(html, /title\.textContent\s*=\s*approval\.operationSummary/);
   assert.doesNotMatch(html, /workspace\.name\s*\+\s*['"]</);
 });
