@@ -177,6 +177,9 @@ test('Forge review rejects reuse without licence verification and refuses termin
   const reopen=await onRequestPatch({
     request:await request('/api/forge/candidates/'+candidate.id,{
       licenceReview:'verified',decision:'reuse',status:'approved',
+      licenceEvidenceUrl:'https://github.com/example/agent/blob/main/LICENSE',
+      reviewNote:'Reviewed the upstream licence and dependency obligations.',
+      licenceAttested:true,expectedUpdatedAt:candidate.updatedAt,
     },{method:'PATCH'}),
     env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
   });
