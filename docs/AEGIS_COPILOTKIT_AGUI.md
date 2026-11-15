@@ -20,10 +20,10 @@ The protocol boundary is more valuable to AEGIS than copying a React component l
 
 ## AEGIS-native implementation
 
-Build a deliberately small AG-UI-compatible adapter in the existing Cloudflare Pages/Workers application:
+Build a deliberately small AG-UI-compatible adapter in the existing Cloudflare Pages/Workers application (first streaming text slice implemented):
 
 1. Keep the current lightweight, responsive web/PWA shell initially. Do not migrate the whole application to React just to use CopilotKit.
-2. Add a versioned authenticated agent interaction endpoint with SSE streaming and explicit run/thread identifiers.
+2. Implemented on the current feature branch: a versioned authenticated agent interaction endpoint with SSE streaming and explicit run/thread identifiers. Long-running durable run persistence and reconnect/resume are still pending.
 3. Map AEGIS's own chat lifecycle to protocol events: run start, text/message start and content, tool-call start/arguments/result, state snapshots/deltas where needed, run finish and structured errors. Confirm exact event names and payload schemas against the pinned AG-UI specification before implementation.
 4. Expose only UI-safe state: current Project Space, job summaries, agent status and approval request summaries. Never stream secrets, raw vault contents, private environment values or unrestricted internal records.
 5. Tool calls are proposals only. Every operation must route through AEGIS capability registry and Sentinel; AG-UI events and frontend callbacks are not authorization.
