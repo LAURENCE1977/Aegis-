@@ -57,12 +57,11 @@ The shared database now also includes the owner-scoped Forge candidate registry 
 
 ## Verified checks
 
-- GitHub Actions latest branch head `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: **230 passed, 0 failed** (Node.js 22), run https://github.com/LAURENCE1977/Aegis-/actions/runs/43744994054.
-- Cloudflare Pages branch preview build succeeded for that commit:
-  - https://56dc826b.aegis-6yk.pages.dev
-  - https://feature-native-memory-substr.aegis-6yk.pages.dev
-- Earlier SQLite validation applied the first three canonical migrations in order and confirmed create/status audit triggers, append-only enforcement and owner/project foreign-key checks. Migration 0004 correction links still need independent SQLite validation before live provisioning.
-- Cloudflare Pages preview deployment succeeded for the latest feature code at https://8717ae43.aegis-6yk.pages.dev. Read-only browser check confirms the sign-in screen loads; authenticated UI cannot be exercised until Preview secrets are configured.
+- GitHub Actions latest branch head 9ad133444ac43d230db6dc42c451f7e77de6dabb: **272 passed, 0 failed** (Node.js 22), run https://github.com/LAURENCE1977/Aegis-/actions/runs/43747844597.
+- SQLite exercised the complete seven-migration shared schema, including Project Space owner isolation, memory lifecycle events, correction/supersession, Forge licence gates, and memory purge. Purge removed the content row, unlinked correction references, retained minimal tombstones and preserved append-only event enforcement.
+- The SQLite checks are not a live Cloudflare D1 migration. The shared migrations still need a preview D1 application and real API verification.
+- Cloudflare Pages preview builds have succeeded for recent feature commits. The latest preview deployment should be checked against the current head before treating it as current.
+- Browser verification previously reached the AEGIS login screen; authenticated UI remains unverified until Preview secrets are configured.
 
 ## Deployment status
 
@@ -70,14 +69,14 @@ This is feature-branch code and preview deployment only. D1 has **not** been pro
 
 ## Next implementation work
 
-1. Verify the newest chat-memory and frontend smoke-test commits in CI.
-2. Add an owner-configurable retention policy and optional automatic expiry cleanup; per-record permanent purge is implemented.
-3. Keep migration validation in CI and verify the seven-migration sequence against a real preview D1 before activation.
-4. Build project timeline ↔ memory linking into the broader Control Centre.
-5. Add optional embeddings/reranking only after a reproducible benchmark proves improvement over lexical retrieval.
-6. Provision one free-tier D1 database only after checking current account-wide usage and limits; apply the canonical shared migrations, configure `AEGIS_DB` and test on preview before any production promotion.
+1. Add an owner-configurable retention policy and optional automatic expiry cleanup with an auditable dry-run mode.
+2. Link Project Space memory records and lifecycle events into the project activity timeline.
+3. Verify the full seven-migration sequence against a provisioned preview D1 database before any production promotion.
+4. Add optional embeddings/reranking only after a reproducible benchmark proves improvement over lexical retrieval.
+5. Check account-wide free-tier use and obtain explicit approval before provisioning D1 or changing production bindings.
 
 ## Research inputs and AEGIS decisions
+
 
 ### Kytheros Strata — persistent memory
 
