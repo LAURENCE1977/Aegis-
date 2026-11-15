@@ -74,7 +74,7 @@ test('AG-UI endpoint streams model deltas as ordered protocol 1.0 events',async(
   assert.match(response.headers.get('content-type'),/text\/event-stream/);
   const events=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.deepEqual(events.map(event=>event.type),[
-    'RUN_STARTED','TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END','RUN_FINISHED',
+    'RUN_STARTED','TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END','RUN_FINISHED',
   ]);
   assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['Hello ','from AEGIS.']);
   assert.equal(captured.stream,true);
