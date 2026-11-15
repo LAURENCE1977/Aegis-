@@ -250,7 +250,7 @@ export function createMemoryRepository(db) {
       return mapMemoryRow(row);
     },
 
-    async list({ ownerId, projectId = null, now = Date.now(), limit = 20 } = {}) {
+    async list({ ownerId, projectId = null, now = Date.now(), limit = 20, includeCandidates = false } = {}) {
       assertMemoryScope(ownerId, projectId);
       if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
@@ -259,7 +259,7 @@ export function createMemoryRepository(db) {
       const result = await db.prepare(`
         SELECT * FROM aegis_memories
         WHERE owner_id = ? AND project_id IS ?
-          AND status = 'accepted'
+          AND status IN (${includeCandidates ? "'accepted', 'candidate'" : "'accepted'"})
           AND (expires_at IS NULL OR expires_at > ?)
         ORDER BY updated_at DESC, id ASC
         LIMIT ?
