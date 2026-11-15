@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Forge is AEGIS's source-aware reverse-engineering workshop. Its default workflow is to inspect useful upstream projects, extract transferable ideas, record provenance and licence status, then implement an AEGIS-native capability. It does not install or execute discovered repositories.
+Forge is AEGIS's source-aware reverse-engineering workshop. Its default workflow is to inspect useful upstream projects, extract transferable ideas, record provenance and licence status, then implement an AEGIS-native capability. It does not install or execute discovered repositories. Every candidate follows the [reverse-engineering report template](FORGE_REVERSE_ENGINEERING_TEMPLATE.md), which records pinned evidence, licence boundaries, security, portability, native adaptation and tests.
 
 ## Implemented on the feature branch
 
