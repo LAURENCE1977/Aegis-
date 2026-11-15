@@ -8,7 +8,7 @@ const env={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secre
 
 class PurgeD1 {
   constructor(){this.calls=[];}
-  prepare(sql){const db=this;return {sql,values:[],bind(...values){this.values=values;return this;}};}
+  prepare(sql){const db=this;return {sql,values:[],bind(...values){this.values=values;return this;},async first(){return {id:this.values[0],owner_id:this.values[1],status:'active'};}};}
   async batch(statements){
     this.calls=statements.map(s=>({sql:s.sql,values:s.values}));
     return [{meta:{changes:1}},{meta:{changes:1}}];
