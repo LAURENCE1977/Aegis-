@@ -33,13 +33,14 @@ export function createTextRunContentEvent({ runId, delta, now = Date.now() }) {
   return { type: 'TEXT_MESSAGE_CONTENT', messageId: runId, delta, timestamp: now };
 }
 
-export function createTextRunFinishEvents({ threadId, runId, now = Date.now() }) {
+export function createTextRunFinishEvents({ threadId, runId, now = Date.now(), outcome }) {
   requireIdentifier(threadId, 'thread ID');
   requireIdentifier(runId, 'run ID');
   if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
+  if (outcome !== undefined && outcome !== 'cancelled') throw new TypeError('Invalid AG-UI run outcome');
   return [
     { type: 'TEXT_MESSAGE_END', messageId: runId, timestamp: now },
-    { type: 'RUN_FINISHED', threadId, runId, timestamp: now },
+    { type: 'RUN_FINISHED', threadId, runId, timestamp: now, ...(outcome ? { outcome } : {}) },
   ];
 }
 
@@ -77,7 +78,8 @@ export function encodeAgUiSse(events) {
     const valid = event.type === 'RUN_STARTED'
       ? typeof event.threadId === 'string' && typeof event.runId === 'string' && event.protocolVersion === '1.0'
       : event.type === 'RUN_FINISHED'
-        ? typeof event.threadId === 'string' && typeof event.runId === 'string'
+        ? typeof event.threadId === 'string' && typeof event.runId === 'string' &&
+          (event.outcome === undefined || event.outcome === 'cancelled')
         : event.type === 'TEXT_MESSAGE_START'
           ? typeof event.messageId === 'string' && (event.role === undefined || event.role === 'assistant')
           : event.type === 'TEXT_MESSAGE_CONTENT'
