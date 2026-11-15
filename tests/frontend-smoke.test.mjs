@@ -171,3 +171,10 @@ test('memory review UI requires explicit confirmation before permanent deletion'
   assert.match(html, /method:\s*'DELETE'/);
   assert.match(html, /confirm:\s*true/);
 });
+
+test('Project Space timeline renders memory lifecycle events from the merged event feed', () => {
+  assert.match(html, /controlApi\('\/api\/workspaces\/' \+ encodeURIComponent\(id\) \+ '\/events'/);
+  assert.match(html, /timelineData\.events/);
+  assert.match(html, /event\.source\s*===\s*'memory'/);
+  assert.match(html, /event\.occurredAt\s*\|\|\s*event\.createdAt/);
+});
