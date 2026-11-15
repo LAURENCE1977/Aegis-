@@ -208,3 +208,15 @@ https://github.com/Raisolah/9router is a possible model-router reference, but se
 https://github.com/OpenCut-app/OpenCut is an MIT video-editor project being rewritten with planned Editor API, MCP and headless automation. These are roadmap items, not current proven interfaces. Archive opencut-classic is read-only. Keep it as a future Media Studio reference, not a current core dependency.
 
 No candidate has been installed or connected. All are provenance-tracked research only.
+
+## Xiryn — local-first personal agent runtime
+
+Xiryn (https://github.com/SouravBeraAkaSpeed/xiryn) is a high-value architecture reference for persistent specialist agents and background computer-use workflows. MIT-licensed TypeScript/Next.js app; AI SDK 7; SQLite; Docker-backed Linux desktops; browser automation; model/provider adapters; long-term memory; routines; squads; budgets; optional Telegram remote control and local Ollama/LM Studio.
+
+**AEGIS fit:** study per-agent isolated workstations, durable turns, routine scheduling, specialist delegation, run-cost visibility and mobile approval/takeover. Do not adopt wholesale or allow it to replace AEGIS's canonical identity, memory, capability policy, approvals, job state or audit. Consider a future constrained worker adapter with expiring task envelopes and verified result/evidence return.
+
+**Critical deployment consideration:** upstream Docker Compose mounts /var/run/docker.sock into the main Xiryn service and runs that service as root so it can create agent containers. Docker socket access is effectively host-root-equivalent. Treat Xiryn as a privileged host service; require a disposable dedicated host and thorough source/config review before trial. Agent workstations have separate isolation controls, but prompt injection and container escape risks are not eliminated.
+
+**Platform fit:** requires a Node/Docker-capable computer; not an iPhone/iPad host or Cloudflare Worker. ChromeOS Linux support must be proven on the actual Chromebook. Local models need suitable host resources. Provider, Firecrawl, Telegram and optional Cloudflare tunnel traffic are external data paths, so local-first does not mean every interaction stays local.
+
+No code, containers, credentials, bot or service has been installed or connected.

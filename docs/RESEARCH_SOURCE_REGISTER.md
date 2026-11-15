@@ -611,3 +611,34 @@ Sources:
 - https://github.com/opencutvideo/Opencut
 
 No OpenCut package, editor project, plugin or service has been installed or connected.
+
+## Xiryn — local-first personal multi-agent runtime
+
+Primary candidate: https://github.com/SouravBeraAkaSpeed/xiryn
+Product site: https://xiryn.com/
+- MIT-licensed; package currently reports v0.7.0 and Node.js >=20.9.
+- TypeScript/Next.js application using AI SDK 7, SQLite/Drizzle, Docker workstations, Chromium/noVNC and provider adapters. Each specialist agent receives its own Linux desktop container; agents can delegate within squads.
+- README/site documents persistent turns that survive browser closure, long-term memory, scheduled routines, usage/budget tracking, Firecrawl research, local Ollama/LM Studio models, Telegram remote control and human hand-off for logins/payments.
+- Supports hosted providers and OpenAI-compatible endpoints. Local inference still consumes the host's CPU/RAM/GPU.
+
+AEGIS decision:
+- Very high-value architecture reference and optional external worker/runtime candidate. It is one of the closest projects to AEGIS's personal-agent, persistent-specialist, computer-use and background-work goals.
+- Do not replace AEGIS core or merge its runtime wholesale. Xiryn is a separate self-hosted product with its own database, agent model, UI and lifecycle. AEGIS remains canonical for identity, memory policy, capability registry, approvals, job state, audit and cross-platform Control Centre.
+- Extract/adapt ideas: isolated per-agent workstations; disposable worker lifecycle; agent role/model/budget profiles; durable turns; scheduled routines; visible run costs; specialist squads; phone-based approvals and takeover; local-model/provider adapters.
+- Possible future adapter: AEGIS issues a narrowly scoped, expiring job envelope; a separate Xiryn worker performs only the permitted task in an isolated workstation; a validated result and evidence return to AEGIS. Do not grant Xiryn broad AEGIS credentials or let it become a second source of truth.
+- Chromebook/iPhone/iPad-first constraint matters: Xiryn requires a computer capable of Node.js and Docker to host its server and agent desktops. It is not hosted infrastructure and cannot run persistently on iPhone/iPad. ChromeOS Linux/Docker compatibility and resource requirements must be tested on the actual Chromebook; the documented Mac/Linux/Windows installer does not establish ChromeOS support.
+- Its local-first claim is qualified: configured model-provider calls, optional Firecrawl, Telegram and temporary Cloudflare quick tunnels for phone takeover leave the machine. Review each external data flow and provider retention terms.
+- **Critical security trade-off from actual repository:** Docker Compose mounts /var/run/docker.sock and runs the main service as root to create sibling workstations. Docker socket access is effectively host-root-equivalent. Agent containers have separate isolation controls, but the orchestrator is a privileged host service. Do not casually install on a personal Chromebook or expose it to a network.
+- Upstream AGENTS.md says agents must never act on host files, no host paths should be mounted into agent containers, secrets must remain server-side and the app should remain loopback-only. SECURITY.md documents browser-key protection, per-container isolation, Telegram pairing, vault boundaries and prompt-injection limitations. These are useful controls, not proof of escape-proof isolation.
+- Before any sandbox trial: pin exact commit/release; inspect Dockerfile, workstation creation, socket use, network rules, container capabilities, mounts, image provenance, browser bridge, update process, vault crypto and Telegram/tunnel handling; run dependency/secret scanning; use a disposable non-production machine, synthetic credentials, restricted egress and no personal files. Test reset, cancellation, crash recovery and agent-to-agent isolation.
+- README documents npm run check (typecheck, lint, format) and npm run build; model-call tests can incur provider charges. Prefer mocks and local models during evaluation.
+
+Sources inspected:
+- https://github.com/SouravBeraAkaSpeed/xiryn
+- https://github.com/SouravBeraAkaSpeed/xiryn/blob/main/AGENTS.md
+- https://github.com/SouravBeraAkaSpeed/xiryn/blob/main/SECURITY.md
+- https://github.com/SouravBeraAkaSpeed/xiryn/blob/main/docker-compose.yml
+- https://github.com/SouravBeraAkaSpeed/xiryn/blob/main/package.json
+- https://xiryn.com/
+
+No Xiryn code, Docker image, container, package, API key, Telegram bot or service has been installed or connected.
