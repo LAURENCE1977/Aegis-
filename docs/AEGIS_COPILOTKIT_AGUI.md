@@ -93,7 +93,7 @@ Do not introduce a second agent runtime or second memory store. AEGIS remains au
 - An optional `projectId` is checked against an active owner-owned Project Space before the model is called. Frontend tools, ambient context, resume, multimodal messages and arbitrary state are explicitly rejected until their server-side policy and lifecycle semantics exist. The endpoint cannot execute tools.
 - Event types, identifiers, message size, body size and serialized event size are bounded. Only the six implemented event types can be emitted by the encoder.
 - AG-UI 1.0's lifecycle rules were checked against the pinned normative source: a valid stream begins with RUN_STARTED or RUN_ERROR; an output stream deliberately stopped by AEGIS's 12,000-character safety cap closes its text message and now reports RUN_FINISHED with `outcome: cancelled`, rather than falsely reporting success. A client disconnect is not converted into a successful finish.
-- Latest verified feature-branch commit `637174f3ffa6c083d40faee3a1a2ef81e0d780f4` passed GitHub Actions run 43752010145: **296 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43752010145.
+- Latest verified feature-branch commit `cdad016e3ebf56476e9af2e9284b22b50855b5fd` passed GitHub Actions run 43752415969: **297 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43752415969.
 - Cloudflare Pages preview for that commit deployed successfully at https://7aef49d9.aegis-6yk.pages.dev. Browser verification reached the AEGIS login screen; preview `/api/login` returns HTTP 503 until the two required Preview secrets are configured.
 
 ## Status and limitations
@@ -123,3 +123,6 @@ This is a native protocol adapter, not an installed CopilotKit client. No Copilo
 - [Uranid/mnem](https://github.com/Uranid/mnem) — Apache-2.0; local/offline, versioned knowledge, content-addressed records, hybrid vector/keyword/graph retrieval and token-budget reporting. Rust/CLI/embedding footprint is not suitable as a required Cloudflare Worker dependency. AEGIS keeps D1 as canonical and selectively adapts version/provenance and explicit retrieval-budget principles.
 - [MemTensor/MemOS](https://github.com/MemTensor/MemOS) — Apache-2.0; broad persistent memory and skill-reuse system. It is a larger multi-component architecture, so use as a comparison source rather than a required runtime.
 - AEGIS's new retrieval implementation uses bounded BM25-style lexical ranking, exact token boundaries, tag/kind weighting and a maximum 200-row D1 candidate set. It adds no embedding service, vector database, Python/Rust runtime or API cost. It remains scoped to accepted, unexpired, non-restricted owner/project memories.
+
+
+Selected Project Space AG-UI chats also receive up to eight recent event summaries from that exact owner/project scope. Raw event bodies are omitted; summaries are labelled untrusted reference data, and missing timeline migrations degrade to no event context.
