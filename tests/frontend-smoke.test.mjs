@@ -122,11 +122,13 @@ test('memory review UI offers an authenticated no-store JSON export', () => {
 
 
 test('Forge Control Centre provides safe read-only repository inspection and source reading', () => {
-  for (const id of ['forgeTab','forgeSection','forgeForm','forgeSourceUrl','forgeStatus','forgeFileList','forgeFilePreview']) {
+  for (const id of ['forgeTab','forgeSection','forgeForm','forgeSourceUrl','forgeStatus','forgeFileList','forgeFilePreview','forgeCandidateList']) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing Forge UI element: ' + id);
   }
   assert.match(html, /controlApi\('\/api\/forge\/inspect'/);
   assert.match(html, /controlApi\('\/api\/forge\/read'/);
+  assert.match(html, /controlApi\('\/api\/forge\/candidates'/);
+  assert.match(html, /candidateNode\.textContent\s*=\s*candidate\.metadata\.fullName/);
   assert.match(html, /forgeFilePreview\.textContent\s*=\s*data\.content/);
   assert.match(html, /Nothing is executed|Nothing is run/);
 });
