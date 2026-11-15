@@ -161,3 +161,20 @@ test('outbox recovery re-dispatches a run when the initial queue send fails', as
   assert.equal(saved.status, 'queued');
   assert.deepEqual(sent, [{ agentRunId: run.id }]);
 });
+
+
+test('accepts JSON requests with a charset parameter and exposes the run status route', async () => {
+  const { env } = makeEnv();
+  const request = postRun({ objective: 'Review the runtime' }, {
+    'Content-Type': 'application/json; charset=utf-8',
+  });
+  const response = await handleRuntimeFetch(request, env);
+  assert.equal(response.status, 201);
+  const { run } = await response.json();
+  const status = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id,
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(status.status, 200);
+  assert.equal((await status.json()).run.id, run.id);
+});
