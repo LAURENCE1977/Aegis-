@@ -125,6 +125,7 @@
         <button class="secondary" id="memoryTab" type="button">Memory</button>
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
         <button class="secondary" id="forgeTab" type="button">Forge</button>
+        <button class="secondary" id="securityTab" type="button">Security</button>
       </div>
       <section id="chatSection">
       <label class="project-context" for="chatProjectSelect">Chat context
@@ -150,6 +151,16 @@
         <div id="forgeCandidateList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
+      </section>
+      <section class="memory-panel" id="securitySection" hidden>
+        <h2>Security Centre</h2>
+        <p class="memory-help">Read-only inventory of AEGIS modules and capability contracts. A registered capability is not an execution permission; grants remain separate and default-deny.</p>
+        <p class="status" id="securityStatus" role="status" aria-live="polite">Loading security inventory…</p>
+        <h3>Modules</h3>
+        <div id="moduleList" aria-live="polite"></div>
+        <h3>Capability registry</h3>
+        <div id="capabilityList" aria-live="polite"></div>
+        <p class="memory-help">No grants are created by this inventory. No capability is invoked from this screen.</p>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -201,6 +212,11 @@
     const workspaceTab = document.getElementById('workspaceTab');
     const approvalTab = document.getElementById('approvalTab');
     const forgeTab = document.getElementById('forgeTab');
+    const securityTab = document.getElementById('securityTab');
+    const securitySection = document.getElementById('securitySection');
+    const securityStatus = document.getElementById('securityStatus');
+    const moduleList = document.getElementById('moduleList');
+    const capabilityList = document.getElementById('capabilityList');
     const forgeSection = document.getElementById('forgeSection');
     const forgeForm = document.getElementById('forgeForm');
     const forgeSourceUrl = document.getElementById('forgeSourceUrl');
@@ -577,7 +593,9 @@
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
+      securitySection.hidden = panel !== 'security';
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
+      if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
@@ -588,6 +606,7 @@
     memoryTab.addEventListener('click', () => showPanel('memory'));
     approvalTab.addEventListener('click', () => showPanel('approvals'));
     forgeTab.addEventListener('click', () => showPanel('forge'));
+    securityTab.addEventListener('click', () => showPanel('security'));
 
     async function controlApi(path, options = {}) {
       const res = await fetch(path, {
@@ -633,6 +652,57 @@
         }
       } catch (error) {
         // Chat and personal memory remain available without the optional Project Space database.
+      }
+    }
+
+    async function loadSecurityCentre() {
+      securityStatus.textContent = 'Loading read-only registries…';
+      moduleList.replaceChildren();
+      capabilityList.replaceChildren();
+      try {
+        const [moduleData, capabilityData] = await Promise.all([
+          controlApi('/api/modules'),
+          controlApi('/api/capabilities'),
+        ]);
+        (moduleData.modules || []).forEach(module => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const moduleNode = document.createElement('h3');
+          moduleNode.textContent = module.name;
+          const description = document.createElement('p');
+          description.textContent = module.description || 'No description';
+          const state = document.createElement('p');
+          state.textContent = module.status + ' · ' + (module.capabilities || []).length + ' declared capability(s)';
+          card.append(moduleNode, description, state);
+          moduleList.append(card);
+        });
+        if (!moduleList.children.length) moduleList.textContent = 'No modules are registered.';
+        (capabilityData.capabilities || []).forEach(capability => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const capabilityNode = document.createElement('h3');
+          capabilityNode.textContent = capability.name;
+          const detail = document.createElement('p');
+          detail.textContent = capability.id + ' · v' + capability.version + ' · ' +
+            capability.status + ' · ' + capability.provider.kind;
+          const description = document.createElement('p');
+          description.textContent = capability.description;
+          const actions = document.createElement('ul');
+          actions.className = 'memory-history';
+          (capability.actions || []).forEach(action => {
+            const entry = document.createElement('li');
+            entry.textContent = action.id + ' · ' + action.effect + ' · ' +
+              action.risk + ' risk · approval: ' + action.approval;
+            actions.append(entry);
+          });
+          card.append(capabilityNode, detail, description, actions);
+          capabilityList.append(card);
+        });
+        if (!capabilityList.children.length) capabilityList.textContent = 'No capability manifests are registered.';
+        securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
+          (capabilityData.total || 0) + ' capability manifest(s) · read-only inventory';
+      } catch (error) {
+        securityStatus.textContent = error.message;
       }
     }
 
