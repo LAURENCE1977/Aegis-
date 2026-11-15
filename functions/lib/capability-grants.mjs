@@ -24,6 +24,7 @@ function mapGrant(row) {
     capabilityId: row.capability_id,
     capabilityVersion: row.capability_version,
     resourceId: row.resource_id,
+    resourceIds: [row.resource_id],
     scopes,
     status: row.status,
     createdBy: row.created_by,
