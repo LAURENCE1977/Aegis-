@@ -16,6 +16,19 @@ class MemoryD1 {
       bind(...values) { this.values = values; return this; },
       async run() {
         const v = this.values;
+        if (sql.includes("UPDATE capability_connections SET status = 'revoked'") && sql.includes('expires_at <= ?')) {
+          const [revokedAt, principal, provider, now] = v;
+          let changes = 0;
+          for (const row of db.rows.values()) {
+            if (row.principal_id === principal && row.provider_id === provider &&
+                row.status === 'active' && row.expires_at && row.expires_at <= now) {
+              row.status = 'revoked';
+              row.revoked_at = revokedAt;
+              changes += 1;
+            }
+          }
+          return { meta: { changes } };
+        }
         if (sql.includes('INSERT INTO capability_connections')) {
           const [id, principal, provider, secretRef, scopes, createdBy, createdAt, expiresAt] = v;
           for (const row of db.rows.values()) {
@@ -127,7 +140,7 @@ test('lists safe metadata without exposing the vault reference', async () => {
 test('revoked and expired connections cannot be loaded', async () => {
   const db = new MemoryD1();
   const created = await createConnection(db, input(), Date.now());
-  assert.equal(await revokeConnection(db, created.id, 'owner-1', Date.now()), true);
+  assert.equal(await revokeConnection(db, created.id, 'owner-2', Date.now()), false);\n  assert.equal(await revokeConnection(db, created.id, 'owner-1', Date.now()), true);
   assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'github' }, Date.now()), null);
   const expired = await createConnection(db, input({
     providerId: 'gitlab',
@@ -136,4 +149,16 @@ test('revoked and expired connections cannot be loaded', async () => {
   }), Date.now());
   assert.ok(expired.id);
   assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'gitlab' }, Date.now() + 2000), null);
+});
+
+test('expired active metadata is retired before a replacement provider connection is created', async () => {
+  const db = new MemoryD1();
+  const now = Date.now();
+  await createConnection(db, input({ expiresAt: new Date(now + 1000).toISOString() }), now);
+  const replacement = await createConnection(db, input({
+    secretRef: 'vault://connections/github-owner-1-new',
+    expiresAt: new Date(now + 60_000).toISOString(),
+  }), now + 2000);
+  assert.equal(replacement.status, 'active');
+  assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'github' }, now + 2000).then(x => x.id), replacement.id);
 });
