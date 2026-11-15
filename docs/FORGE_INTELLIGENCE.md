@@ -85,3 +85,32 @@ These are descriptive planned capabilities only. The module registry intentional
 7. Forge blueprint and benchmark workflow.
 8. Sandboxed implementation and review gates.
 9. Capability Centre for connection, health, update and disable operations.
+
+
+## Specialist agent definitions and multi-agent governance
+
+Agent-definition repositories such as [Agency Agents](https://github.com/msitarzewski/agency-agents) are knowledge sources, not execution engines. Forge should inspect individual role files, pin their source commits, record licences and provenance, and adapt only roles that solve a demonstrated AEGIS need.
+
+An AEGIS-native agent record should include:
+- stable agent ID, version, role and scope;
+- purpose, expertise and explicit non-goals;
+- instruction source, provenance, licence and review date;
+- input/output schema and expected deliverables;
+- allowed capability IDs (never raw credentials);
+- budget, timeout, retry and concurrency limits;
+- approval requirements and escalation rules;
+- evaluation cases, quality criteria and known failure modes.
+
+The orchestrator—not the agent prompt—enforces tool permissions, budgets, isolation, audit, cancellation and approval. Use a planner/worker/reviewer pattern selectively; avoid spawning agents when a single bounded task is cheaper and clearer. Agent-to-agent hand-offs must carry structured task context and provenance, not unrestricted hidden memory.
+
+## Platform-independent client and runtime design
+
+Treat cross-platform delivery as an adapter strategy:
+- one canonical API, data model and policy layer;
+- responsive web/PWA as the first reference client;
+- thin adapters for browser, Android, iOS/iPadOS and desktop-specific features;
+- provider, storage, queue, notification, voice and automation adapters behind versioned contracts;
+- capability detection and graceful degradation, not platform-name assumptions;
+- server-side durable execution, because mobile operating systems may suspend background clients.
+
+Every adapter must pass contract tests and document permissions, data handling, supported versions, limitations and fallback behaviour. Platform support is earned through real-device/browser tests, not inferred from a successful build.
