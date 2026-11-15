@@ -484,3 +484,14 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 4. Add Project Spaces memory navigation and memory-to-project timeline linking.
 5. Prepare D1 provisioning/migration as a separate explicitly approved step after checking account-wide free-tier use.
 6. Continue with isolated computer-use worker design only after Sentinel, vault, approval UI and audit are end-to-end.
+
+
+## 16. Agent UI and AG-UI protocol direction — 15 November 2026
+
+- CopilotKit is an MIT-licensed high-priority architecture reference for agent chat, streaming, shared state, generative UI and human approval interactions.
+- AEGIS will reverse-engineer the useful patterns and build a native authenticated AG-UI-compatible boundary before deciding whether to use a thin CopilotKit client.
+- Do not migrate the current static PWA to React solely to install CopilotKit. Keep the browser/mobile-first shell and make the agent interaction API client-independent.
+- AEGIS's existing identity, memory, jobs, capability registry, Sentinel, approval store, vault, audit and budgets remain canonical. UI events never grant permissions.
+- Architecture and security acceptance criteria: `docs/AEGIS_COPILOTKIT_AGUI.md`.
+- Research register updated: `docs/RESEARCH_SOURCE_REGISTER.md`.
+- Current status: documentation and architecture decision only. No AG-UI endpoint, package installation, CopilotKit service or React migration exists yet.
