@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main
-      - feature/**
+      - 'feature/**'
+      - 'repair/**'
+      - 'stack/**'
+      - 'docs/**'
   pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
