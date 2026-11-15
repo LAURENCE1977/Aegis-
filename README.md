@@ -20,12 +20,13 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Read-only public GitHub repository discovery behind session authentication and same-origin protection
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
-- Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
+- Owner-only capability approval inbox and approve/deny API, with a mobile Control Centre review panel (feature branch only; no capability execution is enabled)
 
 
-- Owner-scoped Project Spaces API and append-only activity timeline under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
+- Owner-scoped Project Spaces API, append-only activity timeline and mobile Projects panel under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
 - AEGIS-native typed memory with owner/project-scoped D1 repository, candidate review, append-only lifecycle history, correction/supersession links, mobile Memory panel and approved-memory chat retrieval (feature branch only; shared migrations not applied; D1 not provisioned/bound; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
-- Native AG-UI 1.0 text-chat compatibility endpoint (`POST /api/ag-ui`) with the mobile PWA chat wired to authenticated SSE event framing; frontend tools, ambient context, resume and multimodal content remain disabled pending Sentinel/durable-run integration (see [CopilotKit and AG-UI boundary](docs/AEGIS_COPILOTKIT_AGUI.md))
+- Native AG-UI 1.0 text-chat compatibility endpoint (`POST /api/ag-ui`) with authenticated incremental SSE streaming, bounded text-only input and PWA client; frontend tools, ambient context, resume and multimodal content remain disabled pending Sentinel/durable-run integration (see [CopilotKit and AG-UI boundary](docs/AEGIS_COPILOTKIT_AGUI.md))
+- Installable mobile-first PWA shell with a static-only service-worker cache; authenticated API and MCP traffic are never cached offline
 
 ## Security setup
 
