@@ -206,3 +206,23 @@ test('memory deletes reject cross-origin requests before changing KV', async () 
   assert.equal(response.status, 403);
   assert.equal(deletes, 0);
 });
+
+
+test('chat rejects cross-origin requests before invoking the model', async () => {
+  const token = await createSessionToken(secret);
+  let modelCalls = 0;
+  const response = await askPost({
+    request: new Request('https://aegis.example/api/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://attacker.example',
+        Cookie: '__Host-aegis_session=' + token,
+      },
+      body: JSON.stringify({ question: 'hello' }),
+    }),
+    env: { ...configuredEnv, AI: { run: async () => { modelCalls += 1; return { response: 'hello' }; } } },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(modelCalls, 0);
+});
