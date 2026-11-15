@@ -18,7 +18,7 @@ function validTimestamp(value, label) {
   const time = Date.parse(value);
   if (typeof value !== 'string' || !Number.isFinite(time) ||
       new Date(time).toISOString() !== value) {
-    throw new TypeError('Invalid verified provider timestamp');
+    throw new TypeError('Invalid verifiedAt ' + label + ' timestamp');
   }
   return time;
 }
