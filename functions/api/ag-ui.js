@@ -1,5 +1,6 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
 import { buildAskMessages } from "./ask.js";
+import { getWorkspace } from "../lib/project-spaces.mjs";
 import {
   createTextRunStartEvents,
   createTextRunContentEvent,
@@ -38,6 +39,23 @@ export async function onRequestPost(context) {
   const validation = validateRunInput(input);
   if (validation) return json({ error: validation }, 400);
 
+  let projectId = null;
+  if (input.projectId !== undefined) {
+    if (typeof input.projectId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(input.projectId)) {
+      return json({ error: "Invalid Project Space identifier." }, 400);
+    }
+    if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
+      return json({ error: "Project Space storage is not configured." }, 503);
+    }
+    try {
+      const workspace = await getWorkspace(env.AEGIS_DB, "owner", input.projectId);
+      if (!workspace || workspace.status !== "active") return json({ error: "Project Space not found." }, 404);
+      projectId = input.projectId;
+    } catch {
+      return json({ error: "Project Space could not be verified." }, 503);
+    }
+  }
+
   const messages = input.messages;
   const latest = messages[messages.length - 1];
   if (latest.role !== "user" || !latest.content.trim()) {
@@ -56,7 +74,7 @@ export async function onRequestPost(context) {
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
-    const promptMessages = await buildAskMessages(env, latest.content, history);
+    const promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
     modelStream = await env.AI.run(MODEL, {
       messages: promptMessages,
       max_tokens: 1024,
@@ -176,7 +194,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
 
 function validateRunInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return "Invalid AG-UI request.";
-  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context"].includes(key))) return "Unsupported AG-UI request fields.";
+  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
