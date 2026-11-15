@@ -746,12 +746,15 @@ Adapted CogniCore's compact project-context/handover idea into a deterministic A
 - Latest verified code commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed GitHub Actions run 43752415969: 297 tests, 0 failures under Node.js 22.
 
 
-## 27. Composio-assisted companion-repository audit — 15 November 2026
+## AEGIS Intelligence & Token Engine — 15 November 2026
 
-- Used the connected Composio GitHub integration to inspect AEGIS, its open PR stack, branch ancestry, source files, tests, workflow logs and the user's companion repositories. Regression fixes were committed only to existing feature branches; no production merge or runtime integration was performed.
-- Detailed licence/provenance and reuse decisions are recorded in [`docs/RESEARCH_SOURCE_REGISTER.md`](RESEARCH_SOURCE_REGISTER.md) and [`docs/AEGIS_EXTERNAL_REPO_INTEGRATION.md`](AEGIS_EXTERNAL_REPO_INTEGRATION.md).
-- Architecture split: Agent Reach is the read-only source layer; Auto Browser is a separate browser-execution service; Composio is an optional connector provider, not an authority; OpenClaw is a selective runtime reference; G0DM0D3 is a local-inference reference; Charlie skills are workflow references pending licence clarification; the audio-lab artifact is a rebuild candidate.
-- AEGIS remains the policy owner. The inbound MCP bridge is read-only; the MCP Forge catalogue is not an outbound connector manager; the agent capability bridge/grant store are not yet connected to a trusted adapter executor; agent runs remain plan-only. No Composio or Auto Browser runtime adapter is live.
-- Required before execution: D1/Queue non-production validation, encrypted connection/secret-vault lifecycle, append-only invocation audit, Sentinel-bound exact grants/approvals, server-owned adapter routing and egress/redirect/private-address controls.
-- PR #27 (`feature/native-memory-substrate` on PR #26) verified at `670cb46668091b8f3b1e18611e7724656165bb80`: Node.js 22 **297/297**, Cloudflare Pages preview successful. PR #29 (`feature/durable-agent-orchestrator-rebased` on PR #27 at that head) verified at `e6ca7f8dce36d91cbf5b637bfdae1f4919252004`: Node.js 22 **314/314**, Cloudflare Pages preview successful. Both remain draft; review the fresh diff and CI before any merge.
-- These checks do not establish live D1/Queue deployment. No shared D1 migrations were applied, no secrets or permissions changed, and no production deployment was initiated.
+PR #33: https://github.com/LAURENCE1977/Aegis-/pull/33 — draft, stacked on PR #32. The first native planning library is implemented in `functions/lib/intelligence-engine.mjs` with six focused tests:
+- conservative UTF-8 byte-based token estimation (budget heuristic, not an exact tokenizer);
+- task/context/output/cost/priority-aware model selection;
+- trusted provider availability and remaining-token quota filtering;
+- complete-message context fitting that preserves the system instruction and newest messages;
+- fail-closed behavior when no route meets the requested limits.
+
+TDD evidence: test-only RED commit `8c8206212aad1f10727a6b03915a6c0a941fb668` failed as expected; implementation commit `f90e42c16ce6d15dceddb73ea4b651ecb3cb0564` passed full Node.js 22 CI run `43754887238` with 0 failures.
+
+This is not yet a live model router. It is not wired to existing Workers AI/Qwen streaming, AG-UI or the agent queue. There is no provider catalogue ingestion, persistent token ledger, quota reservation/reconciliation, automatic failover, new provider, API key, migration or deployment. See [AEGIS Intelligence & Token Engine](AEGIS_INTELLIGENCE_TOKEN_ENGINE.md). Do not claim million-token context unless a verified model/provider and adapter support it. External free-model catalogues are candidate discovery only; official provider terms, quotas and endpoints must be verified before activation.
