@@ -7,7 +7,7 @@ const OWNER_ID = "owner";
 function parseProjectId(value) {
   if (value === null) return undefined;
   if (value === "") return null;
-  if (typeof value !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) return null;
+  if (typeof value !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) return false;
   return value;
 }
 
@@ -20,7 +20,7 @@ export async function onRequestGet({ request, env }) {
 
   const url = new URL(request.url);
   const projectId = parseProjectId(url.searchParams.get("projectId"));
-  if (projectId === null) return jsonResponse({ error: "Invalid project scope." }, 400);
+  if (projectId === false) return jsonResponse({ error: "Invalid project scope." }, 400);
 
   try {
     if (projectId !== undefined) {
