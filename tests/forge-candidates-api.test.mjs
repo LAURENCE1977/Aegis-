@@ -40,7 +40,8 @@ class CandidateD1 {
       },
       async first(){
         const v=this.values;
-        if(sql.includes('FROM forge_candidates')&&sql.includes('source_url = ?'))return [...db.rows.values()].find(row=>row.owner_id===v[0]&&row.source_url===v[1]&&row.version===v[2])||null;\n        if(sql.includes('FROM forge_candidates')&&sql.includes('WHERE id = ?')){const row=db.rows.get(v[0]);return row&&row.owner_id===v[1]?{...row}:null;}
+        if(sql.includes('FROM forge_candidates')&&sql.includes('source_url = ?'))return [...db.rows.values()].find(row=>row.owner_id===v[0]&&row.source_url===v[1]&&row.version===v[2])||null;
+        if(sql.includes('FROM forge_candidates')&&sql.includes('WHERE id = ?')){const row=db.rows.get(v[0]);return row&&row.owner_id===v[1]?{...row}:null;}
         return null;
       },
       async all(){
