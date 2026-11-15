@@ -139,4 +139,12 @@ No second workflow engine should be deployed until a benchmark establishes a nee
 
 ## Capability System governance
 
+## Project Spaces and specialist agent teams
+
+LangAlpha and OpenCompany are architecture references for persistent project workspaces, lead/specialist teams, skill-guided work and durable activity. AEGIS will implement these concepts natively: Project Spaces own persistent project context and append-only typed events; agent teams use bounded role definitions and durable parent/child task handoffs. AEGIS remains canonical for workspace identity, job state, capability permissions, approvals and audit. See [AEGIS_PROJECT_SPACES.md](AEGIS_PROJECT_SPACES.md).
+
+The first Project Spaces D1 schema, owner-scoped service and authenticated collection/detail/timeline APIs are on `feature/aegis-project-spaces`. The APIs use the shared `AEGIS_DB` binding, strict allowlisted event types, same-origin writes, bounded content and server-derived owner identity. No D1 database/binding is provisioned, no UI exists, and agent execution is not connected. The tests are authored but not CI-verified. No upstream LangAlpha or OpenCompany code, package, desktop app or agent definitions have been installed or copied.
+
+
+
 The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). Forge may discover and evaluate sources, but only reviewed AEGIS-native manifests become registry entries; registration does not enable execution or grant permission. Capability risk is assigned per action, not per provider. Central policy must validate principal, scope, resource, connection, risk, budget and approval immediately before every invocation. Keep adapter execution isolated from the control plane, secrets outside manifests and logs, and all write/external-impact operations behind explicit approval. The design was initially documentation only. The first implementation slice is now on feature branches: a read-only capability manifest registry and fail-closed policy evaluator (PR #12), D1 exact-operation approval primitives (PR #16), and an owner-only pending-approval API (PR #21). The API is not yet deployed or wired to a UI or invocation runtime; no general connector execution is enabled.
