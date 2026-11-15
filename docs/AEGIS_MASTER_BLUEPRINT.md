@@ -129,6 +129,20 @@ Forge documentation says:
 - records are not yet persisted;
 - repository code is not executed and registry grants no permissions.
 
+
+### AEGIS Bridge implementation snapshot — 15 November 2026
+- PR #3: https://github.com/LAURENCE1977/Aegis-/pull/3 — open, awaiting merge/production approval at the time of this update.
+- Feature branch: `feature/aegis-bridge-mcp-v1`; latest implementation commit before this documentation refresh: `bddcf2136f9d3acaf0eceeb4163ce6fb86a3ca6e`.
+- Initial endpoint: `POST /mcp`, stateless MCP Streamable HTTP revision `2026-07-28`.
+- Implemented operations: `server/discover`, `tools/list`, `tools/call`.
+- Initial tools are read-only: `aegis_get_status`, `aegis_list_modules`, `aegis_list_skills`.
+- Security: bearer token via encrypted `AEGIS_MCP_TOKEN` or existing signed AEGIS session; Origin validation when supplied; protocol/header consistency; JSON negotiation; 64 KiB request limit; no CORS; no write or code-execution tools.
+- Interim bearer token is not OAuth 2.1 and has no per-client scopes/revocation. OAuth 2.1/PKCE and scoped client lifecycle remain required before broad external exposure.
+- CI run for PR #3 completed successfully: Node 22 full suite, 68 tests passed, 0 failed.
+- Cloudflare Pages preview for the Bridge branch completed successfully at `https://dc022b83.aegis-6yk.pages.dev`; branch alias `https://feature-aegis-bridge-mcp-v1.aegis-6yk.pages.dev`.
+- Preview deployment does not prove the endpoint is usable: `AEGIS_MCP_TOKEN` has not been configured/verified, so the endpoint fails closed until an authorised secret is added. No production deployment of this Bridge change has occurred.
+- PR #3 must not be merged/promoted without the user's approval because merging updates the production branch/deployment.
+
 ### Important branches and prior refs
 - `feature/aegis-security-forge-foundation` was the PR #1 head.
 - `feature/aegis-bridge-compatibility` was previously created; inspect whether it still exists and compare it with current main before using it.
