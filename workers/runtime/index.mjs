@@ -72,7 +72,7 @@ async function dispatchPending(env, limit = 25) {
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "UPDATE jobs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until < ?"
+    "UPDATE jobs SET status = 'pending_dispatch', lease_until = NULL, updated_at = ? WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until < ?"
   ).bind(now, now).run();
   const result = await env.DB.prepare(
     "SELECT id FROM jobs WHERE status = 'pending_dispatch' ORDER BY created_at ASC LIMIT ?"
