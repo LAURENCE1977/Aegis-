@@ -605,3 +605,14 @@ Reviewed: 15 November 2026. These are research candidates, not installed depende
 - Control Centre has a native Forge inspection and saved-candidate view. Source is rendered as text only.
 - Latest verified code head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247 tests passed, 0 failed, run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746135062.
 - Latest preview for that code: https://44e15358.aegis-6yk.pages.dev. Authentication is blocked in Preview until its two required secrets are configured.
+
+
+### Alibaba Page Agent — browser automation candidate
+
+- Source: https://github.com/alibaba/page-agent
+- Licence: MIT (repository); README acknowledges browser-use-derived DOM processing components and prompt, also MIT.
+- Purpose: in-page JavaScript GUI agent that interprets DOM/text and performs UI interactions without requiring a headless browser; optional Chrome extension for multi-page work and an MCP server marked beta.
+- Provider: BYOK; can call Qwen and other compatible model APIs. The project's public demo API is explicitly for technical evaluation/R&D only, not production; its privacy terms say demo requests are processed via Alibaba Cloud infrastructure in mainland China and prohibit sensitive data.
+- AEGIS decision: high-priority browser-agent architecture reference, distinct from Helium (a Chromium browser). Reverse-engineer DOM observation, action planning and page-context UX; build a native browser capability adapter rather than loading arbitrary third-party scripts into the AEGIS Control Centre.
+- Security boundary: webpage DOM, accessible names, page text and tool results are untrusted. Never let page content rewrite system instructions or permissions. Use a separate browser context, domain allowlists, user-visible action preview, exact-action Sentinel approval, restricted form handling, secret redaction, navigation controls, audit and kill switch. No credentials or sensitive data may flow to the demo endpoint.
+- Status: research only; no Page Agent package, extension, MCP server or demo API has been installed or connected.
