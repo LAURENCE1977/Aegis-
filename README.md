@@ -72,7 +72,7 @@ Run the full test suite with Node.js 22:
 node --test tests/*.test.mjs
 ```
 
-The first durable runtime slice is implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. The Project Spaces and Memory shared D1 migrations are in `migrations/shared/`; do not apply the nested feature-source migration directories as well. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
+The first durable runtime slice is implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. The Project Spaces and Memory shared D1 migrations are in `migrations/shared/`; do not apply the nested feature-source migration directories as well. The Projects panel also builds a bounded, copyable agent handover brief from one project’s goal, recent event summaries and accepted non-restricted memories; see [docs/AEGIS_PROJECT_SPACES.md](docs/AEGIS_PROJECT_SPACES.md). See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
 
 ## Project blueprint and AI handover
 
