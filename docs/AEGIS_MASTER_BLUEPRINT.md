@@ -579,3 +579,21 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - GitHub commit inspection confirmed both commits changed Markdown documentation only. No application source, production data, secrets, D1/Queue resources, permissions or infrastructure changed.
 - No rollback was attempted because that would require another production action. All subsequent code work remains on `feature/native-memory-substrate`; PR #27 remains draft and unmerged.
 - This was an operational error. Future file mutations must specify the intended feature branch explicitly and verify the resulting commit branch before proceeding.
+
+
+## 18. Model, memory, harness and scientific-agent intake — 15 November 2026
+
+The Forge register now includes Qwen/Alibaba, AgentMemory, K-Dense Scientific Agent Skills, two Awesome Harness Engineering indexes, AgenticOS, Helium, Pi and Replit Free. Each is an evaluated source, not an installed dependency.
+
+- **Qwen:** candidate provider adapter. Keep hosted API models distinct from open-weight releases; API usage may incur charges. No credentials or provider route configured.
+- **Pi:** modular provider/agent-core reference; AEGIS keeps its own durable job state, identity and Sentinel.
+- **AgentMemory:** provider-neutral memory operations and transport/certification patterns; its own README describes a public alpha not hardened for hostile multi-tenant/open-network deployment. AEGIS D1 remains canonical.
+- **Scientific Agent Skills:** optional specialist library; inspect the individual skill licence metadata, not just repository-level MIT licence, before adaptation.
+- **Awesome Harness Engineering:** discovery index for orchestration, context, permissions, evals and observability. Follow each link to its primary source and licence.
+- **AgenticOS:** Apache-2.0 governance/operator-console architecture reference; do not transplant its heavier stack.
+- **Helium:** Chromium browser, not an agent automation runtime. No browser integration is implied.
+- **Replit Free:** limited prototype workspace, not guaranteed always-on hosting or free model inference.
+- **Heretic:** isolated model research only; never weaken AEGIS policy/Sentinel or place modified models in production by default.
+- **Muelle** and **Eli Cactus** remain unidentified from the names supplied; no guessed project or licence is recorded.
+
+Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md`.
