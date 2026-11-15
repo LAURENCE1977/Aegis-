@@ -715,6 +715,6 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - Legacy KV saved notes are now explicitly labelled as untrusted reference material and never as instructions or permissions, matching the treatment of structured retrieved memories.
 
 ### Verification and operational boundary
-- GitHub Actions run 43750742950 on commit 0d795002bfb45f267a5faba1c0d25174ec9c95c9 passed 288 tests, 0 failures under Node.js 22.
+- GitHub Actions run 43751112398 on commit b644c5f34d3737e787e30c9d72ef60d81cbf5939 passed 289 tests, 0 failures under Node.js 22.
 - PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
 - Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
