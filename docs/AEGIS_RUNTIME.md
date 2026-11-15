@@ -115,6 +115,26 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 - D1 and Queue resource creation/deployment need explicit review and a cost/limit check before use.
 - Queue delivery is at-least-once. Idempotent state transitions, leases and attempt fencing reduce duplicate execution risks; new task handlers must themselves be idempotent.
 
+## Free-tier guardrails
+
+The Cloudflare documentation checked on 15 November 2026 lists these Workers Free allowances:
+
+- Workers: 100,000 requests/day and 10 ms CPU time per invocation.
+- D1: 5 million rows read/day, 100,000 rows written/day and 5 GB total account storage.
+- Queues: 10,000 operations/day; Free-plan messages are retained for 24 hours. A normal delivered message typically uses one write, one read and one delete operation; retries add read operations.
+
+These are account-level limits, not dedicated AEGIS quotas. Other projects on the same Cloudflare account may consume them. Exceeding D1 daily row limits causes queries to fail until reset; exceeding Queue operations may cause sends/processing to fail. AEGIS must surface quota errors, retain pending jobs for later dispatch, and avoid automatically upgrading the account or enabling paid usage.
+
+The current once-per-minute recovery Cron uses one stale-lease query and one pending-outbox query per run, plus writes/events only when rows need recovery. This is intentionally bounded. Before activation, inspect account-wide usage and available Cron trigger quota.
+
+References:
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/d1/platform/pricing/
+- https://developers.cloudflare.com/d1/platform/limits/
+- https://developers.cloudflare.com/queues/platform/pricing/
+- https://developers.cloudflare.com/queues/platform/limits/
+
 ## Verification
 
 CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
