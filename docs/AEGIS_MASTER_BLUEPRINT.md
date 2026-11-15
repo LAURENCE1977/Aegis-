@@ -325,6 +325,14 @@ New candidates evaluated 15 November 2026 are recorded in [docs/RESEARCH_SOURCE_
 
 ## 15. Capability System architecture
 
+## Project Spaces and agent teams — implementation slice
+
+The clean-room architecture extracted from LangAlpha and OpenCompany is recorded in [AEGIS_PROJECT_SPACES.md](AEGIS_PROJECT_SPACES.md). PR #22's feature branch `feature/aegis-project-spaces` adds owner-scoped Project Spaces, an append-only typed activity timeline, a D1 migration and authenticated list/create/detail/event APIs. The APIs use a shared `AEGIS_DB` binding and server-derived single-owner identity; writes require same-origin requests and strict bounded JSON/event validation. Approval records are also refactored to use this shared D1 binding.
+
+**Verification and deployment status:** source and regression tests are present on the feature branch, but CI has not reported a run and local GitHub access is unavailable, so tests are unverified. No D1 database or binding is provisioned, no workspace UI or file attachment system exists, and no specialist agent execution is connected. This API stores project context and event history only; it does not execute code, invoke tools or grant permissions. Agent-team definitions, delegation, durable child tasks and result review remain the next implementation stage.
+
+
+
 The governed capability lifecycle and implementation contract are specified in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). PR #9 defines the architecture; PR #12 implements the first read-only registry slice on `feature/aegis-capability-registry-implementation`. The v0.1 manifest validator covers provider/interface metadata, action risk/effect/approval, scopes, data classification, egress declarations, auth references, limits, provenance and licence review. An authenticated no-store API lists two first-party read-only capabilities. A pure policy evaluator is also implemented: it binds to the exact registered manifest and checks principal, grant version/status/expiry/revocation, scope, exact resource, connection, exact-operation approval and budget snapshots. It does not persist grants, atomically consume approvals, record invocations or execute adapters. `isCapabilityGranted()` still fails closed; no grant store supplies real permissions. The manifest `approved` status is review metadata only, not permission. Latest recorded Node.js 22 CI on head `6ed236f313bb4ba23dde0a2cb970815031770ab5` (run `43729190428`) passed 110/110 tests. The current runtime remains health-check-only; do not widen its task allowlist until persistent policy, atomic approvals, isolated adapters, secrets, durable audit, revocation, idempotency, SSRF controls and cost limits are implemented and tested.
 
 
