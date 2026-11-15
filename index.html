@@ -1220,6 +1220,7 @@
       let reply = '';
       let runStarted = false;
       let runFinished = false;
+      let firstEvent = true;
 
       function consumeFrame(frame) {
         const line = frame.split(/\r?\n/).find(part => part.startsWith('data: '));
@@ -1227,6 +1228,12 @@
         let event;
         try { event = JSON.parse(line.slice(6)); }
         catch (error) { throw new Error('The agent stream contained invalid event data.'); }
+        if (firstEvent) {
+          firstEvent = false;
+          if (event.type !== 'RUN_STARTED' && event.type !== 'RUN_ERROR') {
+            throw new Error('The agent stream violated the AG-UI run lifecycle.');
+          }
+        }
         if (event.type === 'RUN_STARTED') runStarted = true;
         if (event.type === 'TEXT_MESSAGE_CONTENT') {
           if (typeof event.delta !== 'string') throw new Error('The agent stream contained invalid text.');
