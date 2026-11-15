@@ -1,6 +1,6 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../../../lib/auth.mjs";
 import { readBoundedText } from "../../../lib/request-body.mjs";
-import { updateForgeCandidateReview } from "../../../lib/forge-candidates.mjs";
+import { ForgeCandidateConflictError, updateForgeCandidateReview } from "../../../lib/forge-candidates.mjs";
 
 const OWNER_ID = "owner";
 const MAX_BODY_BYTES = 4096;
@@ -29,11 +29,15 @@ export async function onRequestPatch({ request, env, params }) {
   let body;
   try { body = JSON.parse(raw); } catch { return json({ error: "Request body must contain valid JSON." }, 400); }
   if (!body || typeof body !== "object" || Array.isArray(body) ||
-      Object.keys(body).length !== 3 ||
+      Object.keys(body).length !== 7 ||
       !Object.hasOwn(body, "licenceReview") ||
       !Object.hasOwn(body, "decision") ||
-      !Object.hasOwn(body, "status")) {
-    return json({ error: "Provide exactly licenceReview, decision and status fields." }, 400);
+      !Object.hasOwn(body, "status") ||
+      !Object.hasOwn(body, "licenceEvidenceUrl") ||
+      !Object.hasOwn(body, "reviewNote") ||
+      !Object.hasOwn(body, "licenceAttested") ||
+      !Object.hasOwn(body, "expectedUpdatedAt")) {
+    return json({ error: "Provide licence review, evidence, attestation, decision, status and expectedUpdatedAt." }, 400);
   }
 
   try {
@@ -42,6 +46,7 @@ export async function onRequestPatch({ request, env, params }) {
     return json({ candidate });
   } catch (error) {
     if (error instanceof TypeError) return json({ error: error.message }, 400);
+    if (error instanceof ForgeCandidateConflictError) return json({ error: error.message }, 409);
     return json({ error: "Forge candidate review could not be saved." }, 503);
   }
 }
