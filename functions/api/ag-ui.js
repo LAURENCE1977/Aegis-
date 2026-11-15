@@ -1,6 +1,7 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
 import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
+import { createModelStream } from "../lib/model-provider.mjs";
 import {
   createTextRunStartEvents,
   createTextRunContentEvent,
@@ -13,7 +14,6 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
-const MODEL = "@cf/meta/llama-3.3-70b-instruct";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -69,18 +69,17 @@ export async function onRequestPost(context) {
     return json({ error: "Invalid AG-UI thread or run identifier." }, 400);
   }
 
-  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "No AI provider configured." }, 503);
-
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
     const promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    modelStream = await env.AI.run(MODEL, {
-      messages: promptMessages,
-      max_tokens: 1024,
-      stream: true,
-    });
-  } catch {
+    modelStream = await createModelStream({ env, messages: promptMessages });
+  } catch (error) {
+    if (error instanceof TypeError) return json({ error: "The model request is invalid." }, 400);
+    if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
+        (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
+      return json({ error: "The configured Qwen provider is not ready." }, 503);
+    }
     return json({ error: "The AI could not start this run. Please try again." }, 502);
   }
   if (!modelStream || typeof modelStream.getReader !== "function") {
