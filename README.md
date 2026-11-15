@@ -22,6 +22,9 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 - Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
 
+
+- Owner-scoped Project Spaces API and append-only activity timeline under development on a feature branch (D1 binding not provisioned; no agent execution is enabled)
+
 ## Security setup
 
 **Do not expose a deployment until both secrets are configured.**
