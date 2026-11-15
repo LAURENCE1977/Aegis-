@@ -507,3 +507,146 @@ Source: https://github.com/codecrafters-io/build-your-own-x. The README identifi
 
 ### Cross-source operating rule
 These directories help discover and learn; they do not approve dependencies. Every candidate must pass provenance, licence, maintenance, security, platform, cost and test review. AEGIS should extract ideas, build its own adapters and native components, and keep Sentinel as the enforcement boundary.
+
+
+## Persistent memory, local inference and computer-use agents
+
+These are three distinct source tracks, not interchangeable products.
+
+### Kytheros Strata — persistent memory architecture
+
+- Source: https://github.com/kytheros/strata
+- Reported licence: Apache-2.0; verify the pinned commit and bundled dependency licences before any code reuse.
+- Relevant ideas: SQLite/FTS5 local-first retrieval, Cloudflare Workers/D1 adapter, typed memories, provenance, hybrid retrieval and memory quality gates.
+- AEGIS decision: high-priority architecture reference. Rebuild selected concepts in the native memory substrate; keep AEGIS owner/project identity, Sentinel policy, storage schema and audit authoritative.
+- Security caveat: a caller-supplied identity header is not authentication. Any multi-tenant HTTP deployment needs a verified authentication boundary. Do not expose a raw memory service publicly.
+
+### Niko1221 Strata — optional local inference engine
+
+- Source: https://github.com/Niko1221/Strata
+- Reported licence: MIT; verify the exact release and bundled model/runtime licences independently.
+- Relevant ideas: local model serving and OpenAI/Anthropic-compatible provider interfaces.
+- AEGIS decision: optional future local-model provider adapter for capable hardware. It is not the Kytheros memory project and is not suitable as a required runtime for the current Chromebook/iPhone/iPad-first target. Do not require GPU hardware or local model downloads for the first release.
+
+### Meet Nod — computer-use architecture
+
+- Source: https://github.com/n8n-io/nod
+- Official product overview: https://blog.n8n.io/meet-nod/
+- Documentation: https://nod.n8n.io/docs/
+- Reported licence: Apache-2.0; pin and inspect exact source and third-party components before reuse.
+- Relevant ideas: isolated browser/workspace, user approval for consequential actions, credential isolation, action audit, budgets and scheduled work.
+- AEGIS decision: high-priority architecture reference, not a direct runtime dependency. Build a provider-neutral computer-use capability with a separately isolated worker, Sentinel mediation, scoped vault references, explicit approvals, redacted audit, time/cost limits and durable server-side jobs.
+- Platform caveat: a desktop-hosted agent does not itself deliver Chromebook/iOS-native operation or always-on execution when its host sleeps. AEGIS's browser-first control plane and server-side job runtime remain canonical.
+- Security boundary: never expose unrestricted browser, shell, filesystem or host-control tools to an agent. Retrieved page content and browser output are untrusted data, not instructions.
+
+### Native implementation status
+
+- PR #27: https://github.com/LAURENCE1977/Aegis-/pull/27 — open, draft, unmerged; stacked on PR #26.
+- AEGIS-native memory validation, D1 repository, authenticated APIs, owner review queue, append-only D1 lifecycle audit triggers, history endpoint, chat retrieval and mobile review UI are implemented on `feature/native-memory-substrate`.
+- Canonical ordered shared D1 migrations: `migrations/shared/0001_project_spaces.sql`, `0002_memories.sql`, `0003_memory_lifecycle_audit.sql`. Do not independently apply nested workspace/memory feature-source copies to the same database.
+- Chat retrieves only accepted, unexpired, non-restricted personal memories; owner/project scope is applied in SQL. Retrieved memory is bounded JSON reference data, never tool instructions.
+- Latest fully verified test run at commit `b02f4f5fa3d8841c6eee58246e7bdcbf35e6fe7b`: **194 passed, 0 failed**. Later frontend smoke-test and documentation commits require another CI run.
+- Cloudflare Pages preview build succeeded for the earlier verified memory UI commit. Production is unchanged.
+- D1 has not been provisioned or bound, migrations have not been applied to the user's Cloudflare account, and no memory data has been persisted in production.
+- No external source package, daemon, model, browser agent, account or credential has been installed or connected.
+
+
+## Agent UI, streaming and human-in-the-loop
+
+### CopilotKit and AG-UI
+
+- Source: https://github.com/CopilotKit/CopilotKit
+- Official site/docs: https://copilotkit.org/ and https://docs.copilotkit.ai/
+- Protocol: https://github.com/ag-ui-protocol/ag-ui
+- Reported licence: MIT for the CopilotKit repository; inspect pinned packages and dependencies before reuse.
+- Relevant ideas: chat UI, streaming agent progress, frontend tools, shared agent/application state, generative UI, human-in-the-loop pauses and an event-based Agent–User Interaction protocol.
+- AEGIS decision: high-priority architecture reference. Build a small native AG-UI-compatible transport and event adapter so the current PWA, future React/mobile clients and other agent surfaces share one backend contract. Keep AEGIS's own provider, memory, job, capability, Sentinel, approval, vault and audit systems authoritative.
+- Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
+- Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
+- AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; Workers AI deltas stream incrementally to the mobile PWA, with provider errors redacted and a 12,000-character output cap. Frontend tools/context/resume/multimodal payloads fail closed.
+- Latest verified feature-branch head `cdad016e3ebf56476e9af2e9284b22b50855b5fd` passed GitHub Actions run 43752415969: 297 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
+- Latest Cloudflare Pages branch preview deployed successfully at https://7aef49d9.aegis-6yk.pages.dev; preview login remains blocked by missing Preview secrets. No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
+- Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
+
+### Composio-assisted CopilotKit ecosystem review
+
+Reviewed 15 November 2026 using the connected GitHub account through Composio. Repository contents and source documents were inspected; no external code or service was installed.
+
+| Candidate | Licence / observed stack | AEGIS decision |
+|---|---|---|
+| [CopilotKit/OpenBot](https://github.com/CopilotKit/OpenBot) | MIT application template; Hono/React/PostgreSQL, AG-UI agent endpoints, dedicated computer containers. The documented full stack also uses CopilotKit Intelligence, which is separately licensed, plus Kubernetes/container infrastructure. | Do not adopt wholesale. Adapt server-side policy gateway, audit-before-forwarding, isolated computer workspaces, secret separation, network egress controls and human takeover. |
+| [CopilotKit/openfuse](https://github.com/CopilotKit/openfuse) | MIT alpha. README requires Node 24, pnpm, CopilotKit Intelligence project key and model-provider key; documented hosted layout uses persistent paid service/disk and a separate browser worker. Upstream verification notes report 154 tests and Chromium/Docker smoke checks for its September 2026 release. | Architecture reference only. Adapt durable work plans, pause/resume/cancel, receipts, browser takeover and task/worker separation. Do not adopt external Intelligence, React Native or hosted service as AEGIS requirements. |
+| [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) | MIT; exact source review pinned to 2330368a2a74573902858867072406638ba3073d. | Native compatibility subset implemented. Read normative 1.0 run lifecycle, text-message and run-input definitions before expanding event support. AEGIS remains deliberately partial until tool/state/resume flows are mediated and persisted. |
+| [cognicore-dev/cognicore-env](https://github.com/cognicore-dev/cognicore-env) | Apache-2.0; local SQLite, MCP, bounded session handover briefs, curated project context and lexical BM25/TF-IDF; optional semantic retrieval adds dependencies. | Adapt suggested-then-confirmed context and compact handover ideas. Its README notes lexical vocabulary mismatch; do not add the Python runtime or hosted MCP server. |
+| [Uranid/mnem](https://github.com/Uranid/mnem) | Apache-2.0; local/offline Rust binary, content-addressed/versioned knowledge graph, vector + keyword + graph retrieval, token-budget reporting, optional bundled embedding. | Adapt provenance/versioning and explicit token-budget reporting. Do not add Rust, embeddings or a second memory store to the Cloudflare core. |
+| [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | Apache-2.0; broad persistent memory and skill-reuse system. | Comparison source only; larger runtime/dependency footprint than AEGIS needs. |
+
+Concrete AEGIS adaptations now implemented:
+- AG-UI 1.0 text-run lifecycle and authenticated SSE stream; output safety-cap termination now emits RUN_FINISHED with outcome=cancelled, not false success.
+- Memory retrieval uses bounded BM25-style lexical ranking, exact token boundaries, kind/tag weighting and a 200-row maximum D1 candidate pool. No embeddings, external vector DB, Python/Rust runtime or new model API cost.
+- OpenBot's policy and computer-isolation patterns are recorded as security requirements for the future AEGIS computer-use worker. No shell/browser execution is enabled by the AG-UI endpoint.
+
+
+## New Forge intake — model providers, harnesses, memory, research and browsers
+
+Reviewed: 15 November 2026. These are research candidates, not installed dependencies.
+
+| Candidate | Verified identity / source | AEGIS fit and decision |
+|---|---|---|
+| Alibaba Qwen | https://github.com/AlibabaCloud-Official/Qwen3.6 · https://github.com/QwenLM/Qwen-Agent · https://github.com/QwenLM/qwen-code | High-priority provider and coding-agent adapter. Qwen supports OpenAI-compatible API patterns and a broad model family. Keep provider/model IDs configurable; distinguish downloadable open-weight models from hosted proprietary/API models. Hosted usage is not assumed free. |
+| Replit Free | https://replit.com/pricing | Optional browser-based prototype/workspace only. Free Mode is allowance-limited and resets according to account usage settings; not a dependable AEGIS runtime, always-on host or free inference API. |
+| Heretic (AGPL-3.0-or-later) | https://github.com/p-e-w/heretic | Research-only model-weight experimentation (directional ablation / refusal reduction). AGPL is a copyleft constraint, so no code reuse is planned. Not a core AEGIS capability and not a permission bypass. Never use to weaken AEGIS Sentinel, safety policy or access controls; no model modification or deployment planned. |
+| Muelle | Two plausible but unrelated projects surfaced: https://github.com/crafter-station/Muelle (Windows 11 desktop dock; exact licence not verified) and https://github.com/RchrdHndrcks/muelle (MIT Go TUI for managing Docker containers on one host). | Neither appears to be an AI agent/orchestration platform. The Docker TUI is only a possible future local-ops reference; the Windows dock is unrelated. Await user confirmation before deeper review. |
+| AgentMemory | https://github.com/AndrewMoryakov/AgentMemory | Strong shared-memory runtime reference: provider contract, CLI/HTTP/MCP surfaces, local JSON backend, diagnostics, export/import and certification harness. Public alpha explicitly says it is not hardened for hostile multi-tenant/open-network use and is not a memory policy engine. Reverse-engineer contract and portability ideas; do not expose or replace AEGIS memory policy/auth. |
+| Scientific Agent Skills | https://github.com/K-Dense-AI/scientific-agent-skills | High-value optional specialist-skill source for literature discovery, hypothesis generation, scientific critical thinking, databases and reproducible analysis. Repository says MIT, but individual SKILL.md files may declare different licences: review per skill before adapting. Treat scientific output as evidence requiring citations and validation, not authority. |
+| Awesome Harness Engineering | https://github.com/ai-boost/awesome-harness-engineering | High-priority Forge discovery index for context delivery, memory, orchestration, permissions, sandboxes, verification, observability and agent loops. Upstream LICENSE currently identifies CC0-1.0; verify each linked project's own licence and maintenance before reuse. Use it as a discovery map, not a dependency. |
+| AgenticOS | https://github.com/vstorm-co/agenticos | Apache-2.0 architecture reference for governed agents, browser/MCP tools, shared knowledge, budgets, approvals, audit and operator UI. Heavy FastAPI/Pydantic AI/Postgres/Redis/Next.js stack is not a direct fit for AEGIS's Cloudflare-first core. Build native concepts; no wholesale deployment. |
+| Helium browser | https://github.com/imputnet/helium | Privacy-focused Chromium browser, not an AI browser-agent framework. Useful as a browser privacy/UX reference only; desktop browser source is not an embeddable Chromebook/iOS automation engine. Repository contains multiple licences (including GPL-3.0 and BSD-3-Clause); inspect each component before reuse. |
+| Pi agent toolkit | https://github.com/badlogic/pi-mono | High-priority modular agent-runtime reference: provider API, agent core/tool loop/state, coding harness, TUI and web UI. MIT. Reverse-engineer clean provider/agent boundaries and extension model; do not replace AEGIS identity, jobs, memory, Sentinel, approvals or audit. |
+| “Eli Cactus” | No authoritative software repository or documented built-in AI command verified. Search results mostly describe the phrase as an unverified prompt/code claim; unrelated Cactus projects also exist. | Do not treat it as a secret ChatGPT command or software capability. Await the exact source or intended spelling. |
+
+### Implementation implications
+
+1. **Provider router:** add a provider-neutral model adapter boundary. Keep Workers AI as the current default; add optional OpenAI-compatible endpoint configuration for Qwen and other providers only with explicit endpoint/model configuration, server-side secrets, bounded timeouts/output and a hard fail-closed default. Do not silently route personal prompts to third parties.
+2. **Agent harness:** study Pi's small composable core and the Awesome Harness index. AEGIS's durable job runner remains the canonical execution owner; model adapters and agent loops are replaceable workers, never permission authorities.
+3. **Memory:** compare AgentMemory's shared operation contract and provider certification with AEGIS's existing D1 memory repository. Do not add a second competing source of truth.
+4. **Scientific work:** add a future research specialist with source provenance, hypothesis/evidence separation, reproducibility checks and skill-by-skill licence review.
+5. **Browser:** Helium is not the same as browser automation. Keep browser control as a separately sandboxed, allowlisted, Sentinel-mediated capability.
+6. **Model safety:** Heretic experiments, if ever evaluated, belong in an isolated disposable test environment with no production credentials or tool access. AEGIS security controls remain external to model behaviour.
+
+
+## Native Forge source inspection and candidate intake
+
+- Read-only public GitHub inspection now supports authenticated `POST /api/forge/inspect` and `POST /api/forge/read`, with pinned tree/blob SHAs, 100-file cap, 32 KiB file cap, strict UTF-8 and no execution.
+- Owner-scoped persistent candidate library supports authenticated `POST /api/forge/candidates` and `GET /api/forge/candidates`; duplicate source/tree records are idempotent.
+- Every candidate begins `inspected` / `unassessed` / `review-required`. Repository metadata does not constitute licence clearance; no automatic approval or execution.
+- Control Centre has a native Forge inspection and saved-candidate view. Source is rendered as text only.
+- Latest verified code head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247 tests passed, 0 failed, run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746135062.
+- Latest preview for that code: https://44e15358.aegis-6yk.pages.dev. Authentication is blocked in Preview until its two required secrets are configured.
+
+
+### Alibaba Page Agent — browser automation candidate
+
+- Source: https://github.com/alibaba/page-agent
+- Licence: MIT (repository); README acknowledges browser-use-derived DOM processing components and prompt, also MIT.
+- Purpose: in-page JavaScript GUI agent that interprets DOM/text and performs UI interactions without requiring a headless browser; optional Chrome extension for multi-page work and an MCP server marked beta.
+- Provider: BYOK; can call Qwen and other compatible model APIs. The project's public demo API is explicitly for technical evaluation/R&D only, not production; its privacy terms say demo requests are processed via Alibaba Cloud infrastructure in mainland China and prohibit sensitive data.
+- AEGIS decision: high-priority browser-agent architecture reference, distinct from Helium (a Chromium browser). Reverse-engineer DOM observation, action planning and page-context UX; build a native browser capability adapter rather than loading arbitrary third-party scripts into the AEGIS Control Centre.
+- Security boundary: webpage DOM, accessible names, page text and tool results are untrusted. Never let page content rewrite system instructions or permissions. Use a separate browser context, domain allowlists, user-visible action preview, exact-action Sentinel approval, restricted form handling, secret redaction, navigation controls, audit and kill switch. No credentials or sensitive data may flow to the demo endpoint.
+- Status: research only; no Page Agent package, extension, MCP server or demo API has been installed or connected.
+
+
+### Project Space handover brief — CogniCore adaptation
+
+- AEGIS now exposes owner-authenticated GET /api/workspaces/:id/brief and a Projects-panel Build handover brief / Copy brief workflow.
+- Deterministic extractive context only: project goal, recent event summaries and accepted, unexpired, non-restricted memories from that exact project. No personal memories, cross-project records, candidates, restricted memories, raw event bodies or source URLs.
+- Decisions/procedures are prioritized; memory content is shortened under a 1,000–12,000-character budget (6,000 default). Output includes included/omitted counts, truncation and a rough characters/4 token estimate.
+- Every included event/memory is labelled untrusted reference data. The brief cannot create a task, grant a capability, start an agent or call an external provider.
+- Source inspiration: CogniCore's bounded handover briefs and curated context. AEGIS uses its own D1 schema and access policy; no upstream runtime dependency.
+
+- Selected Project Space chat now also receives up to eight recent event summaries from that exact project scope. Raw event bodies are excluded and summaries are labelled untrusted; this adapts curated project context without introducing a second memory store.
+
+
+### Composio-assisted audit of connected repositories — 15 November 2026
+
+The connected GitHub account was inspected through Composio, including repository metadata, pinned revisions, licences, selected architecture/security documents, AEGIS branches, pull requests and CI. The review found selective opportunities in OpenClaw (MIT runtime patterns) and Auto Browser (MIT browser/MCP service), with G0DM0D3 (AGPL-3.0) held to architecture-reference-only, Charlie Automates Skills held pending licence clarification, and the existing compiled audio-lab artifact marked for a maintainable rebuild. Composio was used as a development-time GitHub connector only; it is not an AEGIS runtime dependency. No external code or runtime adapter was installed. Full provenance, decisions, security boundaries, branch status and next steps: [AEGIS External Repository Integration Audit](AEGIS_EXTERNAL_REPO_INTEGRATION.md).
