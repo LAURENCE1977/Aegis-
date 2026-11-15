@@ -679,10 +679,7 @@
       const prior = card.querySelector('.workspace-detail');
       if (prior) { prior.remove(); return; }
       try {
-        const [data, timelineData] = await Promise.all([
-          controlApi('/api/workspaces/' + encodeURIComponent(id)),
-          controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events'),
-        ]);
+        const timelineData = await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events');
         const detail = document.createElement('div');
         detail.className = 'workspace-detail';
         const heading = document.createElement('h3');
