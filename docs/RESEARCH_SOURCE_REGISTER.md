@@ -642,3 +642,26 @@ Sources inspected:
 - https://xiryn.com/
 
 No Xiryn code, Docker image, container, package, API key, Telegram bot or service has been installed or connected.
+
+
+## DevToys — developer utility toolkit
+
+Primary project: https://github.com/DevToys-app/DevToys  
+Website: https://devtoys.app/  
+Related default-tools repository: https://github.com/DevToys-app/DevToys.Tools  
+- MIT-licensed core application. DevToys 2.0 provides a cross-platform desktop toolbox with roughly 30 built-in utilities: JSON/YAML and date/number conversion; URL, HTML, Base64, GZip and JWT encoding/decoding; JSON/SQL/XML formatting; hashes/checksums; regex and JSONPath testing; Markdown/text utilities; QR tools and image compression. An extension ecosystem allows additional tools.
+- A separate CLI is available for terminal/CI use. It is not safe to assume every GUI extension exposes a CLI operation; each tool needs to implement/support the CLI scenario. Linux packages and CLI installation are documented upstream.
+- Desktop platforms are Windows, macOS and Linux. This is not a browser-native/PWA service and there is no official iOS/iPadOS app. ChromeOS Linux-container compatibility is plausible for the Linux CLI/package path but is not an officially verified Chromebook support claim.
+- Useful design patterns: small single-purpose utilities; local processing instead of sending snippets to random web converters; discoverable tool catalogue; clipboard smart detection; extension contracts; compact layouts; and reusable utilities in CI.
+- Security finding: upstream advisory GHSA-ggxr-h6fm-p2qh identifies a high-severity extension-installation path-traversal (“Zip Slip”) issue affecting v2.0.0.0 through v2.0.8.0, with v2.0.9.0 listed as patched. The inspected release page labels v2.0.9.0 a pre-release at the time of research. Treat extension installation as a code-loading trust boundary; pin and verify a patched release before any trial, avoid untrusted extensions, and inspect extension archive/path validation. Do not treat the patch version listing alone as proof that a stable package is available on every platform.
+- AEGIS decision: useful reference and optional local developer-tool companion, but not an AEGIS runtime, agent, MCP server or core dependency. Prefer implementing the small, high-value converters/formatters/encoders as browser-native AEGIS utilities (offline-capable where practical) behind tested pure-function modules. This better fits Chromebook/iPhone/iPad and avoids asking the user to install a separate desktop app. Consider a DevToys CLI adapter only for a future Linux-capable worker, with explicit tool allowlists and no arbitrary command execution.
+- Before any integration: verify exact stable release and platform package signatures; review core and per-extension licences independently; review extension update/install and archive extraction; check privacy/telemetry and clipboard behavior; pin versions and test offline; never feed secrets into third-party extensions or log clipboard contents.
+- No DevToys app, CLI, extension, package or service has been installed or connected to AEGIS.
+
+Sources inspected:
+- https://github.com/DevToys-app/DevToys
+- https://github.com/DevToys-app/DevToys.Tools
+- https://github.com/DevToys-app/DevToys/blob/main/CONTRIBUTING.md
+- https://github.com/DevToys-app/DevToys/security/advisories/GHSA-ggxr-h6fm-p2qh
+- https://github.com/DevToys-app/DevToys/releases
+- https://github.com/DevToys-app/Publish
