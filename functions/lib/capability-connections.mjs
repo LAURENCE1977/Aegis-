@@ -82,6 +82,15 @@ export async function createConnection(db, input, now = Date.now()) {
     }
   }
 
+  // Expired records remain in the audit history but no longer occupy the
+  // provider's single active-connection slot.
+  await db.prepare(`
+    UPDATE capability_connections
+    SET status = 'revoked', revoked_at = ?
+    WHERE principal_id = ? AND provider_id = ?
+      AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= ?
+  `).bind(createdAt, input.principalId, input.providerId, createdAt).run();
+
   const id = crypto.randomUUID();
   const result = await db.prepare(`
     INSERT INTO capability_connections (
