@@ -88,6 +88,16 @@ export async function isAuthorized(request, env, now = Date.now()) {
   return token ? verifySessionToken(token, env.AEGIS_SESSION_SECRET, now) : false;
 }
 
+export function isSameOriginRequest(request) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 export function sessionCookie(token, maxAge = SESSION_TTL_SECONDS) {
   return COOKIE_NAME + "=" + token +
     "; Path=/; Max-Age=" + maxAge +
