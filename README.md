@@ -24,7 +24,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 
 - Owner-scoped Project Spaces API and append-only activity timeline under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
-- AEGIS-native typed memory and D1 repository/API under development on a feature branch (migration not applied; D1 not provisioned/bound; not connected to chat; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
+- AEGIS-native typed memory with owner/project-scoped D1 repository, candidate review, append-only lifecycle history, mobile Memory panel and approved-memory chat retrieval (feature branch only; shared migrations not applied; D1 not provisioned/bound; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
 
 ## Security setup
 
@@ -67,7 +67,7 @@ Run the full test suite with Node.js 22:
 node --test tests/*.test.mjs
 ```
 
-The first durable runtime slice is now implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
+The first durable runtime slice is implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. The Project Spaces and Memory shared D1 migrations are in `migrations/shared/`; do not apply the nested feature-source migration directories as well. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
 
 ## Project blueprint and AI handover
 
