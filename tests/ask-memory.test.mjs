@@ -1,20 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
-import { onRequestPost } from '../functions/api/ask.js';
+import { onRequestPost, buildAskMessages } from '../functions/api/ask.js';
 
 const secret = 'ask-memory-test-session-secret-with-sufficient-length';
 const ownerEnv = { AEGIS_PASSWORD:'test-password-long-enough', AEGIS_SESSION_SECRET:secret };
 
 class RetrievalD1 {
-  constructor(rows) { this.rows=rows; this.query=null; }
+  constructor(rows) { this.rows=rows; this.query=null; this.queries=[]; }
   prepare(sql) {
     const db=this;
     return {
       values:[],
       bind(...values) { this.values=values; return this; },
       async all() {
-        db.query={sql,values:this.values};
+        db.query={sql,values:this.values}; db.queries.push(db.query);
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         const [ownerId,projectId,now,...rest]=this.values;
         const limit=rest.pop();
@@ -88,4 +88,19 @@ test('chat remains available without the optional D1 memory binding', async()=>{
   });
   assert.equal(response.status,200);
   assert.doesNotMatch(captured.messages[0].content,/Approved AEGIS memories/);
+});
+
+
+test('chat combines personal memory with only the selected Project Space memories',async()=>{
+  const db=new RetrievalD1([
+    row({id:'personal-music',content:'Personal preference: soulful music production workflow.'}),
+    row({id:'project-music',project_id:'project-123',content:'Project brief: build the AEGIS music workflow.'}),
+    row({id:'other-project',project_id:'project-999',content:'Private unrelated project music workflow.'}),
+  ]);
+  const messages=await buildAskMessages({AEGIS_DB:db},'music workflow',[],{projectId:'project-123'});
+  const system=messages[0].content;
+  assert.match(system,/Personal preference: soulful music production workflow/);
+  assert.match(system,/Project brief: build the AEGIS music workflow/);
+  assert.doesNotMatch(system,/Private unrelated project music workflow/);
+  assert.deepEqual(db.queries.map(query=>query.values[1]),[null,'project-123']);
 });
