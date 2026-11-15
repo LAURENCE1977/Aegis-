@@ -147,3 +147,8 @@ Next: add D1/Queue integration tests against a disposable non-production environ
 ## Durable specialist agent orchestration
 
 The runtime now also supports authenticated `POST /v1/agent-runs` and `GET /v1/agent-runs/:id`. Runs are persisted in `agent_runs` with event history in `agent_run_events`, dispatched through the existing `JOBS` Queue, and recovered by the existing Cron outbox/lease sweep. Apply `migrations/runtime/0002_agent_runs.sql` after `0001_jobs.sql` to the same runtime D1 database. The first orchestration stage is deliberately plan-only: it validates a bounded objective and fixed specialist roles, creates a deterministic researcher/planner/engineer/security/reviewer plan, and invokes no model or tools. Every future execution step must pass through Sentinel and exact approval checks. See `docs/AEGIS_AGENT_ORCHESTRATION.md`. This source change is not deployed; no D1 migration or Cloudflare resource was applied.
+
+
+## Sentinel bridge boundary
+
+The agent module now exports `runAgentCapabilityRequest`, a strict server-side bridge to `runSentinelInvocation`. It resolves manifests from the canonical registry, binds the principal from trusted context, normalizes and digests JSON input, and delegates policy/grant/connection/approval/audit/adapter checks to Sentinel. Agent payloads cannot provide a manifest, principal, tool list, adapter or permission. This bridge is not yet called by the Queue consumer: agent runs remain plan-only until persistent grant/connection stores, a vault, D1 audit composition, adapter routing and egress controls are completed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
