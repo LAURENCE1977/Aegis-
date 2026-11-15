@@ -193,3 +193,43 @@ export async function updateForgeCandidateReview(db, ownerId, id, review, now = 
   `).bind(id, ownerId).first();
   return mapCandidateRow(updatedRow);
 }
+
+
+const CANDIDATE_EVENT_TYPES = new Set(['created', 'review_changed', 'status_changed']);
+
+export async function listForgeCandidateEvents(db, ownerId, id, limit = 50) {
+  assertDatabase(db);
+  requireOwner(ownerId);
+  if (typeof id !== 'string' || !ID_PATTERN.test(id)) {
+    throw new TypeError('Invalid Forge candidate identifier');
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Forge candidate event limit must be between 1 and 100');
+  }
+  const result = await db.prepare(`
+    SELECT * FROM forge_candidate_events
+    WHERE candidate_id = ? AND owner_id = ?
+    ORDER BY occurred_at DESC, id DESC
+    LIMIT ?
+  `).bind(id, ownerId, limit).all();
+  return (result?.results ?? []).map(row => {
+    if (!row || typeof row.id !== 'string' ||
+        !CANDIDATE_EVENT_TYPES.has(row.event_type) ||
+        typeof row.to_status !== 'string' ||
+        typeof row.to_decision !== 'string' ||
+        typeof row.occurred_at !== 'string') {
+      throw new TypeError('Stored Forge candidate event is invalid');
+    }
+    return {
+      id: row.id,
+      candidateId: row.candidate_id,
+      ownerId: row.owner_id,
+      type: row.event_type,
+      fromStatus: row.from_status ?? null,
+      toStatus: row.to_status,
+      fromDecision: row.from_decision ?? null,
+      toDecision: row.to_decision,
+      occurredAt: row.occurred_at,
+    };
+  });
+}
