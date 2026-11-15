@@ -509,8 +509,8 @@
       let reply = '';
       let runStarted = false;
       let runFinished = false;
-      for (const frame of body.split(/\\r?\\n\\r?\\n/)) {
-        const line = frame.split(/\\r?\\n/).find(part => part.startsWith('data: '));
+      for (const frame of body.split(/\r?\n\r?\n/)) {
+        const line = frame.split(/\r?\n/).find(part => part.startsWith('data: '));
         if (!line) continue;
         let event;
         try { event = JSON.parse(line.slice(6)); }
