@@ -89,7 +89,7 @@ async function authenticatedRequest(path, { method = 'GET', body, origin = 'http
 test('approval inbox rejects unauthenticated reads before accessing D1', async () => {
   const response = await onRequestGet({
     request: new Request('https://aegis.example/api/approvals'),
-    env: { ...envBase, APPROVALS: { prepare() { throw new Error('must not access D1'); } } },
+    env: { ...envBase, AEGIS_DB: { prepare() { throw new Error('must not access D1'); } } },
   });
   assert.equal(response.status, 401);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
@@ -108,7 +108,7 @@ test('approval inbox returns pending exact-operation details without exposing th
   const record = await createApprovalRequest(db, binding);
   const response = await onRequestGet({
     request: await authenticatedRequest('/api/approvals'),
-    env: { ...envBase, APPROVALS: db },
+    env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -130,7 +130,7 @@ test('approval decisions reject missing and hostile origins before changing D1',
         origin,
         body: { id: pending.id, decision: 'approved' },
       }),
-      env: { ...envBase, APPROVALS: db },
+      env: { ...envBase, AEGIS_DB: db },
     });
     assert.equal(response.status, 403);
     assert.equal(db.rows.get(pending.id).status, 'pending');
@@ -145,7 +145,7 @@ test('only the authenticated owner can decide a pending approval and the API sup
       method: 'POST',
       body: { id: pending.id, decision: 'approved' },
     }),
-    env: { ...envBase, APPROVALS: db },
+    env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -162,7 +162,7 @@ test('approval decisions reject oversized bodies while streaming', async () => {
       method: 'POST',
       body: 'x'.repeat(3000),
     }),
-    env: { ...envBase, APPROVALS: new MemoryD1() },
+    env: { ...envBase, AEGIS_DB: new MemoryD1() },
   });
   assert.equal(response.status, 413);
 });
@@ -179,7 +179,7 @@ test('approval decisions reject non-JSON content types', async () => {
       },
       body: '{"id":"approval-1","decision":"approved"}',
     }),
-    env: { ...envBase, APPROVALS: new MemoryD1() },
+    env: { ...envBase, AEGIS_DB: new MemoryD1() },
   });
   assert.equal(response.status, 415);
 });
@@ -193,7 +193,7 @@ test('expired pending approvals cannot be approved through the API', async () =>
       method: 'POST',
       body: { id: pending.id, decision: 'approved' },
     }),
-    env: { ...envBase, APPROVALS: db },
+    env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 409);
   assert.equal(db.rows.get(pending.id).status, 'pending');
@@ -211,7 +211,7 @@ test('approval decisions reject malformed JSON and invalid decision values', asy
       },
       body: '{',
     }),
-    env: { ...envBase, APPROVALS: new MemoryD1() },
+    env: { ...envBase, AEGIS_DB: new MemoryD1() },
   });
   assert.equal(malformed.status, 400);
 
@@ -220,7 +220,7 @@ test('approval decisions reject malformed JSON and invalid decision values', asy
       method: 'POST',
       body: { id: 'approval-1', decision: 'execute' },
     }),
-    env: { ...envBase, APPROVALS: new MemoryD1() },
+    env: { ...envBase, AEGIS_DB: new MemoryD1() },
   });
   assert.equal(invalid.status, 400);
 
@@ -229,7 +229,7 @@ test('approval decisions reject malformed JSON and invalid decision values', asy
       method: 'POST',
       body: { id: '../other', decision: 'approved' },
     }),
-    env: { ...envBase, APPROVALS: new MemoryD1() },
+    env: { ...envBase, AEGIS_DB: new MemoryD1() },
   });
   assert.equal(invalidId.status, 400);
 });
