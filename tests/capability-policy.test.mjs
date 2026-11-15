@@ -29,7 +29,7 @@ function writeManifest() {
   const manifest = readManifest();
   manifest.actions = [{
     id: 'update',
-    capability: 'github.repository.update',
+    capability: 'github.repository-update',
     effect: 'write',
     risk: 'medium',
     approval: 'human-always',
@@ -138,7 +138,7 @@ test('write actions require an exact, unexpired, unused approval', () => {
 
 test('approval cannot be reused for a changed payload, resource, action or version', () => {
   const manifest = writeManifest();
-  const grant = grantFor(manifest, { scopes: ['github:repository:write'] });
+  const grant = grantFor(manifest, { scopes: ['github:repository:write'], resourceIds: [resourceId, 'github:another/repo'] });
   const approval = approvalFor(manifest);
   const input = { manifest, actionId: 'update', principalId, resourceId, inputDigest, grant, approval };
   assert.equal(evaluateCapabilityPolicy({
