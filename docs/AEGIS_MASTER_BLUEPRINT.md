@@ -495,5 +495,5 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Architecture and security acceptance criteria: `docs/AEGIS_COPILOTKIT_AGUI.md`.
 - Research register updated: `docs/RESEARCH_SOURCE_REGISTER.md`.
 - Implemented: `functions/lib/ag-ui.mjs` bounded AG-UI 1.0 text-run and SSE primitives; authenticated `POST /api/ag-ui` routes plain-text runs through the canonical `/api/ask` path. Tool calls, ambient context, resume and multimodal payloads are rejected until Sentinel and durable lifecycle support are connected.
-- CI: run 43742924570 passed 210/210 tests on commit `370cc052c2224d8e1a15393a542621e80fe0c125`.
+- CI: latest head `d7a1b28582e4c174e61aeb4011498237ffa29a22` passed run 43743175694, 212/212 tests.
 - No CopilotKit package, React migration, CopilotKit service or upstream code has been installed; no production deployment has occurred. Token streaming, resumable runs, generative UI and tool/approval events remain future work.
