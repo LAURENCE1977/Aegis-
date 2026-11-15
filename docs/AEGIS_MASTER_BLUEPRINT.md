@@ -152,6 +152,9 @@ Forge documentation says:
 - The first test run was deliberately red because the job contract module did not yet exist. After implementation, CI passed **82 tests, 0 failed** on head `8e7644fee23c8c281888cc802fb60da9047c6c0e`. Re-check CI for any later head after documentation/formatting updates.
 - Runtime source is not deployed. Cloudflare account inspection found no D1 databases or Queues and only two unrelated Worker scripts (`artist-hub-preview-20261113`, `project-andromeda`). Do not confuse them with AEGIS.
 - PR #4 does not change the live Pages project. Resource provisioning and Worker deployment remain separate and require a cost/limit check plus appropriate authorisation.
+- PR #8: https://github.com/LAURENCE1977/Aegis-/pull/8 — draft, open, unmerged; adds a DLQ recovery test first, then implementation and Wrangler consumer configuration on `feature/runtime-dead-letter-recovery`, based on PR #4's runtime branch. The initial CI run reproduced the missing behavior (failure); the latest head and final CI result must be rechecked before calling this complete.
+- The DLQ consumer uses `MessageBatch.queue` to distinguish `aegis-jobs-dlq`, conditionally fails only non-terminal jobs with `JOB_DELIVERY_EXHAUSTED`, clears leases and writes a deterministic, idempotent `delivery_exhausted` audit event. Repeated DLQ delivery can repair a missing audit insert without duplicate events; succeeded/failed jobs are not overwritten.
+- The Wrangler template now declares a second consumer for `aegis-jobs-dlq`. This is configuration source only; no Cloudflare Queue or Worker was provisioned or deployed.
 - See `docs/AEGIS_RUNTIME.md` for API, data model, deployment preparation and limitations.
 
 ### Important branches and prior refs
@@ -183,12 +186,13 @@ PR #4 contains the first isolated Worker source slice:
 4. Cron outbox recovery for pending dispatches and expired leases.
 5. Attempt fencing and optional idempotency key. Attempt IDs are captured atomically with `UPDATE ... RETURNING attempts`, preventing a stale worker from adopting a newer attempt after lease recovery.
 6. Strict allowlist containing only a no-argument health-check task.
+7. Dedicated dead-letter consumer registration and idempotent terminal failure/audit handling are implemented on the PR #8 feature branch; verify the latest CI result before treating this slice as green.
 
 PR #4 is open and mergeable (not merged). Latest implementation commit: `97a8e4ae2403024ef88c6d17eb7049bc863cd2b0`. Latest CI run `43725405757`: **83 tests passed, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The active Pages preview is `https://ce0d2a88.aegis-6yk.pages.dev`; it does not deploy the Worker. Production Pages remains unchanged.
 
 Still missing:
 - Cloudflare D1/Queue resource provisioning and deployment.
-- Real D1/Queue integration tests and live Worker verification.
+- Real D1/Queue integration tests and live Worker verification (DLQ handling is currently covered only by the in-memory D1/Queue test adapter).
 - Durable Workflows/checkpointing for longer multi-step tasks.
 - Approval gates, task cancellation, notifications and Control Centre UI.
 - Specialist agents, provider routing and authorised connectors.
@@ -215,7 +219,7 @@ These are research-only candidates. None is connected, installed or granted perm
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
 2. Keep PR #4 reviewed and green; merge only with the user's appropriate production approval.
-3. Validate runtime code against a real local D1/Queue emulator or disposable test resources; add recovery, retry, concurrency and failure-path tests.
+3. Validate runtime code against a real local D1/Queue emulator or disposable test resources; retain recovery, retry, concurrency and DLQ failure-path tests and verify the latest PR #8 CI run.
 4. Provision one D1 database, one Queue and a separate Worker only after confirming account free-tier headroom and no billing change.
 5. Deploy the Worker with an encrypted `AEGIS_JOB_TOKEN`; verify health, submit, status, completion, idempotency, Cron recovery and DLQ behavior.
 6. Add controlled job types and approval gates; do not add arbitrary execution.
