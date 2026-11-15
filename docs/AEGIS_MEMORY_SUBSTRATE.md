@@ -53,7 +53,7 @@ The runtime job database is a separate service/database and keeps its own migrat
   - https://56dc826b.aegis-6yk.pages.dev
   - https://feature-native-memory-substr.aegis-6yk.pages.dev
 - SQLite validation applied the three canonical migrations in order, confirmed create/status audit trigger behaviour, append-only enforcement and rejection of project IDs not owned by the same owner.
-- The later chat-memory integration and frontend smoke-test additions are newer than that verified commit and must be rechecked in CI before promotion.
+- The frontend smoke-test additions and subsequent documentation commits are newer than that verified commit and must be rechecked in CI before promotion.
 
 ## Deployment status
 
