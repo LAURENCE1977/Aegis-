@@ -610,3 +610,14 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - Candidate review/decision updates, diff/AST analysis and sandboxed execution are not implemented. No code execution or production deployment has occurred.
 - Full verification of the newest candidate-registry commits is pending; the previous complete run at 72518c845fad8850508a5fef3929007ee4ebaed3 passed 247/247 Node.js 22 tests.
 - Detailed design and limitations: docs/AEGIS_FORGE.md.
+
+## 22. Forge source inspection and persistent candidate intake — 15 November 2026
+
+- Authenticated read-only GitHub inspection: `POST /api/forge/inspect` returns repository metadata, recursive default-branch tree SHA and up to 100 allowlisted text-file entries with pinned blob SHAs.
+- Authenticated pinned blob reader: `POST /api/forge/read` verifies exact SHA, base64 encoding, byte length and strict UTF-8; 32 KiB per-file cap.
+- Authenticated owner-scoped candidate library: `POST /api/forge/candidates` inspects and persists an immutable source/tree candidate; `GET /api/forge/candidates` lists the signed owner's records. Unique owner/source/tree index makes intake idempotent.
+- New candidate lifecycle begins `inspected`, `unassessed`, licence `review-required`. No licence auto-clearance, no install, no code execution.
+- Control Centre has a native Forge tab for inspect/read/save candidate. All source display uses `textContent`; source remains untrusted data.
+- Shared streaming request-size limiter is used by Forge discovery/inspect/read/candidate write APIs.
+- Latest verified implementation head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247/247 tests passed, run 43746135062.
+- Preview for that implementation: https://44e15358.aegis-6yk.pages.dev. Preview secrets and D1 binding remain unconfigured; authenticated UI and persistence cannot yet be exercised.
