@@ -354,3 +354,17 @@ Do not duplicate the ten existing AEGIS-native Superpowers adaptations or replac
 **Decision:** reference-only; optional external QA workstation if AEGIS later ships an Android client. It is not an agent runtime, CI service, remote browser or 24/7 host. Its published native targets are Windows, macOS and Linux, not Chromebook browser or iOS/iPadOS. Therefore it does not change the first-delivery priority: responsive web/PWA on Chromebook, iPhone and iPad.
 
 Any future AEGIS device-control adapter must isolate the ADB host, scope access to disposable test devices/accounts, classify every action through the Capability System, require explicit approval for consequential device or signing operations, keep private keys out of agent context/logs, and record redacted evidence. No CoreDeck binary or service has been installed or connected.
+
+## 19. Browser, code intelligence, local inference, model routing and Media Studio candidates
+
+Research details and evidence: docs/RESEARCH_SOURCE_REGISTER.md.
+
+- Vercel agent-browser: optional isolated browser-worker adapter. Apache-2.0 Rust CLI/MCP with accessibility snapshots and controlled browser actions. Requires a host runtime and Chrome; not a Worker-native or iOS browser automation solution. Domain/action allowlists, isolated sessions, explicit approval and page-content prompt-injection defenses are mandatory.
+- Code Review Graph: high-priority optional engineering adapter. MIT local Tree-sitter/SQLite repository graph with MCP/CLI, impact analysis and risk-scored review. Benchmark on AEGIS itself; dry-run its installer; start read-only and preserve AEGIS as canonical source of truth.
+- FlashML FreeToken: Apache-2.0 local open-weight model-serving engine, not a free hosted API-token grant. Current CLI requirements include Linux x86_64 and NVIDIA/CUDA hardware. Optional future provider adapter on a capable GPU host; not suitable as a Chromebook/iPad runtime.
+- 9Router: possible provider-router reference, currently on security hold. Public advisories document critical provider/key/history exposure in versions <=0.4.41 and a separate Host-header auth bypass/SSRF flaw before 0.5.2. Audit exact fork, release and fixes before any test; never provide personal/production credentials. AEGIS remains owner of provider routing, budgets, identity and audit.
+- OpenCut: future Media Studio/editor reference. The active OpenCut-app repository is being rewritten and advertises Editor API, MCP and headless automation as planned features; do not depend on unshipped interfaces. The classic repository is archived.
+
+Recommended order: (1) evaluate Code Review Graph against AEGIS PR review and architecture questions; (2) define browser-worker capability contract and security boundary, then assess agent-browser in a disposable environment; (3) define a generic OpenAI-compatible local-provider adapter and benchmark FreeToken only if suitable GPU hardware becomes available; (4) perform 9Router source/advisory remediation audit before reconsideration; (5) revisit OpenCut when its editor automation API and headless mode are actually released.
+
+No packages, credentials, accounts, provider connections, browser profiles, media assets, infrastructure or deployments were changed by this research.
