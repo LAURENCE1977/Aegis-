@@ -12,6 +12,7 @@ import {
   onRequestGet as workspaceEventsGet,
   onRequestPost as workspaceEventsPost,
 } from '../functions/api/workspaces/[id]/events.js';
+import { onRequestGet as workspaceBriefGet } from '../functions/api/workspaces/[id]/brief.js';
 
 const secret = 'workspace-api-test-session-secret-with-enough-entropy';
 const envBase = {
@@ -20,7 +21,7 @@ const envBase = {
 };
 
 class MemoryD1 {
-  constructor() { this.spaces = new Map(); this.events = new Map(); this.memoryEvents = []; }
+  constructor() { this.spaces = new Map(); this.events = new Map(); this.memoryEvents = []; this.memories = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -62,6 +63,9 @@ class MemoryD1 {
       },
       async all() {
         const v = this.values;
+        if (sql.includes('FROM aegis_memories')) {
+          return { results: db.memories.filter(row => row.owner_id === v[0] && row.project_id === v[1] && row.status === 'accepted' && (!row.expires_at || row.expires_at > v[2])).sort((a,b) => b.updated_at.localeCompare(a.updated_at)).slice(0,v[3]).map(row => ({...row})) };
+        }
         if (sql.includes('FROM aegis_memory_events')) {
           return { results: db.memoryEvents.filter(row => row.owner_id === v[0] && row.project_id === v[1]).slice(0, v[2]).map(row => ({ ...row })) };
         }
@@ -202,6 +206,67 @@ test("workspace detail and timeline return only the owner's project data", async
     params: { id: otherId },
   });
   assert.equal(privateLookup.status, 404);
+});
+
+
+test('owner can create a bounded Project Space handover brief from its own accepted memories and events', async()=>{
+  const db=new MemoryD1();
+  const created=await createWorkspacePost({
+    request:await authenticatedRequest('/api/workspaces',{method:'POST',body:{name:'AEGIS Core',description:'Build a safe personal AI operating system.'}}),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  const {workspace}=await created.json();
+  await workspaceEventsPost({
+    request:await authenticatedRequest('/api/workspaces/'+workspace.id+'/events',{
+      method:'POST',
+      body:{type:'decision',summary:'Keep one canonical database.',content:'Private raw event content should not be copied into the brief.'},
+    }),
+    env:{...envBase,AEGIS_DB:db},params:{id:workspace.id},
+  });
+  const memoryRow=(overrides={})=>({
+    id:'memory-brief-1',owner_id:'owner',project_id:workspace.id,kind:'decision',
+    content:'D1 is the canonical persistent project store.',
+    source_type:'user-stated',source_url:'https://private.example/source',
+    source_attribution:'Owner decision',source_observed_at:'2026-11-15T11:00:00.000Z',
+    confidence:0.9,sensitivity:'private',status:'accepted',tags_json:'["architecture"]',
+    created_at:'2026-11-15T11:00:00.000Z',updated_at:'2026-11-15T11:00:00.000Z',expires_at:null,
+    ...overrides,
+  });
+  db.memories.push(memoryRow());
+  db.memories.push(memoryRow({id:'restricted-memory',sensitivity:'restricted',content:'restricted secret'}));
+  db.memories.push(memoryRow({id:'candidate-memory',status:'candidate',content:'unreviewed content'}));
+  db.memories.push(memoryRow({id:'other-project-memory',project_id:'other-project',content:'other project content'}));
+
+  const response=await workspaceBriefGet({
+    request:await authenticatedRequest('/api/workspaces/'+workspace.id+'/brief'),
+    env:{...envBase,AEGIS_DB:db},params:{id:workspace.id},
+  });
+  assert.equal(response.status,200);
+  const {brief}=await response.json();
+  assert.equal(brief.goal,'Build a safe personal AI operating system.');
+  assert.equal(brief.recentEvents[0].summary,'Keep one canonical database.');
+  assert.deepEqual(brief.memories.map(item=>item.id),['memory-brief-1']);
+  const serialized=JSON.stringify(brief);
+  assert.doesNotMatch(serialized,/Private raw event content|private\.example|restricted secret|unreviewed content|other project content/);
+});
+
+test('Project Space handover brief validates the requested budget and refuses inactive or foreign projects', async()=>{
+  const db=new MemoryD1();
+  const created=await createWorkspacePost({
+    request:await authenticatedRequest('/api/workspaces',{method:'POST',body:{name:'Brief test'}}),
+    env:{...envBase,AEGIS_DB:db},
+  });
+  const {workspace}=await created.json();
+  const invalid=await workspaceBriefGet({
+    request:await authenticatedRequest('/api/workspaces/'+workspace.id+'/brief?maxChars=999'),
+    env:{...envBase,AEGIS_DB:db},params:{id:workspace.id},
+  });
+  assert.equal(invalid.status,400);
+  const foreign=await workspaceBriefGet({
+    request:await authenticatedRequest('/api/workspaces/not-yours/brief'),
+    env:{...envBase,AEGIS_DB:db},params:{id:'not-yours'},
+  });
+  assert.equal(foreign.status,404);
 });
 
 test('Project Space timeline merges only its own memory lifecycle events', async () => {
