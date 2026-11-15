@@ -460,3 +460,24 @@ Source: https://github.com/CopilotKit/openmuse — MIT according to the upstream
 Source: https://github.com/open-webui/open-webui. This is a distinct self-hosted AI chat/model interface supporting multiple model backends and tools; it is not OpenMuse. Its current post-v0.6.6 licence includes mandatory preservation of Open WebUI branding except under its stated exceptions, and the current licence page explains that this is not OSI-approved open source. Earlier contributions through v0.6.5 retain BSD-3 terms. 
 
 **AEGIS decision:** Study its model selection, chat UX, knowledge/document workflows and administration as product references. Do not adopt it as AEGIS's branded front end or remove its identity under the current licence. Build an independent AEGIS interface and provider abstraction. If running Open WebUI separately for personal experimentation, retain its branding and review its current licence and deployment security. No Open WebUI code, service or connector has been installed or deployed.
+
+
+### OpenMuse (OpenMuseAgent) — corrected identification
+Original repository: https://github.com/OpenMuseAgent/OpenMuse. Its README explicitly says the project moved to **nanoMuse** at https://github.com/nano-muse/nanoMuse; the old OpenMuse repository is an archive of versions 0.1.0–0.6.0 and is no longer maintained. The current nanoMuse repository identifies itself as a cross-device personal agent (phone, desktop, web console and relay), with a local/hostable runtime, model-provider catalogue, MCP, scheduled goals, persistent memory, credential vault and a separate Sentinel gatekeeper. It supports Android and desktop/browser interfaces, device GUI interaction and ongoing work while the app is closed. The current repository's LICENSE and package metadata identify GPL-3.0-or-later (Python >=3.11); the archived OpenMuse repo was MIT at its archived 0.6.0 release. Do not assume the archived MIT licence applies to the current nanoMuse codebase.
+
+**High-value AEGIS reference.** Reverse-engineer the architecture, not the code:
+- Sentinel as a mandatory mediation boundary between model and tool execution.
+- Risk classification, policy decisions, exact-operation approvals, deny paths and revocation.
+- Credential vault with late-bound secret resolution and redacted tool results.
+- Taint tracking for private-data reads and outbound egress.
+- Isolated shell/Python execution with scrubbed environments and explicit writable workspace boundaries.
+- Durable goal scheduling, event triggers, task budgets, activity feed and resumable work.
+- Shared UI protocol so web, terminal and phone clients render the same approval, tool and activity events.
+- Cross-device agent runtime and user-controlled device actions.
+
+**Fit and limits.** Conceptually very close to the AEGIS mission and especially useful for validating the Sentinel/Capability System and long-running personal-agent experience. However, it is a Python 3.11+ runtime with a sizeable dependency set, local process/sandbox assumptions (Linux bubblewrap in particular), device apps and its own data/runtime architecture. It is not a drop-in Cloudflare Worker or browser-only service. AEGIS must keep its own canonical job IDs/state, capability registry, exact-operation approval records, encrypted secret lifecycle, project memory and audit. Device/desktop execution should be a separately isolated adapter with explicit device consent; do not expose a shell or general computer-control capability through the Cloudflare Worker.
+
+**Licence decision.** GPL-3.0-or-later is strong copyleft. Do not copy or incorporate nanoMuse code into AEGIS's current codebase without an explicit licensing decision and review of distribution/network-service obligations. Use the architectural concepts as independent design input, preserve source attribution in this register, and build an independently implemented AEGIS-native Sentinel and durable-goal layer. The old OpenMuse archive's MIT licence applies to that archived code only; it does not make the current nanoMuse repository MIT. No nanoMuse/OpenMuse package, code, Android app, Docker image, local daemon, credentials or external connector has been installed or connected.
+
+### Open WebUI — retained as a separate candidate
+Source: https://github.com/open-webui/open-webui. This is a distinct self-hosted AI chat/workspace product, not OpenMuse/nanoMuse. It remains recorded above as a UI/model/RAG reference only. Its current branding-protection licence condition means AEGIS should not fork, embed or white-label it; independently reproduce generic workspace patterns instead. No Open WebUI code or service is installed or connected.
