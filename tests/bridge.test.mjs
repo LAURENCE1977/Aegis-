@@ -142,3 +142,68 @@ test('MCP endpoint rejects oversized requests', async () => {
   const response = await onRequestPost({ request: mcpRequest(requestBody), env });
   assert.equal(response.status, 413);
 });
+
+
+test('MCP endpoint rejects a Mcp-Method header that differs from the JSON-RPC method', async () => {
+  const requestBody = { jsonrpc: '2.0', id: 8, method: 'server/discover', params: { _meta: meta() } };
+  const response = await onRequestPost({
+    request: mcpRequest(requestBody, { method: 'tools/list' }),
+    env,
+  });
+  assert.equal(response.status, 400);
+});
+
+test('tools/call requires a matching Mcp-Name header', async () => {
+  const requestBody = {
+    jsonrpc: '2.0',
+    id: 9,
+    method: 'tools/call',
+    params: { name: 'aegis_list_skills', arguments: {}, _meta: meta() },
+  };
+  const response = await onRequestPost({ request: mcpRequest(requestBody), env });
+  assert.equal(response.status, 400);
+});
+
+test('MCP endpoint requires both JSON and event-stream in Accept', async () => {
+  const request = mcpRequest({
+    jsonrpc: '2.0', id: 10, method: 'server/discover', params: { _meta: meta() },
+  });
+  const headers = new Headers(request.headers);
+  headers.set('Accept', 'application/json');
+  const response = await onRequestPost({
+    request: new Request(request.url, { method: 'POST', headers, body: await request.text() }),
+    env,
+  });
+  assert.equal(response.status, 406);
+});
+
+test('MCP endpoint rejects non-JSON content types', async () => {
+  const request = mcpRequest({
+    jsonrpc: '2.0', id: 11, method: 'server/discover', params: { _meta: meta() },
+  });
+  const headers = new Headers(request.headers);
+  headers.set('Content-Type', 'text/plain');
+  const response = await onRequestPost({
+    request: new Request(request.url, { method: 'POST', headers, body: await request.text() }),
+    env,
+  });
+  assert.equal(response.status, 415);
+});
+
+test('MCP endpoint permits an authenticated AEGIS browser session as an alternative credential', async () => {
+  const { createSessionToken } = await import('../functions/lib/auth.mjs');
+  const sessionSecret = 'test-only-session-secret-for-mcp-bridge-32chars';
+  const sessionToken = await createSessionToken(sessionSecret);
+  const requestBody = { jsonrpc: '2.0', id: 12, method: 'server/discover', params: { _meta: meta() } };
+  const request = mcpRequest(requestBody, {
+    authorization: '',
+  });
+  const headers = new Headers(request.headers);
+  headers.delete('Authorization');
+  headers.set('Cookie', '__Host-aegis_session=' + sessionToken);
+  const response = await onRequestPost({
+    request: new Request(request.url, { method: 'POST', headers, body: JSON.stringify(requestBody) }),
+    env: { AEGIS_SESSION_SECRET: sessionSecret },
+  });
+  assert.equal(response.status, 200);
+});
