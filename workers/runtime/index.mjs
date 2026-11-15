@@ -208,22 +208,26 @@ async function processJob(message, env) {
     const result = buildHealthCheckResult(env);
     if (!result.checks.database || !result.checks.queue) throw new Error('Runtime dependency unavailable.');
     const finishedAt = new Date().toISOString();
-    await env.DB.prepare(
+    const finished = await env.DB.prepare(
       "UPDATE jobs SET status = 'succeeded', result_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
     ).bind(JSON.stringify(result), finishedAt, jobId, attempt).run();
     if (finished.meta?.changes) await audit(env, jobId, 'succeeded', { attempt });
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
-      await env.DB.prepare(
+      const failed = await env.DB.prepare(
         "UPDATE jobs SET status = 'failed', error_code = 'JOB_EXECUTION_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
       ).bind(new Date().toISOString(), jobId, attempt).run();
-      await audit(env, jobId, 'failed', { code: 'JOB_EXECUTION_FAILED', attempt });
+      if (failed.meta?.changes) await audit(env, jobId, 'failed', { code: 'JOB_EXECUTION_FAILED', attempt });
       message.ack();
     } else {
-      await env.DB.prepare(
+      const retry = await env.DB.prepare(
         "UPDATE jobs SET status = 'queued', error_code = 'JOB_EXECUTION_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
       ).bind(new Date().toISOString(), jobId, attempt).run();
+      if (!retry.meta?.changes) {
+        message.ack();
+        return;
+      }
       await audit(env, jobId, 'retry_scheduled', { attempt });
       message.retry({ delaySeconds: Math.min(300, 2 ** attempt * 5) });
     }
