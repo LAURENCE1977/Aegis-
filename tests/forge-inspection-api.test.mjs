@@ -76,3 +76,31 @@ test('Forge blob reader rejects unknown fields and malformed object identifiers'
   });
   assert.equal(invalid.status,400);
 });
+
+
+test('Forge inspection and blob APIs stop reading oversized request bodies at the configured limit',async()=>{
+  let fetchCalls=0;
+  const oversized=async(path,body)=>{
+    const token=await createSessionToken(secret);
+    return new Request('https://aegis.example'+path,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        Origin:'https://aegis.example',
+        Cookie:'__Host-aegis_session='+token,
+      },
+      body:JSON.stringify(body),
+    });
+  };
+  const inspectResponse=await inspect({
+    request:await oversized('/api/forge/inspect',{sourceUrl:'https://github.com/example/'+('x'.repeat(5000))}),
+    env,fetchImpl:async()=>{fetchCalls++;throw new Error('must not fetch');},
+  });
+  const blobResponse=await read({
+    request:await oversized('/api/forge/read',{sourceUrl:'https://github.com/example/agent',blobSha:'a'.repeat(40),padding:'x'.repeat(5000)}),
+    env,fetchImpl:async()=>{fetchCalls++;throw new Error('must not fetch');},
+  });
+  assert.equal(inspectResponse.status,413);
+  assert.equal(blobResponse.status,413);
+  assert.equal(fetchCalls,0);
+});
