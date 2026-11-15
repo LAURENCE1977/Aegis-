@@ -254,11 +254,11 @@ async function processDeadLetter(message, env) {
 
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "UPDATE jobs SET status = 'failed', error_code = 'JOB_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND status NOT IN ('succeeded', 'failed')"
-  ).bind(now, jobId).run();
+    "UPDATE jobs SET status = 'failed', error_code = 'JOB_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))"
+  ).bind(now, jobId, now).run();
 
   // Re-read after the conditional transition so a redelivery can repair a
-  // missing audit insert without overwriting an already-terminal job.
+  // missing audit insert without overwriting an already-terminal or active job.
   const row = await env.DB.prepare(
     'SELECT status, error_code FROM jobs WHERE id = ?'
   ).bind(jobId).first();
@@ -277,8 +277,16 @@ async function processDeadLetter(message, env) {
 export default {
   fetch: handleRuntimeFetch,
   async queue(batch, env) {
-    const handler = batch.queue === 'aegis-jobs-dlq' ? processDeadLetter : processJob;
-    for (const message of batch.messages) await handler(message, env);
+    for (const message of batch.messages) {
+      if (batch.queue === 'aegis-jobs') {
+        await processJob(message, env);
+      } else if (batch.queue === 'aegis-jobs-dlq') {
+        await processDeadLetter(message, env);
+      } else {
+        // Fail closed: an unknown queue must never execute a job payload.
+        message.ack();
+      }
+    }
   },
   scheduled(_controller, env, context) {
     context.waitUntil(dispatchPending(env));
