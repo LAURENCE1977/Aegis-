@@ -18,6 +18,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - AEGIS Engineering Intelligence capability boundary for attributed, evidence-rated knowledge
 - Pure validators for Forge source-candidate and engineering-knowledge records
 - Read-only public GitHub repository discovery behind session authentication and same-origin protection
+- Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 
 ## Security setup
 
@@ -39,6 +40,10 @@ Forge is being developed as a universal, safe transformation engine for reposito
 Candidate and knowledge records preserve source versions, licence review, attribution, evidence and limitations. Unknown licences are a hold, not permission to reuse. Retrieved source material is untrusted data: discovery does not execute repository code or grant tool permissions.
 
 See [docs/FORGE_INTELLIGENCE.md](docs/FORGE_INTELLIGENCE.md).
+
+## MCP Bridge (initial read-only phase)
+
+The first AEGIS Bridge slice exposes the current stateless MCP Streamable HTTP protocol at `POST /mcp`. It supports `server/discover`, `tools/list` and `tools/call`, with read-only status, module and skills tools. It does not yet provide OAuth 2.1/PKCE, per-client scopes, write operations or a general outbound connector manager. See [docs/AEGIS_BRIDGE.md](docs/AEGIS_BRIDGE.md) for the protocol, authentication boundary and current limitations. The endpoint fails closed until an authorised bearer secret or valid AEGIS session is configured.
 
 ## Skills library
 
