@@ -167,3 +167,19 @@ The first native module is functions/lib/mcp-forge-catalogue.mjs with focused te
 ## Free-Tier Ledger implementation milestone
 
 The first native module is functions/lib/free-tier-ledger.mjs with focused tests in tests/free-tier-ledger.test.mjs. It validates offer and quota metadata, official pricing/terms links, commercial-use and overage status, and verification freshness; list/get/search return defensive copies. It has no account-creation or provisioning methods. See AEGIS_FREE_TIER_LEDGER.md.
+
+## Read-only repository inspection and saved candidate library
+
+The first end-to-end Forge source-inspection slice is now implemented on the AEGIS feature branch.
+
+- `POST /api/forge/inspect` requires the signed owner session and same-origin write protection. It accepts one canonical public GitHub repository URL and returns repository metadata plus a pinned default-branch tree SHA and up to 100 allowlisted text-file entries.
+- `POST /api/forge/read` reads one exact Git blob SHA, verifies the returned object ID, base64 encoding, byte count and strict UTF-8, with a 32 KiB per-file limit. It does not execute or install source.
+- `POST /api/forge/candidates` inspects and stores an owner-scoped candidate in D1. `GET /api/forge/candidates` lists only the signed owner's candidates. `PATCH /api/forge/candidates/:id` records the owner-reviewed licence, engineering decision and lifecycle status. Duplicate owner/source/tree combinations are idempotent.
+- New candidates are `inspected`, `unassessed` and `review-required` for licence review. GitHub's repository-level SPDX metadata is a hint, not legal approval. The UI requires explicit confirmation of actual licence/dependency review; reuse/adapt/combine and approval are gated by verified status in both code and D1 triggers. No candidate is auto-approved or executable.
+- The Forge Control Centre can inspect, read pinned source and save candidates. Paths, metadata and source content render through text-only DOM APIs; no source HTML is interpreted.
+- Request bodies are read through the shared streaming limiter. All routes are authenticated, no-store and same-origin for writes.
+- D1 migrations 0005 and 0006 create owner-scoped candidate records, immutable source identity, licence/approval gates and append-only creation/review/status events. The database is not provisioned or bound yet, so the saved-candidate UI will report storage unavailable until approved setup.
+- Latest verified implementation chain: **260 tests passed, 0 failed** (GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746766564).
+- Latest preview for that code: https://44e15358.aegis-6yk.pages.dev. Browser check of the newer preview confirms the login page loads; Preview secrets are still absent, so authenticated Forge UI remains untested.
+
+This is the foundation for AEGIS's native reverse-engineering workflow: inspect pinned source, capture provenance/licence uncertainty, derive the useful design, then implement and test an AEGIS-native equivalent. It is not an execution sandbox or package installer. The licence approval state is an owner-recorded review decision, not legal advice or automated legal clearance.
