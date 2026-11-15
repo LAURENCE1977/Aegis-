@@ -10,6 +10,11 @@ This is an evaluation register, not an integration claim. No external package, a
 |---|---|---|
 | Vercel AI SDK / AI SDK UI | Provider-neutral model/tool layer, streaming chat UI, typed tool calls, approvals, MCP | High-priority architecture reference; selective adoption after stack-fit review |
 | Vstorm AgenticOS | Governed-agent architecture, shared knowledge, budgets, approvals, audit and operator console | Study and selectively adapt; do not deploy wholesale |
+| Google ARTEMIS | Android UI automation, real-device testing, MCP-driven test execution and diagnostic traces | High-value optional mobile QA adapter if AEGIS ships/tests an Android client; not an AEGIS runtime dependency |
+| TruffleHog | Secret discovery in AEGIS repositories, history and CI artifacts | High-priority security control to evaluate for isolated CI scans; do not automatically verify or expose detected credentials |
+| Harness (assumed Harness.io platform) | Governed CI/CD, security testing, release controls, policy, audit and cost governance | Architecture reference; defer platform integration because it is broader and likely heavier than AEGIS needs |
+| BLA (assumed qybaihe/bla, Blind LLM Agents) | Protect shipped binaries and bundles from automated reverse engineering | Niche optional release-hardening experiment only if AEGIS ships valuable client-side artifacts |
+| SolidCraft | Parametric 3D CAD, browser/desktop modelling, CLI and MCP-driven model creation | Future Media Studio / 3D asset capability reference; unrelated to current core runtime |
 | Dev.to | Discover practitioner articles, implementation notes and emerging patterns | Research input only; verify claims against primary sources |
 | Stack Overflow | Troubleshooting, edge cases, failure modes and practical implementation evidence | Research input with strict attribution/licence handling |
 | Frontend Mentor | Realistic UI challenges and independent frontend quality benchmarks | Optional UI/UX acceptance-test inspiration |
@@ -58,6 +63,86 @@ AEGIS decision:
 - Extract patterns, not framework lock-in. Any copied code must be independently licence-reviewed and tested.
 
 Other similarly named Agentic OS repositories exist. Pin exact owner/repository, commit and licence before evaluation.
+
+## Google ARTEMIS
+
+Primary candidate:
+- https://github.com/google/artemis
+- Google repository reports Apache-2.0 licensing.
+- Natural-language Android automation with real-device/emulator execution, UI hierarchy and visual targeting, task traces, CLI/Python SDK, web console and an MCP server.
+
+Useful capabilities:
+- Exercise real Android app workflows instead of relying only on mocked browser tests.
+- Capture screenshots, logs and execution traces for reproducible bug reports.
+- Expose mobile test execution to compatible coding agents through MCP.
+- Separate fast reactive execution from a more deliberate plan/execute/check workflow.
+
+AEGIS decision:
+- Strong optional QA adapter for a future Android AEGIS client or Android-specific companion workflow.
+- Not a fit for the current Cloudflare Worker runtime: it expects a separate Python/ADB-capable host and an attached Android device or emulator.
+- The user's primary devices are Chromebook, iPad and iPhone; ARTEMIS is Android-only today, so it does not solve iOS testing and should not be treated as a general mobile automation layer.
+- If trialled, isolate the device host, use a disposable test device/account, restrict MCP tools to test actions, and require approval before any action that sends messages, makes purchases, changes accounts or affects real data.
+- Validate Google's published benchmark claims independently; benchmark scores are not a guarantee for AEGIS-specific workflows.
+
+## TruffleHog
+
+Primary candidate:
+- https://github.com/trufflesecurity/trufflehog
+- Official README: https://github.com/trufflesecurity/trufflehog/blob/main/README.md
+- Since v3.0, the repository states it is licensed AGPL-3.0. Check the exact release and licence before embedding or redistributing any component.
+
+Useful capabilities:
+- Discover and classify credentials across Git repositories, filesystems, logs and supported external sources.
+- Distinguish detected, verified and unknown credentials; verification can contact the corresponding external service.
+- Run as a standalone scanner and integrate into CI/pre-commit workflows.
+
+AEGIS decision:
+- High-priority candidate for a controlled secret-scanning gate on AEGIS source and release workflows.
+- Prefer a pinned standalone CLI or isolated CI action over importing its code into AEGIS, subject to licence, provenance, supply-chain and runner review.
+- Start with local/repository-history detection that does not attempt live credential verification. Do not print secret values in logs, PR comments or AEGIS memory; redact findings and restrict access.
+- Live verification may send authentication attempts to external providers and reveal whether a credential is active. Keep it disabled unless separately authorised and explicitly scoped.
+- Scanner findings are sensitive security incidents: record file/commit references and remediation status, not raw credential material. Rotate/revoke exposed credentials rather than merely deleting the visible line.
+- A clean scan is not proof that no secrets exist; combine with least-privilege secret storage, secret rotation and review of CI logs/artifacts.
+
+## Harness (provisional identity: Harness.io)
+
+Primary candidate:
+- https://www.harness.io/products/platform
+
+The Harness platform describes a governed software-delivery layer spanning builds, deployments, testing, application security, runtime protection, cost management, policy-as-code, RBAC, approvals and audit. It also describes an agent harness and SDLC knowledge graph.
+
+AEGIS decision:
+- Study its governance model: policy enforcement at execution boundaries, worker agents with bounded permissions, evidence-backed audit, release verification and rollback.
+- Do not adopt the full platform as an AEGIS dependency. It is a broad commercial DevOps platform aimed at organisational delivery environments, not a lightweight personal runtime.
+- Reproduce the useful principles in AEGIS-native controls and keep CI provider-neutral.
+- This entry assumes the user means Harness.io. If “Harness” refers to a different GitHub project or agent framework, resolve the exact URL before further evaluation.
+
+## BLA — Blind LLM Agents (provisional identity: qybaihe/bla)
+
+Primary candidate:
+- https://github.com/qybaihe/bla
+- Repository reports MIT licensing; pin and re-check the exact release before use.
+- CLI, MCP server and agent skill intended to make shipped binaries/bundles more expensive and misleading for automated AI reverse-engineering while preserving intended runtime behaviour.
+
+AEGIS decision:
+- Niche release-hardening candidate, not a general security scanner or agent safety boundary.
+- Relevant only if AEGIS distributes client-side binaries, Electron apps, bundles, WASM or other supported artifacts that need protection from automated reverse engineering.
+- Do not run its setup against global agent configuration. If evaluated, use an isolated disposable workspace and explicit output directory, inspect every transformation, verify functional equivalence in staging, and measure artifact-size/runtime impact.
+- Avoid enabling LLM-directed decoys or deceptive directives without a specific, reviewed use case.
+- Never treat obfuscation/decoys as a substitute for protecting server-side secrets, signing releases, secure design or access controls.
+
+## SolidCraft
+
+Primary candidate:
+- https://docs.solidcraft.io/
+- Documentation states MIT OR Apache-2.0 licensing.
+- Described as a Rust parametric 3D CAD application available as desktop software, browser app, headless CLI and MCP server. The same command model is used by the UI, scripts, CLI and MCP.
+
+AEGIS decision:
+- Interesting future Media Studio / 3D asset-generation integration, especially because the command surface is scriptable and MCP-accessible.
+- Not relevant to the current AEGIS runtime, orchestration or mobile Control Centre; do not add it to the core deployment.
+- Before any adapter, verify repository maturity, supported modelling operations, WebGPU/WebGL browser requirements, MCP transport/security, export formats and dependency footprint.
+- Keep generated CAD files in a sandboxed project workspace and require review before publishing or overwriting user assets.
 
 ## Dev.to
 
@@ -121,11 +206,15 @@ Retrieved text, code, issue comments, prompts and tool schemas are untrusted dat
 
 ## Recommended order for AEGIS
 
-1. Use AI SDK documentation as a design reference for the future provider/tool/UI layer; first verify the current frontend and Worker compatibility.
-2. Study AgenticOS for governance, agent lifecycle, budget and audit patterns.
-3. Add Dev.to and Stack Overflow as attributed research connectors only after source/licence policy is implemented.
-4. Use Frontend Mentor briefs as optional independent UI evaluation criteria.
-5. Keep v0 as a human-operated prototyping option.
-6. Defer Blackbox integration until its API, costs, data handling and sandbox controls pass a formal connector review.
+1. Continue the durable runtime and security foundation; do not add a platform dependency before it is needed.
+2. Evaluate TruffleHog as a pinned, redacted, detection-only CI security gate.
+3. Study Harness governance patterns and AgenticOS's budget/approval/audit model; implement only the lightweight AEGIS-native controls that fit.
+4. Keep ARTEMIS as an optional Android QA adapter if an Android client becomes a target; it does not cover iOS.
+5. Keep BLA and SolidCraft outside the core: consider only for concrete release-hardening or 3D-asset use cases.
+6. Use AI SDK documentation as a design reference for the future provider/tool/UI layer; first verify the current frontend and Worker compatibility.
+7. Add Dev.to and Stack Overflow as attributed research connectors only after source/licence policy is implemented.
+8. Use Frontend Mentor briefs as optional independent UI evaluation criteria.
+9. Keep v0 as a human-operated prototyping option.
+10. Defer Blackbox integration until its API, costs, data handling and sandbox controls pass a formal connector review.
 
 Status: research register only. None of these sources is connected, installed, imported as executable code or granted permissions by this document.
