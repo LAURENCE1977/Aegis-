@@ -497,3 +497,38 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Implemented: `functions/lib/ag-ui.mjs` bounded AG-UI 1.0 text-run and SSE primitives; authenticated `POST /api/ag-ui` builds the same approved-memory/skill context as `/api/ask`, calls Workers AI with `stream: true`, parses provider SSE chunks and emits incremental AG-UI events. The mobile PWA consumes the stream and renders deltas as they arrive. Output is capped at 12,000 characters and provider errors are redacted. Tool calls, ambient context, resume and multimodal payloads are rejected until Sentinel and durable lifecycle support are connected.
 - CI: implementation head `a042fb2f100505945166d7cdeee96799b2ea1a88` passed run 43743962701, 215/215 tests. Branch preview deployed successfully; login requires the two Preview secrets.
 - No CopilotKit package, React migration, CopilotKit service or upstream code has been installed; no production deployment has occurred. Token streaming, resumable runs, generative UI and tool/approval events remain future work.
+
+
+## 17. Control Centre, streaming chat and PWA implementation — 15 November 2026
+
+### Native agent interaction
+- `functions/api/ag-ui.js` provides authenticated, same-origin AG-UI 1.0-style text streaming over SSE.
+- Input is bounded to 64 KiB, 11 plain-text user/assistant messages, 4,000 characters per message, and rejects frontend tools, ambient context, unsupported state/resume and multimodal content until they have safe implementations.
+- Provider frames are parsed incrementally across arbitrary network chunk boundaries; output is capped at 12,000 characters. Provider exceptions are replaced with safe terminal errors.
+- `index.html` streams text into the chat UI as deltas arrive.
+- **Not yet durable:** current thread/run IDs are client-generated and the stream is not persisted as a resumable job. Reconnect/resume must wait for canonical server-side run/job state.
+
+### Control Centre
+- New Projects tab creates and lists owner-only Project Spaces and opens their timelines; timeline entries are saved through authenticated same-origin APIs.
+- New Approvals tab lists pending operation requests and lets the owner approve or deny them.
+- The UI explicitly states that recording an approval decision does not itself execute an operation. Sentinel mediation and the worker adapter still determine whether any operation can run.
+- All displayed workspace and approval content uses DOM `textContent`, not generated HTML.
+
+### Installable PWA shell
+- Added `manifest.webmanifest`, `icons/aegis.svg` and `service-worker.js`.
+- Service worker caches only the static app shell, manifest and icon. It explicitly bypasses `/api/*`, `/mcp`, authentication routes, non-GET requests and cross-origin requests.
+- Offline mode provides the shell only; it does not claim chat, memory, jobs or approvals work offline. API data is never cached.
+- PWA support is intended for browser installation on Chromebook and supported mobile browsers. iOS Add to Home Screen behaviour must still be checked on a real device.
+
+### Verification at commit `f4a4b72088cfb24f6d9866f11bbb331d79d17ee9`
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43744215624
+- Node.js 22: **219 tests passed, 0 failed**.
+- This test run includes memory API/repository/correction tests, AG-UI protocol/API tests, front-end smoke checks and PWA cache-exclusion checks.
+- Any subsequent code change must receive a fresh CI run. Production remains unchanged; no D1 resources or secrets were provisioned.
+
+### Next implementation gates
+1. Add authoritative server-side run/thread persistence and reconnect/resume semantics.
+2. Add project-context selection to chat and scope memory retrieval to the selected Project Space.
+3. Add audit-backed memory export and owner deletion/retention controls.
+4. Wire approval consumption and adapter execution through Sentinel end-to-end before enabling any frontend tool calls.
+5. Verify the PWA on actual Chromebook, iPhone and iPad browsers.
