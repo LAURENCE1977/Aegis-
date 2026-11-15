@@ -45,7 +45,17 @@ test('AG-UI endpoint rejects frontend tools and ambient context until Sentinel m
   assert.equal(contextResponse.status,400);
 });
 
-test('AG-UI endpoint converts authenticated text chat into a valid protocol 1.0 SSE stream',async()=>{
+function modelSseStream(chunks) {
+  const encoder=new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+  });
+}
+
+test('AG-UI endpoint streams model deltas as ordered protocol 1.0 events',async()=>{
   let captured;
   const response=await onRequestPost({
     request:await request(input({
@@ -57,7 +67,7 @@ test('AG-UI endpoint converts authenticated text chat into a valid protocol 1.0 
     })),
     env:{
       ...envBase,
-      AI:{async run(model,payload){captured=payload;return {response:'Hello from AEGIS.'};}},
+      AI:{async run(model,payload){captured=payload;return modelSseStream(['data: {"response":"Hello "}\n\n','data: {"response":"from AEGIS."}\n\ndata: [DONE]\n\n']);}},
     },
   });
   assert.equal(response.status,200);
@@ -66,7 +76,8 @@ test('AG-UI endpoint converts authenticated text chat into a valid protocol 1.0 
   assert.deepEqual(events.map(event=>event.type),[
     'RUN_STARTED','TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END','RUN_FINISHED',
   ]);
-  assert.equal(events[2].delta,'Hello from AEGIS.');
+  assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['Hello ','from AEGIS.']);
+  assert.equal(captured.stream,true);
   assert.equal(captured.messages.at(-1).content,'Hello AEGIS.');
   assert.match(captured.messages[0].content,/AEGIS/);
 });
