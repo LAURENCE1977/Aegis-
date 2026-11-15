@@ -10,6 +10,9 @@ export async function onRequestGet({ request, env, params }) {
     return jsonResponse({ error: "Workspace storage is not configured." }, 503);
   }
   const id = params?.id;
+  if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(id)) {
+    return jsonResponse({ error: "Workspace not found." }, 404);
+  }
   try {
     const workspace = await getWorkspace(env.AEGIS_DB, OWNER_ID, id);
     if (!workspace) return jsonResponse({ error: "Workspace not found." }, 404);
