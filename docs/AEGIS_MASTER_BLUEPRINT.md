@@ -528,8 +528,8 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 
 ### Next implementation gates
 1. Add authoritative server-side run/thread persistence and reconnect/resume semantics.
-2. Add project-context selection to chat and scope memory retrieval to the selected Project Space.
-3. Add audit-backed memory export and owner deletion/retention controls.
+2. Add retention and owner deletion controls with explicit confirmation and audit.
+3. Validate the full ordered shared migration chain, including memory correction links, against SQLite.
 4. Wire approval consumption and adapter execution through Sentinel end-to-end before enabling any frontend tool calls.
 5. Verify the PWA on actual Chromebook, iPhone and iPad browsers.
 
@@ -540,7 +540,7 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - `POST /api/ag-ui` accepts an optional `projectId`, verifies that it identifies an active workspace owned by the signed-in single owner, and rejects unknown or unavailable scopes before invoking the model.
 - Chat retrieval includes up to four relevant accepted personal memories and four relevant accepted memories from only the selected project. Restricted, candidate, expired and other-project memories remain excluded.
 - Memory remains bounded JSON reference data with provenance, explicitly marked untrusted; project selection grants no capability or tool permissions.
-- API and repository tests cover scope isolation and unknown project rejection. Latest code CI is running on the current head; update this verification after the run completes.
+- API and repository tests cover scope isolation and unknown project rejection. Latest verification: 230 tests passed, 0 failed on branch head `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`, run 43744994054.
 
 
 ## 19. Owner memory export — 15 November 2026
@@ -553,3 +553,16 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Export does not mutate or delete stored data. Owner retention and deletion controls remain to be built.
 - Tests cover authentication before storage access, all-scope export, personal/project isolation, invalid project IDs and safe response headers.
 - CI at code commit `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: **230 tests passed, 0 failed**, Node.js 22: https://github.com/LAURENCE1977/Aegis-/actions/runs/43744994054.
+
+
+## 19. Project-scoped memory controls and owner export — 15 November 2026
+
+- Chat PWA has one explicit Project Space selector; default remains personal memory only.
+- Memory panel has its own personal/Project Space scope selector; changing it reloads only that exact scope.
+- Creating a memory sends the selected `projectId`; approving/rejecting and history requests carry the same project scope.
+- AG-UI validates the selected Project Space against the signed-in owner and active status before building the model context.
+- Chat retrieval includes up to four relevant approved personal memories and four relevant approved memories from the selected project; without a project selected it uses up to eight personal memories.
+- Added authenticated `GET /api/memories/export`: exports all owner scopes by default, personal scope with `?projectId=`, or one active project with `?projectId=<id>`. Includes every lifecycle state, provenance and append-only event history, bounded to 500 memories and 2,000 events, with no-store attachment headers.
+- Memory review UI downloads the export as JSON. No third-party service is used.
+- CI at `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: 230/230 tests passed.
+- D1 is still not provisioned or bound. Preview secrets remain unconfigured; production application code and data are unchanged by this feature branch.
