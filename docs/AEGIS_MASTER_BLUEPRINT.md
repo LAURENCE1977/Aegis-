@@ -395,3 +395,9 @@ The AEGIS OS is an application-level AI operating environment with a browser/PWA
 A metadata-only MCP catalogue is being implemented on feature/mcp-forge-catalogue, stacked on the Sentinel branch. Its pure validation/search module accepts bounded candidate records with pinned source revisions, licence review state, transport/runtime/auth declarations, explicit egress hosts and per-action effects/risk/scopes/approval policy. It rejects wildcard/local/IP egress targets, unpinned revisions and write/execute/high-risk actions without mandatory human approval. Catalogue records can only be candidate, reviewed or blocked; this module cannot approve, install, connect to or execute a server.
 
 This is deliberately not yet a live server discovery/connection service. Persistent storage, authenticated APIs, isolated source ingestion, SSRF protection, advisory scanning, sandbox conformance testing, owner admission workflow and Sentinel-connected execution remain separate milestones. Tests are authored; CI verification is pending.
+
+## Free-Tier Ledger — first native implementation slice
+
+A read-only, metadata-only Free-Tier Ledger is being implemented on feature/free-tier-ledger, stacked on the MCP Forge catalogue. It validates explicit allowance, duration, card requirement, commercial-use status, overage behaviour, region, quota, official pricing/terms URLs, confidence and verification timestamp. Records older than 30 days require re-verification by default. Unknown overage is preserved as unknown; free-tier directories are not treated as authoritative. No account creation, resource provisioning, provider API calls or credit consumption are possible through this module.
+
+Persistent storage, authenticated UI, official-source verification workflows, quota monitoring and budget enforcement remain future work. Tests are authored; CI verification is pending.
