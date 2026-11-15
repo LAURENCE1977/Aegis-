@@ -43,6 +43,7 @@ export function validateMemoryRecord(record, now = Date.now()) {
   requireId(record.id, 'identifier');
   requireId(record.ownerId, 'owner identifier');
   if (record.projectId !== null) requireId(record.projectId, 'project identifier');
+  if (record.supersedesId !== undefined && record.supersedesId !== null) requireId(record.supersedesId, 'superseded memory identifier');
   if (!KINDS.has(record.kind)) throw new TypeError('Invalid memory kind');
   requireText(record.content, 'content', 4000);
   if (!isRecord(record.source) || !SOURCE_TYPES.has(record.source.type)) {
@@ -162,6 +163,7 @@ function mapMemoryRow(row) {
     id: row.id,
     ownerId: row.owner_id,
     projectId: row.project_id,
+    supersedesId: row.supersedes_id ?? null,
     kind: row.kind,
     content: row.content,
     source: {
@@ -227,14 +229,14 @@ export function createMemoryRepository(db) {
         INSERT INTO aegis_memories (
           id, owner_id, project_id, kind, content, source_type, source_url,
           source_attribution, source_observed_at, confidence, sensitivity,
-          status, tags_json, created_at, updated_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          status, tags_json, created_at, updated_at, expires_at, supersedes_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         record.id, record.ownerId, record.projectId, record.kind, record.content,
         record.source.type, record.source.url, record.source.attribution,
         record.source.observedAt, record.confidence, record.sensitivity,
         record.status, JSON.stringify(record.tags), record.createdAt,
-        record.updatedAt, record.expiresAt,
+        record.updatedAt, record.expiresAt, record.supersedesId ?? null,
       ).run();
       return clone(record);
     },
