@@ -665,3 +665,35 @@ Sources inspected:
 - https://github.com/DevToys-app/DevToys/security/advisories/GHSA-ggxr-h6fm-p2qh
 - https://github.com/DevToys-app/DevToys/releases
 - https://github.com/DevToys-app/Publish
+
+
+## mcptoon — cross-agent MCP and skill management gateway
+
+Primary repository: https://github.com/activeing123/mcptoon  
+PyPI: https://pypi.org/project/mcptoon/  
+- Current main-branch package metadata inspected 15 Nov 2026: v0.8.40, Python >=3.10, Apache-2.0, zero declared runtime dependencies (Python standard library). README and developer guide advertise 3,186 passing tests and two skipped; this is an upstream-reported count, not independently reproduced by AEGIS.
+- A CLI-first MCP client/management layer: discovers configured MCP servers; keeps a canonical local config; syncs server and skill configuration into multiple supported agent hosts; offers compact tool manifests, on-demand schema inspection, search/selection/call, health checks, caching, a unified stdio/HTTP MCP gateway, and local skills/docs routing.
+- Token reduction claims (for example 71,929 → 581 tokens / 99.2%) are upstream benchmarks on stated tool catalogues and tokenization. Treat as a hypothesis to benchmark against AEGIS's actual registry and model tokenizer, not a universal guaranteed saving. Names-only manifests reduce discovery context but require an inspect/call round trip and robust schema retrieval.
+- The product has evolved rapidly: README, PyPI metadata and developer docs can describe different releases/features. Pin a specific tag/commit and compare package contents with the source before any trial. Do not infer all GUI-agent integrations work identically; each host has different config and runtime support.
+- AEGIS fit: very high-priority architecture reference for MCP catalogue management, compact manifests, lazy schema retrieval, unified gateway, server health checks, skill/document retrieval, per-agent configuration adapters and measured context budgets. These patterns map directly to the AEGIS Capability System and Forge.
+- Adopt patterns, not wholesale control. AEGIS remains canonical for identity, connections, capability manifests, action scopes, risk classification, approval records, budgets, job state and audit. A third-party gateway must never bypass AEGIS policy or become a parallel permissions/source-of-truth layer. Use AEGIS-owned capability IDs and stable operation IDs; resolve schemas only after policy allows discovery.
+- Platform limitation: mcptoon is a local Python CLI and MCP gateway, not a Cloudflare Worker, hosted multi-tenant control plane, native iOS app or browser PWA. It may be usable on a Linux-capable host/worker; Chromebook Linux/shell availability must be tested on the actual device. It cannot run persistently on iPhone/iPad as a local daemon. The CLI can be called by shell-capable agents, but this does not imply ChatGPT Free's native mobile app can execute arbitrary local commands.
+- **Important safety boundary:** the upstream exec_sandbox.py explicitly states it is a context/output sandbox, not a security sandbox: child code inherits the launching shell's filesystem, network and credential access. Never treat it as isolated code execution. It is not suitable as AEGIS's untrusted-code sandbox.
+- MCP server management can launch configured stdio subprocesses and connect to configured HTTP servers; this is powerful and requires allowlisted server definitions, pinned package versions, explicit environment/secret injection, network egress policy and action approvals. The sync command writes agent configuration files across detected hosts, so never run it against a user's machine without preview, explicit target list, backup and approval. HTTP gateway exposure requires authentication and network binding review; do not expose an unauthenticated listener.
+- The project has destructive-operation, tool-output prompt-injection and credential-pattern checks, but these are defence-in-depth heuristics, not a policy engine or proof of safety. Tool annotations are server-supplied metadata; a readOnlyHint must never be treated as authorization. Keep AEGIS's exact-operation approvals and server-side enforcement authoritative.
+- Credential handling deserves special review: OAuth tokens are stored in owner-only local files (0600 best-effort) and the explicit auth token command prints raw access tokens. This is not equivalent to encrypted vault storage. Do not import tokens into AEGIS or pass production credentials to a trial.
+- Local-first/no-telemetry claims need to be scoped to local CLI operations: optional live registry search, remote MCP/HTTP servers, OpenAPI/GraphQL endpoints, configured providers and other integrations necessarily create external network paths. Verify per-command network behavior.
+- Recommended evaluation sequence: (1) benchmark compact manifest and on-demand schema retrieval against AEGIS's own capability catalogue; (2) test MCP protocol compatibility and tool-call round trips with synthetic read-only tools; (3) inspect gateway HTTP auth/bind behavior and subprocess lifecycle; (4) compare host config adapters without writing to personal machine; (5) audit injection/credential/destructive-operation tests and false-positive/false-negative coverage; (6) assess whether to implement native AEGIS equivalents rather than adopt the CLI.
+- Decision: high-value design/reference project; defer installation and connection. Implement an AEGIS-native compact capability index, schema-on-demand, tool search and health status in the existing control plane. Consider mcptoon only as an isolated optional adapter on a dedicated Linux worker after a pinned-version security review and measured benefit.
+- No mcptoon package, CLI, MCP server, agent config, skill, OAuth token or external connection has been installed or changed for AEGIS.
+
+Sources inspected:
+- https://github.com/activeing123/mcptoon
+- https://github.com/activeing123/mcptoon/blob/main/pyproject.toml
+- https://github.com/activeing123/mcptoon/blob/main/SECURITY.md
+- https://github.com/activeing123/mcptoon/blob/main/DEVELOPERS.md
+- https://github.com/activeing123/mcptoon/blob/main/src/mcptoon/router.py
+- https://github.com/activeing123/mcptoon/blob/main/src/mcptoon/client.py
+- https://github.com/activeing123/mcptoon/blob/main/src/mcptoon/config.py
+- https://github.com/activeing123/mcptoon/blob/main/src/mcptoon/exec_sandbox.py
+- https://github.com/activeing123/mcptoon/blob/main/src/mcptoon/oauth.py
