@@ -749,3 +749,7 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - Added tests for trusted identity, request-shape rejection, missing-dependency fail-closed behaviour, unknown capability/action, stable digest, audit redaction and input limits.
 - Fixed runtime module import, queue dispatch and scheduled outbox/lease recovery wiring; repaired the agent route block and JSON Content-Type charset matcher; added a charset/status-route regression test.
 - Important: the bridge is not yet wired to the queue consumer and does not enable agent tool execution. Durable grant/connection stores, vault, D1 audit composition, adapter router and egress isolation remain prerequisites. Agent runs remain plan-only. No deployment, migration application, secret or production side effect.
+
+
+### Verification update — 15 November 2026
+GitHub Actions run 43752335315 on commit `e1beff9b86d7f250a43c5a4c2e7f791079c1fac9` passed the complete Node.js 22 test suite: **308 tests passed, 0 failures**. This confirms repository tests only; it does not prove live Cloudflare D1/Queue integration or production deployment.
