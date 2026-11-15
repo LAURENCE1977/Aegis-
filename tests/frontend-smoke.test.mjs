@@ -51,3 +51,24 @@ test('chat UI consumes AG-UI SSE incrementally and appends deltas as they arrive
   assert.match(html, /onDelta\(event\.delta\)/);
   assert.match(html, /assistantText\.textContent\s*\+=\s*delta/);
 });
+
+
+test('Control Centre exposes Project Spaces and owner approval inbox surfaces', () => {
+  for (const id of [
+    'workspaceTab','approvalTab','workspaceSection','approvalSection',
+    'workspaceForm','workspaceName','workspaceDescription','workspaceList',
+    'workspaceStatus','approvalList','approvalStatus',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing Control Centre element: ' + id);
+  }
+  assert.match(html, /fetch\('\/api\/workspaces'/);
+  assert.match(html, /fetch\('\/api\/approvals'/);
+  assert.match(html, /method:\s*'POST'/);
+  assert.match(html, /method:\s*'POST'/);
+});
+
+test('Project Space and approval views render untrusted data as text, not HTML', () => {
+  assert.match(html, /nameNode\.textContent\s*=\s*workspace\.name/);
+  assert.match(html, /summaryNode\.textContent\s*=\s*approval\.operationSummary/);
+  assert.doesNotMatch(html, /workspace\.name\s*\+\s*['"]</);
+});
