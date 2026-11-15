@@ -253,6 +253,8 @@ When a new AI session starts:
 
 ## 13. Cross-platform strategy — architecture requirement
 
+Detailed target matrix and release gates: [docs/PLATFORM_COMPATIBILITY.md](PLATFORM_COMPATIBILITY.md).
+
 AEGIS must be designed as a platform-independent core with replaceable client and infrastructure adapters. Cross-platform support is a long-term requirement, not a promise that every feature will be available on every device at launch.
 
 ### Platform direction
