@@ -16,5 +16,6 @@ export async function onRequestGet({ request, env }) {
   if (!(await isAuthorized(request, env))) {
     return json({ error: "Authentication required." }, 401);
   }
-  return json({ modules: listModules(), total: listModules().length });
+  const modules = listModules();
+  return json({ modules, total: modules.length });
 }

@@ -4,7 +4,19 @@ const MODULES = [
     name: 'AEGIS Forge',
     description: 'Controlled software engineering, code analysis and agent-assisted development.',
     status: 'planned',
-    capabilities: ['code.read', 'code.analyse', 'code.propose', 'code.test'],
+    capabilities: [
+      'code.read', 'code.analyse', 'code.propose', 'code.test',
+      'source.discover', 'source.inspect', 'source.compare',
+      'candidate.evaluate', 'blueprint.create', 'implementation.plan', 'benchmark.compare',
+    ],
+    permissions: [],
+  },
+  {
+    id: 'engineering-intelligence',
+    name: 'AEGIS Engineering Intelligence',
+    description: 'Curated, source-attributed engineering knowledge transformed into tested AEGIS capabilities.',
+    status: 'planned',
+    capabilities: ['knowledge.ingest', 'knowledge.search', 'knowledge.evaluate', 'knowledge.adapt'],
     permissions: [],
   },
   {
@@ -34,7 +46,7 @@ const MODULES = [
 ];
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
-const CAPABILITY_PATTERN = /^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0,47}$/;
+const CAPABILITY_PATTERN = /^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,47}$/;
 
 export function validateModule(module) {
   if (!module || typeof module !== 'object' || Array.isArray(module)) {
