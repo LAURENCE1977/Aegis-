@@ -62,10 +62,10 @@ function parseJob(row) {
   };
 }
 
-async function audit(env, jobId, eventType, detail = {}) {
+async function audit(env, jobId, eventType, detail = {}, eventId = crypto.randomUUID()) {
   await env.DB.prepare(
-    'INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) VALUES (?, ?, ?, ?, ?)'
-  ).bind(crypto.randomUUID(), jobId, eventType, JSON.stringify(detail), new Date().toISOString()).run();
+    'INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(event_id) DO NOTHING'
+  ).bind(eventId, jobId, eventType, JSON.stringify(detail), new Date().toISOString()).run();
 }
 
 async function dispatchPending(env, limit = 25) {
@@ -245,10 +245,40 @@ async function processJob(message, env) {
   }
 }
 
+async function processDeadLetter(message, env) {
+  const jobId = message?.body?.jobId;
+  if (!isJobId(jobId)) {
+    message.ack();
+    return;
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE jobs SET status = 'failed', error_code = 'JOB_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND status NOT IN ('succeeded', 'failed')"
+  ).bind(now, jobId).run();
+
+  // Re-read after the conditional transition so a redelivery can repair a
+  // missing audit insert without overwriting an already-terminal job.
+  const row = await env.DB.prepare(
+    'SELECT status, error_code FROM jobs WHERE id = ?'
+  ).bind(jobId).first();
+  if (row?.status === 'failed' && row.error_code === 'JOB_DELIVERY_EXHAUSTED') {
+    await audit(
+      env,
+      jobId,
+      'delivery_exhausted',
+      { code: 'JOB_DELIVERY_EXHAUSTED' },
+      `delivery-exhausted:${jobId}`,
+    );
+  }
+  message.ack();
+}
+
 export default {
   fetch: handleRuntimeFetch,
   async queue(batch, env) {
-    for (const message of batch.messages) await processJob(message, env);
+    const handler = batch.queue === 'aegis-jobs-dlq' ? processDeadLetter : processJob;
+    for (const message of batch.messages) await handler(message, env);
   },
   scheduled(_controller, env, context) {
     context.waitUntil(dispatchPending(env));
