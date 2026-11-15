@@ -27,7 +27,12 @@ Forge is AEGIS's source-aware reverse-engineering workshop. Its default workflow
   - records the GitHub-reported licence as review-required, never automatically verified;
   - initializes decision as unassessed and status as inspected;
   - appends a created event through a D1 trigger.
+- Authenticated owner-only PATCH /api/forge/candidates/:id records licence review, engineering decision and lifecycle status.
+- The owner must explicitly confirm inspection of the actual upstream licence and relevant dependency licences before selecting verified in the UI.
+- Reuse/adapt/combine decisions require verified licence review; approval also requires a non-empty positive engineering decision. Database triggers enforce these gates independently of the UI.
+- Source identity and pinned metadata are immutable after candidate creation. Review and status changes append audit events.
 - migrations/shared/0005_forge_candidates.sql adds owner-scoped candidate and append-only event tables.
+- migrations/shared/0006_forge_candidate_review.sql enforces immutable source identity, licence/approval gates and append-only review/status events.
 
 ## Security and licence boundaries
 
@@ -43,13 +48,13 @@ Forge is AEGIS's source-aware reverse-engineering workshop. Its default workflow
 
 - Public GitHub repositories only; private repo access and non-GitHub sources are not connected.
 - No diff engine, dependency graph, AST/code graph, test harness, sandbox or automated licence scanner is wired yet.
-- Candidate creation and listing are implemented; candidate review/decision update workflow is still to be added.
+- Candidate creation, listing and owner review/decision updates are implemented. The Forge candidate review panel is still feature-branch code until D1 is configured.
 - The D1 migration and AEGIS_DB binding are not active in the Cloudflare account. The Forge candidate library therefore reports unavailable until shared D1 is separately provisioned and configured.
 - No production deployment or upstream software installation has occurred.
 
 ## Next engineering steps
 
-1. Add owner review actions for licence verification, reuse/adapt/rebuild/combine/reject decisions and status transitions, with append-only audit.
+1. Add source diff, dependency evidence and a repeatable reverse-engineering report to each reviewed candidate.
 2. Add commit-pinned diff and selected-file batch retrieval, still read-only.
 3. Add a bounded local static analysis adapter and optional Code Review Graph concepts without running upstream build scripts.
 4. Connect Forge to the AEGIS project timeline and approved durable job runtime.
