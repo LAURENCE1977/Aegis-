@@ -11,29 +11,44 @@ function isPlainRecord(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function assertJsonSafe(value, seen = new WeakSet(), depth = 0) {
+function normalizeJson(value, seen = new WeakSet(), depth = 0) {
   if (depth > 16) throw new TypeError('Input nesting is too deep.');
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
-  if (typeof value === 'number' && Number.isFinite(value)) return;
-  if (typeof value !== 'object') throw new TypeError('Input contains a non-JSON value.');
-  if (seen.has(value)) throw new TypeError('Input contains a circular or repeated reference.');
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'object' || seen.has(value)) {
+    throw new TypeError('Input contains a non-JSON, circular or repeated value.');
+  }
   seen.add(value);
   if (Array.isArray(value)) {
     if (value.length > 256) throw new TypeError('Input array is too large.');
-    for (const item of value) assertJsonSafe(item, seen, depth + 1);
-    return;
+    const keys = Reflect.ownKeys(value).filter((key) => key !== 'length');
+    if (keys.length !== value.length) throw new TypeError('Input array must be dense JSON data.');
+    const output = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+        throw new TypeError('Input arrays cannot contain accessors or holes.');
+      }
+      output.push(normalizeJson(descriptor.value, seen, depth + 1));
+    }
+    return output;
   }
   if (!isPlainRecord(value)) throw new TypeError('Input must contain plain JSON objects.');
-  const keys = Object.keys(value);
-  if (keys.length > 128) throw new TypeError('Input object has too many fields.');
-  for (const key of keys) {
-    if (!key || key.length > 128 || /[\u0000-\u001f\u007f]/.test(key)) {
-      throw new TypeError('Input contains an invalid field name.');
-    }
-    assertJsonSafe(value[key], seen, depth + 1);
+  const keys = Reflect.ownKeys(value);
+  if (keys.length > 128 || keys.some((key) => typeof key !== 'string')) {
+    throw new TypeError('Input object has too many fields or symbol keys.');
   }
+  const output = Object.create(null);
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!key || key.length > 128 || /[\\u0000-\\u001f\\u007f]/.test(key) ||
+        !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Input contains an invalid field or accessor.');
+    }
+    output[key] = normalizeJson(descriptor.value, seen, depth + 1);
+  }
+  return output;
 }
-
 function canonicalJson(value) {
   if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
   if (isPlainRecord(value)) {
@@ -85,9 +100,9 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
 
   let inputDigest;
   try {
-    assertJsonSafe(agentRequest.input);
-    inputDigest = await digestInput(agentRequest.input);
-    if (new TextEncoder().encode(canonicalJson(agentRequest.input)).byteLength > manifest.limits.maxRequestBytes) {
+    const safeInput = normalizeJson(agentRequest.input);
+    inputDigest = await digestInput(safeInput);
+    if (new TextEncoder().encode(canonicalJson(safeInput)).byteLength > manifest.limits.maxRequestBytes) {
       return { allowed: false, reasonCode: 'INPUT_TOO_LARGE' };
     }
   } catch {
@@ -106,7 +121,7 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
     actionId: agentRequest.actionId,
     resourceId: agentRequest.resourceId,
     inputDigest,
-    input: agentRequest.input,
+    input: safeInput,
     now: Date.now(),
   }, {
     ...dependencies,
