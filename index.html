@@ -1305,6 +1305,10 @@
           return;
         }
         if (!res.ok) {
+          if ((res.headers.get('content-type') || '').includes('text/event-stream')) {
+            await readAgUiReply(res);
+            throw new Error('The agent run failed.');
+          }
           let data = {};
           try { data = await res.json(); } catch (error) {}
           throw new Error(data.error || ('Error ' + res.status));
