@@ -237,3 +237,29 @@ Retrieved text, code, issue comments, prompts and tool schemas are untrusted dat
 10. Defer Blackbox integration until its API, costs, data handling and sandbox controls pass a formal connector review.
 
 Status: research register only. None of these sources is connected, installed, imported as executable code or granted permissions by this document.
+
+
+## Agency Agents — specialist-agent source
+
+Primary candidate:
+- https://github.com/msitarzewski/agency-agents
+- Repository describes itself as a library of specialist AI-agent definitions and workflows. Its published repository licence is MIT; verify the exact commit and any individual bundled assets/licences before reuse.
+- The repository contains role-oriented Markdown definitions, specialist categories and supporting workflows. These definitions are not, by themselves, a durable agent runtime, secure tool broker or permission system.
+
+Useful AEGIS applications:
+- Seed a curated catalogue of specialist roles such as software architect, frontend/backend developer, reviewer, security specialist, QA engineer, DevOps/SRE, researcher and UX designer.
+- Compare role boundaries, expected inputs, deliverables, checklists and hand-off patterns.
+- Use specialist agents behind one AEGIS orchestrator, shared run state, budgets, audit and approval policy.
+- Require independent review for security-sensitive, production-impacting or high-consequence work.
+
+AEGIS decision:
+- **High-priority knowledge/agent-definition source; selective adaptation, not wholesale installation.**
+- Convert chosen roles into AEGIS-native, versioned agent records with role, purpose, expertise, instruction set, allowed capability IDs, input/output schema, expected artefacts, evaluation tests, source commit, licence and review status.
+- Keep prompts and role definitions separate from tool permissions. An agent definition never grants a tool or secret scope.
+- Do not import the desktop installer or make AEGIS dependent on Claude Code, Cursor, Codex, Gemini CLI or any other specific agent host.
+- Start with a small set of complementary roles and evaluate them against repeatable AEGIS tasks before expanding the catalogue.
+- Preserve MIT attribution and upstream provenance; review all content for unsafe instructions, duplicated roles, prompt injection and platform-specific assumptions.
+- No Agency Agents code or definitions have been installed, copied into the runtime or granted permissions by this research entry.
+
+Source: https://github.com/msitarzewski/agency-agents
+
