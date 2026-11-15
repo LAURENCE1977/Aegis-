@@ -17,7 +17,8 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - AEGIS Forge capability declarations for universal source discovery, inspection, comparison, evaluation, planning and benchmarking
 - AEGIS Engineering Intelligence capability boundary for attributed, evidence-rated knowledge
 - Pure validators for Forge source-candidate and engineering-knowledge records
-- Read-only public GitHub repository discovery behind session authentication and same-origin protection
+- Read-only public GitHub repository discovery, pinned source-tree inspection and bounded Git-blob reading behind session authentication and same-origin protection; no source is executed
+- Owner-scoped Forge candidate registry with pinned tree revisions, deduplication and licence-review hold (shared D1 migration not yet applied; see [AEGIS Forge](docs/AEGIS_FORGE.md))
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 - Owner-only capability approval inbox and approve/deny API, with a mobile Control Centre review panel (feature branch only; no capability execution is enabled)
