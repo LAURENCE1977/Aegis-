@@ -219,6 +219,18 @@ test('D1 repository searches all terms without crossing owner or project boundar
   assert.deepEqual(await repository.search({ownerId:'owner-1',projectId:'project-a',query:'concise storytelling',now}),[]);
 });
 
+
+test('D1 memory retrieval ranks relevant terms after bounded candidate selection', async () => {
+  const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  await repository.create(record({id:'full-match',content:'Concise storytelling creates a clear structure.',tags:['writing']}));
+  await repository.create(record({id:'partial-match',content:'Storytelling keeps the narrative human.',tags:['narrative']}));
+  await repository.create(record({id:'substring-only',content:'Partial artifice in the artist profile.',tags:['artwork']}));
+  const results = await repository.search({ownerId:'owner-1',query:'art concise storytelling',now});
+  assert.deepEqual(results.map(item=>item.id),['full-match','partial-match']);
+});
+
 test('D1 repository only permits candidate memories to be reviewed into accepted or retracted states', async () => {
   const { createMemoryRepository } = await import('../functions/lib/memory-substrate.mjs');
   const db = new MemoryRepositoryD1();
