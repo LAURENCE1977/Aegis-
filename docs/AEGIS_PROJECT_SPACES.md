@@ -98,3 +98,5 @@ LangAlpha's repository identifies Apache-2.0; OpenCompany's repository identifie
 - Decisions and procedures are prioritized; long memory content is shortened to preserve the highest-priority context. The response reports included/omitted counts, truncation and an approximate token count (characters divided by four; not a model tokenizer).
 - The Projects panel provides a Build handover brief action and an explicit Copy brief button. Copying is a user gesture; clipboard failure falls back to selectable text.
 - This is a deterministic extractive snapshot, not an LLM-generated summary. It does not create a task, grant a capability, start an agent or send data to an external provider.
+
+- When a Project Space is selected in AG-UI chat, AEGIS also supplies up to eight recent event summaries from that exact owner/project scope. Raw event bodies are never included; the summaries are explicitly marked untrusted reference data. Missing timeline tables degrade to no event context without breaking chat.
