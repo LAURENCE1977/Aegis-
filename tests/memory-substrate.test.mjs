@@ -107,7 +107,7 @@ test('empty or invalid queries return no results without widening scope', () => 
 });
 
 class MemoryRepositoryD1 {
-  constructor() { this.rows = new Map(); }
+  constructor() { this.rows = new Map(); this.events = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -124,12 +124,15 @@ class MemoryRepositoryD1 {
             status:v[11], tags_json:v[12], created_at:v[13], updated_at:v[14],
             expires_at:v[15],
           });
+          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],project_id:v[2],event_type:'created',from_status:null,to_status:v[11],occurred_at:v[13]});
           return { meta:{changes:1} };
         }
         if (sql.includes('UPDATE aegis_memories')) {
           const row=db.rows.get(v[2]);
           if (!row || row.owner_id!==v[3] || row.project_id!==v[4]) return {meta:{changes:0}};
+          const previous=row.status;
           row.status=v[0]; row.updated_at=v[1];
+          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
           return {meta:{changes:1}};
         }
         return {meta:{changes:0}};
@@ -145,6 +148,9 @@ class MemoryRepositoryD1 {
       },
       async all() {
         const v=this.values;
+        if (sql.includes('FROM aegis_memory_events')) {
+          return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
+        }
         let rows=[...db.rows.values()];
         if (sql.includes('FROM aegis_memories')) {
           rows=rows.filter(row=>row.owner_id===v[0] && row.project_id===v[1] &&
@@ -207,4 +213,20 @@ test('D1 repository only permits candidate memories to be reviewed into accepted
   assert.equal((await repository.get(candidate.id,{ownerId:'owner-1'})).status,'accepted');
   assert.equal(await repository.setStatus(candidate.id,{ownerId:'owner-2',status:'retracted',now}),false);
   await assert.rejects(()=>repository.setStatus(candidate.id,{ownerId:'owner-1',status:'trusted',now}),/status/i);
+});
+
+
+test('D1 repository exposes append-only creation and lifecycle history in exact scope', async () => {
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  const candidate = await repository.create(record({status:'candidate'}));
+  await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'accepted',now});
+  await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'retracted',now:now+1000});
+  const events = await repository.listEvents(candidate.id,{ownerId:'owner-1'});
+  assert.deepEqual(events.map(event=>[event.type,event.fromStatus,event.toStatus]),[
+    ['created',null,'candidate'],
+    ['status_changed','candidate','accepted'],
+    ['status_changed','accepted','retracted'],
+  ]);
+  assert.deepEqual(await repository.listEvents(candidate.id,{ownerId:'owner-2'}),[]);
 });
