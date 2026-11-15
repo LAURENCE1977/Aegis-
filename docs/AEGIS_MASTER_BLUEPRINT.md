@@ -629,3 +629,15 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - The project's own demo API is evaluation-only and not for sensitive/production data. No demo API or third-party script is to be used by AEGIS.
 - AEGIS browser automation remains a separately isolated, allowlisted, Sentinel-mediated capability with explicit user confirmation and audit. Page DOM and content remain untrusted input.
 - See the Page Agent section in `docs/RESEARCH_SOURCE_REGISTER.md`. No package, extension or MCP server installed.
+
+
+## 21. Forge candidate review and licence gate — 15 November 2026
+
+- Added authenticated owner-only PATCH /api/forge/candidates/:id and the candidate review form in the Forge panel.
+- Owner records one of: reuse, adapt, rebuild, combine, reject; licence state: review-required, verified, not-applicable; lifecycle status: inspected, assessed, approved, rejected or archived.
+- UI requires an explicit confirmation that the owner checked the actual upstream licence and relevant dependencies before setting verified.
+- Reuse/adapt/combine require verified licence review. Approval requires verified licence and a positive engineering decision. These rules are enforced in both the repository validation and D1 trigger, not just the UI.
+- Source URL, source type, pinned tree SHA, metadata and original creation timestamp are immutable. Candidate review and status transitions create append-only audit events.
+- Added shared migration migrations/shared/0006_forge_candidate_review.sql after 0005.
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746614703: **258 tests passed, 0 failed**, Node.js 22, at code head bf76e3b81efd7be391e50d1fa43dcbb99744ec21.
+- No candidate has been legally verified by this automation; review is an explicit owner action. No code execution, package installation, deployment or production D1 change.
