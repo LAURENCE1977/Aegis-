@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestGet, onRequestPost } from '../functions/api/forge/candidates.js';
+import { onRequestPatch } from '../functions/api/forge/candidates/[id].js';
 
 const secret='forge-candidate-api-test-session-secret-long-enough';
 const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
@@ -30,7 +31,7 @@ class CandidateD1 {
       },
       async first(){
         const v=this.values;
-        if(sql.includes('FROM forge_candidates'))return [...db.rows.values()].find(row=>row.owner_id===v[0]&&row.source_url===v[1]&&row.version===v[2])||null;
+        if(sql.includes('FROM forge_candidates')&&sql.includes('source_url = ?'))return [...db.rows.values()].find(row=>row.owner_id===v[0]&&row.source_url===v[1]&&row.version===v[2])||null;\n        if(sql.includes('FROM forge_candidates')&&sql.includes('WHERE id = ?')){const row=db.rows.get(v[0]);return row&&row.owner_id===v[1]?{...row}:null;}
         return null;
       },
       async all(){
@@ -42,10 +43,10 @@ class CandidateD1 {
   }
 }
 
-async function request(path,body,{authenticated=true,origin='https://aegis.example'}={}){
+async function request(path,body,{authenticated=true,origin='https://aegis.example',method}={}){
   const headers={'Content-Type':'application/json',Origin:origin};
   if(authenticated)headers.Cookie='__Host-aegis_session='+await createSessionToken(secret);
-  return new Request('https://aegis.example'+path,{method:body===undefined?'GET':'POST',headers,...(body===undefined?{}:{body:JSON.stringify(body)})});
+  return new Request('https://aegis.example'+path,{method:method||(body===undefined?'GET':'POST'),headers,...(body===undefined?{}:{body:JSON.stringify(body)})});
 }
 
 function githubFetch(url){
@@ -93,4 +94,55 @@ test('Forge candidate intake is idempotent and listing stays owner-scoped',async
   const data=await listed.json();
   assert.equal(data.total,1);
   assert.equal(data.candidates[0].ownerId,'owner');
+});
+
+
+test('owner review can verify a licence and approve an assessed Forge decision',async()=>{
+  const db=new CandidateD1();
+  const created=await onRequestPost({
+    request:await request('/api/forge/candidates',{sourceUrl:'https://github.com/example/agent'}),
+    env:{...envBase,AEGIS_DB:db},fetchImpl:githubFetch,
+  });
+  const candidate=(await created.json()).candidate;
+  const response=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'verified',decision:'adapt',status:'approved',
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(data.candidate.licence.review,'verified');
+  assert.equal(data.candidate.decision,'adapt');
+  assert.equal(data.candidate.status,'approved');
+});
+
+test('Forge review rejects reuse without licence verification and refuses terminal reopening',async()=>{
+  const db=new CandidateD1();
+  const created=await onRequestPost({
+    request:await request('/api/forge/candidates',{sourceUrl:'https://github.com/example/agent'}),
+    env:{...envBase,AEGIS_DB:db},fetchImpl:githubFetch,
+  });
+  const candidate=(await created.json()).candidate;
+  const unsafe=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'review-required',decision:'reuse',status:'assessed',
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(unsafe.status,400);
+  const rejected=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'review-required',decision:'reject',status:'rejected',
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(rejected.status,200);
+  const reopen=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'verified',decision:'reuse',status:'approved',
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(reopen.status,404);
 });
