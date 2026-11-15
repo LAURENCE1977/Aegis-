@@ -156,16 +156,46 @@ const LICENCE_REVIEWS = new Set(['verified', 'review-required', 'not-applicable'
 const CANDIDATE_DECISIONS = new Set(['unassessed', 'reuse', 'adapt', 'rebuild', 'combine', 'reject']);
 const CANDIDATE_STATUSES = new Set(['discovered', 'inspected', 'assessed', 'approved', 'rejected', 'archived']);
 
+export class ForgeCandidateConflictError extends Error {
+  constructor() {
+    super('Forge candidate changed since it was loaded. Refresh and review the latest version.');
+    this.name = 'ForgeCandidateConflictError';
+  }
+}
+
+function validReviewEvidenceUrl(value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 export async function updateForgeCandidateReview(db, ownerId, id, review, now = Date.now()) {
   assertDatabase(db);
   requireOwner(ownerId);
   if (typeof id !== 'string' || !ID_PATTERN.test(id)) throw new TypeError('Invalid Forge candidate identifier');
   if (!review || typeof review !== 'object' || Array.isArray(review) ||
-      Object.keys(review).length !== 3 ||
+      Object.keys(review).length !== 7 ||
       !LICENCE_REVIEWS.has(review.licenceReview) ||
       !CANDIDATE_DECISIONS.has(review.decision) ||
-      !CANDIDATE_STATUSES.has(review.status)) {
-    throw new TypeError('Invalid Forge candidate review');
+      !CANDIDATE_STATUSES.has(review.status) ||
+      typeof review.expectedUpdatedAt !== 'string' ||
+      typeof review.reviewNote !== 'string' ||
+      review.reviewNote.trim().length < 10 || review.reviewNote.length > 500 ||
+      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(review.reviewNote) ||
+      typeof review.licenceAttested !== 'boolean' ||
+      !(review.licenceEvidenceUrl === null || validReviewEvidenceUrl(review.licenceEvidenceUrl))) {
+    throw new TypeError('Invalid Forge candidate review evidence');
+  }
+  if (review.licenceReview === 'verified' &&
+      (!review.licenceAttested || !validReviewEvidenceUrl(review.licenceEvidenceUrl))) {
+    throw new TypeError('Verified licence review requires owner attestation and an HTTPS evidence URL');
+  }
+  if (review.licenceReview !== 'verified' && review.licenceAttested) {
+    throw new TypeError('Licence attestation is only valid for a verified review');
   }
   if (['reuse', 'adapt', 'combine'].includes(review.decision) && review.licenceReview !== 'verified') {
     throw new TypeError('A verified licence review is required before reuse, adaptation or combination');
@@ -179,15 +209,45 @@ export async function updateForgeCandidateReview(db, ownerId, id, review, now = 
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid Forge review clock');
 
+  const existingRow = await db.prepare(`
+    SELECT * FROM forge_candidates WHERE id = ? AND owner_id = ? LIMIT 1
+  `).bind(id, ownerId).first();
+  if (!existingRow || ['archived', 'rejected'].includes(existingRow.status)) return null;
+  if (existingRow.updated_at !== review.expectedUpdatedAt) throw new ForgeCandidateConflictError();
+
+  let metadata;
+  try { metadata = JSON.parse(existingRow.metadata_json); }
+  catch { throw new TypeError('Stored Forge candidate metadata is corrupt'); }
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    throw new TypeError('Stored Forge candidate metadata is invalid');
+  }
+  const reviewedAt = new Date(now).toISOString();
+  const history = Array.isArray(metadata.licenceReviewHistory)
+    ? metadata.licenceReviewHistory.slice(-49)
+    : [];
+  history.push({
+    reviewedAt,
+    reviewer: ownerId,
+    licenceReview: review.licenceReview,
+    evidenceUrl: review.licenceEvidenceUrl,
+    attested: review.licenceAttested,
+    note: review.reviewNote.trim(),
+    decision: review.decision,
+    status: review.status,
+  });
+  metadata.licenceReviewHistory = history;
+
+  const updatedAt = reviewedAt;
   const updateResult = await db.prepare(`
     UPDATE forge_candidates
-    SET licence_review = ?, decision = ?, status = ?, updated_at = ?
-    WHERE id = ? AND owner_id = ? AND status NOT IN ('archived', 'rejected')
+    SET licence_review = ?, decision = ?, status = ?, metadata_json = ?, updated_at = ?
+    WHERE id = ? AND owner_id = ? AND updated_at = ?
+      AND status NOT IN ('archived', 'rejected')
   `).bind(
     review.licenceReview, review.decision, review.status,
-    new Date(now).toISOString(), id, ownerId,
+    JSON.stringify(metadata), updatedAt, id, ownerId, review.expectedUpdatedAt,
   ).run();
-  if ((updateResult?.meta?.changes ?? 0) !== 1) return null;
+  if ((updateResult?.meta?.changes ?? 0) !== 1) throw new ForgeCandidateConflictError();
   const updatedRow = await db.prepare(`
     SELECT * FROM forge_candidates WHERE id = ? AND owner_id = ? LIMIT 1
   `).bind(id, ownerId).first();
