@@ -72,3 +72,23 @@ test('Project Space and approval views render untrusted data as text, not HTML',
   assert.match(html, /title\.textContent\s*=\s*approval\.operationSummary/);
   assert.doesNotMatch(html, /workspace\.name\s*\+\s*['"]</);
 });
+
+
+test('mobile AEGIS shell is installable as a privacy-safe PWA', () => {
+  assert.match(html, /rel="manifest" href="\/manifest\.webmanifest"/);
+  assert.match(html, /navigator\.serviceWorker\.register\('\/service-worker\.js'/);
+  assert.match(html, /apple-mobile-web-app-capable/);
+  const manifest = JSON.parse(readFileSync(new URL('../manifest.webmanifest', import.meta.url), 'utf8'));
+  assert.equal(manifest.start_url, '/');
+  assert.equal(manifest.display, 'standalone');
+  assert.ok(manifest.icons.some(icon => icon.src === '/icons/aegis.svg'));
+});
+
+test('service worker never caches authenticated API or MCP traffic', () => {
+  const worker = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
+  assert.doesNotThrow(() => new vm.Script(worker));
+  assert.match(worker, /url\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(worker, /url\.pathname\s*===\s*'\/mcp'/);
+  assert.match(worker, /request\.method\s*!==\s*'GET'/);
+  assert.match(worker, /caches\.open\(SHELL_CACHE\)/);
+});
