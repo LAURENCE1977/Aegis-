@@ -183,10 +183,13 @@ export async function updateForgeCandidateReview(db, ownerId, id, review, now = 
     UPDATE forge_candidates
     SET licence_review = ?, decision = ?, status = ?, updated_at = ?
     WHERE id = ? AND owner_id = ? AND status NOT IN ('archived', 'rejected')
-    RETURNING *
   `).bind(
     review.licenceReview, review.decision, review.status,
     new Date(now).toISOString(), id, ownerId,
-  ).first();
+  ).run();
+  if ((result?.meta?.changes ?? 0) !== 1) return null;
+  const row = await db.prepare(`
+    SELECT * FROM forge_candidates WHERE id = ? AND owner_id = ? LIMIT 1
+  `).bind(id, ownerId).first();
   return mapCandidateRow(row);
 }
