@@ -202,6 +202,21 @@ function normalizeSearchTerms(query) {
  * D1-backed memory repository. Callers must supply ownerId derived from the
  * authenticated server-side session; never accept it from request JSON.
  */
+
+function mapMemoryEventRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    memoryId: row.memory_id,
+    ownerId: row.owner_id,
+    projectId: row.project_id,
+    type: row.event_type,
+    fromStatus: row.from_status,
+    toStatus: row.to_status,
+    occurredAt: row.occurred_at,
+  };
+}
+
 export function createMemoryRepository(db) {
   assertMemoryDatabase(db);
 
@@ -276,6 +291,22 @@ export function createMemoryRepository(db) {
         LIMIT ?
       `).bind(...bindings).all();
       return (result?.results ?? []).map(mapMemoryRow);
+    },
+
+
+    async listEvents(id, { ownerId, projectId = null, limit = 50 } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      requireId(id, 'identifier');
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        throw new TypeError('Invalid memory event limit');
+      }
+      const result = await db.prepare(`
+        SELECT * FROM aegis_memory_events
+        WHERE memory_id = ? AND owner_id = ? AND project_id IS ?
+        ORDER BY occurred_at ASC, id ASC
+        LIMIT ?
+      `).bind(id, ownerId, projectId, limit).all();
+      return (result?.results ?? []).map(mapMemoryEventRow);
     },
 
     async setStatus(id, { ownerId, projectId = null, status, now = Date.now() } = {}) {
