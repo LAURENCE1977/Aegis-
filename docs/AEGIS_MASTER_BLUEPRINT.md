@@ -621,3 +621,11 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - Shared streaming request-size limiter is used by Forge discovery/inspect/read/candidate write APIs.
 - Latest verified implementation head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247/247 tests passed, run 43746135062.
 - Preview for that implementation: https://44e15358.aegis-6yk.pages.dev. Preview secrets and D1 binding remain unconfigured; authenticated UI and persistence cannot yet be exercised.
+
+
+### Alibaba Page Agent browser automation research
+
+- Added `alibaba/page-agent` (MIT) as a high-priority in-page DOM automation architecture reference, separate from Helium browser.
+- The project's own demo API is evaluation-only and not for sensitive/production data. No demo API or third-party script is to be used by AEGIS.
+- AEGIS browser automation remains a separately isolated, allowlisted, Sentinel-mediated capability with explicit user confirmation and audit. Page DOM and content remain untrusted input.
+- See the Page Agent section in `docs/RESEARCH_SOURCE_REGISTER.md`. No package, extension or MCP server installed.
