@@ -414,3 +414,50 @@ Study and selectively adapt:
 - Benchmark it against AEGIS's own Worker/D1/Queue runtime and specialist-agent model before considering any deployment.
 
 No Mercury package, daemon, account, provider key, skill, bot or service has been installed or connected.
+
+
+## Addy Osmani — Agent Skills
+
+**Source:** [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)  
+**Licence:** MIT; repository `LICENSE` checked on 15 November 2026.  
+**Reviewed:** README, `AGENTS.md`, skill anatomy, selected skill definitions, repository structure and installation guidance on the default `main` branch.
+
+**What it provides**
+- 25 portable Markdown skills: 24 lifecycle skills plus a meta-skill that routes work to the right workflow.
+- A six-stage engineering lifecycle: define, plan, build, verify, review and ship; nine command wrappers for supported hosts.
+- Four specialist review personas: code reviewer, test engineer, security auditor and web-performance auditor.
+- Seven shared checklists covering definition of done, testing, security, performance, accessibility, observability and orchestration.
+- Contributor validation scripts, routing evaluation cases and host-specific adapters for Claude Code, Codex, Gemini CLI, Antigravity, Copilot and other tools.
+- Skills are designed as actionable workflows with explicit triggers, verification evidence, exit criteria and anti-rationalisation guidance, not just general prompt advice.
+
+**Particularly valuable skills for AEGIS**
+1. `constraint-driven-development`: persistent project quality contracts and checks that detect weakened standards, skipped tests, suppressions and reduced thresholds.
+2. `context-engineering`: deliberate context packing, rules, MCP and task handoff.
+3. `source-driven-development`: decisions grounded in current authoritative documentation with source evidence and explicit unknowns.
+4. `doubt-driven-development`: adversarial second-pass review for high-stakes or unfamiliar changes.
+5. `planning-and-task-breakdown` and `incremental-implementation`: dependency-aware, thin vertical slices with verification after each slice.
+6. `debugging-and-error-recovery`: stop-the-line, preserve evidence, find root cause, add regression guard.
+7. `security-and-hardening`, `api-and-interface-design`, `frontend-ui-engineering`, `browser-testing-with-devtools` and `performance-optimization`: directly relevant to AEGIS's capability boundaries and Chromebook/iPhone/iPad PWA.
+8. `documentation-and-adrs`, `observability-and-instrumentation`, `ci-cd-and-automation` and `shipping-and-launch`: operational discipline for durable runtime and safe releases.
+
+**Overlap and fit**
+- AEGIS already has ten AEGIS-native adaptations of MIT-licensed Superpowers skills and its own TDD/blueprint workflow. Addy's TDD, spec, review and debugging skills overlap in purpose with existing AEGIS controls; do not install duplicate copies or create competing instructions.
+- Addy contributes useful complementary coverage, especially constraint-driven standards, context engineering, source-driven and doubt-driven review, browser-specific verification, observability and release readiness.
+- The four personas are reviewer perspectives, not autonomous agents or a scheduler. Adapt their role contracts into AEGIS specialist definitions that receive only explicitly granted capabilities.
+- The nine slash commands and host-specific wrappers are not the AEGIS runtime. Keep AEGIS's canonical orchestrator, capability policy, approvals, memory and durable job state.
+
+**Licence and portability notes**
+- MIT permits selective adaptation subject to retaining the copyright and licence notice in copies or substantial portions.
+- The README describes the skills as usable across 70+ agent hosts through the open skills CLI, with native host-specific integration instructions.
+- A documented portability caveat: per-skill CLI installation copies only `skills/<name>/`, not the repository-level `references/` directory; skills that link to shared checklists may therefore lose those supporting files. Prefer a complete pinned source snapshot or explicitly package each required reference with an adapted skill.
+- Treat every upstream update as a new reviewed version. Pin commit and record skill path, licence, retrieval date and AEGIS adaptation commit; do not silently sync changing upstream instructions into the live agent prompt.
+- Do not copy upstream repository-level `AGENTS.md` into AEGIS: the upstream file explicitly scopes itself to contributors working on that repository. Adapt reusable `skills/` content only.
+
+**AEGIS decision: very high-priority skill and workflow source; selectively adapt, do not wholesale install.**
+- Create an AEGIS skill catalogue with upstream provenance, version pin, skill triggers, input/output contract, required evidence, risk tier, required capabilities and tests.
+- Map each candidate to existing AEGIS-native skills before adoption; prefer improving the existing skill where it already covers the behaviour.
+- Prioritise the complementary skills listed above and the four specialist reviewer perspectives.
+- Convert checklists into AEGIS quality gates only where measurable and appropriate; don't blindly impose generic numeric thresholds on every project.
+- Preserve human approval for production deployment, external side effects, permissions and other high-impact actions. An upstream `/build auto` workflow is not authority for AEGIS to bypass its approval policy.
+
+No Addy plugin, CLI, package, agent persona, script or upstream skill has been installed or connected to AEGIS.

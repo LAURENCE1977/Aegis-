@@ -336,3 +336,12 @@ Two additional Forge candidates have been evaluated and recorded in [RESEARCH_SO
 - **Google Chrome Modern Web Guidance:** very high-priority source for current browser-platform expertise, accessibility, performance, responsive UI, browser compatibility and agent-evaluation methodology. Prefer targeted retrieval of published skills/guides and selective use of its legacy scan/evaluation patterns; do not import its full authoring/evaluation toolchain into the runtime.
 
 **Implementation direction:** add a provenance-aware Modern Web Guidance knowledge adapter and use selected guidance as acceptance criteria for the Chromebook/iPhone/iPad PWA. Apply Mercury's permission, memory and bot ideas only through the AEGIS Capability System and durable job architecture. Neither source has been installed or connected.
+
+
+## 17. Addy Osmani Agent Skills — engineering quality and workflow source
+
+[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) has been evaluated and recorded in the [research source register](RESEARCH_SOURCE_REGISTER.md). It is MIT-licensed and provides 25 portable workflow skills, four specialist reviewer personas, seven checklists, host adapters and evaluation tooling.
+
+**Decision:** selectively adapt it as a high-priority source for AEGIS engineering standards. Highest-value additions are constraint-driven quality contracts, context engineering, source-driven and doubt-driven review, incremental implementation, browser testing, security hardening, observability and safe release practices.
+
+Do not duplicate the ten existing AEGIS-native Superpowers adaptations or replace AEGIS orchestration with upstream slash commands. Every adopted skill must be provenance-pinned, overlap-checked, converted to the AEGIS capability/policy model where tools are involved, and covered by evidence-based tests. Personas do not grant authority; shared references must travel with adapted skills. No upstream package or plugin has been installed.
