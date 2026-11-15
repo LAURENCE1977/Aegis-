@@ -5,6 +5,8 @@ import {
   loadCapabilityGrant,
   revokeCapabilityGrant,
 } from '../functions/lib/capability-grants.mjs';
+import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
+import { evaluateCapabilityPolicy } from '../functions/lib/capability-policy.mjs';
 
 class MemoryD1 {
   constructor() { this.rows = new Map(); }
@@ -116,6 +118,45 @@ test('revokes a grant and makes it unavailable to Sentinel loaders', async () =>
     capabilityVersion: valid.capabilityVersion, resourceId: valid.resourceId,
   }, Date.parse('2026-11-17T00:00:00Z')), null);
   assert.equal(await revokeCapabilityGrant(db, grant.id), false);
+});
+
+
+test('persisted grant records match the exact resource shape required by Sentinel policy', async()=>{
+  const db=new MemoryD1();
+  const now=Date.parse('2026-11-15T00:00:00Z');
+  const grant=await createCapabilityGrant(db,valid,now);
+  const manifest=getCapabilityManifest(valid.capabilityId);
+  const decision=evaluateCapabilityPolicy({
+    manifest,
+    actionId:'discover',
+    principalId:valid.principalId,
+    resourceId:valid.resourceId,
+    inputDigest:'sha256:'+'a'.repeat(64),
+    grant,
+    now,
+  });
+  assert.deepEqual(grant.resourceIds,[valid.resourceId]);
+  assert.equal(decision.allowed,true,decision.reasonCode);
+});
+
+test('an owner can reissue a grant after revocation without reviving the old grant',async()=>{
+  const db=new MemoryD1();
+  const now=Date.parse('2026-11-15T00:00:00Z');
+  const original=await createCapabilityGrant(db,valid,now);
+  assert.equal(await revokeCapabilityGrant(db,original.id,now+1000),true);
+  const renewed=await createCapabilityGrant(db,{
+    ...valid,
+    expiresAt:'2027-02-01T00:00:00.000Z',
+  },now+2000);
+  assert.notEqual(renewed.id,original.id);
+  assert.equal(renewed.status,'active');
+  assert.equal(await loadCapabilityGrant(db,{
+    principalId:valid.principalId,
+    capabilityId:valid.capabilityId,
+    capabilityVersion:valid.capabilityVersion,
+    resourceId:valid.resourceId,
+  },now+3000).then(item=>item.id),renewed.id);
+  assert.equal(db.rows.size,2);
 });
 
 test('requires a trusted owner actor and strict input fields', async () => {
