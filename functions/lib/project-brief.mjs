@@ -46,7 +46,8 @@ export function buildProjectBrief({
     memory.projectId === workspace.id &&
     memory.status === 'accepted' &&
     memory.sensitivity !== 'restricted' &&
-    (!memory.expiresAt || (validTimestamp(memory.expiresAt) && Date.parse(memory.expiresAt) > now)) &&
+    (memory.expiresAt === null || memory.expiresAt === undefined ||
+      (validTimestamp(memory.expiresAt) && Date.parse(memory.expiresAt) > now)) &&
     typeof memory.content === 'string' &&
     memory.content.trim()
   ).sort((a, b) =>
