@@ -66,6 +66,8 @@
     .toolbar { display: flex; gap: .6rem; margin: 0 0 1rem; }
     .toolbar button { flex: 1; padding: .7rem .9rem; }
     .secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; color: var(--muted); font-size: .82rem; }
+    .project-context select { flex: 1; min-width: 0; padding: .65rem; border-radius: .7rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
     .memory-panel { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
     .memory-panel h2 { font-size: 1.05rem; margin-bottom: .4rem; }
     .memory-help { color: var(--muted); font-size: .82rem; line-height: 1.45; margin-bottom: .8rem; }
@@ -125,6 +127,7 @@
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
       </div>
       <section id="chatSection">
+      <div class="project-context"><label for="chatProjectSelect">Chat memory scope</label><select id="chatProjectSelect"><option value="">Personal memory only</option></select></div>
       <div class="chat-box" id="chatBox" aria-live="polite"></div>
       <div class="input-area">
         <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off" />
@@ -153,6 +156,7 @@
         <h2>My AEGIS memory</h2>
         <p class="memory-help">New memories are saved as candidates. They only become trusted recall after you approve them. This area needs the AEGIS D1 memory store to be connected.</p>
         <form class="memory-form" id="memoryForm">
+          <select id="memoryProjectSelect" aria-label="Memory Project Space"><option value="">Personal memory</option></select>
           <select id="memoryKind" aria-label="Memory type"><option value="fact">Fact</option><option value="preference">Preference</option><option value="decision">Decision</option><option value="event">Event</option><option value="procedure">Procedure</option><option value="artifact">Project / artifact</option></select>
           <textarea id="memoryContent" maxlength="4000" placeholder="What should AEGIS remember?" required></textarea>
           <button id="saveMemoryBtn" type="submit">Save for review</button>
@@ -194,6 +198,7 @@
     const memorySection = document.getElementById('memorySection');
     const memoryForm = document.getElementById('memoryForm');
     const memoryKind = document.getElementById('memoryKind');
+    const memoryProjectSelect = document.getElementById('memoryProjectSelect');
     const memoryContent = document.getElementById('memoryContent');
     const saveMemoryBtn = document.getElementById('saveMemoryBtn');
     const memoryStatus = document.getElementById('memoryStatus');
@@ -338,7 +343,7 @@
       memoryStatus.textContent = 'Loading memories…';
       memoryList.replaceChildren();
       try {
-        const data = await memoryApi('?review=1');
+        const data = await memoryApi('?review=1&projectId=' + encodeURIComponent(memoryProjectSelect.value));
         if (!Array.isArray(data.memories) || !data.memories.length) {
           memoryList.textContent = 'No memories yet. Add one above, or continue chatting.';
           memoryList.className = 'memory-empty';
@@ -361,11 +366,11 @@
             }
             if (memory.status === 'candidate') {
               actions.append(
-                memoryButton('Approve', () => changeMemoryStatus(memory.id, 'accepted'), false),
-                memoryButton('Reject', () => changeMemoryStatus(memory.id, 'retracted'))
+                memoryButton('Approve', () => changeMemoryStatus(memory, 'accepted'), false),
+                memoryButton('Reject', () => changeMemoryStatus(memory, 'retracted'))
               );
             }
-            actions.append(memoryButton('History', () => showMemoryHistory(memory.id)));
+            actions.append(memoryButton('History', () => showMemoryHistory(memory)));
             item.append(actions);
             if (memory.supersedesId) {
               const replaces = document.createElement('div');
@@ -429,25 +434,25 @@
       item.append(form);
     }
 
-    async function changeMemoryStatus(id, nextStatus) {
+    async function changeMemoryStatus(memory, nextStatus) {
       memoryStatus.textContent = 'Saving review…';
       try {
-        await memoryApi('/' + encodeURIComponent(id), {
+        await memoryApi('/' + encodeURIComponent(memory.id), {
           method: 'PATCH',
-          body: JSON.stringify({ status: nextStatus })
+          body: JSON.stringify({ status: nextStatus, projectId: memory.projectId || null })
         });
         await loadMemories();
       } catch (error) { memoryStatus.textContent = error.message; }
     }
 
-    async function showMemoryHistory(id) {
-      const list = document.getElementById('history-' + id);
+    async function showMemoryHistory(memory) {
+      const list = document.getElementById('history-' + memory.id);
       if (!list) return;
       if (!list.hidden) { list.hidden = true; return; }
       list.hidden = false;
       list.replaceChildren();
       try {
-        const data = await memoryApi('/' + encodeURIComponent(id) + '/events');
+        const data = await memoryApi('/' + encodeURIComponent(memory.id) + '/events?projectId=' + encodeURIComponent(memory.projectId || ''));
         data.events.forEach(event => {
           const entry = document.createElement('li');
           entry.textContent = event.type + ': ' + (event.fromStatus || 'new') + ' → ' + event.toStatus + ' · ' + new Date(event.occurredAt).toLocaleString();
@@ -479,7 +484,8 @@
               attribution: 'Owner entered this memory in AEGIS'
             },
             confidence: 1,
-            sensitivity: 'private'
+            sensitivity: 'private',
+            projectId: memoryProjectSelect.value || undefined
           })
         });
         memoryContent.value = '';
@@ -520,25 +526,33 @@
     }
 
     async function loadChatProjects() {
-      const selected = chatProjectSelect.value;
-      chatProjectSelect.replaceChildren();
-      const personal = document.createElement('option');
-      personal.value = '';
-      personal.textContent = 'Personal memory only';
-      chatProjectSelect.append(personal);
+      const selectedChat = chatProjectSelect.value;
+      const selectedMemory = memoryProjectSelect.value;
+      for (const select of [chatProjectSelect, memoryProjectSelect]) {
+        select.replaceChildren();
+        const personal = document.createElement('option');
+        personal.value = '';
+        personal.textContent = select === chatProjectSelect ? 'Personal memory only' : 'Personal memory';
+        select.append(personal);
+      }
       try {
         const data = await controlApi('/api/workspaces');
         (data.workspaces || []).forEach(workspace => {
-          const option = document.createElement('option');
-          option.value = workspace.id;
-          option.textContent = workspace.name;
-          chatProjectSelect.append(option);
+          for (const select of [chatProjectSelect, memoryProjectSelect]) {
+            const option = document.createElement('option');
+            option.value = workspace.id;
+            option.textContent = workspace.name;
+            select.append(option);
+          }
         });
-        if ([...chatProjectSelect.options].some(option => option.value === selected)) {
-          chatProjectSelect.value = selected;
+        if ([...chatProjectSelect.options].some(option => option.value === selectedChat)) {
+          chatProjectSelect.value = selectedChat;
+        }
+        if ([...memoryProjectSelect.options].some(option => option.value === selectedMemory)) {
+          memoryProjectSelect.value = selectedMemory;
         }
       } catch (error) {
-        // Chat remains available without the optional Project Space database.
+        // Chat and personal memory remain available without the optional Project Space database.
       }
     }
 
@@ -644,6 +658,7 @@
         workspaceName.value = '';
         workspaceDescription.value = '';
         await loadWorkspaces();
+        await loadChatProjects();
       } catch (error) { workspaceStatus.textContent = error.message; }
       finally { createWorkspaceBtn.disabled = false; }
     });
@@ -882,10 +897,6 @@
     userInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
     });
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
-    }
 
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('/service-worker.js').catch(() => {});
