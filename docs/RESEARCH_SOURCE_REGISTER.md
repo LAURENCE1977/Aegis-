@@ -596,3 +596,12 @@ Reviewed: 15 November 2026. These are research candidates, not installed depende
 5. **Browser:** Helium is not the same as browser automation. Keep browser control as a separately sandboxed, allowlisted, Sentinel-mediated capability.
 6. **Model safety:** Heretic experiments, if ever evaluated, belong in an isolated disposable test environment with no production credentials or tool access. AEGIS security controls remain external to model behaviour.
 
+
+## Native Forge source inspection and candidate intake
+
+- Read-only public GitHub inspection now supports authenticated `POST /api/forge/inspect` and `POST /api/forge/read`, with pinned tree/blob SHAs, 100-file cap, 32 KiB file cap, strict UTF-8 and no execution.
+- Owner-scoped persistent candidate library supports authenticated `POST /api/forge/candidates` and `GET /api/forge/candidates`; duplicate source/tree records are idempotent.
+- Every candidate begins `inspected` / `unassessed` / `review-required`. Repository metadata does not constitute licence clearance; no automatic approval or execution.
+- Control Centre has a native Forge inspection and saved-candidate view. Source is rendered as text only.
+- Latest verified code head `f36896eef09e7ddbfb406704bd87f974ab24b02a`: 247 tests passed, 0 failed, run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746135062.
+- Latest preview for that code: https://44e15358.aegis-6yk.pages.dev. Authentication is blocked in Preview until its two required secrets are configured.
