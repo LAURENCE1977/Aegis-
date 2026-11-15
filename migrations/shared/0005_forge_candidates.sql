@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS forge_candidates (
 CREATE INDEX IF NOT EXISTS idx_forge_candidates_owner_status
   ON forge_candidates (owner_id, status, updated_at DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_forge_candidates_id_owner
+  ON forge_candidates (id, owner_id);
+
 CREATE TABLE IF NOT EXISTS forge_candidate_events (
   id TEXT PRIMARY KEY NOT NULL,
   candidate_id TEXT NOT NULL,
