@@ -18,6 +18,7 @@
       --accent: #06b6d4;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body {
       background: var(--bg);
       color: var(--text);
@@ -26,42 +27,40 @@
       padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
     }
     .container { max-width: 700px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 2rem; }
+    header { text-align: center; margin-bottom: 2rem; position: relative; }
     h1 { font-size: 1.5rem; color: var(--accent); margin-bottom: 0.25rem; }
     .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .login-panel {
+      max-width: 420px; margin: 12vh auto 0; padding: 1.5rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+    }
+    .login-panel h2 { font-size: 1.15rem; margin-bottom: .5rem; }
+    .login-panel p { color: var(--muted); line-height: 1.5; margin-bottom: 1rem; }
+    .login-panel input { width: 100%; margin-bottom: .75rem; }
+    .login-panel button { width: 100%; }
     .chat-box {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      height: 50vh;
-      overflow-y: auto;
+      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+      padding: 1rem; margin-bottom: 1rem; height: 50vh; overflow-y: auto;
     }
     .message { margin-bottom: 1rem; white-space: pre-wrap; word-wrap: break-word; }
     .user { color: var(--accent); }
     .assistant { color: var(--text); }
     .input-area { display: flex; gap: 0.5rem; }
     input {
-      flex: 1;
-      padding: 0.875rem 1rem;
-      border-radius: 0.75rem;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      font-size: 1rem;
+      flex: 1; min-width: 0; padding: 0.875rem 1rem; border-radius: 0.75rem;
+      border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem;
     }
     button {
-      padding: 0.875rem 1.5rem;
-      border-radius: 0.75rem;
-      border: none;
-      background: var(--accent);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
+      padding: 0.875rem 1.5rem; border-radius: 0.75rem; border: none;
+      background: var(--accent); color: white; font-weight: 600; cursor: pointer;
     }
     button:disabled { opacity: 0.5; }
+    .logout { position: absolute; right: 0; top: 0; padding: .45rem .7rem; font-size: .8rem; }
     .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
+    @media (max-width: 420px) {
+      .logout { position: static; margin-top: .75rem; }
+      .input-area button { padding-inline: 1rem; }
+    }
   </style>
 </head>
 <body>
@@ -69,16 +68,27 @@
     <header>
       <h1>AEGIS</h1>
       <p class="subtitle">Personal AI Assistant</p>
+      <button class="logout" id="logoutBtn" type="button" hidden>Sign out</button>
     </header>
 
-    <div class="chat-box" id="chatBox"></div>
+    <section class="login-panel" id="loginPanel" hidden>
+      <h2>Welcome back</h2>
+      <p>Sign in to access your private AEGIS workspace.</p>
+      <form id="loginForm">
+        <input type="password" id="loginPassword" placeholder="Your AEGIS password" autocomplete="current-password" required minlength="12" />
+        <button id="loginBtn" type="submit">Sign in</button>
+      </form>
+      <p class="status" id="loginStatus" role="status" aria-live="polite">Checking security settings…</p>
+    </section>
 
-    <div class="input-area">
-      <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off" />
-      <button id="sendBtn">Send</button>
-    </div>
-
-    <p class="status" id="status">Ready</p>
+    <main id="appPanel" hidden>
+      <div class="chat-box" id="chatBox" aria-live="polite"></div>
+      <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off" />
+        <button id="sendBtn" type="button">Send</button>
+      </div>
+      <p class="status" id="status">Ready</p>
+    </main>
   </div>
 
   <script>
@@ -86,6 +96,13 @@
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
     const status = document.getElementById('status');
+    const loginPanel = document.getElementById('loginPanel');
+    const loginForm = document.getElementById('loginForm');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginStatus = document.getElementById('loginStatus');
+    const appPanel = document.getElementById('appPanel');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     const STORE_KEY = 'aegis_chat_v1';
     const MAX_SENT = 10;
@@ -127,6 +144,70 @@
       return 'Sorry, I could not read the answer.';
     }
 
+    function showLogin(message) {
+      appPanel.hidden = true;
+      logoutBtn.hidden = true;
+      loginPanel.hidden = false;
+      loginStatus.textContent = message || 'Sign in to continue.';
+      loginPassword.value = '';
+      loginPassword.focus();
+    }
+
+    function showApp() {
+      loginPanel.hidden = true;
+      appPanel.hidden = false;
+      logoutBtn.hidden = false;
+      chatBox.replaceChildren();
+      loadHistory();
+      addMessage('Hello! How can I help you today?');
+      history.forEach(m => addMessage(m.content, m.role));
+      userInput.focus();
+    }
+
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/login', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.status === 503) {
+          showLogin('Security setup is not finished. Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET in your Cloudflare Pages secrets.');
+          loginBtn.disabled = true;
+          return;
+        }
+        if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+        if (data.authenticated) showApp();
+        else showLogin('Sign in to continue.');
+      } catch (err) {
+        showLogin('Could not check your session. Please refresh and try again.');
+      }
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!loginPassword.value) return;
+      loginBtn.disabled = true;
+      loginStatus.textContent = 'Signing in…';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: loginPassword.value })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+        loginBtn.disabled = false;
+        showApp();
+      } catch (err) {
+        loginStatus.textContent = err.message || 'Sign in failed.';
+        loginBtn.disabled = false;
+        loginPassword.focus();
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try { await fetch('/api/login', { method: 'DELETE' }); } catch (e) {}
+      showLogin('You have signed out.');
+    });
+
     async function memoryCall(method, body) {
       const res = await fetch('/api/memory', {
         method,
@@ -135,6 +216,10 @@
       });
       let data = {};
       try { data = await res.json(); } catch (e) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
       if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
       return data;
     }
@@ -190,7 +275,7 @@
       sendBtn.disabled = true;
       addMessage(text, 'user');
       userInput.value = '';
-      status.textContent = 'Thinking...';
+      status.textContent = 'Thinking…';
 
       try {
         if (await handleCommand(text)) {
@@ -205,6 +290,10 @@
         });
         let data = {};
         try { data = await res.json(); } catch (e) {}
+        if (res.status === 401) {
+          showLogin('Your session has expired. Sign in again.');
+          return;
+        }
         if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
 
         const reply = extractReply(data);
@@ -218,18 +307,17 @@
       } finally {
         busy = false;
         sendBtn.disabled = false;
+        if (!loginPanel.hidden) return;
         userInput.focus();
       }
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    userInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    userInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
     });
 
-    loadHistory();
-    addMessage('Hello! How can I help you today?');
-    history.forEach(m => addMessage(m.content, m.role));
+    checkSession();
   </script>
 </body>
 </html>
