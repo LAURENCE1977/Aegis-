@@ -49,8 +49,17 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO job_events')) {
+          if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
+        }
+        if (sql.includes(\"SET status = 'failed'\")) {
+          const row = db.jobs.get(v[1]);
+          if (row && !['succeeded', 'failed'].includes(row.status)) {
+            row.status = 'failed'; row.error_code = 'JOB_DELIVERY_EXHAUSTED'; row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
         }
         if (sql.includes("SET status = 'queued'")) {
           const row = db.jobs.get(v[1]);
@@ -186,4 +195,31 @@ test('dead-letter delivery marks a non-terminal job failed and records the deliv
   assert.equal(saved.lease_until, null);
   assert.equal(acked, true);
   assert.ok(DB.events.some((event) => event.event_type === 'delivery_exhausted'));
+
+  // A repeated DLQ delivery must not duplicate its audit event.
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() {}, retry() {} }],
+  }, env);
+  assert.equal(DB.events.filter((event) => event.event_type === 'delivery_exhausted').length, 1);
+});
+
+test('dead-letter delivery never overwrites a succeeded job', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'succeeded';
+  saved.result_json = JSON.stringify({ ok: true });
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'succeeded');
+  assert.deepEqual(JSON.parse(saved.result_json), { ok: true });
+  assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
+  assert.equal(acked, true);
 });
