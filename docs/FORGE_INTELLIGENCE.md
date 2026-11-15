@@ -165,3 +165,16 @@ Potential Forge extracts are architectural patterns, not copied authority: per-a
 - The source project is actively governed; don't fork or redistribute modified guidance without following its licence, attribution and contribution rules.
 
 No package, CLI, plugin or repository code has been installed or run in AEGIS.
+
+
+## Addy Osmani Agent Skills — engineering workflow source
+
+[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) is an MIT-licensed, multi-host pack of 25 Markdown skills, four reviewer personas, seven shared checklists, command wrappers and evaluation tooling. It is a high-value source for engineering workflow design, not a runtime or permission system.
+
+**Adapt first:** constraint-driven development, context engineering, source-driven development, doubt-driven development, incremental implementation, planning, systematic debugging, security hardening, API design, frontend engineering, browser testing, performance, observability, ADRs and safe shipping.
+
+**Avoid duplication:** AEGIS already has ten native Superpowers-derived skills and existing TDD/spec/review procedures. Compare coverage and merge complementary practices into the canonical AEGIS skill rather than registering duplicate workflows. Pin upstream commit and preserve MIT attribution for copied or substantially adapted material.
+
+The upstream four personas (code reviewer, test engineer, security auditor, web-performance auditor) should become AEGIS role definitions with explicit capability grants and central policy enforcement; they do not receive permissions merely by being assigned a persona. Shared checklists should be packaged with any adapted skills because per-skill installation omits the repository-level `references/` directory. Do not copy upstream contributor-only `AGENTS.md` or install its host-specific command wrappers as AEGIS runtime code.
+
+**AEGIS integration path:** provenance-aware skill registry → overlap and risk review → AEGIS-native adaptation → contract/evaluation tests → versioned publication → explicit enablement. The source register records the detailed evaluation.
