@@ -54,7 +54,10 @@ export async function onRequestPost({ request, env, params }) {
     });
     if (!event) return jsonResponse({ error: "Workspace not found." }, 404);
     return jsonResponse({ event }, 201);
-  } catch {
-    return jsonResponse({ error: "Workspace event is invalid." }, 400);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return jsonResponse({ error: "Workspace event is invalid." }, 400);
+    }
+    return jsonResponse({ error: "Workspace event could not be saved." }, 503);
   }
 }
