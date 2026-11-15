@@ -61,8 +61,8 @@ test('Control Centre exposes Project Spaces and owner approval inbox surfaces', 
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing Control Centre element: ' + id);
   }
-  assert.match(html, /fetch\('\/api\/workspaces'/);
-  assert.match(html, /fetch\('\/api\/approvals'/);
+  assert.match(html, /controlApi\('\/api\/workspaces'/);
+  assert.match(html, /controlApi\('\/api\/approvals'/);
   assert.match(html, /method:\s*'POST'/);
   assert.match(html, /method:\s*'POST'/);
 });
