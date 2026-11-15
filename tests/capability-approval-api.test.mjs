@@ -18,6 +18,7 @@ const binding = {
   capabilityVersion: '1.2.0',
   actionId: 'update-description',
   resourceId: 'github:repo:owner/project',
+  operationSummary: 'Update the description of owner/project on GitHub',
   connectionId: 'connection-1',
   inputDigest: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   requestedBy: 'agent:forge',
@@ -36,9 +37,9 @@ class MemoryD1 {
         if (sql.includes('INSERT INTO capability_approvals')) {
           db.rows.set(v[0], {
             id: v[0], principal_id: v[1], capability_id: v[2],
-            capability_version: v[3], action_id: v[4], resource_id: v[5],
-            connection_id: v[6], input_digest: v[7], requested_by: v[8],
-            requested_at: v[9], expires_at: v[10], status: 'pending',
+            capability_version: v[3], action_id: v[4], resource_id: v[5], operation_summary: v[6],
+            connection_id: v[7], input_digest: v[8], requested_by: v[9],
+            requested_at: v[10], expires_at: v[11], status: 'pending',
             decided_by: null, decided_at: null, consumed_at: null,
           });
           return { meta: { changes: 1 } };
