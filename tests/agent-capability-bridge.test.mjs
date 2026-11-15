@@ -113,8 +113,8 @@ test('canonical input digest is stable across object key order and audit exclude
       input: { privateMarker: 'PRIVATE_PAYLOAD_MARKER', include: ['issues', 'pulls'], repository: 'LAURENCE1977/Aegis-' },
     }, { principalId }, b.dependencies),
   ]);
-  assert.equal(first.allowed, true);
-  assert.equal(second.allowed, true);
+  assert.equal(first.allowed, true, first.reasonCode);
+  assert.equal(second.allowed, true, second.reasonCode);
   assert.equal(a.events[0].inputDigest, b.events[0].inputDigest);
   assert.equal(JSON.stringify(a.events).includes('PRIVATE_PAYLOAD_MARKER'), false);
 });
