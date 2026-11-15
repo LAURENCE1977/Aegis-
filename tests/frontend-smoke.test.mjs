@@ -138,6 +138,10 @@ test('Forge candidate review UI requires an explicit licence decision and record
   assert.match(html, /controlApi\('\/api\/forge\/candidates\/'\s*\+/);
   assert.match(html, /licenceReview:\s*licenceSelect\.value/);
   assert.match(html, /licenceConfirmed\.checked/);
+  assert.match(html, /licenceEvidenceUrl\.value\.trim\(\)/);
+  assert.match(html, /reviewNote\.value\.trim\(\)/);
+  assert.match(html, /expectedUpdatedAt:\s*candidate\.updatedAt/);
+  assert.match(html, /licenceAttested:\s*licenceConfirmed\.checked/);
   assert.match(html, /candidateReviewForm\.addEventListener\('submit'/);
 });
 
