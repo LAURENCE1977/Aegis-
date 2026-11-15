@@ -494,3 +494,120 @@ Sources:
 - https://devmuaz.com/projects/coredeck
 
 No CoreDeck binary, SDK, emulator, package, agent, account or service has been installed or connected to AEGIS.
+
+## Vercel agent-browser — browser automation adapter
+
+Primary candidate: https://github.com/vercel-labs/agent-browser
+- Apache-2.0; native Rust CLI with Node/npm distribution.
+- Browser automation for agents: opens pages, returns compact accessibility-tree snapshots with element references, and performs actions step by step. Supports persistent browser sessions, screenshots, skills and an MCP server over stdio.
+- Requires a host with compatible Chrome; it is not a Cloudflare Worker/browser-only runtime dependency.
+
+AEGIS decision:
+- High-priority optional browser-worker adapter, not a core dependency.
+- Use a separate disposable browser worker with no production secrets or host filesystem access. Enforce domain allowlists, action policies, explicit confirmation for sensitive actions, isolated profiles and short-lived sessions.
+- Treat page content as untrusted prompt-injection. Keep navigation policy and tool permissions outside page/agent context; verify state-changing actions and capture evidence.
+- Repository documentation describes domain allowlists and action policies, but GitHub currently reports no SECURITY.md and no published advisories. That is not proof of security; review source before use.
+- Do not expose shell/browser control directly to arbitrary agents. Route requests through AEGIS capabilities and approvals.
+- Chromebook constraint: test on ChromeOS Linux or a remote isolated worker; iPhone/iPad Safari is not a local execution target.
+
+Sources:
+- https://github.com/vercel-labs/agent-browser
+- https://www.npmjs.com/package/agent-browser
+- https://github.com/vercel-labs/agent-browser/security
+- https://github.com/vercel-labs/agent-browser/blob/main/docs/public/schema.json
+
+No package, browser profile, MCP server or service has been installed or connected.
+
+## Code Review Graph — repository intelligence
+
+Primary candidate: https://github.com/tirth8205/code-review-graph
+PyPI: https://pypi.org/project/code-review-graph/
+- MIT-licensed local-first Python code-intelligence graph using Tree-sitter and SQLite; exposes CLI and MCP tools.
+- Extracts code structure, incrementally updates changed files, maps change impact and affected tests, supports risk-scored PR reviews, graph traversal, architecture communities, multi-repository search and context/token measurements.
+- Current PyPI listing observed 15 November 2026: v2.4.0. Verify release and Python/dependency support before pinning.
+
+AEGIS decision:
+- Very high-priority optional engineering/Forge adapter. It directly addresses repository understanding, change impact and review context.
+- Evaluate on AEGIS using representative PRs; reproduce context savings and review accuracy against the existing workflow.
+- Its installer can modify MCP configuration, hooks, skills and agent instruction files. Use install dry-run, inspect every proposed change and configure only the intended tool. Never let a broad installer rewrite canonical AEGIS instructions.
+- Treat graph data as derived and potentially sensitive repository metadata. Keep SQLite private; do not upload source/embeddings without review. Start read-only; do not enable automated refactors until separately approved and tested.
+- It is not AEGIS durable runtime, canonical memory or source of truth. Verify graph freshness against Git.
+
+Sources:
+- https://github.com/tirth8205/code-review-graph
+- https://pypi.org/project/code-review-graph/
+- https://github.com/tirth8205/code-review-graph/releases
+
+No package, MCP server, GitHub Action or graph database has been installed or connected.
+
+## FlashML FreeToken — local model serving (identity interpreted)
+
+Likely intended project:
+- https://github.com/FlashML-org/FreeToken
+- https://www.flashml.ai/
+- Apache-2.0.
+- FreeToken is not a website that hands out free API tokens or hosted inference quota. It is a local inference/serving engine for open-weight models, especially large Mixture-of-Experts models, exposing OpenAI- and Anthropic-compatible local APIs.
+- Official CLI install guide currently lists Linux x86_64, NVIDIA GPU and driver r580+ / CUDA 13. Desktop downloads are listed for Windows and Linux. Real usable model size/performance depends on GPU VRAM, system RAM, bandwidth and quantization.
+
+AEGIS decision:
+- Future optional local-inference provider adapter; defer. It can reduce per-token API spend on a capable workstation, but it does not create free cloud compute and does not run on the user's iPad/iPhone or ordinary Chromebook hardware.
+- Provider router should support an OpenAI-compatible custom base URL, health/model discovery, capability metadata, timeouts and context limits. Never assume local models match hosted tool-use, reasoning, vision or reliability.
+- If evaluated, run on a dedicated GPU host, bind to loopback/private network, require authentication before remote exposure, restrict egress, isolate model files and set resource/thermal limits. Never expose a no-auth inference endpoint publicly.
+- Benchmark cost per useful task, latency, memory footprint, coding correctness and tool-call reliability against hosted alternatives.
+
+Sources:
+- https://github.com/FlashML-org/FreeToken
+- https://github.com/FlashML-org/FreeToken/blob/main/docs/install.md
+- https://github.com/FlashML-org/FreeToken/blob/main/docs/quickstart.md
+- https://www.flashml.ai/
+
+Identity note: user wrote “flashml.org / free token”. Search surfaced FreeToken at flashml.ai and its GitHub organisation. If a different flashml.org service or free API-token offer was intended, its exact URL is needed. Do not paste a purported token into AEGIS until issuer, scope, expiry, data handling and billing are verified.
+
+## 9Router — multi-provider model router (security hold)
+
+Primary candidate:
+- https://github.com/Raisolah/9router
+- Related upstream/release references: https://github.com/decolua/9router and https://github.com/decolua/9router/releases
+- README describes an OpenAI-compatible local endpoint, provider/model aggregation, OAuth/account routing, quota tracking, token-output compression, format translation and fallback across subscription, paid and free providers.
+- Related decolua release feed showed v0.5.35 on 16 July 2026; do not assume Raisolah's repository is byte-identical or that a deployed build contains the same fixes.
+
+Security findings:
+- GHSA-vjc7-jrh9-9j86 reports critical unauthenticated provider CRUD and plaintext API-key/conversation-history exposure in versions <=0.4.41; the advisory listed no patched version at publication.
+- GHSA-86m2-fcxq-5q7c reports a high-severity Host-header trust flaw enabling unauthenticated /v1 proxy use and SSRF in versions <0.5.2; the advisory identifies 0.5.2 as patched.
+- Later release notes mention security/provider fixes, but do not independently prove the first advisory's endpoints are fixed in every fork/deployment. Audit exact source commit and reproduce fixes.
+
+AEGIS decision:
+- Do not integrate or give it credentials yet. Security hold.
+- Potential future provider-router comparison only. AEGIS keeps its own provider adapter, routing policy, budgets and audit as canonical.
+- Before disposable evaluation: pin exact repo/commit/release; diff advisory fixes; verify auth on every dashboard/API endpoint; verify loopback binding and peer-IP checks; validate SSRF/private-network protections and provider URLs; inspect OAuth token storage, request logging, cloud sync, telemetry and outbound calls; run dependency and secret scans.
+- Never connect production API keys, ChatGPT credentials, GitHub OAuth or personal accounts. Use synthetic test credentials only after security review.
+- “Free” provider labels do not guarantee permanent free access, unlimited quota or terms-compliant use. Verify each provider's official terms and rate limits.
+
+Sources:
+- https://github.com/Raisolah/9router
+- https://github.com/decolua/9router/releases
+- https://github.com/advisories/GHSA-vjc7-jrh9-9j86
+- https://github.com/advisories/GHSA-86m2-fcxq-5q7c
+
+No 9Router package, account, OAuth provider or credential has been connected.
+
+## OpenCut — future Media Studio editing engine
+
+Primary candidate: https://github.com/OpenCut-app/OpenCut
+- MIT-licensed open-source video editor. Current repository README says it is being rewritten around a Rust core and shared web/desktop/mobile architecture, with a planned Editor API, plugin system, MCP server, headless automation and scripting.
+- Former OpenCut-app/opencut-classic repository is archived and read-only; do not adopt it for new work.
+- A separate similarly named https://github.com/opencutvideo/Opencut repository also surfaced. Do not conflate the projects; pin exact owner/repository before implementation.
+
+AEGIS decision:
+- High-value future Media Studio reference; defer implementation. Potentially useful for promo videos, lyric videos, clips and social assets.
+- Planned MCP/headless/editor APIs are roadmap items, not proven automation interfaces. Do not design a production dependency around unshipped features.
+- First evaluate the live browser editor manually on Chromebook/iPad, then inspect export formats, audio handling, timeline precision, browser memory/performance, accessibility, codec licensing and local-file privacy.
+- Keep AEGIS media project metadata and source assets canonical. Automated editing should use an isolated project copy and require approval before overwriting/publishing.
+- Do not make OpenCut an AEGIS core dependency or assume MCP automation exists today.
+
+Sources:
+- https://github.com/OpenCut-app/OpenCut
+- https://github.com/OpenCut-app/opencut-classic
+- https://github.com/opencutvideo/Opencut
+
+No OpenCut package, editor project, plugin or service has been installed or connected.
