@@ -1,6 +1,6 @@
 # AEGIS Capability System
 
-**Status:** Architecture proposal; not yet implemented.  
+**Status:** Architecture proposal with a read-only manifest registry v0.1 implemented on `feature/aegis-capability-registry-implementation`. General policy evaluation, grants, connections and execution remain unimplemented.  
 **Scope:** The governed path from discovering an external tool, API, MCP server, package or internal function to making a versioned AEGIS capability available to an agent or user.
 
 ## 1. Design objective
@@ -75,6 +75,10 @@ Every capability should have a validated, versioned manifest containing at least
 | `status` | Lifecycle state, reviewer, decision rationale and review date |
 
 Reject unknown fields where security-sensitive schemas are concerned. Never put raw credentials, cookies, bearer tokens or private key material in manifests, logs or agent context.
+
+### v0.1 implementation boundary
+
+The current registry implements manifest validation for IDs/versions, provider and interface metadata, action effects/risk/approval/scopes, data classification, egress host declarations, authentication mode and opaque secret references, bounded request limits, provenance, licence review and lifecycle status. The static first-party catalogue currently describes public GitHub repository discovery and the module catalogue. The authenticated `GET /api/capabilities` endpoint is read-only and returns no grants. Input/output JSON Schemas, persistent manifest storage, adapter versions, connections, policy decisions, approval records, invocation history and execution are future work. A manifest's `approved` status means its metadata passed review; it is not a user permission grant.
 
 ## 5. Risk classification and execution policy
 
@@ -171,8 +175,8 @@ The current Cloudflare Worker + D1 + Queue runtime is a bounded first implementa
 
 ## 12. MVP implementation sequence
 
-1. **Read-only manifest schema and validator:** validate IDs, versions, schemas, source provenance, licence, risk, effects and lifecycle state.
-2. **Registry API:** list/get/search manifests; authenticated, read-only and no-store.
+1. **Read-only manifest schema and validator:** v0.1 implemented on the feature branch for IDs, versions, source provenance, licence review, risk/effects, scopes and lifecycle state. Full input/output JSON Schema support remains open.
+2. **Registry API:** authenticated, read-only and no-store list endpoint implemented on the feature branch. Persistent storage and API-level get/search remain open.
 3. **Policy evaluator:** pure, deterministic unit-tested decisions for principal, scope, resource, risk and status.
 4. **Approval records:** exact-operation, expiring approval tokens with replay protection.
 5. **Invocation envelope and audit events:** durable records with redaction and idempotency.
