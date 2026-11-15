@@ -7,9 +7,20 @@ import {
   isAuthorized,
   sessionCookie,
 } from '../functions/lib/auth.mjs';
+import { onRequestGet as loginGet, onRequestPost as loginPost } from '../functions/api/login.js';
+import { onRequestPost as askPost } from '../functions/api/ask.js';
+import {
+  onRequestGet as memoryGet,
+  onRequestPost as memoryPost,
+  onRequestDelete as memoryDelete,
+} from '../functions/api/memory.js';
 
 const secret = 'test-only-session-secret-with-sufficient-entropy';
 const fixedNow = 1_800_000_000_000;
+const configuredEnv = {
+  AEGIS_PASSWORD: 'a-long-test-password-value',
+  AEGIS_SESSION_SECRET: secret,
+};
 
 test('a newly created session token verifies before its expiry', async () => {
   const token = await createSessionToken(secret, fixedNow);
@@ -53,4 +64,99 @@ test('the session token is read from the named cookie only', () => {
 test('API authorization fails closed without a configured session secret', async () => {
   const request = new Request('https://aegis.example/');
   assert.equal(await isAuthorized(request, {}), false);
+});
+
+test('the login endpoint reports missing security configuration', async () => {
+  const response = await loginGet({
+    request: new Request('https://aegis.example/api/login'),
+    env: {},
+  });
+  assert.equal(response.status, 503);
+});
+
+test('the login endpoint rejects an incorrect password', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ password: 'wrong-password-value' }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(response.status, 401);
+});
+
+test('successful login issues a session cookie accepted by the API guard', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(response.status, 200);
+  const cookie = response.headers.get('Set-Cookie');
+  const token = cookie.match(/__Host-aegis_session=([^;]+)/)[1];
+  const authenticatedRequest = new Request('https://aegis.example/api/ask', {
+    headers: { Cookie: '__Host-aegis_session=' + token },
+  });
+  assert.equal(await isAuthorized(authenticatedRequest, configuredEnv), true);
+});
+
+test('cross-origin login attempts are rejected', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://attacker.example' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(response.status, 403);
+});
+
+test('the chat API rejects unauthenticated requests before calling the model', async () => {
+  const response = await askPost({
+    request: new Request('https://aegis.example/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: 'hello' }),
+    }),
+    env: { ...configuredEnv, AI: { run: async () => { throw new Error('must not run'); } } },
+  });
+  assert.equal(response.status, 401);
+});
+
+test('the memory read API rejects unauthenticated requests before reading KV', async () => {
+  const response = await memoryGet({
+    request: new Request('https://aegis.example/api/memory'),
+    env: { ...configuredEnv, MEMORY: { get: async () => { throw new Error('must not read'); } } },
+  });
+  assert.equal(response.status, 401);
+});
+
+test('memory writes and deletes reject unauthenticated requests', async () => {
+  const env = {
+    ...configuredEnv,
+    MEMORY: {
+      get: async () => '[]',
+      put: async () => { throw new Error('must not write'); },
+      delete: async () => { throw new Error('must not delete'); },
+    },
+  };
+  const post = await memoryPost({
+    request: new Request('https://aegis.example/api/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: 'private note' }),
+    }),
+    env,
+  });
+  const del = await memoryDelete({
+    request: new Request('https://aegis.example/api/memory', { method: 'DELETE' }),
+    env,
+  });
+  assert.equal(post.status, 401);
+  assert.equal(del.status, 401);
 });
