@@ -13,12 +13,11 @@ function isRecord(value) {
 }
 
 function requireText(value, label, max = 500) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return false;
-      /[\\u0000-\\u001f\\u007f]/.test(value)) {
+  if (typeof value !== 'string' || !value.trim() || value.length > max ||
+      /[\u0000-\u001f\u007f]/.test(value)) {
     throw new TypeError('Invalid free-tier ' + label);
   }
 }
-
 function requireHttpsUrl(value, label) {
   requireText(value, label, 2048);
   let url;
@@ -29,12 +28,11 @@ function requireHttpsUrl(value, label) {
 }
 
 function validTimestamp(value) {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(value)) return false;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return false;
   const time = Date.parse(value);
   return Number.isFinite(time) && new Date(time).toISOString() ===
     (value.includes('.') ? value : value.replace('Z', '.000Z'));
 }
-
 export function validateFreeTierRecord(record, now = Date.now()) {
   if (!isRecord(record)) throw new TypeError('Free-tier record must be an object');
   if (!ID_PATTERN.test(record.id ?? '')) throw new TypeError('Invalid free-tier identifier');
