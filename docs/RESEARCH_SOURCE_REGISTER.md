@@ -567,3 +567,32 @@ These are three distinct source tracks, not interchangeable products.
 - Latest branch head `26e96f593313441bfadc100a8bba114a537097b6` passed GitHub Actions run 43743243590: 212 passed, 0 failed.
 - Latest Cloudflare Pages branch preview deployed successfully at https://7aef49d9.aegis-6yk.pages.dev; preview login remains blocked by missing Preview secrets. No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
+
+
+## New Forge intake — model providers, harnesses, memory, research and browsers
+
+Reviewed: 15 November 2026. These are research candidates, not installed dependencies.
+
+| Candidate | Verified identity / source | AEGIS fit and decision |
+|---|---|---|
+| Alibaba Qwen | https://github.com/AlibabaCloud-Official/Qwen3.6 · https://github.com/QwenLM/Qwen-Agent · https://github.com/QwenLM/qwen-code | High-priority provider and coding-agent adapter. Qwen supports OpenAI-compatible API patterns and a broad model family. Keep provider/model IDs configurable; distinguish downloadable open-weight models from hosted proprietary/API models. Hosted usage is not assumed free. |
+| Replit Free | https://replit.com/pricing | Optional browser-based prototype/workspace only. Free Mode is allowance-limited and resets according to account usage settings; not a dependable AEGIS runtime, always-on host or free inference API. |
+| Heretic | https://github.com/p-e-w/heretic | Research-only model-weight experimentation (directional ablation / refusal reduction). Not a core AEGIS capability and not a permission bypass. Never use to weaken AEGIS Sentinel, safety policy or access controls; no model modification or deployment planned. |
+| Muelle | Exact project not reliably identified from the supplied name. | Intake held; no repository, licence or capabilities inferred. |
+| AgentMemory | https://github.com/AndrewMoryakov/AgentMemory | Strong shared-memory runtime reference: provider contract, CLI/HTTP/MCP surfaces, local JSON backend, diagnostics, export/import and certification harness. Public alpha explicitly says it is not hardened for hostile multi-tenant/open-network use and is not a memory policy engine. Reverse-engineer contract and portability ideas; do not expose or replace AEGIS memory policy/auth. |
+| Scientific Agent Skills | https://github.com/K-Dense-AI/scientific-agent-skills | High-value optional specialist-skill source for literature discovery, hypothesis generation, scientific critical thinking, databases and reproducible analysis. Repository says MIT, but individual SKILL.md files may declare different licences: review per skill before adapting. Treat scientific output as evidence requiring citations and validation, not authority. |
+| Awesome Harness Engineering | https://github.com/ai-boost/awesome-harness-engineering | High-priority Forge discovery index for context delivery, memory, orchestration, permissions, sandboxes, verification, observability and agent loops. Upstream LICENSE currently identifies CC0-1.0; verify each linked project's own licence and maintenance before reuse. Use it as a discovery map, not a dependency. |
+| AgenticOS | https://github.com/vstorm-co/agenticos | Apache-2.0 architecture reference for governed agents, browser/MCP tools, shared knowledge, budgets, approvals, audit and operator UI. Heavy FastAPI/Pydantic AI/Postgres/Redis/Next.js stack is not a direct fit for AEGIS's Cloudflare-first core. Build native concepts; no wholesale deployment. |
+| Helium browser | https://github.com/imputnet/helium | Privacy-focused Chromium browser, not an AI browser-agent framework. Useful as a browser privacy/UX reference only; desktop browser source is not an embeddable Chromebook/iOS automation engine. Repository contains multiple licences (including GPL-3.0 and BSD-3-Clause); inspect each component before reuse. |
+| Pi agent toolkit | https://github.com/badlogic/pi-mono | High-priority modular agent-runtime reference: provider API, agent core/tool loop/state, coding harness, TUI and web UI. MIT. Reverse-engineer clean provider/agent boundaries and extension model; do not replace AEGIS identity, jobs, memory, Sentinel, approvals or audit. |
+| “Eli Cactus” | Exact project not reliably identified from the supplied phrase. | Intake held; no repository, licence or capabilities inferred. |
+
+### Implementation implications
+
+1. **Provider router:** add a provider-neutral model adapter boundary. Keep Workers AI as the current default; add optional OpenAI-compatible endpoint configuration for Qwen and other providers only with explicit endpoint/model configuration, server-side secrets, bounded timeouts/output and a hard fail-closed default. Do not silently route personal prompts to third parties.
+2. **Agent harness:** study Pi's small composable core and the Awesome Harness index. AEGIS's durable job runner remains the canonical execution owner; model adapters and agent loops are replaceable workers, never permission authorities.
+3. **Memory:** compare AgentMemory's shared operation contract and provider certification with AEGIS's existing D1 memory repository. Do not add a second competing source of truth.
+4. **Scientific work:** add a future research specialist with source provenance, hypothesis/evidence separation, reproducibility checks and skill-by-skill licence review.
+5. **Browser:** Helium is not the same as browser automation. Keep browser control as a separately sandboxed, allowlisted, Sentinel-mediated capability.
+6. **Model safety:** Heretic experiments, if ever evaluated, belong in an isolated disposable test environment with no production credentials or tool access. AEGIS security controls remain external to model behaviour.
+
