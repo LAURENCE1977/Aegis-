@@ -61,7 +61,7 @@ The runtime job database is a separate service/database and keeps its own migrat
 
 ## Deployment status
 
-This is feature-branch code and preview deployment only. D1 has **not** been provisioned, the shared migrations have **not** been applied to a live account database, and the `AEGIS_DB` binding has **not** been configured. Production has not been changed. The preview's memory API will therefore remain unavailable until those steps are separately authorised and completed.
+This is feature-branch code and preview deployment only. D1 has **not** been provisioned, the shared migrations have **not** been applied to a live account database, and the `AEGIS_DB` binding has **not** been configured. No production application code, data, secrets or infrastructure has been changed by this feature branch. Two separate Markdown-only commits were accidentally pushed to `main` and triggered Pages redeploys; details are recorded in `AEGIS_MASTER_BLUEPRINT.md`. The preview's memory API remains unavailable until D1 and the required Preview secrets are configured.
 
 ## Next implementation work
 
