@@ -31,14 +31,20 @@ export async function onRequestPost({ request, env, params }) {
     return jsonResponse({ error: "A corrected memory content value is required." }, 400);
   }
 
+  const projectValue = new URL(request.url).searchParams.get("projectId");
+  const projectId = projectValue === null || projectValue === "" ? null : projectValue;
+  if (projectId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(projectId)) {
+    return jsonResponse({ error: "Invalid project scope." }, 400);
+  }
+
   try {
     const repository = createMemoryRepository(env.AEGIS_DB);
-    const prior = await repository.get(id, { ownerId: OWNER_ID });
+    const prior = await repository.get(id, { ownerId: OWNER_ID, projectId });
     if (!prior || prior.status !== "accepted") {
       return jsonResponse({ error: "Only an accepted memory can be corrected." }, 404);
     }
-    if (prior.projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, prior.projectId);
+    if (projectId !== null) {
+      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
       if (!project || project.status !== "active") {
         return jsonResponse({ error: "Memory not found." }, 404);
       }
