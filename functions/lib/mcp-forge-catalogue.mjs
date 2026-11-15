@@ -16,7 +16,7 @@ function isRecord(value) {
 
 function requireText(value, label, max = 500) {
   if (typeof value !== 'string' || !value.trim() || value.length > max ||
-      /[\\u0000-\\u001f\\u007f]/.test(value)) {
+      [...value].some((character) => character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f)) {
     throw new TypeError('Invalid MCP server ' + label);
   }
 }
