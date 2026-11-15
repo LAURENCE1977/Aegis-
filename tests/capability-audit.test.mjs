@@ -26,7 +26,7 @@ class MemoryD1 {
         return { meta: { changes: 1 } };
       },
       async all() {
-        const [principal, invocationId, limit] = this.values;
+        const [principal, invocationId, _invocationIdAgain, limit] = this.values;
         return { results: db.rows
           .filter(row => row.principal_id === principal && (!invocationId || row.invocation_id === invocationId))
           .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
