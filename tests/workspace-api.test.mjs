@@ -20,7 +20,7 @@ const envBase = {
 };
 
 class MemoryD1 {
-  constructor() { this.spaces = new Map(); this.events = new Map(); }
+  constructor() { this.spaces = new Map(); this.events = new Map(); this.memoryEvents = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -62,6 +62,9 @@ class MemoryD1 {
       },
       async all() {
         const v = this.values;
+        if (sql.includes('FROM aegis_memory_events')) {
+          return { results: db.memoryEvents.filter(row => row.owner_id === v[0] && row.project_id === v[1]).slice(0, v[2]).map(row => ({ ...row })) };
+        }
         if (sql.includes('FROM project_spaces')) {
           return { results: [...db.spaces.values()]
             .filter(row => row.owner_id === v[0] && row.status === 'active')
@@ -199,6 +202,40 @@ test("workspace detail and timeline return only the owner's project data", async
     params: { id: otherId },
   });
   assert.equal(privateLookup.status, 404);
+});
+
+test('Project Space timeline merges only its own memory lifecycle events', async () => {
+  const db = new MemoryD1();
+  const created = await createWorkspacePost({
+    request: await authenticatedRequest('/api/workspaces', {
+      method: 'POST', body: { name: 'Memory Timeline' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  const { workspace } = await created.json();
+  db.memoryEvents.push({
+    id: 'memory-event-1', memory_id: 'memory-1', owner_id: 'owner',
+    project_id: workspace.id, event_type: 'status_changed',
+    from_status: 'candidate', to_status: 'accepted',
+    occurred_at: '2026-11-15T18:00:00.000Z',
+  });
+  db.memoryEvents.push({
+    id: 'other-project-event', memory_id: 'memory-2', owner_id: 'owner',
+    project_id: 'another-project', event_type: 'created',
+    from_status: null, to_status: 'candidate',
+    occurred_at: '2026-11-15T18:01:00.000Z',
+  });
+  const timeline = await workspaceEventsGet({
+    request: await authenticatedRequest('/api/workspaces/' + workspace.id + '/events'),
+    env: { ...envBase, AEGIS_DB: db },
+    params: { id: workspace.id },
+  });
+  assert.equal(timeline.status, 200);
+  const data = await timeline.json();
+  assert.equal(data.total, 1);
+  assert.equal(data.events[0].source, 'memory');
+  assert.equal(data.events[0].type, 'memory_status_changed');
+  assert.equal(data.events[0].memoryId, 'memory-1');
 });
 
 test('workspace event writes reject missing origin and invalid event types', async () => {
