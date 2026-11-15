@@ -372,3 +372,80 @@ These products overlap, but are not interchangeable:
 - "Open Outreach" was interpreted as eracle/OpenOutreach.
 - "OpenDots" was interpreted as CopilotKit/OpenDots.
 - No code, package, connector, account or service from this list has been installed or authorised.
+
+## Research intake — agent routing, API tooling, UI and model frameworks (15 November 2026)
+
+### Agent Lightning — Microsoft
+Source: https://github.com/microsoft/agent-lightning — MIT. Current v1.0 is a reinforcement-learning training framework, not a general-purpose autonomous agent runtime. It uses a model API gateway, rollout controller, trainer, VERL/vLLM and Kubernetes jobs; Python 3.12+ and a substantial GPU-oriented training stack are expected. Upstream benchmark claims have not been independently reproduced by AEGIS.
+
+**AEGIS decision:** High-value future Agent Evaluation & Learning Lab reference, not a production runtime dependency. Reverse-engineer trajectory capture, rollout IDs, reward/evaluation contracts, training-data provenance and separation of trainer/controller/gateway. First implement deterministic AEGIS trace capture and offline evaluation; consider RL only with a real benchmark, suitable GPU budget and safe reproducible dataset. No GPU training, Kubernetes or package installation now.
+
+### ToGO / ai-agno
+Source: https://github.com/togo-framework/ai-agno — MIT. This is a Go framework integration that calls an Agno agent sidecar over HTTP (POST /run); it is not the Agno agent runtime itself.
+
+**AEGIS decision:** Low priority. The sidecar adapter contract is a useful interoperability pattern, but Go + Agno is not aligned with the current Cloudflare Workers / JavaScript core. Reproduce only the provider-neutral remote-agent adapter contract if a future external agent host is approved. No code imported.
+
+### Harness Router
+Source: https://github.com/Protocol-Lattice/harness-router — MIT; Python 3.11+; upstream labels it alpha. It selects the next tool from a goal, current observation and tool descriptions, with confidence/fallback, cached decisions and optional MCTS. The host harness still supplies arguments, enforces permissions, executes the tool and processes results. Default decision provider is Jev through OpenRouter.
+
+**AEGIS decision:** High-priority design reference for a bounded tool-selection subcomponent. Build an AEGIS-native router that emits only a proposed capability/action ID, confidence and rationale; the existing AEGIS policy evaluator remains authoritative and executes after exact-operation approval. Low confidence, stale context, unknown tool, or policy mismatch must return control to the planner. Never let an LLM router grant permissions or construct executable commands. Avoid requiring OpenRouter/Jev; route through AEGIS provider adapters and budget controls. No dependency or API key configured.
+
+### Grok / xAI
+Source: https://docs.x.ai/ — commercial model/API provider, not an open-source agent framework. Treat as an optional model-provider adapter, with API usage billed separately from a ChatGPT subscription.
+
+**AEGIS decision:** Add only through the existing provider interface after recording model ID, pricing, rate limits, retention/data-use terms, region, tool-call support and failure behavior. Never hard-code a Grok-specific assumption into orchestration or store provider credentials in browser code. No xAI account, key or connection created.
+
+### Hoppscotch
+Source: https://github.com/hoppscotch/hoppscotch — MIT. Broad API-development ecosystem with HTTP request builder, environments, auth helpers, GraphQL, WebSocket, SSE, Socket.IO and MQTT; PWA support. The upstream repository is a substantial pnpm monorepo and service ecosystem.
+
+**AEGIS decision:** High-value QA/Developer Console reference, not a full application dependency. Build a compact AEGIS-native API inspector around our own routes: request method/path, safe headers/body, response status/headers/body, latency, saved non-secret examples and redacted environment variables. Default to local AEGIS endpoints and read-only tests; writes require the same approvals as any other capability. Never persist bearer tokens, cookies or secrets in saved collections. No Hoppscotch code installed.
+
+### JSON Crack
+Source: https://github.com/AykutSarac/jsoncrack.com (the older VS Code repository says it has moved into this monorepo). The core concept is interactive JSON-to-node-graph visualization. The older VS Code package points at a newer canonical repository; a current root-level licence for the moved code was not verified in this intake.
+
+**AEGIS decision:** Strong product idea for a native JSON/schema/agent-trace visualizer, especially for inspecting tool manifests, workflow graphs, memory relations and API payloads. Build our own visualizer after verifying the current app source and applicable licence; do not copy code from the archived VS Code repository. No code installed.
+
+### Cult UI
+Source: https://github.com/nolly-studio/cult-ui and documentation https://www.cult-ui.com/docs. Registry of accessible, animated React/Tailwind components distributed as copyable source through shadcn CLI. Documentation describes Tailwind CSS v4, React and motion dependencies. A similarly named repository exists; do not confuse them. The canonical registry's precise licence file should be rechecked before source reuse; a similarly named shadcn/cult-ui repository points to a different MIT source.
+
+**AEGIS decision:** UI inspiration only until the canonical registry licence is independently verified. Adapt interaction ideas (command input, agent status, approval cards, responsive panels) to the existing AEGIS stack and accessibility requirements; avoid introducing React/Tailwind v4 solely for a component. Respect reduced-motion preferences. No components copied or installed.
+
+### Open WebUI
+Source: https://github.com/open-webui/open-webui — current post-v0.6.6 licence adds a branding-protection condition and is not OSI-approved open source. The project is a feature-rich self-hosted Python/Svelte AI interface, with model-provider connections, tools, documents/RAG and local-model support. It is a substantial server application, not a Cloudflare Pages/Workers module.
+
+**AEGIS decision:** Do not fork, embed or white-label. Its licence requires the Open WebUI identity to remain visible except for stated exceptions (including deployments of 50 or fewer users); that conflicts with AEGIS being its own product identity. Study generic interaction patterns only and independently implement a native AEGIS workspace. The upstream UI/server stack is too heavy for the current free-tier target. No code installed.
+
+### LangChain.js
+Source: https://github.com/langchain-ai/langchainjs — MIT. Broad TypeScript framework for model/provider integrations, chains, tools, retrievers and agent abstractions; large and integration-rich, with transitive dependency and runtime-compatibility implications.
+
+**AEGIS decision:** High-value integration catalogue and interface reference, but do not make core orchestration dependent on LangChain. Keep AEGIS-owned canonical agent, job, policy, memory and approval schemas. Add narrow, separately versioned provider/retriever adapters only where tests demonstrate value and Cloudflare Worker compatibility. No package installed.
+
+### LlamaIndex
+Sources: https://github.com/run-llama/llama_index (Python, MIT) and https://github.com/run-llama/LlamaIndexTS (MIT, explicitly deprecated). The Python project is the maintained data/RAG framework candidate; the TypeScript repository's own README states it is deprecated and no longer maintained.
+
+**AEGIS decision:** Do not adopt LlamaIndexTS. Study the maintained Python project's document ingestion, node/chunk metadata, retrieval, citation and index abstractions for a future isolated ingestion service. AEGIS remains canonical for source provenance, permissions, retention and prompt-injection controls. Prefer a small native retrieval contract in the current JS core before considering a separate Python service. No package installed.
+
+### Hugging Face Transformers
+Source: https://github.com/huggingface/transformers — Apache-2.0 library for model definitions, training and inference across a very large model ecosystem. Python/PyTorch and model-specific hardware/dependency requirements make it unsuitable as a browser/Cloudflare Worker dependency. Individual model repositories may have their own licences and usage restrictions.
+
+**AEGIS decision:** Future model evaluation/hosting reference only. AEGIS should use remote provider adapters initially; a separate, explicitly provisioned model host may later expose a narrow OpenAI-compatible endpoint. Record model licence, weights provenance, hardware, memory, context length, quantisation and benchmark evidence per model. No local model download or inference host created.
+
+### vLLM
+Source: https://github.com/vllm-project/vllm — Apache-2.0 inference/serving engine with GPU and selected CPU/Apple Silicon hardware paths. It is a model-serving component, not an orchestration framework; production use needs compatible hardware, memory, deployment and operations.
+
+**AEGIS decision:** Future external inference-provider adapter, not a current Cloudflare/Chromebook deployment. Benchmark only if a dedicated capable host becomes available and total power/hosting costs beat managed APIs. Keep endpoint, model, authentication and budget behind the AEGIS provider interface. No installation or host provisioned.
+
+### CyberDrop-DL (possible interpretation of 'Cyberdrop-d1')
+Candidate found: https://github.com/Cyberdrop-DL/cyberdrop-dl — GPL-3.0-only Python bulk downloader for multiple third-party file hosts; Python 3.12+ and a sizeable asynchronous downloader stack. This is not Cloudflare D1 and is unrelated to the AEGIS database layer.
+
+**AEGIS decision:** Not a core AEGIS dependency. Do not add a bulk third-party-host downloader without a clearly defined, lawful user-owned media ingestion need, host terms review, provenance, malware scanning, storage limits and explicit download approval. GPL-3.0-only is incompatible with casual code copying into the proprietary AEGIS application. The user's exact intended source remains unconfirmed; this candidate is only a likely spelling correction.
+
+## Implementation priorities from this intake
+
+1. Keep the newly implemented AEGIS project-space and event timeline as the canonical project/workboard layer; do not add another project-management or job database.
+2. Add a constrained native tool-selection proposal stage inspired by Harness Router, always subordinate to AEGIS policy and approvals.
+3. Add a native API inspector and JSON/schema/trace visualizer for engineering QA.
+4. Build trace capture and evaluation before any reinforcement-learning/training infrastructure.
+5. Keep LangChain, LlamaIndex, Transformers and vLLM behind optional adapters or separate services; do not burden the Worker/PWA core with their dependencies.
+6. Treat Grok as an optional provider, not an architectural dependency.
+7. Preserve explicit licence, provenance, security and 'not installed/not connected' records. No source code or third-party service from this intake has been installed, connected or deployed.
