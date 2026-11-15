@@ -152,3 +152,147 @@ export function createMemoryStore(records = []) {
     },
   });
 }
+
+
+function mapMemoryRow(row) {
+  if (!row) return null;
+  let tags;
+  try { tags = JSON.parse(row.tags_json); } catch { throw new TypeError('Stored memory tags are corrupt'); }
+  const record = {
+    id: row.id,
+    ownerId: row.owner_id,
+    projectId: row.project_id,
+    kind: row.kind,
+    content: row.content,
+    source: {
+      type: row.source_type,
+      url: row.source_url,
+      attribution: row.source_attribution,
+      observedAt: row.source_observed_at,
+    },
+    confidence: row.confidence,
+    sensitivity: row.sensitivity,
+    status: row.status,
+    tags,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+  };
+  validateMemoryRecord(record, Number.MAX_SAFE_INTEGER);
+  return record;
+}
+
+function assertMemoryDatabase(db) {
+  if (!db || typeof db.prepare !== 'function') {
+    throw new TypeError('Memory database is required');
+  }
+}
+
+function assertMemoryScope(ownerId, projectId) {
+  requireId(ownerId, 'owner identifier');
+  if (projectId !== null) requireId(projectId, 'project identifier');
+}
+
+function normalizeSearchTerms(query) {
+  if (typeof query !== 'string' || !query.trim() || query.length > 200) return [];
+  return [...new Set(query.toLocaleLowerCase().match(/[a-z0-9-]+/g) ?? [])];
+}
+
+/**
+ * D1-backed memory repository. Callers must supply ownerId derived from the
+ * authenticated server-side session; never accept it from request JSON.
+ */
+export function createMemoryRepository(db) {
+  assertMemoryDatabase(db);
+
+  return Object.freeze({
+    async create(record) {
+      validateMemoryRecord(record);
+      await db.prepare(`
+        INSERT INTO aegis_memories (
+          id, owner_id, project_id, kind, content, source_type, source_url,
+          source_attribution, source_observed_at, confidence, sensitivity,
+          status, tags_json, created_at, updated_at, expires_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        record.id, record.ownerId, record.projectId, record.kind, record.content,
+        record.source.type, record.source.url, record.source.attribution,
+        record.source.observedAt, record.confidence, record.sensitivity,
+        record.status, JSON.stringify(record.tags), record.createdAt,
+        record.updatedAt, record.expiresAt,
+      ).run();
+      return clone(record);
+    },
+
+    async get(id, { ownerId, projectId = null } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      requireId(id, 'identifier');
+      const row = await db.prepare(`
+        SELECT * FROM aegis_memories
+        WHERE id = ? AND owner_id = ? AND project_id IS ?
+        LIMIT 1
+      `).bind(id, ownerId, projectId).first();
+      return mapMemoryRow(row);
+    },
+
+    async list({ ownerId, projectId = null, now = Date.now(), limit = 20 } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+        throw new TypeError('Invalid memory result limit');
+      }
+      const result = await db.prepare(`
+        SELECT * FROM aegis_memories
+        WHERE owner_id = ? AND project_id IS ?
+          AND status = 'accepted'
+          AND (expires_at IS NULL OR expires_at > ?)
+        ORDER BY updated_at DESC, id ASC
+        LIMIT ?
+      `).bind(ownerId, projectId, new Date(now).toISOString(), limit).all();
+      return (result?.results ?? []).map(mapMemoryRow);
+    },
+
+    async search({ ownerId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+        throw new TypeError('Invalid memory result limit');
+      }
+      const terms = normalizeSearchTerms(query);
+      if (!terms.length) return [];
+      const predicates = terms.map(() => "LOWER(content || ' ' || kind || ' ' || tags_json) LIKE ?");
+      const bindings = [
+        ownerId, projectId, new Date(now).toISOString(),
+        ...terms.map((term) => '%' + term + '%'),
+        limit,
+      ];
+      const result = await db.prepare(`
+        SELECT * FROM aegis_memories
+        WHERE owner_id = ? AND project_id IS ?
+          AND status = 'accepted'
+          AND (expires_at IS NULL OR expires_at > ?)
+          AND ${predicates.join(' AND ')}
+        ORDER BY confidence DESC, updated_at DESC, id ASC
+        LIMIT ?
+      `).bind(...bindings).all();
+      return (result?.results ?? []).map(mapMemoryRow);
+    },
+
+    async setStatus(id, { ownerId, projectId = null, status, now = Date.now() } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      requireId(id, 'identifier');
+      if (!['accepted', 'superseded', 'retracted'].includes(status)) {
+        throw new TypeError('Invalid memory lifecycle status');
+      }
+      if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
+      const timestamp = new Date(now).toISOString();
+      const result = await db.prepare(`
+        UPDATE aegis_memories
+        SET status = ?, updated_at = ?
+        WHERE id = ? AND owner_id = ? AND project_id IS ?
+          AND status IN ('candidate', 'accepted')
+      `).bind(status, timestamp, id, ownerId, projectId).run();
+      return (result?.meta?.changes ?? 0) === 1;
+    },
+  });
+}
