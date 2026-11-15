@@ -10,7 +10,7 @@ test('Forge inspection pins a public repository tree and returns useful source f
   const calls=[];
   const fetchImpl=async(url,options)=>{
     calls.push({url,options});
-    if(url.includes('/repos/example/agent')) return response({
+    if(url.endsWith('/repos/example/agent')) return response({
       full_name:'example/agent',html_url:'https://github.com/example/agent',
       default_branch:'main',private:false,description:'Agent framework',
       pushed_at:'2026-11-15T00:00:00Z',stargazers_count:12,language:'TypeScript',
@@ -54,7 +54,7 @@ test('Forge inspection reports a truncated repository tree without claiming comp
 test('Forge blob reader only accepts pinned Git object IDs and bounded UTF-8 text',async()=>{
   const fetchImpl=async(url,options)=>{
     assert.equal(options.redirect,'error');
-    return response({sha:'a'.repeat(40),size:12,encoding:'base64',content:btoa('hello AEGIS')});
+    return response({sha:'a'.repeat(40),size:11,encoding:'base64',content:btoa('hello AEGIS')});
   };
   const result=await readGitHubBlob('https://github.com/example/agent','a'.repeat(40),fetchImpl);
   assert.equal(result.content,'hello AEGIS');
