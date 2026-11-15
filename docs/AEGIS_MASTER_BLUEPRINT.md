@@ -715,7 +715,7 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - Legacy KV saved notes are now explicitly labelled as untrusted reference material and never as instructions or permissions, matching the treatment of structured retrieved memories.
 
 ### Verification and operational boundary
-- GitHub Actions run 43752010145 on commit 637174f3ffa6c083d40faee3a1a2ef81e0d780f4 passed 296 tests, 0 failures under Node.js 22.
+- GitHub Actions run 43752415969 on commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed 297 tests, 0 failures under Node.js 22.
 - PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
 - Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
 
@@ -733,6 +733,14 @@ Adapted CogniCore's compact project-context/handover idea into a deterministic A
 - Projects UI now exposes Build handover brief and Copy brief. Clipboard failure leaves selectable text available.
 - This is an extractive snapshot; it does not call an LLM, start an agent, create a task or transmit context to an external provider.
 - Expiry is rechecked in the brief builder even though the D1 repository also filters expired memories.
-- GitHub Actions run 43752010145 on commit 637174f3ffa6c083d40faee3a1a2ef81e0d780f4 passed 296 tests, 0 failures under Node.js 22.
+- GitHub Actions run 43752415969 on commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed 297 tests, 0 failures under Node.js 22.
 - D1 remains unprovisioned/unbound; the endpoint is feature-branch code and cannot become operational until the shared database is approved, provisioned and migrated. No production deployment or infrastructure change occurred.
 - Detailed behavior: docs/AEGIS_PROJECT_SPACES.md.
+
+
+## 28. Project-aware chat context — 15 November 2026
+
+- Selected Project Space AG-UI runs now include up to eight recent event summaries from the exact owner/project timeline, alongside approved personal/project memories.
+- The context builder omits raw event bodies and includes only bounded type, summary and timestamp fields, labelled untrusted reference data. Project event loading is optional; missing timeline migrations do not break chat.
+- Tests verify selected-project isolation and that raw event content and other-project summaries never enter the model context.
+- Latest verified code commit cdad016e3ebf56476e9af2e9284b22b50855b5fd passed GitHub Actions run 43752415969: 297 tests, 0 failures under Node.js 22.
