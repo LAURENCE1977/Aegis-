@@ -639,7 +639,7 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - Reuse/adapt/combine require verified licence review. Approval requires verified licence and a positive engineering decision. These rules are enforced in both the repository validation and D1 trigger, not just the UI.
 - Source URL, source type, pinned tree SHA, metadata and original creation timestamp are immutable. Candidate review and status transitions create append-only audit events.
 - Added shared migration migrations/shared/0006_forge_candidate_review.sql after 0005.
-- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746614703: **258 tests passed, 0 failed**, Node.js 22, at code head bf76e3b81efd7be391e50d1fa43dcbb99744ec21.
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746766564: **260 tests passed, 0 failed**, Node.js 22, at code head bf76e3b81efd7be391e50d1fa43dcbb99744ec21.
 - No candidate has been legally verified by this automation; review is an explicit owner action. No code execution, package installation, deployment or production D1 change.
 
 
