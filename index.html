@@ -803,34 +803,34 @@
           const historyButton = document.createElement('button');
           historyButton.type = 'button';
           historyButton.className = 'secondary';
-          historyButton.textContent = 'Review history';
+          historyButton.textContent = 'Review candidateHistory';
           historyButton.addEventListener('click', async () => {
-            const existing = item.querySelector('.candidate-history');
+            const existing = item.querySelector('.candidate-candidateHistory');
             if (existing) { existing.remove(); return; }
-            const history = document.createElement('ol');
-            history.className = 'candidate-history memory-history';
+            const candidateHistory = document.createElement('ol');
+            candidateHistory.className = 'candidate-candidateHistory memory-candidateHistory';
             const loading = document.createElement('li');
-            loading.textContent = 'Loading review history…';
-            history.append(loading);
-            item.append(history);
+            loading.textContent = 'Loading review candidateHistory…';
+            candidateHistory.append(loading);
+            item.append(candidateHistory);
             try {
               const result = await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id) + '/events');
-              history.replaceChildren();
+              candidateHistory.replaceChildren();
               (result.events || []).forEach(event => {
                 const entry = document.createElement('li');
                 entry.textContent = event.type + ' · ' +
                   (event.fromStatus || 'new') + ' → ' + event.toStatus +
                   ' · ' + (event.fromDecision || 'unassessed') + ' → ' + event.toDecision +
                   ' · ' + new Date(event.occurredAt).toLocaleString();
-                history.append(entry);
+                candidateHistory.append(entry);
               });
-              if (!history.children.length) {
+              if (!candidateHistory.children.length) {
                 const empty = document.createElement('li');
-                empty.textContent = 'No review history recorded.';
-                history.append(empty);
+                empty.textContent = 'No review candidateHistory recorded.';
+                candidateHistory.append(empty);
               }
             } catch (error) {
-              history.textContent = error.message;
+              candidateHistory.textContent = error.message;
             }
           });
           item.append(historyButton);
