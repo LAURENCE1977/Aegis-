@@ -21,7 +21,7 @@ The job states are:
 
 `pending_dispatch → queued → running → succeeded | failed`
 
-A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it. A DLQ delivery conditionally marks only non-terminal jobs as `failed` with `JOB_DELIVERY_EXHAUSTED`, clears the lease and records a `delivery_exhausted` audit event. A deterministic audit event ID makes redelivery safe: it can repair a missing audit insert without duplicating the event. Already-succeeded or already-failed jobs are not overwritten; malformed or unknown job IDs are acknowledged without changing state.
+A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it. A DLQ delivery conditionally marks only non-terminal jobs as `failed` with `JOB_DELIVERY_EXHAUSTED`, clears the lease and records a `delivery_exhausted` audit event. A deterministic audit event ID makes redelivery safe: it can repair a missing audit insert without duplicating the event. Already-succeeded or already-failed jobs are not overwritten; an unexpired running lease is preserved so a stale DLQ delivery cannot terminate a newer active attempt. Malformed job IDs and unknown queue batches are acknowledged without executing or changing job state.
 
 ## API contract
 
