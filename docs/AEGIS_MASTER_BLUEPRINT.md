@@ -197,6 +197,20 @@ Cloudflare free-tier reference check (15 November 2026): Workers Free includes 1
 
 The next deployment stage needs one D1 database, one Queue and one separate Worker. Resource creation/deployment is not yet performed. Review account usage, ensure no paid upgrade or spending-limit change, then provision only the minimum resources. Never enable billing or exceed free limits without explicit approval.
 
+## Research source intake — 15 November 2026
+
+A research source register is maintained at [docs/RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md). It evaluates Vercel AI SDK/UI, Vstorm AgenticOS, Dev.to, Stack Overflow, Frontend Mentor, v0 and Blackbox AI.
+
+Current decisions:
+- AI SDK/UI: leading architecture reference for provider-neutral model/tool integration, streaming UI, approvals and MCP; verify actual frontend/runtime fit before adding dependencies.
+- AgenticOS: study governance, budgets, audit and shared-runner patterns; do not deploy its heavier self-hosted stack wholesale.
+- Dev.to and Stack Overflow: attributed research sources, not authoritative specifications; respect licences and reproduce technical solutions.
+- Frontend Mentor: optional UI quality/acceptance-test inspiration; do not copy premium assets or briefs.
+- v0: optional human-operated UI prototyping tool, not AEGIS runtime.
+- Blackbox AI: defer connector until API, costs, privacy, sandboxing and GitHub permissions are reviewed.
+
+These are research-only candidates. None is connected, installed or granted permissions. “vo” was interpreted as v0; correct this if a different product was intended.
+
 ## 10. Implementation sequence
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
