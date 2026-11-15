@@ -2,9 +2,9 @@
 
 Your personal AI workspace — open-source, mobile-first, and designed to run on your own hosting.
 
-AEGIS is an evolving project. The current repository is an early Cloudflare Pages prototype; the larger autonomous assistant, voice, AEGIS Forge coding system, durable memory and Connections Hub are planned capabilities, not yet implemented.
+AEGIS is an evolving project. The current repository is an early Cloudflare Pages prototype. Its larger autonomous assistant, voice, model router, durable knowledge store, managed integrations and full AEGIS Forge workshop are still being developed.
 
-## Current prototype
+## Current foundation
 
 - Mobile-friendly chat interface for iPhone, iPad and Chromebook browsers
 - Cloudflare Pages Functions API
@@ -13,7 +13,11 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Password sign-in with signed, expiring, HttpOnly browser sessions
 - AEGIS-native skills registry seeded with ten adapted Superpowers engineering skills
 - Contextual skill guidance injected into chat for relevant engineering and planning requests
-- Authenticated `GET /api/skills` registry endpoint
+- Authenticated, no-store module and skills registry endpoints
+- AEGIS Forge capability declarations for universal source discovery, inspection, comparison, evaluation, planning and benchmarking
+- AEGIS Engineering Intelligence capability boundary for attributed, evidence-rated knowledge
+- Pure validators for Forge source-candidate and engineering-knowledge records
+- Read-only public GitHub repository discovery behind session authentication and same-origin protection
 
 ## Security setup
 
@@ -24,9 +28,17 @@ In the Cloudflare dashboard, open the AEGIS Pages project and add these as encry
 1. `AEGIS_PASSWORD` — a unique password of at least 12 characters.
 2. `AEGIS_SESSION_SECRET` — a cryptographically random secret of at least 32 characters. Do not reuse your AEGIS password.
 
-Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable. The skills registry endpoint uses the same session guard.
+Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable.
 
 If the login screen says security setup is unfinished, configure both secrets before using AEGIS.
+
+## Forge and engineering intelligence
+
+Forge is being developed as a universal, safe transformation engine for repositories, MCP servers, APIs, SDKs, packages, frameworks and authorised application interfaces. Its first live adapter performs read-only public GitHub repository metadata discovery at authenticated `POST /api/forge/discover`.
+
+Candidate and knowledge records preserve source versions, licence review, attribution, evidence and limitations. Unknown licences are a hold, not permission to reuse. Retrieved source material is untrusted data: discovery does not execute repository code or grant tool permissions.
+
+See [docs/FORGE_INTELLIGENCE.md](docs/FORGE_INTELLIGENCE.md).
 
 ## Skills library
 
@@ -38,11 +50,10 @@ The source code is open for inspection and modification. Hosting, storage, and m
 
 ## Development
 
-The current prototype is intentionally small and does not yet contain the AEGIS Forge, autonomous task runner, voice engine, provider router, or native Connections Hub. These will be added as independently testable capabilities.
-
-Run the tests with:
+Run the full test suite with Node.js 22:
 
 ```sh
-node --test tests/auth.test.mjs
-node --test tests/skills.test.mjs
+node --test tests/*.test.mjs
 ```
+
+The current prototype does not yet contain the full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine or production Forge sandbox. These remain separate, testable capabilities on the roadmap.

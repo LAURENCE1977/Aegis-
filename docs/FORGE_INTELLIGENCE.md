@@ -6,6 +6,16 @@ Forge turns useful open-source software, MCP servers, APIs, SDKs, packages, fram
 
 The objective is capability per unit of complexity, latency, memory and cost—not simply fewer lines of code or smaller models.
 
+## Current implementation
+
+- Authenticated, no-store `GET /api/modules` capability catalogue.
+- Read-only GitHub public repository discovery at `POST /api/forge/discover`.
+- Candidate and knowledge record validation in `functions/lib/forge-records.mjs`.
+- Forge and Engineering Intelligence capability declarations remain `planned`.
+- No repository code is executed, no candidate/knowledge records are persisted yet, and no permissions are granted by the registry.
+
+The GitHub discovery route requires a valid AEGIS session and same-origin POST. It accepts one HTTPS GitHub repository URL, blocks redirects, returns metadata only, and does not fetch source files. Private repositories require a separately authorised integration and are not supported by this public adapter.
+
 ## Universal intake
 
 Supported source classes:
