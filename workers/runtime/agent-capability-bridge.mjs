@@ -98,16 +98,28 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
     return { allowed: false, reasonCode: 'ACTION_NOT_FOUND' };
   }
 
-  let inputDigest;
   let safeInput;
   try {
     safeInput = normalizeJson(agentRequest.input);
-    inputDigest = await digestInput(safeInput);
-    if (new TextEncoder().encode(canonicalJson(safeInput)).byteLength > manifest.limits.maxRequestBytes) {
+  } catch {
+    return { allowed: false, reasonCode: 'INPUT_NOT_JSON_SAFE' };
+  }
+
+  let canonicalInput;
+  try {
+    canonicalInput = canonicalJson(safeInput);
+    if (new TextEncoder().encode(canonicalInput).byteLength > manifest.limits.maxRequestBytes) {
       return { allowed: false, reasonCode: 'INPUT_TOO_LARGE' };
     }
   } catch {
     return { allowed: false, reasonCode: 'INPUT_NOT_JSON_SAFE' };
+  }
+
+  let inputDigest;
+  try {
+    inputDigest = await digestInput(safeInput);
+  } catch {
+    return { allowed: false, reasonCode: 'INPUT_DIGEST_UNAVAILABLE' };
   }
 
   const required = ['loadGrant', 'loadConnection', 'loadApproval', 'recordAudit', 'execute'];
