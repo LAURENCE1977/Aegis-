@@ -34,7 +34,9 @@ function validateBinding(input) {
   requiredId(input.capabilityId, 'capability identifier');
   requiredId(input.capabilityVersion, 'capability version');
   requiredId(input.actionId, 'action identifier');
-  requiredId(input.resourceId, 'resource identifier');
+  if (typeof input.resourceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(input.resourceId) || input.resourceId.includes('..')) {
+    throw new TypeError('Invalid approval resource identifier');
+  }
   if (input.connectionId !== null && input.connectionId !== undefined) {
     requiredId(input.connectionId, 'connection identifier');
   }
