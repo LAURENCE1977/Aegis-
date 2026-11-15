@@ -564,6 +564,6 @@ These are three distinct source tracks, not interchangeable products.
 - Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
 - Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
 - AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; the mobile PWA chat now uses this transport. Only text chat lifecycle is supported; frontend tools/context/resume/multimodal payloads fail closed.
-- GitHub Actions run 43742924570: 210 passed, 0 failed on `370cc052c2224d8e1a15393a542621e80fe0c125`.
+- Latest branch head `26e96f593313441bfadc100a8bba114a537097b6` passed GitHub Actions run 43743243590: 212 passed, 0 failed.
 - No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
