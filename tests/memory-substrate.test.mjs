@@ -149,8 +149,11 @@ class MemoryRepositoryD1 {
       },
       async all() {
         const v=this.values;
-        if (sql.includes('FROM aegis_memory_events')) {
+        if (sql.includes('FROM aegis_memory_events') && sql.includes('WHERE memory_id = ?')) {
           return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
+        }
+        if (sql.includes('FROM aegis_memory_events') && sql.includes('WHERE owner_id = ?')) {
+          return {results:db.events.filter(event=>event.owner_id===v[0] && event.project_id===v[1]).slice(0,v[2]).map(event=>({...event}))};
         }
         let rows=[...db.rows.values()];
         if (sql.includes('FROM aegis_memories')) {
@@ -249,4 +252,16 @@ test('D1 retrieval accepts partial-term matches but never returns restricted mem
   await repository.create(record({id:'restricted-memory',sensitivity:'restricted',content:'private storytelling memory'}));
   const results = await repository.search({ownerId:'owner-1',query:'storytelling unrelated',now});
   assert.deepEqual(results.map(item=>item.id),['preferred-writing-style']);
+});
+
+
+test('D1 repository exposes project-scoped memory lifecycle events for the Project Space timeline',async()=>{
+  const db=new MemoryRepositoryD1();
+  const repository=createMemoryRepository(db);
+  await repository.create(record({id:'project-memory',projectId:'project-a',status:'candidate'}));
+  await repository.setStatus('project-memory',{ownerId:'owner-1',projectId:'project-a',status:'accepted',now:now+1000});
+  const events=await repository.listProjectEvents({ownerId:'owner-1',projectId:'project-a',limit:20});
+  assert.deepEqual(events.map(event=>event.type),['created','status_changed']);
+  assert.ok(events.every(event=>event.projectId==='project-a'));
+  assert.deepEqual(await repository.listProjectEvents({ownerId:'owner-2',projectId:'project-a'}),[]);
 });
