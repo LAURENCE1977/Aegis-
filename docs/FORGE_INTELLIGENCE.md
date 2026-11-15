@@ -11,10 +11,14 @@ The objective is capability per unit of complexity, latency, memory and cost—n
 - Authenticated, no-store `GET /api/modules` capability catalogue.
 - Read-only GitHub public repository discovery at `POST /api/forge/discover`.
 - Candidate and knowledge record validation in `functions/lib/forge-records.mjs`.
+- Versioned descriptive capability manifest validation and a static first-party read-only catalogue in `functions/lib/capability-registry.mjs`.
+- Authenticated, no-store `GET /api/capabilities` catalogue endpoint.
 - Forge and Engineering Intelligence capability declarations remain `planned`.
 - No repository code is executed, no candidate/knowledge records are persisted yet, and no permissions are granted by the registry.
 
 The GitHub discovery route requires a valid AEGIS session and same-origin POST. It accepts one HTTPS GitHub repository URL, blocks redirects, returns metadata only, and does not fetch source files. Private repositories require a separately authorised integration and are not supported by this public adapter.
+
+The capability catalogue currently describes only first-party public-repository discovery and module-list reads. Its `approved` manifest status is metadata review, not permission to invoke. The grant check always denies; no external connector execution, OAuth connection, persistent manifest store, policy engine or invocation system is implemented. Hostname validation in a manifest is not a runtime SSRF defence.
 
 ## Universal intake
 
