@@ -46,7 +46,7 @@ const MODULES = [
 ];
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
-const CAPABILITY_PATTERN = /^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,47}$/;
+const CAPABILITY_PATTERN = /^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0,47}$/;
 
 export function validateModule(module) {
   if (!module || typeof module !== 'object' || Array.isArray(module)) {
