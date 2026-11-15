@@ -8,6 +8,7 @@ import {
   appendWorkspaceEvent,
   listWorkspaceEvents,
 } from "../../../lib/project-spaces.mjs";
+import { createMemoryRepository } from "../../../lib/memory-substrate.mjs";
 
 const OWNER_ID = "owner";
 
