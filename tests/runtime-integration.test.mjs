@@ -66,8 +66,8 @@ class MemoryD1 {
           return { meta: { changes: 0 } };
         }
         if (sql.includes("SET status = 'queued'") && sql.includes("JOB_EXECUTION_RETRY")) {
-          const row = db.jobs.get(v[2]);
-          if (row && row.status === 'running' && row.attempts === v[3]) {
+          const row = db.jobs.get(v[1]);
+          if (row && row.status === 'running' && row.attempts === v[2]) {
             row.status = 'queued'; row.error_code = 'JOB_EXECUTION_RETRY'; row.lease_until = null; row.updated_at = v[0];
             return { meta: { changes: 1 } };
           }
