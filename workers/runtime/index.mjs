@@ -128,7 +128,7 @@ async function dispatchAgentRuns(env, limit = 25) {
 
 async function submitAgentRun(request, env) {
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
@@ -319,7 +319,12 @@ export async function handleRuntimeFetch(request, env) {
   }
 
   const url = new URL(request.url);
-  if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);\n  if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);\n  if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {\n    if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);\n    return getAgentRun(env, url.pathname.slice('/v1/agent-runs/'.length));\n  }
+  if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
+  if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
+  if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
+    if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+    return getAgentRun(env, url.pathname.slice('/v1/agent-runs/'.length));
+  }
   if (request.method === 'GET' && url.pathname.startsWith('/v1/jobs/')) {
     return getJob(request, env, url.pathname.slice('/v1/jobs/'.length));
   }
