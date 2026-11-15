@@ -156,7 +156,7 @@ test('outbox recovery re-dispatches a run when the initial queue send fails', as
   assert.equal(response.status, 202);
   const { run } = await response.json();
   assert.equal(run.status, 'pending_dispatch');
-  await runtime.scheduled({}, env, { waitUntil(promise) { this.promise = promise; } });
+  const scheduledContext = { waitUntil(promise) { this.promise = promise; } };\n  runtime.scheduled({}, env, scheduledContext);\n  await scheduledContext.promise;
   const saved = DB.runs.get(run.id);
   assert.equal(saved.status, 'queued');
   assert.deepEqual(sent, [{ agentRunId: run.id }]);
