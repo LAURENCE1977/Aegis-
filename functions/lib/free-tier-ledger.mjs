@@ -13,7 +13,7 @@ function isRecord(value) {
 }
 
 function requireText(value, label, max = 500) {
-  if (typeof value !== 'string' || !value.trim() || value.length > max ||
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return false;
       /[\\u0000-\\u001f\\u007f]/.test(value)) {
     throw new TypeError('Invalid free-tier ' + label);
   }
