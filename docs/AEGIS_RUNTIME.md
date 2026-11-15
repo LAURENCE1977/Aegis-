@@ -157,3 +157,6 @@ The agent module now exports `runAgentCapabilityRequest`, a strict server-side b
 ## Sentinel bridge boundary
 
 The agent module now exports `runAgentCapabilityRequest`, a strict server-side bridge to `runSentinelInvocation`. It resolves manifests from the canonical registry, binds the principal from trusted context, normalizes and digests JSON input, and delegates policy/grant/connection/approval/audit/adapter checks to Sentinel. Agent payloads cannot provide a manifest, principal, tool list, adapter or permission. This bridge is not yet called by the Queue consumer: agent runs remain plan-only until persistent grant/connection stores, a vault, D1 audit composition, adapter routing and egress controls are completed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
+
+
+Verification update: GitHub Actions run 43752335315 on commit `e1beff9b86d7f250a43c5a4c2e7f791079c1fac9` passed `node --test tests/*.test.mjs` under Node.js 22: **308 passed, 0 failed**. This is repository CI evidence; no live D1/Queue integration or deployment has been performed.
