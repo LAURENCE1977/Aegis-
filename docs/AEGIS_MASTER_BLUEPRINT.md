@@ -330,9 +330,9 @@ The governed capability lifecycle and implementation contract are specified in [
 
 ## Durable capability approvals — implementation slice
 
-The read-only capability registry and pure fail-closed policy evaluator are implemented on the capability-registry feature branch. The next slice adds a D1-backed approval-record persistence primitive and migration. Each record binds principal, capability/version, action, exact resource, optional connection and input digest; decisions are limited to pending/unexpired requests; consumption uses one conditional SQL update to prevent replay and concurrent double-use.
+PR #16 adds a D1-backed approval-record persistence primitive and migration. Each record binds principal, capability/version, action, exact resource, optional connection and input digest; decisions are limited to pending/unexpired requests; consumption uses one conditional SQL update to prevent replay and concurrent double-use.
 
-This is **not yet a usable approval workflow**: no authenticated approval API, human-facing preview/decision UI, invocation integration or audit pipeline is wired. Do not expose write/execute capability actions until those pieces are implemented and tested together. Browser input must not be trusted to supply the binding/digest; the server must derive it from the validated operation. Approval decisions must be made only by the authenticated owner and consumed immediately before execution.
+At the PR #16 baseline this was storage-only. PR #21 now adds an authenticated owner-only inbox and approve/deny API, plus a bounded human-readable operation summary. The API supplies the owner identity and does not accept browser-supplied operation bindings. This is still **not a complete approval workflow**: there is no human-facing review UI, invocation integration or durable invocation audit pipeline. Approval creation remains internal; the server-side operation builder must derive the digest from the validated operation, and execution must atomically consume the approval immediately before a side effect. Do not expose write/execute capability actions until policy, API, UI, audit and invocation are integrated and tested together.
 
 ### Owner-only approval inbox API — PR #21
 
