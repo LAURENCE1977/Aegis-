@@ -185,7 +185,7 @@ export async function updateForgeCandidateReview(db, ownerId, id, review, now = 
       typeof review.expectedUpdatedAt !== 'string' ||
       typeof review.reviewNote !== 'string' ||
       review.reviewNote.trim().length < 10 || review.reviewNote.length > 500 ||
-      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(review.reviewNote) ||
+      /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(review.reviewNote) ||
       typeof review.licenceAttested !== 'boolean' ||
       !(review.licenceEvidenceUrl === null || validReviewEvidenceUrl(review.licenceEvidenceUrl))) {
     throw new TypeError('Invalid Forge candidate review evidence');
