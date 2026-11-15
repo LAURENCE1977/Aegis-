@@ -800,6 +800,92 @@
           const pin = document.createElement('p');
           pin.textContent = 'Pinned tree ' + candidate.version.slice(0, 12);
           item.append(candidateNode, detail, pin);
+          if (!['archived', 'rejected'].includes(candidate.status)) {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = 'Review candidate';
+            reviewButton.addEventListener('click', () => {
+              const existing = item.querySelector('.candidate-review');
+              if (existing) { existing.remove(); return; }
+              const candidateReviewForm = document.createElement('form');
+              candidateReviewForm.className = 'candidate-review memory-form';
+              const licenceSelect = document.createElement('select');
+              for (const value of ['review-required', 'verified', 'not-applicable']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                licenceSelect.append(option);
+              }
+              licenceSelect.value = candidate.licence.review;
+              const licenceLabel = document.createElement('label');
+              licenceLabel.textContent = 'Licence review';
+              licenceLabel.append(licenceSelect);
+              const licenceConfirmed = document.createElement('input');
+              licenceConfirmed.type = 'checkbox';
+              const confirmationLabel = document.createElement('label');
+              confirmationLabel.append(licenceConfirmed, document.createTextNode(' I checked the actual upstream licence and relevant dependency licences.'));
+              const decisionSelect = document.createElement('select');
+              for (const value of ['unassessed', 'reuse', 'adapt', 'rebuild', 'combine', 'reject']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                decisionSelect.append(option);
+              }
+              decisionSelect.value = candidate.decision;
+              const statusSelect = document.createElement('select');
+              for (const value of ['inspected', 'assessed', 'approved', 'rejected', 'archived']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                statusSelect.append(option);
+              }
+              statusSelect.value = candidate.status;
+              decisionSelect.addEventListener('change', () => {
+                if (decisionSelect.value === 'reject') statusSelect.value = 'rejected';
+              });
+              statusSelect.addEventListener('change', () => {
+                if (statusSelect.value === 'rejected') decisionSelect.value = 'reject';
+              });
+              const reviewStatus = document.createElement('p');
+              reviewStatus.className = 'status';
+              const saveReview = document.createElement('button');
+              saveReview.type = 'submit';
+              saveReview.textContent = 'Save review decision';
+              candidateReviewForm.append(licenceLabel, confirmationLabel, decisionSelect, statusSelect, reviewStatus, saveReview);
+              candidateReviewForm.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (licenceSelect.value === 'verified' && !licenceConfirmed.checked) {
+                  reviewStatus.textContent = 'Confirm that you checked the actual licence and dependencies.';
+                  return;
+                }
+                if (['reuse', 'adapt', 'combine'].includes(decisionSelect.value) && licenceSelect.value !== 'verified') {
+                  reviewStatus.textContent = 'Verify the licence before choosing reuse, adapt or combine.';
+                  return;
+                }
+                if (statusSelect.value === 'approved' && decisionSelect.value === 'unassessed') {
+                  reviewStatus.textContent = 'Choose an engineering decision before approval.';
+                  return;
+                }
+                saveReview.disabled = true;
+                try {
+                  await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id), {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      licenceReview: licenceSelect.value,
+                      decision: decisionSelect.value,
+                      status: statusSelect.value,
+                    }),
+                  });
+                  await loadForgeCandidates();
+                } catch (error) {
+                  reviewStatus.textContent = error.message;
+                  saveReview.disabled = false;
+                }
+              });
+              item.append(candidateReviewForm);
+            });
+            item.append(reviewButton);
+          }
           forgeCandidateList.append(item);
         });
       } catch (error) {
