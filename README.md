@@ -24,6 +24,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 
 - Owner-scoped Project Spaces API and append-only activity timeline under development on a feature branch (D1 binding not provisioned; no agent execution is enabled; see [Project Spaces](docs/AEGIS_PROJECT_SPACES.md))
+- AEGIS-native typed memory read-model prototype under development on a feature branch (in-memory only; not persistent or connected to chat; see [Memory Substrate](docs/AEGIS_MEMORY_SUBSTRATE.md))
 
 ## Security setup
 
