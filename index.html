@@ -76,6 +76,15 @@
     .memory-actions button { padding: .5rem .7rem; font-size: .78rem; }
     .memory-history { margin-top: .6rem; padding-left: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.5; }
     .memory-empty { color: var(--muted); font-size: .85rem; padding: .75rem 0; }
+    .workspace-card, .approval-card { border: 1px solid var(--border); border-radius: .8rem; padding: .9rem; margin: .7rem 0; background: var(--card); }
+    .workspace-card h3, .approval-card h3 { font-size: .98rem; margin-bottom: .35rem; overflow-wrap: anywhere; }
+    .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.45; margin: .35rem 0; overflow-wrap: anywhere; }
+    .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .65rem; }
+    .workspace-actions button, .approval-actions button { padding: .55rem .75rem; font-size: .8rem; }
+    .workspace-detail { border-top: 1px solid var(--border); margin-top: .75rem; padding-top: .75rem; }
+    .workspace-detail textarea { width: 100%; min-height: 4rem; padding: .7rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+    .toolbar { flex-wrap: wrap; }
+    .toolbar button { min-width: 5rem; }
     @media (max-width: 420px) {
       .logout { position: static; margin-top: .75rem; }
       .input-area button { padding-inline: 1rem; }
@@ -101,7 +110,12 @@
     </section>
 
     <main id="appPanel" hidden>
-      <div class="toolbar"><button class="secondary" id="chatTab" type="button">Chat</button><button class="secondary" id="memoryTab" type="button">Memory</button></div>
+      <div class="toolbar" role="tablist" aria-label="AEGIS Control Centre">
+        <button class="secondary" id="chatTab" type="button">Chat</button>
+        <button class="secondary" id="workspaceTab" type="button">Projects</button>
+        <button class="secondary" id="memoryTab" type="button">Memory</button>
+        <button class="secondary" id="approvalTab" type="button">Approvals</button>
+      </div>
       <section id="chatSection">
       <div class="chat-box" id="chatBox" aria-live="polite"></div>
       <div class="input-area">
@@ -109,6 +123,23 @@
         <button id="sendBtn" type="button">Send</button>
       </div>
       <p class="status" id="status">Ready</p>
+      </section>
+      <section class="memory-panel" id="workspaceSection" hidden>
+        <h2>Project Spaces</h2>
+        <p class="memory-help">Create private workspaces for projects. Notes and decisions are kept in an owner-only timeline.</p>
+        <form class="memory-form" id="workspaceForm">
+          <input id="workspaceName" maxlength="80" placeholder="Project name" required />
+          <textarea id="workspaceDescription" maxlength="500" placeholder="What is this project about?"></textarea>
+          <button id="createWorkspaceBtn" type="submit">Create Project Space</button>
+        </form>
+        <p class="status" id="workspaceStatus" role="status" aria-live="polite">Loading projects…</p>
+        <div id="workspaceList" aria-live="polite"></div>
+      </section>
+      <section class="memory-panel" id="approvalSection" hidden>
+        <h2>Approval inbox</h2>
+        <p class="memory-help">Review exact operations proposed by AEGIS. Approving here records your decision only; it does not itself execute an operation.</p>
+        <p class="status" id="approvalStatus" role="status" aria-live="polite">Loading approvals…</p>
+        <div id="approvalList" aria-live="polite"></div>
       </section>
       <section class="memory-panel" id="memorySection" hidden>
         <h2>My AEGIS memory</h2>
@@ -138,6 +169,18 @@
     const logoutBtn = document.getElementById('logoutBtn');
     const chatTab = document.getElementById('chatTab');
     const memoryTab = document.getElementById('memoryTab');
+    const workspaceTab = document.getElementById('workspaceTab');
+    const approvalTab = document.getElementById('approvalTab');
+    const workspaceSection = document.getElementById('workspaceSection');
+    const approvalSection = document.getElementById('approvalSection');
+    const workspaceForm = document.getElementById('workspaceForm');
+    const workspaceName = document.getElementById('workspaceName');
+    const workspaceDescription = document.getElementById('workspaceDescription');
+    const createWorkspaceBtn = document.getElementById('createWorkspaceBtn');
+    const workspaceStatus = document.getElementById('workspaceStatus');
+    const workspaceList = document.getElementById('workspaceList');
+    const approvalStatus = document.getElementById('approvalStatus');
+    const approvalList = document.getElementById('approvalList');
     const chatSection = document.getElementById('chatSection');
     const memorySection = document.getElementById('memorySection');
     const memoryForm = document.getElementById('memoryForm');
@@ -435,16 +478,197 @@
       finally { saveMemoryBtn.disabled = false; }
     });
 
-    memoryTab.addEventListener('click', () => {
-      chatSection.hidden = true;
-      memorySection.hidden = false;
-      loadMemories();
+    function showPanel(panel) {
+      chatSection.hidden = panel !== 'chat';
+      workspaceSection.hidden = panel !== 'projects';
+      memorySection.hidden = panel !== 'memory';
+      approvalSection.hidden = panel !== 'approvals';
+      if (panel === 'chat') userInput.focus();
+      if (panel === 'projects') loadWorkspaces();
+      if (panel === 'memory') loadMemories();
+      if (panel === 'approvals') loadApprovals();
+    }
+    chatTab.addEventListener('click', () => showPanel('chat'));
+    workspaceTab.addEventListener('click', () => showPanel('projects'));
+    memoryTab.addEventListener('click', () => showPanel('memory'));
+    approvalTab.addEventListener('click', () => showPanel('approvals'));
+
+    async function controlApi(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store',
+      });
+      let data = {};
+      try { data = await res.json(); } catch (error) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
+      return data;
+    }
+
+    async function loadWorkspaces() {
+      workspaceStatus.textContent = 'Loading Project Spaces…';
+      workspaceList.replaceChildren();
+      try {
+        const data = await controlApi('/api/workspaces');
+        if (!Array.isArray(data.workspaces) || !data.workspaces.length) {
+          workspaceList.textContent = 'No Project Spaces yet. Create one above.';
+          workspaceList.className = 'memory-empty';
+        } else {
+          workspaceList.className = '';
+          data.workspaces.forEach(workspace => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            card.id = 'workspace-' + workspace.id;
+            const nameNode = document.createElement('h3');
+            nameNode.textContent = workspace.name;
+            const descriptionNode = document.createElement('p');
+            descriptionNode.textContent = workspace.description || 'No description';
+            const metaNode = document.createElement('p');
+            metaNode.textContent = workspace.status + ' · Updated ' + new Date(workspace.updatedAt).toLocaleString();
+            const actions = document.createElement('div');
+            actions.className = 'workspace-actions';
+            const open = document.createElement('button');
+            open.type = 'button';
+            open.textContent = 'Open timeline';
+            open.addEventListener('click', () => openWorkspace(workspace.id, card));
+            actions.append(open);
+            card.append(nameNode, descriptionNode, metaNode, actions);
+            workspaceList.append(card);
+          });
+        }
+        workspaceStatus.textContent = data.total + ' Project Space(s) · owner-only';
+      } catch (error) {
+        workspaceStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Project Spaces are not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
+
+    async function openWorkspace(id, card) {
+      const prior = card.querySelector('.workspace-detail');
+      if (prior) { prior.remove(); return; }
+      try {
+        const data = await controlApi('/api/workspaces/' + encodeURIComponent(id));
+        const detail = document.createElement('div');
+        detail.className = 'workspace-detail';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Project timeline';
+        const timeline = document.createElement('ol');
+        timeline.className = 'memory-history';
+        (data.events || []).forEach(event => {
+          const entry = document.createElement('li');
+          entry.textContent = event.type + ' · ' + event.summary + ' · ' + new Date(event.createdAt).toLocaleString();
+          timeline.append(entry);
+        });
+        if (!timeline.children.length) timeline.textContent = 'No timeline events yet.';
+        const form = document.createElement('form');
+        form.className = 'memory-form';
+        const summary = document.createElement('input');
+        summary.maxLength = 240;
+        summary.placeholder = 'Note or decision title';
+        summary.required = true;
+        const content = document.createElement('textarea');
+        content.maxLength = 12000;
+        content.placeholder = 'Add a project note, decision or research finding';
+        content.required = true;
+        const save = document.createElement('button');
+        save.type = 'submit';
+        save.textContent = 'Add timeline entry';
+        form.append(summary, content, save);
+        form.addEventListener('submit', async event => {
+          event.preventDefault();
+          save.disabled = true;
+          try {
+            await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events', {
+              method: 'POST',
+              body: JSON.stringify({ type: 'note', summary: summary.value.trim(), content: content.value.trim() }),
+            });
+            await loadWorkspaces();
+          } catch (error) {
+            workspaceStatus.textContent = error.message;
+            save.disabled = false;
+          }
+        });
+        detail.append(heading, timeline, form);
+        card.append(detail);
+      } catch (error) { workspaceStatus.textContent = error.message; }
+    }
+
+    workspaceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!workspaceName.value.trim()) return;
+      createWorkspaceBtn.disabled = true;
+      workspaceStatus.textContent = 'Creating Project Space…';
+      try {
+        await controlApi('/api/workspaces', {
+          method: 'POST',
+          body: JSON.stringify({ name: workspaceName.value.trim(), description: workspaceDescription.value.trim() }),
+        });
+        workspaceName.value = '';
+        workspaceDescription.value = '';
+        await loadWorkspaces();
+      } catch (error) { workspaceStatus.textContent = error.message; }
+      finally { createWorkspaceBtn.disabled = false; }
     });
-    chatTab.addEventListener('click', () => {
-      memorySection.hidden = true;
-      chatSection.hidden = false;
-      userInput.focus();
-    });
+
+    async function loadApprovals() {
+      approvalStatus.textContent = 'Loading approval inbox…';
+      approvalList.replaceChildren();
+      try {
+        const data = await controlApi('/api/approvals');
+        if (!Array.isArray(data.approvals) || !data.approvals.length) {
+          approvalList.textContent = 'No pending approvals.';
+          approvalList.className = 'memory-empty';
+        } else {
+          approvalList.className = '';
+          data.approvals.forEach(approval => {
+            const card = document.createElement('article');
+            card.className = 'approval-card';
+            const title = document.createElement('h3');
+            title.textContent = approval.operationSummary;
+            const detail = document.createElement('p');
+            detail.textContent = approval.capabilityId + ' · ' + approval.actionId + ' · ' + approval.resourceId;
+            const expiry = document.createElement('p');
+            expiry.textContent = (approval.expired ? 'Expired' : 'Expires') + ' · ' + new Date(approval.expiresAt).toLocaleString();
+            card.append(title, detail, expiry);
+            if (!approval.expired) {
+              const actions = document.createElement('div');
+              actions.className = 'approval-actions';
+              for (const decision of ['approved', 'denied']) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = decision === 'approved' ? 'Approve' : 'Deny';
+                button.addEventListener('click', async () => {
+                  button.disabled = true;
+                  try {
+                    await controlApi('/api/approvals', {
+                      method: 'POST',
+                      body: JSON.stringify({ id: approval.id, decision }),
+                    });
+                    await loadApprovals();
+                  } catch (error) {
+                    approvalStatus.textContent = error.message;
+                    button.disabled = false;
+                  }
+                });
+                actions.append(button);
+              }
+              card.append(actions);
+            }
+            approvalList.append(card);
+          });
+        }
+        approvalStatus.textContent = data.total + ' pending request(s) · decisions are recorded, not executed';
+      } catch (error) {
+        approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
 
     async function memoryCall(method, body) {
       const res = await fetch('/api/memory', {
