@@ -461,3 +461,36 @@ No Mercury package, daemon, account, provider key, skill, bot or service has bee
 - Preserve human approval for production deployment, external side effects, permissions and other high-impact actions. An upstream `/build auto` workflow is not authority for AEGIS to bypass its approval policy.
 
 No Addy plugin, CLI, package, agent persona, script or upstream skill has been installed or connected to AEGIS.
+
+
+## CoreDeck — Android SDK and device-tooling candidate
+
+Primary candidate:
+- https://github.com/devmuaz/CoreDeck
+- Official project site: https://coredeck.dev/
+- Repository and project site identify the project as MIT-licensed; preserve the copyright and licence notice if code is ever reused.
+- Latest stable release observed on 15 November 2026: v0.16.0 (8 November 2026). Release details and platform support must be rechecked before any future adoption.
+- Native C++20 / Dear ImGui desktop command centre for Google's official Android SDK tools. It manages Android Virtual Devices and system images, launches emulators, exposes ADB/device workflows, checks SDK/JDK health, inspects and signs APKs, and manages keystores.
+- Published native targets: Windows 10/11 x86-64, macOS 12+ (Apple Silicon and Intel), Linux x86-64 and arm64. Requires JDK 17+ and Android SDK tooling; it is not a Chromebook-browser or iOS application.
+
+Useful AEGIS applications:
+- Optional operator-side Android emulator/device management if AEGIS later ships an Android client.
+- Potential human-operated QA workstation for ADB, emulator logs, APK inspection and signing.
+- Reference for a compact, task-focused native tooling interface.
+
+AEGIS decision:
+- **Reference / optional external QA utility only; do not add it to the AEGIS core or runtime.**
+- It is not an AI agent, orchestration engine, remote browser, CI runner or 24/7 background host. It does not replace Android Studio/Gradle as an app IDE/build system.
+- It does not solve the current Chromebook-first development workflow: its published native targets do not include ChromeOS, and it does not provide an iOS/iPadOS test path.
+- If an Android QA adapter is later justified, define a narrow AEGIS capability contract around an isolated ADB/emulator host. Treat device actions as privileged, scope to disposable test devices/accounts, capture logs/screenshots as evidence, and require approval for actions that could affect real accounts or data.
+- Do not expose ADB, signing keys or emulator control directly to arbitrary agents. Keep keystore passwords and private keys out of manifests, logs and memory; use encrypted secret references and explicit signing approvals.
+- Before adoption, verify release checksums/signatures, pinned source commit, third-party dependency licences, update mechanism, telemetry/crash-reporting behaviour and the security boundary around host process execution.
+
+Sources:
+- https://github.com/devmuaz/CoreDeck
+- https://github.com/devmuaz/CoreDeck/blob/main/README.md
+- https://github.com/devmuaz/CoreDeck/blob/main/LICENSE
+- https://coredeck.dev/
+- https://devmuaz.com/projects/coredeck
+
+No CoreDeck binary, SDK, emulator, package, agent, account or service has been installed or connected to AEGIS.

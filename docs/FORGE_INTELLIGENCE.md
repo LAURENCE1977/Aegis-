@@ -178,3 +178,14 @@ No package, CLI, plugin or repository code has been installed or run in AEGIS.
 The upstream four personas (code reviewer, test engineer, security auditor, web-performance auditor) should become AEGIS role definitions with explicit capability grants and central policy enforcement; they do not receive permissions merely by being assigned a persona. Shared checklists should be packaged with any adapted skills because per-skill installation omits the repository-level `references/` directory. Do not copy upstream contributor-only `AGENTS.md` or install its host-specific command wrappers as AEGIS runtime code.
 
 **AEGIS integration path:** provenance-aware skill registry → overlap and risk review → AEGIS-native adaptation → contract/evaluation tests → versioned publication → explicit enablement. The source register records the detailed evaluation.
+
+
+## CoreDeck — optional Android tooling and QA reference
+
+[devmuaz/CoreDeck](https://github.com/devmuaz/CoreDeck) is an MIT-licensed native C++20 desktop interface over official Android SDK/JDK tools. Its scope includes AVD and system-image management, emulator launch/logs, ADB/device workflows, SDK/JDK health checks, APK inspection/signing and keystore management. The project publishes Windows, macOS and Linux builds; it is not a ChromeOS browser tool or an iOS/iPadOS testing solution.
+
+**AEGIS decision: reference-only / optional external Android QA utility.** It is not an agent runtime, CI service, remote browser or durable job engine, and it does not solve the Chromebook-first workflow. Do not add it to the core deployment.
+
+If an Android client becomes a real delivery target, evaluate a narrow isolated device-host adapter rather than embedding CoreDeck. Keep ADB and signing operations behind action-level capability policy, disposable test devices/accounts, explicit approvals for consequential actions, encrypted key references and redacted audit logs. Capture emulator/device logs and test evidence without exposing private signing material.
+
+Before use, pin the exact release/commit and verify checksums, bundled dependency licences, update path, telemetry and host-process security. No CoreDeck software has been installed or connected.
