@@ -40,7 +40,7 @@ test('Forge inspection pins a public repository tree and returns useful source f
 
 test('Forge inspection reports a truncated repository tree without claiming completeness',async()=>{
   const fetchImpl=async(url)=>{
-    if(url.includes('/repos/example/agent')) return response({
+    if(url.endsWith('/repos/example/agent')) return response({
       full_name:'example/agent',html_url:'https://github.com/example/agent',
       default_branch:'main',private:false,
     });
