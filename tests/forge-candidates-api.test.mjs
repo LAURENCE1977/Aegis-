@@ -182,3 +182,21 @@ test('Forge review rejects reuse without licence verification and refuses termin
   });
   assert.equal(reopen.status,404);
 });
+
+test('Forge review returns conflict when the candidate changed after the form was loaded',async()=>{
+  const db=new CandidateD1();
+  const created=await onRequestPost({
+    request:await request('/api/forge/candidates',{sourceUrl:'https://github.com/example/agent'}),
+    env:{...envBase,AEGIS_DB:db},fetchImpl:githubFetch,
+  });
+  const candidate=(await created.json()).candidate;
+  const response=await onRequestPatch({
+    request:await request('/api/forge/candidates/'+candidate.id,{
+      licenceReview:'review-required',decision:'rebuild',status:'assessed',
+      licenceEvidenceUrl:null,reviewNote:'Reviewed source and will independently rebuild.',
+      licenceAttested:false,expectedUpdatedAt:'2026-11-14T00:00:00.000Z',
+    },{method:'PATCH'}),
+    env:{...envBase,AEGIS_DB:db},params:{id:candidate.id},
+  });
+  assert.equal(response.status,409);
+});
