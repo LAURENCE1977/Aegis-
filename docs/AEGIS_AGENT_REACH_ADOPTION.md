@@ -117,4 +117,4 @@ The router supplies the adapter and trusted connection reference after Sentinel 
 - Architecture and migration plan recorded here.
 - AEGIS currently has the agent orchestrator, capability bridge and grant storage primitives in PR #29.
 - **No Agent Reach adapter is currently registered, connected to a real upstream, or enabled for agent execution.**
-- PR #29 remains draft. Its base is now `feature/native-memory-substrate` at `670cb46668091b8f3b1e18611e7724656165bb80`, matching the current native-memory substrate branch head at review time. Keep it draft; do not merge without a fresh diff/CI review.
+- PR #29 remains draft. A fresh comparison against `feature/native-memory-substrate` found the branches have diverged: the agent branch is 48 commits ahead and 29 behind, with merge base `8d846db9c372ab41ac57dc490f0e0f380bdeab56`. The substrate branch added Project Space handover and project-aware chat work after that merge base. Do not merge until those changes are reconciled and the full suite passes on the reconciled head.
