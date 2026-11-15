@@ -41,7 +41,7 @@ function normalizeJson(value, seen = new WeakSet(), depth = 0) {
   const output = Object.create(null);
   for (const key of keys) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!key || key.length > 128 || /[\\u0000-\\u001f\\u007f]/.test(key) ||
+    if (!key || key.length > 128 || /[\u0000-\u001f\u007f]/.test(key) ||
         !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) {
       throw new TypeError('Input contains an invalid field or accessor.');
     }
