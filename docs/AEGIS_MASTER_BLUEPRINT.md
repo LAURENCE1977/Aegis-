@@ -358,3 +358,10 @@ The first implementation adds a shared `AEGIS_DB` D1 schema and authenticated ow
 ## Research intake decisions — November 2026
 
 The latest source evaluations are recorded in `docs/RESEARCH_SOURCE_REGISTER.md`. Highest-value native build candidates are: a policy-subordinate tool-selection proposal stage (Harness Router patterns), an API inspector (Hoppscotch patterns), JSON/schema/trace visualization (JSON Crack concept), and trace capture/offline agent evaluation (Agent Lightning patterns). Model providers and heavyweight frameworks (Grok, LangChain, LlamaIndex, Transformers, vLLM) remain optional adapters or separate services; none is a core dependency. Open WebUI's current branding-protection licence is incompatible with AEGIS white-labelling. CyberDrop-DL is a GPL-3.0-only downloader and not Cloudflare D1; its exact relevance remains unconfirmed.
+
+
+### OpenMuse / nanoMuse architecture reference
+
+The intended OpenMuse source is https://github.com/OpenMuseAgent/OpenMuse, whose README identifies https://github.com/nano-muse/nanoMuse as its maintained successor. The archived OpenMuse v0.6.0 repository was MIT; current nanoMuse is GPL-3.0-or-later and must not be treated as MIT or copied into AEGIS without a licensing decision. Open WebUI remains a separate, distinct source.
+
+nanoMuse is a high-priority architecture reference for AEGIS's Sentinel: mandatory model-to-tool mediation, risk classification, approval/deny, vault-backed secret resolution, taint/egress tracking, redaction, sandboxed execution, durable goals and cross-device UI events. AEGIS will independently implement these ideas within its own capability registry, canonical job runtime, approval records, project memory and audit. nanoMuse's Python/local/device stack is not a drop-in Cloudflare Worker or PWA dependency. No code, package, app or service installed.
