@@ -896,6 +896,16 @@
           const pin = document.createElement('p');
           pin.textContent = 'Pinned tree ' + candidate.version.slice(0, 12);
           item.append(candidateNode, detail, pin);
+          const reviewHistory = Array.isArray(candidate.metadata?.licenceReviewHistory)
+            ? candidate.metadata.licenceReviewHistory
+            : [];
+          const latestReview = reviewHistory.at(-1);
+          if (latestReview) {
+            const reviewSummary = document.createElement('p');
+            reviewSummary.textContent = 'Latest owner review: ' + latestReview.note +
+              (latestReview.evidenceUrl ? ' · evidence: ' + latestReview.evidenceUrl : '');
+            item.append(reviewSummary);
+          }
           const historyButton = document.createElement('button');
           historyButton.type = 'button';
           historyButton.className = 'secondary';
