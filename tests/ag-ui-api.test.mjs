@@ -94,3 +94,38 @@ test('AG-UI endpoint rejects non-text and malformed runs rather than silently dr
   });
   assert.equal(multimodal.status,400);
 });
+
+
+test('AG-UI stream parser handles provider frames split across arbitrary network chunks',async()=>{
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{
+      ...envBase,
+      AI:{async run(){return modelSseStream([
+        'data: {"res',
+        'ponse":"split',
+        ' frame"}\\n\\n',
+        'data: [DONE]\\n\\n',
+      ]);}},
+    },
+  });
+  const events=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['split frame']);
+});
+
+test('AG-UI reports a safe terminal error if the provider stream breaks mid-run',async()=>{
+  const brokenStream=new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"response":"partial"}\\n\\n'));
+      controller.error(new Error('provider internals must not leak'));
+    },
+  });
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{...envBase,AI:{async run(){return brokenStream;}}},
+  });
+  const frames=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  assert.equal(frames[2].delta,'partial');
+  assert.equal(frames[3].type,'RUN_ERROR');
+  assert.doesNotMatch(JSON.stringify(frames),'provider internals');
+});
