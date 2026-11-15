@@ -151,3 +151,33 @@ test('Forge discovery API bounds streaming request reads before GitHub fetch', a
   assert.equal(response.status, 413);
   assert.equal(fetchCalls, 0);
 });
+
+
+test('GitHub API requests use an abort signal and explicitly reject redirects', async () => {
+  let options;
+  await discoverGitHubRepository('https://github.com/example/repo', async (_url, requestOptions) => {
+    options = requestOptions;
+    return new Response(JSON.stringify({
+      full_name: 'example/repo',
+      html_url: 'https://github.com/example/repo',
+      default_branch: 'main',
+      private: false,
+    }), { status: 200 });
+  });
+  assert.equal(options.redirect, 'error');
+  assert.ok(options.signal instanceof AbortSignal);
+});
+
+test('GitHub source inspection rejects oversized API response bodies', async () => {
+  await assert.rejects(
+    discoverGitHubRepository('https://github.com/example/repo', async () =>
+      new Response(JSON.stringify({
+        full_name: 'example/repo',
+        html_url: 'https://github.com/example/repo',
+        default_branch: 'main',
+        private: false,
+        description: 'x'.repeat(1_100_000),
+      }), { status: 200 })),
+    (error) => error.status === 413 && /response.*size|too large/i.test(error.message),
+  );
+});
