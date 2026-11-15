@@ -14,6 +14,7 @@ AEGIS owns its memory model, provenance, policy, storage and retrieval. Kytheros
   - `GET /api/memories/:id` — owner-scoped record.
   - `PATCH /api/memories/:id` — accept, supersede or retract.
   - `GET /api/memories/:id/events` — immutable lifecycle history.
+  - `GET /api/memories/export` — authenticated JSON export of all owner memories and lifecycle history; `?projectId=` exports personal scope and `?projectId=<id>` exports one active Project Space.
 - Candidate memories are excluded from normal retrieval. Only accepted, unexpired, non-restricted records are eligible for chat recall.
 - Bounded lexical retrieval supports partial-term matches and exact owner/project scope.
 - Chat `POST /api/ag-ui` retrieves up to eight approved personal memories by default. When the owner explicitly selects a Project Space, it retrieves up to four relevant personal and four relevant project memories, after verifying the project is active and owner-scoped. The maximum JSON context block is 6,000 characters. Provenance accompanies each record; the system prompt explicitly treats memory as untrusted reference data, never instructions.
@@ -42,6 +43,7 @@ The runtime job database is a separate service/database and keeps its own migrat
 - Restricted memories are deliberately excluded from chat retrieval. Sensitivity is still metadata, not a general multi-user access-control system.
 - Memory content is untrusted data, never an instruction or permission. Retrieved text cannot grant tools or bypass Sentinel.
 - Memory history stores IDs, scope, lifecycle states and timestamps, not the memory content.
+- Owner export includes all lifecycle states (including retracted, superseded, expired and restricted records), provenance and audit events. It is bounded to 500 memory records and 2,000 lifecycle events per export; the response indicates if it was truncated. Exports are `no-store` attachments.
 - No automatic model extraction is enabled. New records enter the candidate queue and require owner acceptance.
 - Search is lexical, not vector/embedding-based. This avoids paid APIs and GPU dependencies.
 - The legacy `/api/memory` KV notes endpoint remains separate for backward compatibility.
