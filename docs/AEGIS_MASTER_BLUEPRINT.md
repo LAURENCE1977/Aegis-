@@ -389,3 +389,9 @@ AEGIS now treats three community resources as discovery/learning inputs rather t
 
 ### AEGIS OS scope clarification
 The AEGIS OS is an application-level AI operating environment with a browser/PWA shell and replaceable execution adapters. It is not a new Linux/Windows kernel. Kernel/OS tutorials are educational references only. The first practical OS milestone is a usable Control Centre shell over canonical identity, Project Spaces, jobs, capabilities, approvals, audit and agent status.
+
+## MCP Forge Catalogue — first native implementation slice
+
+A metadata-only MCP catalogue is being implemented on feature/mcp-forge-catalogue, stacked on the Sentinel branch. Its pure validation/search module accepts bounded candidate records with pinned source revisions, licence review state, transport/runtime/auth declarations, explicit egress hosts and per-action effects/risk/scopes/approval policy. It rejects wildcard/local/IP egress targets, unpinned revisions and write/execute/high-risk actions without mandatory human approval. Catalogue records can only be candidate, reviewed or blocked; this module cannot approve, install, connect to or execute a server.
+
+This is deliberately not yet a live server discovery/connection service. Persistent storage, authenticated APIs, isolated source ingestion, SSRF protection, advisory scanning, sandbox conformance testing, owner admission workflow and Sentinel-connected execution remain separate milestones. Tests are authored; CI verification is pending.
