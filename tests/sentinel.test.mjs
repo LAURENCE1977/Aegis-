@@ -126,7 +126,7 @@ test('requires atomic approval consumption before any human-gated action execute
     registryLookup: () => writeManifest,
     loadGrant: async () => writeGrant,
     loadApproval: async () => ({ id: 'approval-1' }),
-    consumeApproval: async () => null,
+    consumeApproval: async () => { h.calls.consume += 1; return null; },
   });
   const result = await runSentinelInvocation(writeRequest, h.dependencies);
   assert.equal(result.allowed, false);
