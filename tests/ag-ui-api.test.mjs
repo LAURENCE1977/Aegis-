@@ -82,6 +82,22 @@ test('AG-UI endpoint streams model deltas as ordered protocol 1.0 events',async(
   assert.match(captured.messages[0].content,/AEGIS/);
 });
 
+
+test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',async()=>{
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{...envBase,AI:{async run(){throw new Error('private provider secret must not leak');}}},
+  });
+  assert.equal(response.status,502);
+  assert.match(response.headers.get('content-type'),/text\\/event-stream/);
+  const body=await response.text();
+  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const event=JSON.parse(firstFrame.slice(6));
+  assert.equal(event.type,'RUN_ERROR');
+  assert.equal(event.message,'The AI could not start this run. Please try again.');
+  assert.doesNotMatch(body,/private provider secret/);
+});
+
 test('AG-UI endpoint rejects non-text and malformed runs rather than silently dropping content',async()=>{
   const noQuestion=await onRequestPost({
     request:await request(input({messages:[{id:'x',role:'assistant',content:'not a user turn'}]})),
