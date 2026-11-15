@@ -401,3 +401,25 @@ This is deliberately not yet a live server discovery/connection service. Persist
 A read-only, metadata-only Free-Tier Ledger is being implemented on feature/free-tier-ledger, stacked on the MCP Forge catalogue. It validates explicit allowance, duration, card requirement, commercial-use status, overage behaviour, region, quota, official pricing/terms URLs, confidence and verification timestamp. Records older than 30 days require re-verification by default. Unknown overage is preserved as unknown; free-tier directories are not treated as authoritative. No account creation, resource provisioning, provider API calls or credit consumption are possible through this module.
 
 Persistent storage, authenticated UI, official-source verification workflows, quota monitoring and budget enforcement remain future work. Tests are authored; CI verification is pending.
+
+
+## 14. Native memory, local inference and computer-use tracks — 15 November 2026
+
+Three distinct upstream projects are being reverse-engineered as architecture references:
+
+- Kytheros Strata: persistent memory/retrieval reference (SQLite/FTS5 and Cloudflare D1 patterns).
+- Niko1221 Strata: separate optional local inference engine/provider reference; not a memory system and not a required Chromebook/iOS dependency.
+- n8n Labs Meet Nod: computer-use/browser-workspace, approval, vault, audit and scheduled-agent reference; desktop-hosted and not itself an always-on Chromebook/iOS solution.
+
+AEGIS decision: build native, replaceable capabilities. Do not import these projects wholesale or make them hard dependencies.
+
+The first native memory slice is on feature branch `feature/native-memory-substrate`:
+- typed, bounded, attributed memory record validation;
+- owner and exact personal/project-scope filtering;
+- accepted/unexpired lifecycle filtering;
+- deterministic lexical retrieval with defensive copies;
+- tests authored before implementation.
+
+This slice is an in-memory read model only. It is not persistent, not connected to chat or APIs, and does not authenticate callers. The authenticated API must derive owner identity from the signed AEGIS session and check Project Spaces membership. No embedding provider, model, GPU, computer-use agent, browser worker or external source code has been installed.
+
+Next sequence: verify tests on the final branch head; add D1-backed owner/project-scoped persistence and lifecycle audit; add authenticated API and review/correction controls; then integrate bounded retrieval into chat. Only after that should optional embeddings/reranking be benchmarked. Computer use remains blocked until an isolated worker, vault, Sentinel invocation path, approval UI and audit are wired end-to-end.
