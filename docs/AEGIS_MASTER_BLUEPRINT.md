@@ -698,3 +698,23 @@ The current production Pages configuration still shows the existing MEMORY KV an
 - The Control Centre now includes a read-only Security Centre panel backed by the authenticated /api/modules and /api/capabilities registries.
 - The Security Centre lists module status, declared capability count, manifest version/provider/status and each action's effect/risk/approval policy. It does not expose grants, execute tools or change permissions.
 - Full GitHub Actions verification after these changes: Node.js 22, 278 tests passed, 0 failed (run https://github.com/LAURENCE1977/Aegis-/actions/runs/43748595330). The latest subsequent frontend refactor is still being verified.
+
+## 26. Composio-assisted upstream adaptations and retrieval/stream hardening — 15 November 2026
+
+Composio was used to search and inspect live GitHub repository metadata, READMEs, source documents, licence files and package manifests. The findings were applied to AEGIS-native implementation rather than importing external runtimes.
+
+### CopilotKit ecosystem
+- OpenBot and OpenFuse source/licence/architecture were inspected. Both repositories declare MIT; OpenFuse is alpha and its README/package manifest documents Node 24, pnpm and CopilotKit Intelligence/model-provider requirements. The hosted architecture includes persistent services, browser workers and computer containers. OpenBot also depends on a larger Hono/React/PostgreSQL/Kubernetes-style stack.
+- Decision: no wholesale adoption, React migration, separately licensed Intelligence service or extra hosted infrastructure. Adapt the server-side policy gateway, audit-before-forwarding, secret separation, isolated computer workspaces, network egress boundaries, durable task receipts and human takeover patterns.
+- Official AG-UI 1.0 source was pinned to 2330368a2a74573902858867072406638ba3073d; lifecycle, text-message, run-input and frozen wire-schema documents were inspected.
+- Native AG-UI hardening: provider startup failures now emit a first-event RUN_ERROR SSE frame; the PWA consumes protocol errors returned before a run starts. Output-cap termination closes the text message and emits RUN_FINISHED with outcome cancelled, not a false success. The PWA still rejects frontend tools, ambient context, resume, multimodal input and arbitrary state until Sentinel and durable run semantics are implemented.
+
+### Memory retrieval adaptation
+- CogniCore (Apache-2.0) and mnem (Apache-2.0) were inspected as local-first memory references. CogniCore's curated context, suggested-then-confirmed decisions and bounded handover briefs are useful; its README notes lexical retrieval's vocabulary-mismatch limitation. mnem's versioned/content-addressed knowledge and hybrid retrieval are useful concepts, but its Rust/embedding footprint is not a required Cloudflare dependency.
+- AEGIS now uses shared bounded BM25-style lexical ranking in both the in-memory read model and D1 repository: exact token boundaries, inverse document frequency, length normalization, kind/tag weighting, and a maximum 200-row candidate pool before final ranking. No vector database, embedding API, Python/Rust runtime or extra model cost.
+- Legacy KV saved notes are now explicitly labelled as untrusted reference material and never as instructions or permissions, matching the treatment of structured retrieved memories.
+
+### Verification and operational boundary
+- GitHub Actions run 43750742950 on commit 0d795002bfb45f267a5faba1c0d25174ec9c95c9 passed 288 tests, 0 failures under Node.js 22.
+- PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
+- Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
