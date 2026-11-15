@@ -128,7 +128,7 @@ async function dispatchAgentRuns(env, limit = 25) {
 
 async function submitAgentRun(request, env) {
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
