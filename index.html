@@ -178,6 +178,7 @@
       div.appendChild(document.createTextNode(text));
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
     }
 
     function extractReply(data) {
@@ -504,14 +505,17 @@
       return false;
     }
 
-    async function readAgUiReply(response) {
-      const body = await response.text();
+    async function readAgUiReply(response, onDelta = () => {}) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
       let reply = '';
       let runStarted = false;
       let runFinished = false;
-      for (const frame of body.split(/\r?\n\r?\n/)) {
+
+      function consumeFrame(frame) {
         const line = frame.split(/\r?\n/).find(part => part.startsWith('data: '));
-        if (!line) continue;
+        if (!line) return;
         let event;
         try { event = JSON.parse(line.slice(6)); }
         catch (error) { throw new Error('The agent stream contained invalid event data.'); }
@@ -519,12 +523,34 @@
         if (event.type === 'TEXT_MESSAGE_CONTENT') {
           if (typeof event.delta !== 'string') throw new Error('The agent stream contained invalid text.');
           reply += event.delta;
+          onDelta(event.delta);
         }
         if (event.type === 'RUN_ERROR') throw new Error(event.message || 'The agent run failed.');
         if (event.type === 'RUN_FINISHED') runFinished = true;
       }
-      if (!runStarted || !runFinished) throw new Error('The agent stream ended before the run completed.');
-      return reply;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          while (true) {
+            const match = /\r?\n\r?\n/.exec(buffer);
+            if (!match) break;
+            consumeFrame(buffer.slice(0, match.index));
+            buffer = buffer.slice(match.index + match[0].length);
+          }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) consumeFrame(buffer);
+        if (!runStarted || !runFinished) throw new Error('The agent stream ended before the run completed.');
+        return reply;
+      } catch (error) {
+        try { await reader.cancel(error); } catch (cancelError) {}
+        throw error;
+      } finally {
+        try { reader.releaseLock(); } catch (error) {}
+      }
     }
 
     async function sendMessage() {
@@ -574,8 +600,12 @@
           try { data = await res.json(); } catch (error) {}
           throw new Error(data.error || ('Error ' + res.status));
         }
-        const reply = await readAgUiReply(res);
-        addMessage(reply, 'assistant');
+        const assistantMessage = addMessage('', 'assistant');
+        const assistantText = assistantMessage.lastChild;
+        const reply = await readAgUiReply(res, delta => {
+          assistantText.textContent += delta;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        });
         history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
         saveHistory();
         status.textContent = 'Ready';
