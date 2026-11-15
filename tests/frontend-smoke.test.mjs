@@ -163,3 +163,11 @@ test('Forge candidate cards expose their append-only audit history', () => {
   assert.match(html, /controlApi\('\/api\/forge\/candidates\/'\s*\+\s*encodeURIComponent\(candidate\.id\)\s*\+\s*'\/events'/);
   assert.match(html, /history\.textContent\s*=\s*error\.message/);
 });
+
+
+test('memory review UI requires explicit confirmation before permanent deletion', () => {
+  assert.match(html, /memoryButton\('Delete permanently'/);
+  assert.match(html, /confirm\('Permanently delete this memory/);
+  assert.match(html, /method:\s*'DELETE'/);
+  assert.match(html, /confirm:\s*true/);
+});
