@@ -138,12 +138,12 @@ export async function decideApprovalRequest(db, {
  */
 export async function consumeApproval(db, {
   id, principalId, capabilityId, capabilityVersion, actionId,
-  resourceId, connectionId = null, inputDigest, now = Date.now(),
+  resourceId, operationSummary, connectionId = null, inputDigest, now = Date.now(),
 } = {}) {
   requiredId(id, 'request identifier');
   validateBinding({
     principalId, capabilityId, capabilityVersion, actionId,
-    resourceId, connectionId, inputDigest,
+    resourceId, operationSummary, connectionId, inputDigest,
   });
   if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
   const consumedAt = new Date(now).toISOString();
@@ -159,12 +159,13 @@ export async function consumeApproval(db, {
       AND capability_version = ?
       AND action_id = ?
       AND resource_id = ?
+      AND operation_summary = ?
       AND connection_id IS ?
       AND input_digest = ?
     RETURNING *
   `).bind(
     consumedAt, id, consumedAt, principalId, capabilityId,
-    capabilityVersion, actionId, resourceId, connectionId, inputDigest,
+    capabilityVersion, actionId, resourceId, operationSummary.trim(), connectionId, inputDigest,
   ).first();
   return mapApproval(row);
 }
