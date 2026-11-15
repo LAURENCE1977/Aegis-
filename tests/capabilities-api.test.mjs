@@ -37,7 +37,7 @@ test('capability API returns authenticated manifests without granting permission
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
-  assert.match(response.headers.get('Content-Type') || '', /application\\/json/);
+  assert.match(response.headers.get('Content-Type') || '', /application\/json/);
   const body = await response.json();
   assert.equal(body.total, body.capabilities.length);
   assert.ok(body.capabilities.length >= 1);
