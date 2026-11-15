@@ -1,4 +1,5 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../../lib/auth.mjs";
+import { readBoundedText } from "../../lib/request-body.mjs";
 import { discoverGitHubRepository, GitHubSourceError } from "../../lib/github-discovery.mjs";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
@@ -24,19 +25,11 @@ export async function onRequestPost({ request, env, fetchImpl = fetch }) {
   if (!contentType.toLowerCase().startsWith("application/json")) {
     return json({ error: "Content-Type must be application/json." }, 415);
   }
-  const declaredLength = Number(request.headers.get("Content-Length") || 0);
-  if (declaredLength > 4096) {
-    return json({ error: "Request body is too large." }, 413);
-  }
-
   let rawBody;
   try {
-    rawBody = await request.text();
-  } catch {
-    return json({ error: "Request body could not be read." }, 400);
-  }
-  if (rawBody.length > 4096) {
-    return json({ error: "Request body is too large." }, 413);
+    rawBody = await readBoundedText(request, 4096);
+  } catch (error) {
+    return json({ error: error.message }, error.status || 400);
   }
 
   let body;
