@@ -157,7 +157,7 @@ class MemoryRepositoryD1 {
             (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) && (!row.expires_at || row.expires_at>v[2]));
           if (sql.includes('LIKE')) {
             const terms=v.slice(3,-1);
-            rows=rows.filter(row=>terms.every(term=>
+            rows=rows.filter(row=>terms.some(term=>
               (row.content+' '+row.kind+' '+row.tags_json).toLowerCase().includes(term.replaceAll('%','').toLowerCase())));
             rows.sort((a,b)=>b.confidence-a.confidence || b.updated_at.localeCompare(a.updated_at));
             return {results:rows.slice(0,v[v.length-1]).map(row=>({...row}))};
