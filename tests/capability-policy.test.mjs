@@ -68,7 +68,7 @@ test('denies when the manifest is not approved or has been disabled', () => {
     const manifest = { ...readManifest(), status };
     const decision = evaluateCapabilityPolicy({
       manifest, actionId: 'discover', principalId, resourceId, inputDigest,
-      grant: grantFor(manifest),
+      grant: grantFor(manifest), registryLookup: () => manifest,
     });
     assert.equal(decision.allowed, false);
     assert.equal(decision.reasonCode, 'CAPABILITY_NOT_ENABLED');
@@ -173,7 +173,7 @@ test('expired, denied or consumed approvals are rejected', () => {
 test('external authentication requires an active connection owned by the principal', () => {
   const manifest = { ...readManifest(), auth: { mode: 'oauth2' }, provider: { id: 'github', kind: 'external' } };
   const grant = grantFor(manifest);
-  const input = { manifest, actionId: 'discover', principalId, resourceId, inputDigest, grant };
+  const input = { manifest, actionId: 'discover', principalId, resourceId, inputDigest, grant, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy(input).reasonCode, 'CONNECTION_REQUIRED');
   const connection = { id: 'conn-1', status: 'active', ownerId: principalId, providerId: 'github' };
   assert.equal(evaluateCapabilityPolicy({ ...input, connection }).allowed, true);
