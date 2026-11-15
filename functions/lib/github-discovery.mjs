@@ -52,38 +52,7 @@ export async function discoverGitHubRepository(sourceUrl, fetchImpl = fetch) {
   const endpoint = 'https://api.github.com/repos/' +
     encodeURIComponent(parsed.owner) + '/' + encodeURIComponent(parsed.repository);
 
-  let response;
-  try {
-    response = await fetchImpl(endpoint, {
-      method: 'GET',
-      redirect: 'error',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-  } catch {
-    throw new GitHubSourceError('GitHub could not be reached safely. Try again later.', 502);
-  }
-
-  if (!response || !response.ok) {
-    const status = response && Number.isInteger(response.status) ? response.status : 502;
-    if (status === 404) {
-      throw new GitHubSourceError('Repository not found or not publicly accessible.', 404);
-    }
-    if (status === 403 || status === 429) {
-      throw new GitHubSourceError('GitHub rate limit or access policy prevented discovery.', 429);
-    }
-    throw new GitHubSourceError('GitHub repository discovery failed.', 502);
-  }
-
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new GitHubSourceError('GitHub returned an unreadable repository response.', 502);
-  }
-
+  const data = await githubJson(endpoint, fetchImpl);
   if (!data || typeof data !== 'object' || Array.isArray(data) ||
       typeof data.full_name !== 'string' || typeof data.html_url !== 'string' ||
       typeof data.default_branch !== 'string' || typeof data.private !== 'boolean') {
@@ -132,12 +101,52 @@ function apiHeaders() {
   };
 }
 
+const MAX_GITHUB_JSON_BYTES = 1024 * 1024;
+const GITHUB_REQUEST_TIMEOUT_MS = 8000;
+
+async function readBoundedResponseText(response, maxBytes = MAX_GITHUB_JSON_BYTES) {
+  if (!response?.body || typeof response.body.getReader !== 'function') {
+    const text = await response.text();
+    if (new TextEncoder().encode(text).byteLength > maxBytes) {
+      throw new GitHubSourceError('GitHub response is too large to inspect safely.', 413);
+    }
+    return text;
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new GitHubSourceError('GitHub response is too large to inspect safely.', 413);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new GitHubSourceError('GitHub returned invalid response text.', 502); }
+}
+
 async function githubJson(url, fetchImpl) {
   let response;
   try {
     response = await fetchImpl(url, {
       method: 'GET',
       redirect: 'error',
+      signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
       headers: apiHeaders(),
     });
   } catch {
@@ -149,7 +158,8 @@ async function githubJson(url, fetchImpl) {
     if (status === 403 || status === 429) throw new GitHubSourceError('GitHub rate limit or access policy prevented source inspection.', 429);
     throw new GitHubSourceError('GitHub source inspection failed.', 502);
   }
-  try { return await response.json(); }
+  const raw = await readBoundedResponseText(response);
+  try { return JSON.parse(raw); }
   catch { throw new GitHubSourceError('GitHub returned unreadable source metadata.', 502); }
 }
 
