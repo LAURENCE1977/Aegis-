@@ -154,7 +154,7 @@ class MemoryRepositoryD1 {
         let rows=[...db.rows.values()];
         if (sql.includes('FROM aegis_memories')) {
           rows=rows.filter(row=>row.owner_id===v[0] && row.project_id===v[1] &&
-            row.status==='accepted' && (!row.expires_at || row.expires_at>v[2]));
+            (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) && (!row.expires_at || row.expires_at>v[2]));
           if (sql.includes('LIKE')) {
             const terms=v.slice(3,-1);
             rows=rows.filter(row=>terms.every(term=>
@@ -229,4 +229,13 @@ test('D1 repository exposes append-only creation and lifecycle history in exact 
     ['status_changed','accepted','retracted'],
   ]);
   assert.deepEqual(await repository.listEvents(candidate.id,{ownerId:'owner-2'}),[]);
+});
+
+
+test('D1 review listing can include candidates without changing normal retrieval', async () => {
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  await repository.create(record({status:'candidate'}));
+  assert.deepEqual((await repository.list({ownerId:'owner-1',now})),[]);
+  assert.deepEqual((await repository.list({ownerId:'owner-1',now,includeCandidates:true})).map(item=>item.status),['candidate']);
 });
