@@ -368,3 +368,15 @@ Research details and evidence: docs/RESEARCH_SOURCE_REGISTER.md.
 Recommended order: (1) evaluate Code Review Graph against AEGIS PR review and architecture questions; (2) define browser-worker capability contract and security boundary, then assess agent-browser in a disposable environment; (3) define a generic OpenAI-compatible local-provider adapter and benchmark FreeToken only if suitable GPU hardware becomes available; (4) perform 9Router source/advisory remediation audit before reconsideration; (5) revisit OpenCut when its editor automation API and headless mode are actually released.
 
 No packages, credentials, accounts, provider connections, browser profiles, media assets, infrastructure or deployments were changed by this research.
+
+## 20. Xiryn — local-first agent runtime research
+
+Xiryn (https://github.com/SouravBeraAkaSpeed/xiryn) has been evaluated as a high-value architecture reference and possible future worker adapter. It is an MIT-licensed TypeScript/Next.js personal-agent platform using AI SDK 7, SQLite, Docker-backed Linux workstations, Chromium/noVNC, multiple model providers, local Ollama/LM Studio, specialist squads, durable turns, memory, routines, budget tracking and optional Telegram remote control.
+
+**Adopt the patterns, not the platform wholesale.** Study isolated per-agent workstations, disposable worker lifecycle, durable turns, scheduled routines, specialist delegation, model budgets, visible run costs and mobile approval/takeover. AEGIS remains canonical for identity, memory policy, capability registry, exact-operation approvals, job state, audit and cross-platform Control Centre. Any future Xiryn integration must be a bounded worker adapter with expiring task envelopes and validated result/evidence return.
+
+**Security warning:** upstream Docker Compose mounts /var/run/docker.sock into the main Xiryn service and runs it as root to manage sibling agent containers. Docker socket access is effectively host-root-equivalent. This is a privileged host service and must not be casually installed on the user's personal Chromebook or exposed to a network. Review workstation isolation, mounts, container capabilities, network controls, vault, browser bridge and remote tunnel before any disposable-host trial.
+
+**Platform warning:** Xiryn needs a Node/Docker-capable computer; it is not an iPhone/iPad host or Cloudflare Worker. ChromeOS Linux compatibility and actual resource headroom remain unverified. Local models use host compute. Configured model providers, Firecrawl, Telegram and temporary Cloudflare tunnels are external data paths.
+
+**Decision:** high-priority reference; defer installation. First continue AEGIS's own durable runtime and capability/approval foundation. Later test Xiryn on a disposable dedicated host and compare a narrowly scoped worker adapter against AEGIS's native runtime. No Xiryn code or service is currently installed or connected.
