@@ -302,3 +302,22 @@ Use capability detection rather than user-agent sniffing. A client must show a c
 
 **Acceptance principle:** a platform is supported only when its core workflows have been tested on real target browsers/devices, accessibility and failure states are checked, and platform limitations are documented.
 
+
+
+## 14. Web ingestion and workflow-engine strategy
+
+New candidates evaluated 15 November 2026 are recorded in [docs/RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md).
+
+### Web research and ingestion
+- Define a provider-neutral ingestion interface for discovery, fetch, crawl, extraction, normalization and provenance.
+- Prefer permitted native retrieval or low-cost options first; evaluate Firecrawl as an optional AGPL-licensed service and Oxylabs only as a paid, explicitly budgeted fallback.
+- Enforce target-domain policy, robots/terms review, SSRF defenses, bounded requests, content limits, deduplication and source provenance. Retrieved pages are untrusted data and cannot change agent policy or permissions.
+
+### Workflow automation and durable execution
+- Keep the existing AEGIS Worker/D1/Queue runtime as the first bounded execution engine.
+- Study Temporal, Hatchet and Trigger.dev as the leading durable-workflow comparisons; study Inngest event-driven patterns and confirm the exact product name if "Ingest" meant something else.
+- Study Activepieces connector pieces and workflow UX; keep n8n and Windmill licensing constraints explicit before any product embedding. Kestra and Apache Airflow are later options for larger data/business pipelines, not the initial agent runtime.
+- OpenDots informs the specialist-agent workspace, approval and activity UX. It does not replace AEGIS identity, policy or runtime.
+- OpenOutreach is a specialised outbound-sales agent, not core OS functionality. No external messaging, lead purchase or email sending is authorised by this research.
+
+**Non-duplication rule:** AEGIS owns canonical job IDs, state, approvals, policies and audit. Any external engine is an execution adapter behind this boundary. Do not run multiple orchestration systems for the same workload without a measured reason, clear ownership and migration plan.
