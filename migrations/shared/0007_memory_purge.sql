@@ -20,6 +20,8 @@ SELECT
   from_status, to_status, occurred_at
 FROM aegis_memory_events;
 
+DROP TRIGGER IF EXISTS trg_aegis_memory_created;
+DROP TRIGGER IF EXISTS trg_aegis_memory_status_changed;
 DROP TABLE aegis_memory_events;
 ALTER TABLE aegis_memory_events_v2 RENAME TO aegis_memory_events;
 
@@ -36,6 +38,31 @@ CREATE TRIGGER IF NOT EXISTS trg_aegis_memory_events_no_delete
 BEFORE DELETE ON aegis_memory_events
 BEGIN
   SELECT RAISE(ABORT, 'AEGIS memory events are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_aegis_memory_created
+AFTER INSERT ON aegis_memories
+BEGIN
+  INSERT INTO aegis_memory_events (
+    id, memory_id, owner_id, project_id, event_type,
+    from_status, to_status, occurred_at
+  ) VALUES (
+    lower(hex(randomblob(16))), NEW.id, NEW.owner_id, NEW.project_id,
+    'created', NULL, NEW.status, NEW.created_at
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_aegis_memory_status_changed
+AFTER UPDATE OF status ON aegis_memories
+WHEN OLD.status <> NEW.status
+BEGIN
+  INSERT INTO aegis_memory_events (
+    id, memory_id, owner_id, project_id, event_type,
+    from_status, to_status, occurred_at
+  ) VALUES (
+    lower(hex(randomblob(16))), NEW.id, NEW.owner_id, NEW.project_id,
+    'status_changed', OLD.status, NEW.status, NEW.updated_at
+  );
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_aegis_memory_supersession_unlinked
