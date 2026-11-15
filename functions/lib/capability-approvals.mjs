@@ -1,6 +1,6 @@
 const MAX_APPROVAL_TTL_MS = 15 * 60 * 1000;
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const DIGEST_PATTERN = /^sha256:[a-f0-9]{16,128}$/i;
+const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/i;
 
 function requiredId(value, label) {
   if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
