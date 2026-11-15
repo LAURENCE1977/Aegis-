@@ -90,7 +90,7 @@ test('search excludes candidate, retracted, superseded and expired memories by d
 
 test('store returns defensive copies and bounds result counts', () => {
   const store = createMemoryStore([record()]);
-  const first = store.get('preferred-writing-style');
+  const first = store.get('preferred-writing-style', { ownerId: 'owner-1' });
   first.tags.push('mutated');
   assert.deepEqual(store.get('preferred-writing-style').tags, ['writing', 'style']);
   assert.throws(() => store.search({
