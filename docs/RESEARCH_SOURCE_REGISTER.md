@@ -645,3 +645,8 @@ Reviewed: 15 November 2026. These are research candidates, not installed depende
 - Source inspiration: CogniCore's bounded handover briefs and curated context. AEGIS uses its own D1 schema and access policy; no upstream runtime dependency.
 
 - Selected Project Space chat now also receives up to eight recent event summaries from that exact project scope. Raw event bodies are excluded and summaries are labelled untrusted; this adapts curated project context without introducing a second memory store.
+
+
+### Composio-assisted audit of connected repositories — 15 November 2026
+
+The connected GitHub account was inspected through Composio, including repository metadata, pinned revisions, licences, selected architecture/security documents, AEGIS branches, pull requests and CI. The review found selective opportunities in OpenClaw (MIT runtime patterns) and Auto Browser (MIT browser/MCP service), with G0DM0D3 (AGPL-3.0) held to architecture-reference-only, Charlie Automates Skills held pending licence clarification, and the existing compiled audio-lab artifact marked for a maintainable rebuild. Composio was used as a development-time GitHub connector only; it is not an AEGIS runtime dependency. No external code or runtime adapter was installed. Full provenance, decisions, security boundaries, branch status and next steps: [AEGIS External Repository Integration Audit](AEGIS_EXTERNAL_REPO_INTEGRATION.md).
