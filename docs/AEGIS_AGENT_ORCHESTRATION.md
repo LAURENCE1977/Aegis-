@@ -93,3 +93,19 @@ node --test tests/*.test.mjs
 ```
 
 A passing local/CI run and a non-production D1/Queue integration check are required before treating this as operational. Production runtime deployment and D1 migration application remain separate owner-approved steps.
+
+
+## Sentinel-gated capability bridge — first integration seam
+
+`workers/runtime/agent-capability-bridge.mjs` adds `runAgentCapabilityRequest`, exported through the agent module. It is a trusted server-side bridge to the existing `runSentinelInvocation` primitive.
+
+- The agent request accepts only `capabilityId`, `actionId`, `resourceId` and JSON input. Caller-supplied manifests, principals, adapters, tools and permissions are rejected.
+- The principal context and adapter/policy dependencies must come from trusted server composition code, never from the agent payload.
+- The manifest is resolved from the canonical AEGIS registry; the action must exist in that exact manifest.
+- Input is normalized as plain JSON, bounded by the manifest's request-size limit, canonicalized and SHA-256 digested before Sentinel sees it.
+- Sentinel remains responsible for current grant/connection checks, policy evaluation, durable redacted decision audit, exact approval consumption and adapter execution.
+- Missing dependencies fail closed. Audit receives the digest and identifiers, not the raw input.
+
+**Operational boundary:** this is an integration seam and testable library bridge, not an enabled tool executor. The runtime queue still produces plan-only runs and does not call the bridge. Persistent grant/connection stores, secret vault, concrete D1 invocation-audit writer, trusted adapter router and egress isolation are not yet provisioned or composed. No capability can be executed by an agent until those controls are implemented and explicitly wired.
+
+Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. Full Node.js 22 CI remains unverified.
