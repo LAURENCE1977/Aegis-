@@ -57,7 +57,7 @@ test('Control Centre exposes Project Spaces and owner approval inbox surfaces', 
   for (const id of [
     'workspaceTab','approvalTab','workspaceSection','approvalSection',
     'workspaceForm','workspaceName','workspaceDescription','workspaceList',
-    'workspaceStatus','approvalList','approvalStatus',
+    'workspaceStatus','approvalList','approvalStatus','chatProjectSelect',
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing Control Centre element: ' + id);
   }
@@ -91,4 +91,11 @@ test('service worker never caches authenticated API or MCP traffic', () => {
   assert.match(worker, /url\.pathname\s*===\s*'\/mcp'/);
   assert.match(worker, /request\.method\s*!==\s*'GET'/);
   assert.match(worker, /caches\.open\(SHELL_CACHE\)/);
+});
+
+
+test('chat sends only the explicitly selected Project Space context', () => {
+  assert.match(html, /projectId:\s*chatProjectSelect\.value\s*\|\|\s*undefined/);
+  assert.match(html, /loadChatProjects\(\)/);
+  assert.match(html, /option\.value\s*=\s*workspace\.id/);
 });
