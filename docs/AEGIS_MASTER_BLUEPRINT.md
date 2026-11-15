@@ -715,6 +715,24 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - Legacy KV saved notes are now explicitly labelled as untrusted reference material and never as instructions or permissions, matching the treatment of structured retrieved memories.
 
 ### Verification and operational boundary
-- GitHub Actions run 43751112398 on commit b644c5f34d3737e787e30c9d72ef60d81cbf5939 passed 289 tests, 0 failures under Node.js 22.
+- GitHub Actions run 43752010145 on commit 637174f3ffa6c083d40faee3a1a2ef81e0d780f4 passed 296 tests, 0 failures under Node.js 22.
 - PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
 - Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
+
+
+## 27. Project Space handover briefs — 15 November 2026
+
+Adapted CogniCore's compact project-context/handover idea into a deterministic AEGIS-native capability.
+
+- New owner-authenticated read-only endpoint: GET /api/workspaces/:id/brief.
+- Requires the signed-in deployment owner, an active owner-owned Project Space and the shared AEGIS_DB binding.
+- Default output budget 6,000 characters; maxChars is bounded to 1,000–12,000.
+- Includes project name/goal, recent event summaries and accepted, unexpired, non-restricted memories from the exact project only. Excludes personal memories, other projects, candidates, retracted/superseded/expired/restricted memories, raw event bodies and source URLs.
+- Decisions and procedures are prioritized. Long memory text is shortened before lower-priority items are dropped. Output reports included/omitted counts, truncation and a rough token estimate (characters divided by four, not a provider tokenizer).
+- Every event and memory entry is marked untrusted reference data; the brief cannot grant capabilities, approvals, task state or instructions.
+- Projects UI now exposes Build handover brief and Copy brief. Clipboard failure leaves selectable text available.
+- This is an extractive snapshot; it does not call an LLM, start an agent, create a task or transmit context to an external provider.
+- Expiry is rechecked in the brief builder even though the D1 repository also filters expired memories.
+- GitHub Actions run 43752010145 on commit 637174f3ffa6c083d40faee3a1a2ef81e0d780f4 passed 296 tests, 0 failures under Node.js 22.
+- D1 remains unprovisioned/unbound; the endpoint is feature-branch code and cannot become operational until the shared database is approved, provisioned and migrated. No production deployment or infrastructure change occurred.
+- Detailed behavior: docs/AEGIS_PROJECT_SPACES.md.
