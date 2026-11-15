@@ -391,3 +391,16 @@ DevToys (https://github.com/DevToys-app/DevToys) is an MIT-licensed cross-platfo
 **Security note:** upstream advisory GHSA-ggxr-h6fm-p2qh identifies a high-severity extension-installation path-traversal flaw in DevToys v2.0.0.0–2.0.8.0 and lists v2.0.9.0 as patched; the inspected release page labels that release a pre-release. Verify a stable patched build and package integrity before any optional trial. Third-party extensions and clipboard contents are trust boundaries.
 
 No DevToys application, CLI, package, extension or service has been installed or connected.
+
+
+## 22. mcptoon — MCP gateway and cross-agent tool management research
+
+mcptoon (https://github.com/activeing123/mcptoon) is an Apache-2.0 Python CLI-first MCP client/gateway and cross-agent configuration manager. The inspected main branch package metadata reports v0.8.40, Python >=3.10 and no declared runtime dependencies. Upstream describes compact tool manifests, schema-on-demand, MCP server discovery/search/call, stdio/HTTP gateway, health checks, skills/docs routing and multi-agent config sync. Its advertised 3,186 passing tests and token-savings benchmarks are upstream claims and have not been independently reproduced by AEGIS.
+
+**AEGIS decision:** high-value architecture reference; adopt the patterns, not the CLI as a core dependency. Build an AEGIS-native compact capability index, on-demand schema inspection, tool search, health checks and skill/document retrieval within the existing mobile-first Control Centre. Benchmark claimed context savings against AEGIS's real catalogue and tokenizer. A compact index is only discovery: fetch and validate the complete operation schema before execution.
+
+**Authority boundary:** AEGIS remains canonical for identity, connection ownership, capability manifests, action scopes, risk classification, exact-operation approvals, budgets, job state and audit. Any future mcptoon adapter must be isolated and subordinate to AEGIS policy; it cannot create a second permission system or bypass approvals.
+
+**Security constraints:** mcptoon's exec_sandbox.py explicitly describes a context/output sandbox, not a security sandbox; child code inherits the launching shell's filesystem, network and credentials. Never use it for untrusted code isolation. Stdio MCP configuration can launch arbitrary subprocesses; HTTP configurations connect to remote services; sync writes other agents' config files. Require executable/server allowlists, pinned versions, network egress restrictions, scoped secrets, dry-run and explicit approval for host config writes. Its prompt-injection, credential-pattern and destructive-operation checks are useful heuristics, not authorization. OAuth tokens are stored in local owner-only files (0600 best-effort) rather than an encrypted AEGIS vault, and an explicit command can print raw tokens. Local-first claims do not cover optional registry search or configured remote endpoints.
+
+**Platform:** Python CLI and gateway, not a Cloudflare Worker or browser-native PWA; actual Chromebook Linux support must be tested. It is not a persistent local iPhone/iPad runtime. No mcptoon package, CLI, server, agent configuration, skill or credential has been installed or connected.

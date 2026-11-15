@@ -228,3 +228,20 @@ https://github.com/DevToys-app/DevToys is an MIT-licensed desktop developer-tool
 **AEGIS fit:** reuse the product pattern, not the desktop application. Build small browser-native, offline-friendly AEGIS utilities behind pure, tested functions so they work on Chromebook, iPhone and iPad without a separate installation. Potential first set: JSON formatter/validator, JSON↔YAML only if a vetted parser is bundled, Base64/URL/HTML encode-decode, JWT *inspection only* (never imply signature verification without a key), hash/checksum, date/number conversion, regex tester with execution limits, and text diff. Expose them as local UI utilities first; only register them as agent capabilities when a clear machine-use case and action policy exist.
 
 **Security gate:** GHSA-ggxr-h6fm-p2qh reports extension archive path traversal affecting DevToys v2.0.0.0–2.0.8.0; v2.0.9.0 is listed as patched, but the inspected release entry was marked pre-release. Do not install old builds or untrusted extensions. Verify a stable patched release and package integrity before any trial. Treat extension loading and clipboard access as trust boundaries. No DevToys code, package, CLI or extension is installed.
+
+
+### mcptoon — MCP gateway and cross-agent tool/skill manager
+https://github.com/activeing123/mcptoon is an Apache-2.0, Python-standard-library CLI and MCP gateway. Its high-value ideas are one canonical local MCP config, cross-agent config adapters, compact name manifests, schema-on-demand, tool search/selection, stdio/HTTP aggregation, health checks, schema caching, and BM25 skill/document retrieval. The upstream 99.2% context-saving figure is a benchmark claim, not a universal guarantee; reproduce it against AEGIS's actual catalogue and tokenizer.
+
+**AEGIS decision:** very high-value architecture reference; implement the patterns natively in AEGIS rather than making the CLI a core dependency. AEGIS owns capability identity, connections, policy, approvals, budget, job state and audit. Use a compact index only as a discovery layer; inspect the full schema before invocation and enforce exact-operation policy at the AEGIS boundary.
+
+**Security/platform gates:**
+- The upstream exec_sandbox.py explicitly says it is not a security sandbox: executed code inherits the launching process's filesystem, network and credentials. Never use it for untrusted code isolation.
+- The sync command writes config files into detected agent hosts. Require dry-run, explicit host allowlist, backup and approval before any such write.
+- Stdio MCP definitions can launch arbitrary configured subprocesses; remote HTTP definitions can reach external services. Pin packages, allowlist executable/arguments/domains, scope environment secrets and restrict egress.
+- Injection, credential-pattern and destructive-operation checks are useful heuristics, not authorization or a replacement for AEGIS policy. Never trust server-supplied read-only annotations as permission.
+- OAuth token files use owner-only permissions best-effort, not an AEGIS-grade encrypted vault; explicit token command prints the raw access token.
+- Local-first claims do not cover optional live registry search and configured remote MCP/API calls.
+- Python CLI is not a Cloudflare Worker or mobile PWA runtime; Chromebook host compatibility must be tested, and it cannot be a persistent local service on iPhone/iPad.
+
+**Evaluation plan:** synthetic read-only tool benchmark; compact manifest vs full schema context measurements; lazy schema retrieval correctness; MCP transport compatibility; gateway authentication/bind review; subprocess and network isolation review; security false-positive/false-negative tests. No package, agent config, OAuth credential or service installed.
