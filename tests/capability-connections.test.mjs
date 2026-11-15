@@ -140,7 +140,8 @@ test('lists safe metadata without exposing the vault reference', async () => {
 test('revoked and expired connections cannot be loaded', async () => {
   const db = new MemoryD1();
   const created = await createConnection(db, input(), Date.now());
-  assert.equal(await revokeConnection(db, created.id, 'owner-2', Date.now()), false);\n  assert.equal(await revokeConnection(db, created.id, 'owner-1', Date.now()), true);
+  assert.equal(await revokeConnection(db, created.id, 'owner-2', Date.now()), false);
+  assert.equal(await revokeConnection(db, created.id, 'owner-1', Date.now()), true);
   assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'github' }, Date.now()), null);
   const expired = await createConnection(db, input({
     providerId: 'gitlab',
