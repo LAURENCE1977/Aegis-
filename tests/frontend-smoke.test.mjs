@@ -84,7 +84,7 @@ test('Project Space cards expose a bounded handover brief that can be copied by 
   assert.match(html, /Build handover brief/);
   assert.match(html, /\/api\/workspaces\/.*\/brief/);
   assert.match(html, /navigator\.clipboard\.writeText/);
-  assert.match(html, /briefOutput\.value\s*=\s*JSON\.stringify/);
+  assert.match(html, /output\.value\s*=\s*JSON\.stringify/);
 });
 
 test('Project Space and approval views render untrusted data as text, not HTML', () => {
