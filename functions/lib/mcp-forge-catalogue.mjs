@@ -75,7 +75,7 @@ export function validateMcpServerRecord(record) {
   if (!TRANSPORTS.has(record.transport)) throw new TypeError('Invalid MCP server transport');
   if (!RUNTIMES.has(record.runtime)) throw new TypeError('Invalid MCP server runtime');
   if (!AUTH_MODES.has(record.auth)) throw new TypeError('Invalid MCP server authentication mode');
-  if (record.auth === 'secret-reference' && !/^secret:\\/\\/[A-Za-z0-9][A-Za-z0-9._/-]{2,120}$/.test(record.secretRef ?? '')) {
+  if (record.auth === 'secret-reference' && !/^secret:\/\/[A-Za-z0-9][A-Za-z0-9._/-]{2,120}$/.test(record.secretRef ?? '')) {
     throw new TypeError('MCP server secret reference must be an identifier, never a secret value');
   }
   if (record.auth !== 'secret-reference' && record.secretRef !== undefined) {
