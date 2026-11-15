@@ -435,3 +435,52 @@ The first persistent-memory slice now includes:
 - Project memory is rejected unless the target is an active Project Space owned by the same deployment owner.
 
 The migration is **not applied** and D1 is **not provisioned or bound**. No production runtime is changed. The legacy KV notes endpoint is untouched. This is code and schema prepared for review, not a live persistent-memory deployment. Lifecycle event history, correction/supersession, retention/export/deletion, chat retrieval and UI remain subsequent slices.
+
+
+## 15. Native memory implementation handover — 15 November 2026
+
+### Branch and review
+- PR #27: https://github.com/LAURENCE1977/Aegis-/pull/27
+- Branch: `feature/native-memory-substrate`; base: `feature/free-tier-ledger` (PR #26).
+- Open, draft, unmerged. Never merge without owner approval.
+- Feature branch has its own Cloudflare Pages preview; production main remains unchanged.
+
+### Implemented
+- Typed memory validator and D1 repository in `functions/lib/memory-substrate.mjs`.
+- Authenticated owner APIs: `/api/memories`, `/api/memories/:id`, `/api/memories/:id/events`.
+- New records are candidate-only; owner review accepts, supersedes or retracts.
+- D1 triggers create append-only lifecycle audit rows; triggers reject audit UPDATE/DELETE.
+- Project records are owner-scoped and require an active owner Project Space.
+- Chat `/api/ask` retrieves up to eight approved, unexpired, non-restricted personal memories; maximum context 6,000 characters; JSON-encoded with source attribution and explicitly labelled untrusted reference data.
+- Memory retrieval fails closed to no added context if D1 is unavailable; legacy KV notes remain supported.
+- Mobile Memory panel lets the owner add candidates, approve/reject and inspect history.
+- Partial-term lexical search; no embeddings, GPU or paid provider dependency.
+
+### Canonical D1 migration sequence
+Use only `migrations/shared/` for the shared Project Spaces + Memory database:
+1. `0001_project_spaces.sql`
+2. `0002_memories.sql`
+3. `0003_memory_lifecycle_audit.sql`
+
+The older `migrations/workspaces/` and `migrations/memory/` directories are feature-source copies. Do not apply those separately in addition to `migrations/shared/`. Runtime jobs use their own separate D1 database and migration directory.
+
+### Verification
+- Full Node.js 22 test suite passed **194/194** at commit `b02f4f5fa3d8841c6eee58246e7bdcbf35e6fe7b` (workflow run https://github.com/LAURENCE1977/Aegis-/actions/runs/43742096001).
+- SQLite test applied all three canonical migrations in order, confirmed audit trigger behaviour, append-only rejection and project-owner foreign-key enforcement.
+- Cloudflare Pages preview for the memory UI succeeded at https://56dc826b.aegis-6yk.pages.dev (branch preview https://feature-native-memory-substr.aegis-6yk.pages.dev).
+- Later frontend smoke-test and documentation commits must receive fresh CI verification before promotion.
+
+### Not yet active
+- D1 resource has not been created; migrations not applied; `AEGIS_DB` binding not configured.
+- No production deployment or data migration.
+- Memory UI is preview code only until D1 and auth secrets are correctly configured in the preview environment.
+- No computer-use agent or external Strata/Nod software installed.
+- Correction/supersession linking, retention, export/deletion controls, embeddings, project-context chat retrieval and full Control Centre integration remain to be implemented.
+
+### Immediate next engineering order
+1. Re-run CI on the latest branch head; fix any failures.
+2. Implement correction/supersession as linked replacement records with provenance.
+3. Add retention, export and deletion controls.
+4. Add Project Spaces memory navigation and memory-to-project timeline linking.
+5. Prepare D1 provisioning/migration as a separate explicitly approved step after checking account-wide free-tier use.
+6. Continue with isolated computer-use worker design only after Sentinel, vault, approval UI and audit are end-to-end.
