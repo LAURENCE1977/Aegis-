@@ -975,6 +975,9 @@
               reviewNoteLabel.append(reviewNote);
               const licenceConfirmed = document.createElement('input');
               licenceConfirmed.type = 'checkbox';
+              licenceSelect.addEventListener('change', () => {
+                if (licenceSelect.value !== 'verified') licenceConfirmed.checked = false;
+              });
               const confirmationLabel = document.createElement('label');
               confirmationLabel.append(licenceConfirmed, document.createTextNode(' I checked the actual upstream licence and relevant dependency licences.'));
               const decisionSelect = document.createElement('select');
