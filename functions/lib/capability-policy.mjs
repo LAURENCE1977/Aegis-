@@ -1,4 +1,4 @@
-import { validateCapabilityManifest } from './capability-registry.mjs';
+import { getCapabilityManifest, validateCapabilityManifest } from './capability-registry.mjs';
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -15,6 +15,14 @@ function timestamp(value) {
 
 function deny(reasonCode) {
   return { allowed: false, reasonCode };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (isRecord(value)) {
+    return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
 }
 
 function validContextText(value) {
@@ -102,6 +110,7 @@ export function evaluateCapabilityPolicy({
   approval = null,
   budget,
   now = Date.now(),
+  registryLookup = getCapabilityManifest,
 } = {}) {
   try {
     validateCapabilityManifest(manifest);
@@ -109,6 +118,11 @@ export function evaluateCapabilityPolicy({
     return deny('MANIFEST_INVALID');
   }
 
+  if (typeof registryLookup !== 'function') return deny('CAPABILITY_NOT_REGISTERED');
+  let registered;
+  try { registered = registryLookup(manifest.id); } catch { return deny('CAPABILITY_NOT_REGISTERED'); }
+  if (!registered) return deny('CAPABILITY_NOT_REGISTERED');
+  if (canonicalJson(registered) !== canonicalJson(manifest)) return deny('MANIFEST_MISMATCH');
   if (manifest.status !== 'approved') return deny('CAPABILITY_NOT_ENABLED');
   if (!validContextText(actionId)) return deny('ACTION_NOT_FOUND');
   const action = manifest.actions.find((item) => item.id === actionId);
