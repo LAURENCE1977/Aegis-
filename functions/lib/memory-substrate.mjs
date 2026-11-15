@@ -344,6 +344,26 @@ export function createMemoryRepository(db) {
       return (result?.results ?? []).map(mapMemoryEventRow);
     },
 
+    async purge(id, { ownerId, projectId = null } = {}) {
+      assertMemoryScope(ownerId, projectId);
+      requireId(id, 'identifier');
+      if (typeof db.batch !== 'function') {
+        throw new TypeError('Transactional D1 batch support is required for memory purge');
+      }
+      const results = await db.batch([
+        db.prepare(`
+          UPDATE aegis_memories
+          SET supersedes_id = NULL
+          WHERE supersedes_id = ? AND owner_id = ? AND project_id IS ?
+        `).bind(id, ownerId, projectId),
+        db.prepare(`
+          DELETE FROM aegis_memories
+          WHERE id = ? AND owner_id = ? AND project_id IS ?
+        `).bind(id, ownerId, projectId),
+      ]);
+      return (results?.[1]?.meta?.changes ?? 0) === 1;
+    },
+
     async setStatus(id, { ownerId, projectId = null, status, now = Date.now() } = {}) {
       assertMemoryScope(ownerId, projectId);
       requireId(id, 'identifier');
