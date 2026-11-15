@@ -58,11 +58,11 @@ class MemoryD1 {
         if (sql.includes('FROM aegis_memory_events')) return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         let rows=[...db.memories.values()].filter(row=>
-          row.owner_id===v[0] && row.project_id===v[1] && (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) &&
+          row.owner_id===v[0] && row.project_id===v[1] && (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) && row.sensitivity!=='restricted' &&
           (!row.expires_at || row.expires_at>v[2]));
         if (sql.includes('LIKE')) {
           const terms=v.slice(3,-1);
-          rows=rows.filter(row=>terms.every(term=>
+          rows=rows.filter(row=>terms.some(term=>
             (row.content+' '+row.kind+' '+row.tags_json).toLowerCase()
               .includes(term.slice(1,-1).toLowerCase())));
           rows.sort((a,b)=>b.confidence-a.confidence || b.updated_at.localeCompare(a.updated_at));
