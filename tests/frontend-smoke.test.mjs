@@ -46,6 +46,12 @@ test('chat UI reads AG-UI RUN_ERROR frames returned before a run stream begins',
   assert.match(html, /await readAgUiReply\(res\)/);
 });
 
+
+test('AG-UI frontend rejects streams whose first event is not RUN_STARTED or RUN_ERROR', () => {
+  assert.match(html, /let firstEvent = true/);
+  assert.match(html, /firstEvent && event\.type !== 'RUN_STARTED' && event\.type !== 'RUN_ERROR'/);
+});
+
 test('AG-UI frontend parser splits real SSE frame boundaries', () => {
   assert.match(html, /const match = \/\\r\?\\n\\r\?\\n\/\.exec\(buffer\)/);
   assert.match(html, /frame\.split\(\/\\r\?\\n\/\)/);
