@@ -7,14 +7,26 @@ const secret = 'ask-memory-test-session-secret-with-sufficient-length';
 const ownerEnv = { AEGIS_PASSWORD:'test-password-long-enough', AEGIS_SESSION_SECRET:secret };
 
 class RetrievalD1 {
-  constructor(rows) { this.rows=rows; this.query=null; this.queries=[]; }
+  constructor(rows, spaces=[], events=[]) { this.rows=rows; this.spaces=spaces; this.events=events; this.query=null; this.queries=[]; }
   prepare(sql) {
     const db=this;
     return {
       values:[],
       bind(...values) { this.values=values; return this; },
+      async first() {
+        const v=this.values;
+        if (sql.includes('FROM project_spaces')) {
+          const row=db.spaces.find(item=>item.id===v[0]&&item.owner_id===v[1]);
+          return row?{...row}:null;
+        }
+        return null;
+      },
       async all() {
         db.query={sql,values:this.values}; db.queries.push(db.query);
+        if (sql.includes('FROM project_space_events')) {
+          const [ownerId,projectId,limit]=this.values;
+          return {results:db.events.filter(event=>event.owner_id===ownerId&&event.space_id===projectId).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,limit).map(event=>({...event}))};
+        }
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         const [ownerId,projectId,now,...rest]=this.values;
         const limit=rest.pop();
