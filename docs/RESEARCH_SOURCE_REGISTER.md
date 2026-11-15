@@ -564,7 +564,7 @@ These are three distinct source tracks, not interchangeable products.
 - Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
 - Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
 - AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; Workers AI deltas stream incrementally to the mobile PWA, with provider errors redacted and a 12,000-character output cap. Frontend tools/context/resume/multimodal payloads fail closed.
-- Latest verified feature-branch head `b644c5f34d3737e787e30c9d72ef60d81cbf5939` passed GitHub Actions run 43751112398: 289 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
+- Latest verified feature-branch head `637174f3ffa6c083d40faee3a1a2ef81e0d780f4` passed GitHub Actions run 43752010145: 296 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
 - Latest Cloudflare Pages branch preview deployed successfully at https://7aef49d9.aegis-6yk.pages.dev; preview login remains blocked by missing Preview secrets. No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
 
@@ -634,3 +634,12 @@ Reviewed: 15 November 2026. These are research candidates, not installed depende
 - AEGIS decision: high-priority browser-agent architecture reference, distinct from Helium (a Chromium browser). Reverse-engineer DOM observation, action planning and page-context UX; build a native browser capability adapter rather than loading arbitrary third-party scripts into the AEGIS Control Centre.
 - Security boundary: webpage DOM, accessible names, page text and tool results are untrusted. Never let page content rewrite system instructions or permissions. Use a separate browser context, domain allowlists, user-visible action preview, exact-action Sentinel approval, restricted form handling, secret redaction, navigation controls, audit and kill switch. No credentials or sensitive data may flow to the demo endpoint.
 - Status: research only; no Page Agent package, extension, MCP server or demo API has been installed or connected.
+
+
+### Project Space handover brief — CogniCore adaptation
+
+- AEGIS now exposes owner-authenticated GET /api/workspaces/:id/brief and a Projects-panel Build handover brief / Copy brief workflow.
+- Deterministic extractive context only: project goal, recent event summaries and accepted, unexpired, non-restricted memories from that exact project. No personal memories, cross-project records, candidates, restricted memories, raw event bodies or source URLs.
+- Decisions/procedures are prioritized; memory content is shortened under a 1,000–12,000-character budget (6,000 default). Output includes included/omitted counts, truncation and a rough characters/4 token estimate.
+- Every included event/memory is labelled untrusted reference data. The brief cannot create a task, grant a capability, start an agent or call an external provider.
+- Source inspiration: CogniCore's bounded handover briefs and curated context. AEGIS uses its own D1 schema and access policy; no upstream runtime dependency.
