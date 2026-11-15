@@ -155,6 +155,50 @@ test('only the authenticated owner can decide a pending approval and the API sup
   assert.equal(db.rows.get(pending.id).decided_by, 'owner');
 });
 
+
+test('approval decisions reject oversized bodies while streaming', async () => {
+  const response = await onRequestPost({
+    request: await authenticatedRequest('/api/approvals', {
+      method: 'POST',
+      body: 'x'.repeat(3000),
+    }),
+    env: { ...envBase, APPROVALS: new MemoryD1() },
+  });
+  assert.equal(response.status, 413);
+});
+
+test('approval decisions reject non-JSON content types', async () => {
+  const token = await createSessionToken(secret);
+  const response = await onRequestPost({
+    request: new Request('https://aegis.example/api/approvals', {
+      method: 'POST',
+      headers: {
+        Origin: 'https://aegis.example',
+        Cookie: '__Host-aegis_session=' + token,
+        'Content-Type': 'text/plain',
+      },
+      body: '{"id":"approval-1","decision":"approved"}',
+    }),
+    env: { ...envBase, APPROVALS: new MemoryD1() },
+  });
+  assert.equal(response.status, 415);
+});
+
+test('expired pending approvals cannot be approved through the API', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, binding);
+  db.rows.get(pending.id).expires_at = new Date(Date.now() - 1000).toISOString();
+  const response = await onRequestPost({
+    request: await authenticatedRequest('/api/approvals', {
+      method: 'POST',
+      body: { id: pending.id, decision: 'approved' },
+    }),
+    env: { ...envBase, APPROVALS: db },
+  });
+  assert.equal(response.status, 409);
+  assert.equal(db.rows.get(pending.id).status, 'pending');
+});
+
 test('approval decisions reject malformed JSON and invalid decision values', async () => {
   const token = await createSessionToken(secret);
   const malformed = await onRequestPost({
