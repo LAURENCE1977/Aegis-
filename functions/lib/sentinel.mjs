@@ -150,7 +150,7 @@ export async function runSentinelInvocation(request, dependencies = {}) {
     } catch {
       return { allowed: true, reasonCode: 'EXECUTION_FAILED_AUDIT_UNAVAILABLE' };
     }
-    return { allowed: true, reasonCode: 'EXECUTION_FAILED' };
+    return { allowed: true, reasonCode: 'EXECUTION_FAILED', error: { code: 'ADAPTER_EXECUTION_FAILED', message: 'Adapter execution failed.' } };
   }
 
   try {
