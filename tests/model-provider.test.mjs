@@ -42,7 +42,7 @@ test('Qwen provider builds a fixed regional endpoint and streams OpenAI-compatib
       AEGIS_QWEN_MODEL:'qwen3.8-flash',
     },
     messages:[{role:'user',content:'hello'}],
-    fetchImpl:async(url,options)=>{call={url,options};return new Response(stream,{status:200});},
+    fetchImpl:async(url,options)=>{call={url,options};return new Response(stream,{status:200,headers:{'Content-Type':'text/event-stream'}});},
   });
   assert.equal(result,stream);
   assert.equal(call.url,'https://workspace-123.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions');
@@ -56,7 +56,7 @@ test('Qwen provider builds a fixed regional endpoint and streams OpenAI-compatib
 });
 
 test('Qwen provider rejects arbitrary hosts, unsupported regions and invalid model names',async()=>{
-  const base={AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'key',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'};
+  const base={AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'};
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_WORKSPACE_ID:'evil.example'},messages:[]}),/workspace/i);
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_REGION:'evil-region'},messages:[]}),/region/i);
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_MODEL:'qwen;drop'},messages:[]}),/model/i);
@@ -65,7 +65,7 @@ test('Qwen provider rejects arbitrary hosts, unsupported regions and invalid mod
 test('unknown providers fail closed and provider errors are not surfaced to callers',async()=>{
   await assert.rejects(()=>createModelStream({env:{AEGIS_MODEL_PROVIDER:'unknown'},messages:[]}),/unsupported/i);
   await assert.rejects(()=>createModelStream({
-    env:{AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'key',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'},
+    env:{AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'},
     messages:[],fetchImpl:async()=>new Response('sensitive provider diagnostic',{status:401}),
   }),/provider request failed/i);
 });
