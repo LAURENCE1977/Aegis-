@@ -150,3 +150,10 @@ test('Forge candidate review UI requires an explicit owner licence decision', ()
   assert.match(html, /review-required/);
   assert.match(html, /Choose an engineering decision before approval/);
 });
+
+
+test('Forge candidate review UI exposes owner audit history without rendering HTML', () => {
+  assert.match(html, /controlApi\('\/api\/forge\/candidates\/'\s*\+\s*encodeURIComponent\(candidate\.id\)\s*\+\s*'\/events'/);
+  assert.match(html, /candidate-history/);
+  assert.match(html, /entry\.textContent\s*=/);
+});
