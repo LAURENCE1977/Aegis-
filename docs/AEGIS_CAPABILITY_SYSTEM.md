@@ -78,7 +78,7 @@ Reject unknown fields where security-sensitive schemas are concerned. Never put 
 
 ### v0.1 implementation boundary
 
-The current registry implements manifest validation for IDs/versions, provider and interface metadata, action effects/risk/approval/scopes, data classification, egress host declarations, authentication mode and opaque secret references, bounded request limits, provenance, licence review and lifecycle status. The static first-party catalogue currently describes public GitHub repository discovery and the module catalogue. The authenticated `GET /api/capabilities` endpoint is read-only and returns no grants. Input/output JSON Schemas, persistent manifest storage, adapter versions, connections, policy decisions, approval records, invocation history and execution are future work. A manifest's `approved` status means its metadata passed review; it is not a user permission grant.
+The current registry implements manifest validation for IDs/versions, provider and interface metadata, action effects/risk/approval/scopes, data classification, egress host declarations, authentication mode and opaque secret references, bounded request limits, provenance, licence review and lifecycle status. The static first-party catalogue currently describes public GitHub repository discovery and the module catalogue. The authenticated `GET /api/capabilities` endpoint is read-only and returns no grants. A pure policy evaluator now checks exact registered-manifest identity, action, principal, grant version/status/expiry/revocation, required scopes, exact resource, connection ownership/provider, exact-operation approval freshness/replay and supplied call/spend budgets. The evaluator consumes supplied snapshots only; it does not persist grants, atomically consume approvals or execute actions. Input/output JSON Schemas, persistent manifest storage, adapter versions, connections, policy records, approval records, invocation history and execution remain future work. A manifest's `approved` status means its metadata passed review; it is not a user permission grant.
 
 ## 5. Risk classification and execution policy
 
@@ -177,7 +177,7 @@ The current Cloudflare Worker + D1 + Queue runtime is a bounded first implementa
 
 1. **Read-only manifest schema and validator:** v0.1 implemented on the feature branch for IDs, versions, source provenance, licence review, risk/effects, scopes and lifecycle state. Full input/output JSON Schema support remains open.
 2. **Registry API:** authenticated, read-only and no-store list endpoint implemented on the feature branch. Persistent storage and API-level get/search remain open.
-3. **Policy evaluator:** pure, deterministic unit-tested decisions for principal, scope, resource, risk and status.
+3. **Policy evaluator:** pure, deterministic, fail-closed evaluator implemented on the feature branch. It binds decisions to the exact registered manifest and checks principal, grant, scope, resource, connection, exact-operation approval and budget snapshots. Persistence and atomic approval consumption remain open.
 4. **Approval records:** exact-operation, expiring approval tokens with replay protection.
 5. **Invocation envelope and audit events:** durable records with redaction and idempotency.
 6. **One safe read-only adapter:** use a tightly scoped source already available; no new secret or external write required.
