@@ -212,7 +212,7 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
 test('AG-UI marks a response stopped by the output safety cap as cancelled, not successful',async()=>{
   let cancelled=false;
   const largeStream=new ReadableStream({
-    start(controller){controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({response:'x'.repeat(12001)})+'\\n\\n'));}
+    start(controller){controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({response:'x'.repeat(12001)})+'\n\n'));}
     ,cancel(){cancelled=true;}
   });
   const response=await onRequestPost({
