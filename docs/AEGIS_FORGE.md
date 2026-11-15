@@ -50,7 +50,7 @@ Forge is AEGIS's source-aware reverse-engineering workshop. Its default workflow
 - No diff engine, dependency graph, AST/code graph, test harness, sandbox or automated licence scanner is wired yet.
 - Candidate creation, listing and owner review/decision updates are implemented. The Forge candidate review panel is still feature-branch code until D1 is configured.
 - The D1 migration and AEGIS_DB binding are not active in the Cloudflare account. The Forge candidate library therefore reports unavailable until shared D1 is separately provisioned and configured.
-- No production deployment or upstream software installation has occurred.
+- The Forge implementation is feature-branch code and was not included in production. Two unrelated Markdown-only commits on main triggered a successful Pages redeploy; see the master blueprint audit. No upstream software was installed.
 
 ## Next engineering steps
 
