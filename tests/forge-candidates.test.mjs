@@ -12,6 +12,12 @@ class CandidateD1 {
       bind(...values){this.values=values;return this;},
       async run(){
         const v=this.values;
+        if(sql.includes('UPDATE forge_candidates')){
+          const row=db.rows.get(v[4]);
+          if(!row||row.owner_id!==v[5]||['archived','rejected'].includes(row.status)) return {meta:{changes:0}};
+          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.updated_at=v[3];
+          return {meta:{changes:1}};
+        }
         if(sql.includes('INSERT INTO forge_candidates')){
           const key=v[1]+'|'+v[3]+'|'+v[4];
           if([...db.rows.values()].some(row=>row.uniqueKey===key)) return {meta:{changes:0}};
@@ -96,7 +102,8 @@ test('Forge candidate lists are isolated to the authenticated owner',async()=>{
 
 test('Forge review transitions are represented by an append-only D1 audit trigger', async () => {
   const migration = await readFile(new URL('../migrations/shared/0005_forge_candidates.sql', import.meta.url), 'utf8');
-  assert.match(migration, /CREATE TRIGGER IF NOT EXISTS trg_forge_candidate_review_audit[\\s\\S]*?AFTER UPDATE ON forge_candidates/);
+  assert.ok(migration.includes('CREATE TRIGGER IF NOT EXISTS trg_forge_candidate_review_audit'));
+  assert.ok(migration.includes('AFTER UPDATE ON forge_candidates'));
   assert.match(migration, /'review_changed'/);
   assert.match(migration, /'status_changed'/);
   assert.match(migration, /trg_forge_candidate_events_no_update/);
