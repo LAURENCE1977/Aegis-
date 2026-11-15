@@ -249,3 +249,54 @@ When a new AI session starts:
 6. Do not claim the document itself proves a feature works; code, tests and deployment are the evidence.
 
 **Canonical source:** this file in the GitHub repository. Update it as architecture and implementation change.
+
+
+## 13. Cross-platform strategy — architecture requirement
+
+AEGIS must be designed as a platform-independent core with replaceable client and infrastructure adapters. Cross-platform support is a long-term requirement, not a promise that every feature will be available on every device at launch.
+
+### Platform direction
+
+- **First delivery target:** responsive web application / installable PWA, tested on Chromebook browsers, iPhone Safari and iPad Safari.
+- **Next client targets:** Android and desktop browsers, using the same web client and capability contracts wherever practical.
+- **Later native targets:** Android, iOS/iPadOS, Windows, macOS and Linux clients only where browser/PWA limitations justify the additional maintenance.
+- **Server/runtime:** keep orchestration, memory, policy, agent execution and durable jobs behind documented APIs and portable contracts. Cloudflare is the current low-cost hosting choice, not a permanent architectural lock-in.
+
+### Core and adapter boundaries
+
+Keep business logic out of platform-specific UI code. Define versioned interfaces for:
+- identity, authentication and session lifecycle;
+- model/provider routing and streaming;
+- agent runs, task state, approvals, cancellation and audit;
+- memory, files, search and synchronisation;
+- notifications, scheduling and background execution;
+- voice input/output, media capture and playback;
+- browser/device automation and local capabilities;
+- secrets, secure storage and platform permission prompts.
+
+Use capability detection rather than user-agent sniffing. A client must show a clear unsupported/permission-required state when a capability is unavailable. Never silently weaken security or pretend a background task is running when the operating system has suspended it.
+
+### Portability rules
+
+1. Keep a single canonical API and data model; version contracts and maintain backwards compatibility where practical.
+2. Make the web/PWA client the reference implementation; add native shells only for capabilities that demonstrably need them.
+3. Keep provider, database, queue, object-storage and deployment integrations behind adapters so infrastructure can be replaced.
+4. Use standards where suitable: HTTPS, JSON/HTTP, MCP, OAuth 2.1/PKCE, OpenAPI and Web Push where supported.
+5. Treat local storage as a cache, not the source of truth for durable jobs or shared memory.
+6. Design offline behaviour explicitly: queue safe drafts locally, reconcile conflicts, and never imply a server-side action completed before confirmation.
+7. Isolate platform-specific permissions and sensitive capabilities; require explicit user consent and auditable scopes.
+8. Maintain automated browser/device test matrices, responsive layouts, accessibility, keyboard support and graceful degradation.
+9. Do not promise 24/7 background execution from mobile clients. Durable jobs must run server-side; mobile clients observe, approve and resume them.
+10. Measure the cost and maintenance burden of every additional client before adopting it.
+
+### Progressive delivery
+
+1. Responsive web/PWA across the user's Chromebook, iPhone and iPad.
+2. Stable API/Bridge and server-side runtime contracts.
+3. Android client/device QA adapter where useful.
+4. Desktop packaging only if it adds real value beyond the web app.
+5. Native iOS/iPadOS and Windows/macOS/Linux integrations only for validated gaps.
+6. Continuous compatibility tests and adapter conformance checks for every supported platform.
+
+**Acceptance principle:** a platform is supported only when its core workflows have been tested on real target browsers/devices, accessibility and failure states are checked, and platform limitations are documented.
+
