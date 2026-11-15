@@ -48,7 +48,7 @@ test('identifies terminal job states', () => {
 });
 
 test('health-check result reports runtime readiness without exposing configuration', () => {
-  const result = buildHealthCheckResult({ DB: {}, JOBS: {} });
+  const result = buildHealthCheckResult({ DB: { prepare() {} }, JOBS: { send() {} } });
   assert.deepEqual(result, {
     ok: true,
     service: 'aegis-runtime',
