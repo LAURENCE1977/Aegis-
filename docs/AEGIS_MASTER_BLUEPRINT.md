@@ -718,3 +718,14 @@ Composio was used to search and inspect live GitHub repository metadata, READMEs
 - GitHub Actions run 43750742950 on commit 0d795002bfb45f267a5faba1c0d25174ec9c95c9 passed 288 tests, 0 failures under Node.js 22.
 - PR #27 remains open and unmerged, based on feature/free-tier-ledger. No production application deployment, D1 provisioning/migration, secret change, paid service or upstream package installation occurred.
 - Detailed source decisions: docs/AEGIS_COPILOTKIT_AGUI.md and docs/RESEARCH_SOURCE_REGISTER.md.
+
+
+## 25. Durable specialist agent orchestration — 15 November 2026
+
+- Added a separate `agent_runs` / `agent_run_events` persistence model to the existing runtime D1 database via `migrations/runtime/0002_agent_runs.sql`.
+- Added authenticated `POST /v1/agent-runs` and `GET /v1/agent-runs/:id` with bounded objectives, fixed specialist role allowlist, strict unknown-field rejection and idempotency keys.
+- Reused the existing Queue, durable outbox, Cron lease recovery and attempt-fenced claim model; no competing scheduler or extra infrastructure.
+- The first orchestrator is deterministic and plan-only. It orders researcher/planner/engineer/security/reviewer roles, persists a plan and explicitly invokes no model, tools, shell, browser or external side effects.
+- Future execution remains blocked until each exact capability/action is mediated by Sentinel, grants/connections are checked, exact approvals are consumed where required, and redacted audit is durable.
+- Tests added for input validation, deterministic plan generation, persistence-before-dispatch, idempotency, queue processing, status retrieval and outbox recovery. Run the full Node.js 22 suite and non-production D1/Queue integration before calling it verified.
+- Feature branch: `feature/durable-agent-orchestrator-rebased`, stacked on the current native-memory branch. No merge, production deployment, D1 migration application, secret or permission change.
