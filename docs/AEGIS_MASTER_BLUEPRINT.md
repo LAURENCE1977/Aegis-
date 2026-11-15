@@ -698,3 +698,14 @@ The current production Pages configuration still shows the existing MEMORY KV an
 - The Control Centre now includes a read-only Security Centre panel backed by the authenticated /api/modules and /api/capabilities registries.
 - The Security Centre lists module status, declared capability count, manifest version/provider/status and each action's effect/risk/approval policy. It does not expose grants, execute tools or change permissions.
 - Full GitHub Actions verification after these changes: Node.js 22, 278 tests passed, 0 failed (run https://github.com/LAURENCE1977/Aegis-/actions/runs/43748595330). The latest subsequent frontend refactor is still being verified.
+
+
+## 25. Durable specialist agent orchestration — 15 November 2026
+
+- Added a separate `agent_runs` / `agent_run_events` persistence model to the existing runtime D1 database via `migrations/runtime/0002_agent_runs.sql`.
+- Added authenticated `POST /v1/agent-runs` and `GET /v1/agent-runs/:id` with bounded objectives, fixed specialist role allowlist, strict unknown-field rejection and idempotency keys.
+- Reused the existing Queue, durable outbox, Cron lease recovery and attempt-fenced claim model; no competing scheduler or extra infrastructure.
+- The first orchestrator is deterministic and plan-only. It orders researcher/planner/engineer/security/reviewer roles, persists a plan and explicitly invokes no model, tools, shell, browser or external side effects.
+- Future execution remains blocked until each exact capability/action is mediated by Sentinel, grants/connections are checked, exact approvals are consumed where required, and redacted audit is durable.
+- Tests added for input validation, deterministic plan generation, persistence-before-dispatch, idempotency, queue processing, status retrieval and outbox recovery. Run the full Node.js 22 suite and non-production D1/Queue integration before calling it verified.
+- Feature branch: `feature/durable-agent-orchestrator`, stacked on PR #27. No merge, production deployment, D1 migration application, secret or permission change.
