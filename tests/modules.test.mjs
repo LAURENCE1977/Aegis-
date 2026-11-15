@@ -61,3 +61,29 @@ test('module metadata rejects unsafe identifiers, duplicate capabilities and per
   assert.throws(() => validateModule({ id: 'bad-module', name: 'Bad', status: 'planned', capabilities: ['chat.read', 'chat.read'], permissions: [] }));
   assert.throws(() => validateModule({ id: 'bad-module', name: 'Bad', status: 'planned', capabilities: [], permissions: ['secrets.read'] }));
 });
+
+test('Forge declares universal source-inspection and re-engineering capabilities', () => {
+  for (const capability of [
+    'source.discover',
+    'source.inspect',
+    'source.compare',
+    'candidate.evaluate',
+    'blueprint.create',
+    'implementation.plan',
+    'benchmark.compare',
+  ]) {
+    assert.equal(hasCapability('forge', capability), true, capability);
+    assert.equal(isCapabilityAllowed('forge', capability), false, capability);
+  }
+});
+
+test('engineering intelligence is a separate planned capability with no permissions', () => {
+  const module = getModule('engineering-intelligence');
+  assert.ok(module);
+  assert.equal(module.status, 'planned');
+  for (const capability of ['knowledge.ingest', 'knowledge.search', 'knowledge.evaluate', 'knowledge.adapt']) {
+    assert.ok(module.capabilities.includes(capability));
+    assert.equal(isCapabilityAllowed(module.id, capability), false);
+  }
+  assert.deepEqual(module.permissions, []);
+});
