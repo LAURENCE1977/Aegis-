@@ -22,6 +22,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const fetchImpl = context.fetchImpl || fetch;
   if (!authConfigAvailable(env)) return json({ error: "Authentication is not configured." }, 503);
   if (!(await isAuthorized(request, env))) return json({ error: "Authentication required." }, 401);
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
@@ -73,7 +74,7 @@ export async function onRequestPost(context) {
   try {
     const history = messages.slice(0, -1).slice(-10);
     const promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    modelStream = await createModelStream({ env, messages: promptMessages });
+    modelStream = await createModelStream({ env, messages: promptMessages, fetchImpl });
   } catch (error) {
     if (error instanceof TypeError) return json({ error: "The model request is invalid." }, 400);
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
