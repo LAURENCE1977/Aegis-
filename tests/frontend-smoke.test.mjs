@@ -102,10 +102,12 @@ test('chat sends only the explicitly selected Project Space context', () => {
 
 
 test('chat and memory controls expose the selected Project Space scope end to end', () => {
-  assert.match(html, /id="chatProjectSelect"/);
+  assert.equal((html.match(/id="chatProjectSelect"/g) || []).length, 1);
   assert.match(html, /id="memoryProjectSelect"/);
   assert.match(html, /projectId:\s*chatProjectSelect\.value\s*\|\|\s*undefined/);
   assert.match(html, /projectId:\s*memoryProjectSelect\.value\s*\|\|\s*undefined/);
   assert.match(html, /projectId:\s*memory\.projectId\s*\|\|\s*null/);
+  assert.match(html, /memoryProjectSelect\.addEventListener\('change',\s*loadMemories\)/);
+  assert.match(html, /memoryApi\('\?review=1&projectId='\s*\+\s*encodeURIComponent\(memoryProjectSelect\.value\)\)/);
   assert.match(html, /encodeURIComponent\(memory\.projectId\)/);
 });
