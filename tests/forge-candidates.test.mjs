@@ -35,6 +35,10 @@ class CandidateD1 {
       },
       async first(){
         const v=this.values;
+        if(sql.includes('FROM forge_candidates')&&sql.includes('WHERE id = ?')){
+          const row=db.rows.get(v[0]);
+          return row&&row.owner_id===v[1]?{...row}:null;
+        }
         if(sql.includes('FROM forge_candidates')&&sql.includes('source_url = ?')){
           const row=[...db.rows.values()].find(x=>x.owner_id===v[0]&&x.source_url===v[1]&&x.version===v[2]);
           return row?{...row}:null;
