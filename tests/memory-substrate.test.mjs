@@ -47,7 +47,7 @@ test('rejects malformed confidence, status, sensitivity and timestamps', () => {
     { sensitivity: 'top-secret' },
     { updatedAt: 'not-a-date' },
     { updatedAt: '2026-11-14T10:00:00.000Z' },
-    { expiresAt: '2026-11-15T11:30:00.000Z' },
+    { expiresAt: '2026-11-15T10:30:00.000Z' },
   ]) {
     assert.throws(() => validateMemoryRecord(record(overrides), now));
   }
