@@ -71,7 +71,7 @@ test('AG-UI endpoint streams model deltas as ordered protocol 1.0 events',async(
     },
   });
   assert.equal(response.status,200);
-  assert.match(response.headers.get('content-type'),/text\/event-stream/);
+  assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const events=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.deepEqual(events.map(event=>event.type),[
     'RUN_STARTED','TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END','RUN_FINISHED',
@@ -89,7 +89,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
     env:{...envBase,AI:{async run(){throw new Error('private provider secret must not leak');}}},
   });
   assert.equal(response.status,502);
-  assert.match(response.headers.get('content-type'),/text\\/event-stream/);
+  assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
   const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
