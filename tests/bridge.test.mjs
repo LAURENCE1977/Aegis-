@@ -122,15 +122,14 @@ test('MCP endpoint rejects missing protocol metadata', async () => {
   assert.equal(response.status, 400);
 });
 
-test('MCP endpoint returns 202 for accepted notifications without a response body', async () => {
+test('MCP Streamable HTTP rejects client notifications that are not supported by this transport revision', async () => {
   const requestBody = {
     jsonrpc: '2.0',
     method: 'notifications/cancelled',
     params: { requestId: 99, _meta: meta() },
   };
   const response = await onRequestPost({ request: mcpRequest(requestBody), env });
-  assert.equal(response.status, 202);
-  assert.equal(await response.text(), '');
+  assert.equal(response.status, 400);
 });
 
 test('MCP endpoint rejects oversized requests', async () => {
