@@ -1,4 +1,4 @@
-import { authConfigAvailable, isAuthorized } from "../lib/auth.mjs";
+import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
 import { buildSkillContext } from "../lib/skills.mjs";
 
 const MAX_HISTORY = 10;
@@ -12,6 +12,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   if (!authConfigAvailable(env)) return json({ error: "Authentication is not configured." }, 503);
   if (!(await isAuthorized(request, env))) return json({ error: "Authentication required." }, 401);
+  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Invalid request" }, 400); }
