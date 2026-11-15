@@ -44,6 +44,9 @@ export async function onRequestPost({ request, env }) {
     const workspace = await createWorkspace(env.AEGIS_DB, OWNER_ID, body);
     return jsonResponse({ workspace }, 201);
   } catch (error) {
-    return jsonResponse({ error: "Workspace details are invalid." }, 400);
+    if (error instanceof TypeError) {
+      return jsonResponse({ error: "Workspace details are invalid." }, 400);
+    }
+    return jsonResponse({ error: "Workspace could not be saved." }, 503);
   }
 }
