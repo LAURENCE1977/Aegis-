@@ -106,6 +106,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
         let buffer = "";
         let outputLength = 0;
         let finished = false;
+        let cancelled = false;
 
         const emitText = (delta) => {
           if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
@@ -156,6 +157,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
             buffer += decoder.decode(value, { stream: true });
             drainFrames();
             if (outputLength >= MAX_OUTPUT) {
+              cancelled = true;
               await reader.cancel("AEGIS response size limit reached");
               break;
             }
@@ -163,7 +165,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
           buffer += decoder.decode();
           drainFrames(true);
           controller.enqueue(encoder.encode(encodeAgUiSse(
-            createTextRunFinishEvents({ threadId, runId }),
+            createTextRunFinishEvents({ threadId, runId, outcome: cancelled ? 'cancelled' : undefined }),
           )));
           controller.close();
         } catch {
