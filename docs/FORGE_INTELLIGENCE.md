@@ -189,3 +189,22 @@ The upstream four personas (code reviewer, test engineer, security auditor, web-
 If an Android client becomes a real delivery target, evaluate a narrow isolated device-host adapter rather than embedding CoreDeck. Keep ADB and signing operations behind action-level capability policy, disposable test devices/accounts, explicit approvals for consequential actions, encrypted key references and redacted audit logs. Capture emulator/device logs and test evidence without exposing private signing material.
 
 Before use, pin the exact release/commit and verify checksums, bundled dependency licences, update path, telemetry and host-process security. No CoreDeck software has been installed or connected.
+
+## New Forge candidates — browser, code graph, model routing and media
+
+### Vercel agent-browser
+Treat https://github.com/vercel-labs/agent-browser as an optional isolated browser-worker adapter. Apache-2.0 Rust CLI with accessibility-tree snapshots, element references, screenshots and stdio MCP. It requires a host runtime and Chrome; it is not a Cloudflare Worker or iOS Safari automation library. Before use, isolate the browser profile and host, enforce domain/action policies, require approvals for consequential actions and treat page content as untrusted. The repository has no published SECURITY.md, so review source before execution.
+
+### Code Review Graph
+https://github.com/tirth8205/code-review-graph is a high-priority optional engineering intelligence adapter: MIT, local SQLite/Tree-sitter graph, CLI/MCP, impact analysis, risk-scored reviews and multi-repository context. Evaluate on AEGIS itself and measure actual review accuracy/context savings. Use installer dry-run and inspect changes; keep graph read-only initially. It is not canonical memory or job state.
+
+### FlashML FreeToken
+https://github.com/FlashML-org/FreeToken is an Apache-2.0 local inference engine, not a free hosted API token service. Its CLI currently expects Linux x86_64 and NVIDIA/CUDA hardware; Windows/Linux desktop downloads are listed. Consider only as a future local-model provider on a capable GPU host. It does not solve Chromebook/iPad compute.
+
+### 9Router
+https://github.com/Raisolah/9router is a possible model-router reference, but security hold. Public advisories describe critical unauthenticated provider/key/history exposure in <=0.4.41 and a separate high-severity Host-header auth bypass/SSRF flaw before 0.5.2. Later releases do not remove the need to audit the exact fork/commit and reproduce fixes. Do not connect personal/production credentials. AEGIS retains its own provider router and policy authority.
+
+### OpenCut
+https://github.com/OpenCut-app/OpenCut is an MIT video-editor project being rewritten with planned Editor API, MCP and headless automation. These are roadmap items, not current proven interfaces. Archive opencut-classic is read-only. Keep it as a future Media Studio reference, not a current core dependency.
+
+No candidate has been installed or connected. All are provenance-tracked research only.
