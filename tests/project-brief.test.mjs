@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildProjectBrief } from '../functions/lib/project-brief.mjs';
 
 const workspace={
-  id:'project-a',name:'AEGIS Core',description:'Build a safe personal AI operating system.',
+  id:'project-a',ownerId:'owner',name:'AEGIS Core',description:'Build a safe personal AI operating system.',
   status:'active',createdAt:'2026-11-15T10:00:00.000Z',updatedAt:'2026-11-15T12:00:00.000Z',
 };
 const memory=(overrides={})=>({
