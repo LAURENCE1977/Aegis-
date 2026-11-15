@@ -121,3 +121,42 @@ test('correction endpoint rejects unauthenticated and unknown-target requests',a
   });
   assert.equal(missing.status,404);
 });
+
+
+test('project-scoped corrections retain the exact project boundary',async()=>{
+  const db=new CorrectionD1();const env={...envBase,AEGIS_DB:db};
+  const created=await createMemory({request:await req('/api/memories',{method:'POST',body:{
+    projectId:'project-a',kind:'decision',content:'Original project decision.',
+    source:{type:'user-stated',url:'https://aegis.example/source',attribution:'Owner statement'},
+  }}),env});
+  const old=(await created.json()).memory;
+  await reviewMemory({
+    request:await req('/api/memories/'+old.id,{method:'PATCH',body:{status:'accepted',projectId:'project-a'}}),
+    env,params:{id:old.id},
+  });
+  const wrongScope=await correctMemory({
+    request:await req('/api/memories/'+old.id+'/corrections?projectId=wrong-project',{method:'POST',body:{content:'Wrong-scope replacement'}}),
+    env,params:{id:old.id},
+  });
+  assert.equal(wrongScope.status,404);
+  const correction=await correctMemory({
+    request:await req('/api/memories/'+old.id+'/corrections?projectId=project-a',{method:'POST',body:{content:'Correct project decision.'}}),
+    env,params:{id:old.id},
+  });
+  assert.equal(correction.status,201);
+  assert.equal((await correction.json()).memory.projectId,'project-a');
+});
+
+test('a second pending correction is rejected rather than creating competing replacements',async()=>{
+  const db=new CorrectionD1();const env={...envBase,AEGIS_DB:db};
+  const created=await createMemory({request:await req('/api/memories',{method:'POST',body:{
+    kind:'fact',content:'Original fact.',
+    source:{type:'user-stated',url:'https://aegis.example/source',attribution:'Owner statement'},
+  }}),env});
+  const old=(await created.json()).memory;
+  await reviewMemory({request:await req('/api/memories/'+old.id,{method:'PATCH',body:{status:'accepted'}}),env,params:{id:old.id}});
+  const first=await correctMemory({request:await req('/api/memories/'+old.id+'/corrections',{method:'POST',body:{content:'First correction.'}}),env,params:{id:old.id}});
+  assert.equal(first.status,201);
+  const second=await correctMemory({request:await req('/api/memories/'+old.id+'/corrections',{method:'POST',body:{content:'Competing correction.'}}),env,params:{id:old.id}});
+  assert.equal(second.status,409);
+});
