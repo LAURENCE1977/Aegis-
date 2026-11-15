@@ -161,5 +161,5 @@ test('Forge candidate review UI exposes owner audit history without rendering HT
 
 test('Forge candidate cards expose their append-only audit history', () => {
   assert.match(html, /controlApi\('\/api\/forge\/candidates\/'\s*\+\s*encodeURIComponent\(candidate\.id\)\s*\+\s*'\/events'/);
-  assert.match(html, /candidateHistory\.textContent/);
+  assert.match(html, /history\.textContent\s*=\s*error\.message/);
 });
