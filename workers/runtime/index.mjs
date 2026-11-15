@@ -1,3 +1,4 @@
+import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -400,9 +401,12 @@ async function processJob(message, env) {
 export default {
   fetch: handleRuntimeFetch,
   async queue(batch, env) {
-    for (const message of batch.messages) await processJob(message, env);
+    for (const message of batch.messages) {
+      if (message?.body?.agentRunId) await processAgentRun(message, env);
+      else await processJob(message, env);
+    }
   },
   scheduled(_controller, env, context) {
-    context.waitUntil(dispatchPending(env));
+    context.waitUntil(Promise.all([dispatchPending(env), dispatchAgentRuns(env)]));
   },
 };
