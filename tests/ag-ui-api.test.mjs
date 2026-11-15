@@ -208,3 +208,21 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
   assert.equal(captured.url,'https://workspace-123.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions');
   assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
 });
+
+test('AG-UI marks a response stopped by the output safety cap as cancelled, not successful',async()=>{
+  let cancelled=false;
+  const largeStream=new ReadableStream({
+    start(controller){controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({response:'x'.repeat(12001)})+'\\n\\n'));}
+    ,cancel(){cancelled=true;}
+  });
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{...envBase,AI:{async run(){return largeStream;}}},
+  });
+  const events=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  const text=events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta).join('');
+  assert.equal(text.length,12000);
+  assert.equal(events.at(-1).type,'RUN_FINISHED');
+  assert.equal(events.at(-1).outcome,'cancelled');
+  assert.equal(cancelled,true);
+});
