@@ -31,6 +31,7 @@ function mapCandidateRow(row) {
     dependencies: parseJson(row.dependencies_json, 'dependencies'),
     evidence: parseJson(row.evidence_json, 'evidence'),
     metadata: parseJson(row.metadata_json, 'metadata'),
+    fullName: parseJson(row.metadata_json, 'metadata').fullName ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
