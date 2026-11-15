@@ -41,7 +41,7 @@ test('chat UI uses the authenticated AG-UI 1.0 transport rather than the legacy 
 
 
 test('AG-UI frontend parser splits real SSE frame boundaries', () => {
-  assert.match(html, /body\.split\(\/\\r\?\\n\\r\?\\n\/\)/);
+  assert.match(html, /const match = \/\\r\?\\n\\r\?\\n\/\.exec\(buffer\)/);
   assert.match(html, /frame\.split\(\/\\r\?\\n\/\)/);
 });
 
