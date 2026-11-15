@@ -205,3 +205,10 @@ The Capability System is not production-ready until tests demonstrate:
 ## 14. Explicit non-goals
 
 The Capability System is not an automatic installer, a marketplace trust badge, a general shell, an unrestricted browser agent, an agent self-permission system, a second workflow engine or a promise that every MCP server is safe. It does not make external code trustworthy by wrapping it in an adapter. Security review, isolation and least privilege remain mandatory.
+
+
+### Durable exact-operation approval records v0.1
+
+A D1 migration and repository module now define the persistence boundary for one-time human approvals. Requests are bound to principal, capability ID/version, action ID, exact resource, optional connection ID and a SHA-256 digest of the normalized operation input. Requests expire within a bounded 15-minute window. Decisions can transition only a pending, unexpired request to approved or denied. Consumption is a single conditional SQL UPDATE with RETURNING, binding every operation field and changing approved to consumed atomically; concurrent consumers and replays cannot both succeed.
+
+**Current implementation boundary:** storage primitives and migration only. They are not yet wired to an authenticated request/decision API, UI, policy evaluator or invocation runtime. No user approval can be created or exercised through the deployed application yet. The eventual decision endpoint must be restricted to the authenticated owner, show a human-readable exact-operation preview, re-derive the input digest server-side, and never trust a browser-supplied approval binding. The execution path must consume the record immediately before the side effect and persist an invocation/audit event. Expired pending rows require periodic cleanup/retention policy; cleanup must never turn an expired request into an approval.
