@@ -135,10 +135,10 @@ async function submitJob(request, env) {
   if (row.status === 'pending_dispatch') {
     try {
       await env.JOBS.send({ jobId: row.id });
-      await env.DB.prepare(
-        "UPDATE jobs SET status = 'queued', updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
+      const updated = await env.DB.prepare(
+        "UPDATE jobs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
       ).bind(new Date().toISOString(), row.id).run();
-      await audit(env, row.id, 'queued');
+      if (updated.meta?.changes) await audit(env, row.id, 'queued');
     } catch {
       // The scheduled outbox sweep will dispatch this persisted job later.
     }
