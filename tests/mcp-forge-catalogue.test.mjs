@@ -91,3 +91,12 @@ test('rejects oversized metadata and duplicate action identifiers', () => {
     actions: [record.actions[0], record.actions[0]],
   }), /duplicate/i);
 });
+test('rejects blank, oversized and control-character metadata', () => {
+  for (const patch of [
+    { name: '   ' },
+    { description: 'x'.repeat(2001) },
+    { description: 'metadata\nwith hidden control character' },
+  ]) {
+    assert.throws(() => validateMcpServerRecord({ ...record, ...patch }));
+  }
+});
