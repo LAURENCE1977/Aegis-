@@ -150,7 +150,7 @@ test('workspace creation rejects cross-origin requests and unknown fields', asyn
   assert.equal(db.spaces.size, 0);
 });
 
-test('workspace detail and timeline return only the owner's project data', async () => {
+test("workspace detail and timeline return only the owner's project data", async () => {
   const db = new MemoryD1();
   const created = await createWorkspacePost({
     request: await authenticatedRequest('/api/workspaces', {
