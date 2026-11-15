@@ -154,6 +154,7 @@
       </section>
       <section class="memory-panel" id="memorySection" hidden>
         <h2>My AEGIS memory</h2>
+        <button class="secondary" id="exportMemoriesBtn" type="button">Export this scope</button>
         <p class="memory-help">New memories are saved as candidates. They only become trusted recall after you approve them. This area needs the AEGIS D1 memory store to be connected.</p>
         <form class="memory-form" id="memoryForm">
           <select id="memoryProjectSelect" aria-label="Memory Project Space"><option value="">Personal memory</option></select>
@@ -202,6 +203,7 @@
     const memoryContent = document.getElementById('memoryContent');
     const saveMemoryBtn = document.getElementById('saveMemoryBtn');
     const memoryStatus = document.getElementById('memoryStatus');
+    const exportMemoriesBtn = document.getElementById('exportMemoriesBtn');
     const memoryList = document.getElementById('memoryList');
 
     const STORE_KEY = 'aegis_chat_v1';
@@ -467,6 +469,37 @@
     }
 
     memoryProjectSelect.addEventListener('change', loadMemories);
+
+    exportMemoriesBtn.addEventListener('click', async () => {
+      exportMemoriesBtn.disabled = true;
+      memoryStatus.textContent = 'Preparing your memory export…';
+      const scope = '?projectId=' + encodeURIComponent(memoryProjectSelect.value);
+      try {
+        const response = await fetch('/api/memories/export' + scope, { cache: 'no-store' });
+        if (response.status === 401) {
+          showLogin('Your session has expired. Sign in again.');
+          throw new Error('Session expired.');
+        }
+        if (!response.ok) {
+          let data = {};
+          try { data = await response.json(); } catch (error) {}
+          throw new Error(data.error || ('Export failed: ' + response.status));
+        }
+        const objectUrl = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'aegis-memory-export.json';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        memoryStatus.textContent = 'Memory export prepared. Keep the downloaded file somewhere private.';
+      } catch (error) {
+        memoryStatus.textContent = error.message;
+      } finally {
+        exportMemoriesBtn.disabled = false;
+      }
+    });
 
     memoryForm.addEventListener('submit', async event => {
       event.preventDefault();
