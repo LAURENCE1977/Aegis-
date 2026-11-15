@@ -82,6 +82,16 @@ Do not introduce a second agent runtime or second memory store. AEGIS remains au
 5. Add typed UI action and approval events through Sentinel.
 6. Only then compare a thin CopilotKit React client against the native PWA and decide whether its UI components justify a controlled migration.
 
-## Status
+## Implemented native slice
 
-Architecture decision recorded. This document does not claim an AG-UI endpoint, CopilotKit client or protocol implementation exists yet. No production changes or new infrastructure have been made.
+- `functions/lib/ag-ui.mjs` emits a bounded AG-UI 1.0 text-run lifecycle and encodes allowlisted event frames as SSE.
+- Authenticated `POST /api/ag-ui` accepts a bounded protocol 1.0 run containing plain-text user/assistant messages and returns RUN_STARTED, TEXT_MESSAGE_START, TEXT_MESSAGE_CONTENT, TEXT_MESSAGE_END and RUN_FINISHED events.
+- The existing mobile PWA chat now sends AG-UI 1.0 runs and parses the SSE lifecycle; it no longer calls the legacy `/api/ask` JSON route directly.
+- It reuses the existing signed-session authentication, same-origin check and AEGIS `/api/ask` path, so approved memory and registered skill context remain part of the canonical assistant.
+- Frontend tools, ambient context, resume, multimodal messages and arbitrary state are explicitly rejected until their server-side policy and lifecycle semantics exist. The endpoint cannot execute tools.
+- Event types, identifiers, message size, body size and serialized event size are bounded. Only the five implemented event types can be emitted by the encoder.
+- Latest branch head `26e96f593313441bfadc100a8bba114a537097b6` passed GitHub Actions run 43743243590: **212 tests, 0 failures** (Node.js 22): https://github.com/LAURENCE1977/Aegis-/actions/runs/43743243590.
+
+## Status and limitations
+
+This is a native protocol adapter, not an installed CopilotKit client. No CopilotKit package, React migration, cloud service, account or upstream code has been added. No production deployment or infrastructure change has occurred. The current route performs a complete text response then emits the protocol lifecycle; token-by-token streaming, durable run resume, shared state, generative UI, frontend tool calls and Sentinel-bound approval events remain future work. It is a first compatibility slice, not full AG-UI conformance.
