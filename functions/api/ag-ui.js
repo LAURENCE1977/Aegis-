@@ -1,10 +1,18 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
-import { createTextRunEvents, createAgUiSseResponse } from "../lib/ag-ui.mjs";
-import { onRequestPost as ask } from "./ask.js";
+import { buildAskMessages } from "./ask.js";
+import {
+  createTextRunStartEvents,
+  createTextRunContentEvent,
+  createTextRunFinishEvents,
+  createTextRunErrorEvent,
+  encodeAgUiSse,
+} from "../lib/ag-ui.mjs";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
+const MAX_OUTPUT = 12000;
+const MODEL = "@cf/meta/llama-3.3-70b-instruct";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -16,6 +24,7 @@ export async function onRequestPost(context) {
   if (!authConfigAvailable(env)) return json({ error: "Authentication is not configured." }, 503);
   if (!(await isAuthorized(request, env))) return json({ error: "Authentication required." }, 401);
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
+  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "No AI provider configured." }, 503);
 
   let bodyText;
   try { bodyText = await readBoundedBody(request, MAX_BODY_BYTES); }
@@ -36,48 +45,132 @@ export async function onRequestPost(context) {
     return json({ error: "The final AG-UI message must contain a user question." }, 400);
   }
 
-  // Validate run/thread identifiers before invoking the model.
+  let startEvents;
   try {
-    createTextRunEvents({ threadId: input.threadId, runId: input.runId, message: "" });
+    startEvents = createTextRunStartEvents({ threadId: input.threadId, runId: input.runId });
   } catch {
     return json({ error: "Invalid AG-UI thread or run identifier." }, 400);
   }
 
-  const history = messages.slice(0, -1).slice(-10).map(message => ({
-    role: message.role,
-    content: message.content,
-  }));
-  const askHeaders = new Headers(request.headers);
-  askHeaders.set("Content-Type", "application/json");
-  askHeaders.delete("Content-Length");
-  const askRequest = new Request(new URL("/api/ask", request.url), {
-    method: "POST",
-    headers: askHeaders,
-    body: JSON.stringify({ question: latest.content, history }),
+  let modelStream;
+  try {
+    const history = messages.slice(0, -1).slice(-10);
+    const promptMessages = await buildAskMessages(env, latest.content, history);
+    modelStream = await env.AI.run(MODEL, {
+      messages: promptMessages,
+      max_tokens: 1024,
+      stream: true,
+    });
+  } catch {
+    return json({ error: "The AI could not start this run. Please try again." }, 502);
+  }
+  if (!modelStream || typeof modelStream.getReader !== "function") {
+    return json({ error: "The AI provider did not return a readable stream." }, 502);
+  }
+
+  return createStreamingAgUiResponse(modelStream, {
+    threadId: input.threadId,
+    runId: input.runId,
+    startEvents,
+  });
+}
+
+function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents }) {
+  const encoder = new TextEncoder();
+  let reader;
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(encodeAgUiSse(startEvents)));
+      reader = modelStream.getReader();
+      (async () => {
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let outputLength = 0;
+        let finished = false;
+
+        const emitText = (delta) => {
+          if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
+          const bounded = delta.slice(0, MAX_OUTPUT - outputLength);
+          if (!bounded) return;
+          outputLength += bounded.length;
+          controller.enqueue(encoder.encode(encodeAgUiSse([
+            createTextRunContentEvent({ runId, delta: bounded }),
+          ])));
+        };
+
+        const processFrame = (frame) => {
+          const data = frame.split(/\r?\n/)
+            .filter(line => line.startsWith("data:"))
+            .map(line => line.slice(5).trimStart())
+            .join("\n");
+          if (!data) return;
+          if (data.trim() === "[DONE]") { finished = true; return; }
+          let payload;
+          try { payload = JSON.parse(data); } catch { return; }
+          const delta = typeof payload.response === "string"
+            ? payload.response
+            : typeof payload.choices?.[0]?.delta?.content === "string"
+              ? payload.choices[0].delta.content
+              : "";
+          emitText(delta);
+        };
+
+        const drainFrames = (flush = false) => {
+          while (true) {
+            const match = /\r?\n\r?\n/.exec(buffer);
+            if (!match) break;
+            const index = match.index;
+            processFrame(buffer.slice(0, index));
+            buffer = buffer.slice(index + match[0].length);
+            if (finished) break;
+          }
+          if (flush && buffer.trim()) {
+            processFrame(buffer);
+            buffer = "";
+          }
+        };
+
+        try {
+          while (!finished) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            drainFrames();
+            if (outputLength >= MAX_OUTPUT) {
+              await reader.cancel("AEGIS response size limit reached");
+              break;
+            }
+          }
+          buffer += decoder.decode();
+          drainFrames(true);
+          controller.enqueue(encoder.encode(encodeAgUiSse(
+            createTextRunFinishEvents({ threadId, runId }),
+          )));
+          controller.close();
+        } catch {
+          try {
+            controller.enqueue(encoder.encode(encodeAgUiSse([
+              createTextRunErrorEvent({ message: "The AI stream ended unexpectedly." }),
+            ])));
+            controller.close();
+          } catch {}
+        } finally {
+          try { reader.releaseLock(); } catch {}
+        }
+      })();
+    },
+    cancel(reason) {
+      return reader?.cancel(reason);
+    },
   });
 
-  const answer = await ask({ request: askRequest, env });
-  if (!answer.ok) return answer;
-
-  let result;
-  try { result = await answer.json(); }
-  catch { return json({ error: "The AEGIS agent returned an invalid response." }, 502); }
-
-  const text = typeof result.response === "string" ? result.response
-    : typeof result.answer === "string" ? result.answer
-      : typeof result.result?.response === "string" ? result.result.response
-        : null;
-  if (text === null) return json({ error: "The AEGIS agent returned no text response." }, 502);
-
-  try {
-    return createAgUiSseResponse(createTextRunEvents({
-      threadId: input.threadId,
-      runId: input.runId,
-      message: text.slice(0, 12000),
-    }));
-  } catch {
-    return json({ error: "The AEGIS agent response could not be encoded." }, 502);
-  }
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
 
 function validateRunInput(input) {
