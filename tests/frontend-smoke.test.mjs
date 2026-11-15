@@ -99,3 +99,13 @@ test('chat sends only the explicitly selected Project Space context', () => {
   assert.match(html, /loadChatProjects\(\)/);
   assert.match(html, /option\.value\s*=\s*workspace\.id/);
 });
+
+
+test('chat and memory controls expose the selected Project Space scope end to end', () => {
+  assert.match(html, /id="chatProjectSelect"/);
+  assert.match(html, /id="memoryProjectSelect"/);
+  assert.match(html, /projectId:\s*chatProjectSelect\.value\s*\|\|\s*undefined/);
+  assert.match(html, /projectId:\s*memoryProjectSelect\.value\s*\|\|\s*undefined/);
+  assert.match(html, /projectId:\s*memory\.projectId\s*\|\|\s*null/);
+  assert.match(html, /encodeURIComponent\(memory\.projectId\)/);
+});
