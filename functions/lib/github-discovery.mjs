@@ -177,7 +177,8 @@ export async function inspectGitHubRepository(sourceUrl, fetchImpl = fetch) {
       typeof data.sha !== 'string' || !/^[a-f0-9]{40,64}$/i.test(data.sha)) {
     throw new GitHubSourceError('GitHub returned an invalid repository tree.', 502);
   }
-  const files = data.tree.filter(isInspectableTreeEntry).slice(0, MAX_SOURCE_FILES).map(entry => ({
+  const inspectable = data.tree.filter(isInspectableTreeEntry).sort((a, b) => a.path.localeCompare(b.path));
+  const files = inspectable.slice(0, MAX_SOURCE_FILES).map(entry => ({
     path: entry.path,
     sha: entry.sha,
     size: entry.size,
@@ -185,7 +186,7 @@ export async function inspectGitHubRepository(sourceUrl, fetchImpl = fetch) {
   return {
     ...repository,
     treeSha: data.sha,
-    truncated: Boolean(data.truncated) || data.tree.filter(isInspectableTreeEntry).length > MAX_SOURCE_FILES,
+    truncated: Boolean(data.truncated) || inspectable.length > MAX_SOURCE_FILES,
     files,
   };
 }
