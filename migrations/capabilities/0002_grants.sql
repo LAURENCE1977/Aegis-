@@ -15,9 +15,12 @@ CREATE TABLE IF NOT EXISTS capability_grants (
   CHECK (
     (status = 'active' AND revoked_at IS NULL) OR
     (status = 'revoked' AND revoked_at IS NOT NULL)
-  ),
-  UNIQUE (principal_id, capability_id, capability_version, resource_id)
+  )
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_capability_grants_active_unique
+  ON capability_grants (principal_id, capability_id, capability_version, resource_id)
+  WHERE status = 'active';
 
 CREATE INDEX IF NOT EXISTS idx_capability_grants_lookup
   ON capability_grants (principal_id, capability_id, capability_version, resource_id, status, expires_at);
