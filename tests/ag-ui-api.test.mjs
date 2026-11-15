@@ -104,8 +104,8 @@ test('AG-UI stream parser handles provider frames split across arbitrary network
       AI:{async run(){return modelSseStream([
         'data: {"res',
         'ponse":"split',
-        ' frame"}\\n\\n',
-        'data: [DONE]\\n\\n',
+        ' frame"}\n\n',
+        'data: [DONE]\n\n',
       ]);}},
     },
   });
@@ -114,10 +114,15 @@ test('AG-UI stream parser handles provider frames split across arbitrary network
 });
 
 test('AG-UI reports a safe terminal error if the provider stream breaks mid-run',async()=>{
+  let sent = false;
   const brokenStream=new ReadableStream({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode('data: {"response":"partial"}\\n\\n'));
-      controller.error(new Error('provider internals must not leak'));
+    pull(controller) {
+      if (!sent) {
+        sent = true;
+        controller.enqueue(new TextEncoder().encode('data: {"response":"partial"}\n\n'));
+      } else {
+        controller.error(new Error('provider internals must not leak'));
+      }
     },
   });
   const response=await onRequestPost({
