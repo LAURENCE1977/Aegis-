@@ -91,3 +91,8 @@ test('rejects oversized metadata and duplicate action identifiers', () => {
     actions: [record.actions[0], record.actions[0]],
   }), /duplicate/i);
 });
+
+
+test('accepts ordinary names containing letters used in control-character escape notation', () => {
+  assert.equal(validateMcpServerRecord({ ...record, name: 'Public documentation lookup' }), true);
+});
