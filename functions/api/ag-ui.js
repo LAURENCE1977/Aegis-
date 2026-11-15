@@ -24,7 +24,6 @@ export async function onRequestPost(context) {
   if (!authConfigAvailable(env)) return json({ error: "Authentication is not configured." }, 503);
   if (!(await isAuthorized(request, env))) return json({ error: "Authentication required." }, 401);
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
-  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "No AI provider configured." }, 503);
 
   let bodyText;
   try { bodyText = await readBoundedBody(request, MAX_BODY_BYTES); }
@@ -51,6 +50,8 @@ export async function onRequestPost(context) {
   } catch {
     return json({ error: "Invalid AG-UI thread or run identifier." }, 400);
   }
+
+  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "No AI provider configured." }, 503);
 
   let modelStream;
   try {
