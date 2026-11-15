@@ -803,14 +803,14 @@
           const historyButton = document.createElement('button');
           historyButton.type = 'button';
           historyButton.className = 'secondary';
-          historyButton.textContent = 'Review candidateHistory';
+          historyButton.textContent = 'Review history';
           historyButton.addEventListener('click', async () => {
-            const existing = item.querySelector('.candidate-candidateHistory');
+            const existing = item.querySelector('.candidate-history');
             if (existing) { existing.remove(); return; }
             const candidateHistory = document.createElement('ol');
-            candidateHistory.className = 'candidate-candidateHistory memory-candidateHistory';
+            candidateHistory.className = 'candidate-history memory-history';
             const loading = document.createElement('li');
-            loading.textContent = 'Loading review candidateHistory…';
+            loading.textContent = 'Loading review history…';
             candidateHistory.append(loading);
             item.append(candidateHistory);
             try {
@@ -826,7 +826,7 @@
               });
               if (!candidateHistory.children.length) {
                 const empty = document.createElement('li');
-                empty.textContent = 'No review candidateHistory recorded.';
+                empty.textContent = 'No review history recorded.';
                 candidateHistory.append(empty);
               }
             } catch (error) {
