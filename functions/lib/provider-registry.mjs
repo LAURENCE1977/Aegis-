@@ -18,7 +18,7 @@ function validTimestamp(value, label) {
   const time = Date.parse(value);
   if (typeof value !== 'string' || !Number.isFinite(time) ||
       new Date(time).toISOString() !== value) {
-    throw new TypeError('Invalid ' + label + ' timestamp');
+    throw new TypeError('Invalid verified provider timestamp');
   }
   return time;
 }
@@ -49,7 +49,7 @@ export function validateProviderRegistry(registry) {
       Object.keys(registry).some(key => !['version', 'providers'].includes(key)) ||
       registry.version !== 1 || !Array.isArray(registry.providers) ||
       registry.providers.length < 1 || registry.providers.length > 100) {
-    throw new TypeError('Invalid provider registry');
+    throw new TypeError('Invalid provider registry: providers must be a non-empty array');
   }
   const providerIds = new Set();
   const modelIds = new Set();
