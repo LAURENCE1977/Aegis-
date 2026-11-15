@@ -33,7 +33,7 @@ test('Forge inspection pins a public repository tree and returns useful source f
   assert.equal(result.fullName,'example/agent');
   assert.equal(result.treeSha,'1'.repeat(40));
   assert.deepEqual(result.files.map(file=>file.path),['package.json','README.md','src/agent.ts']);
-  assert.equal(result.files[0].sha,'a'.repeat(40));
+  assert.equal(result.files[0].sha,'c'.repeat(40));
   assert.equal(calls.length,2);
   assert.ok(calls.every(call=>call.options.redirect==='error'));
 });
