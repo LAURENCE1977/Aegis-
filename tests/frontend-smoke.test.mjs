@@ -40,6 +40,12 @@ test('chat UI uses the authenticated AG-UI 1.0 transport rather than the legacy 
 });
 
 
+
+test('chat UI reads AG-UI RUN_ERROR frames returned before a run stream begins', () => {
+  assert.match(html, /content-type'\) \|\| ''\)\.includes\('text\/event-stream'\)/);
+  assert.match(html, /await readAgUiReply\(res\)/);
+});
+
 test('AG-UI frontend parser splits real SSE frame boundaries', () => {
   assert.match(html, /const match = \/\\r\?\\n\\r\?\\n\/\.exec\(buffer\)/);
   assert.match(html, /frame\.split\(\/\\r\?\\n\/\)/);
