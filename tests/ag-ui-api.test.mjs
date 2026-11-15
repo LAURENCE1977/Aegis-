@@ -179,3 +179,32 @@ test('AG-UI rejects invalid or non-owned Project Space context before model acce
   });
   assert.equal(missing.status,404);
 });
+
+
+test('AG-UI streams Qwen deltas only when the owner explicitly selects the configured provider',async()=>{
+  let captured;
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{
+      ...envBase,
+      AEGIS_MODEL_PROVIDER:'alibaba-qwen',
+      AEGIS_QWEN_API_KEY:'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID:'workspace-123',
+      AEGIS_QWEN_REGION:'ap-southeast-1',
+      AEGIS_QWEN_MODEL:'qwen3.8-flash',
+    },
+    fetchImpl:async(url,options)=>{
+      captured={url,options};
+      return new Response(modelSseStream([
+        'data: {"choices":[{"delta":{"content":"Qwen "}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"stream."}}]}\n\n',
+        'data: [DONE]\n\n',
+      ]),{status:200,headers:{'Content-Type':'text/event-stream'}});
+    },
+  });
+  assert.equal(response.status,200);
+  const events=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
+  assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['Qwen ','stream.']);
+  assert.equal(captured.url,'https://workspace-123.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions');
+  assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
+});
