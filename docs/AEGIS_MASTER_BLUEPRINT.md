@@ -680,3 +680,11 @@ The current production Pages configuration still shows the existing MEMORY KV an
 - The memory review panel exposes a per-record Delete permanently action with a browser confirmation. It does not provide a bulk delete.
 - Seven shared migrations have been exercised together in SQLite: Project Spaces, memory records, lifecycle audit, correction/supersession, Forge candidate registry, Forge licence gates and permanent memory purge. The purge test confirmed content-row removal, safe correction unlinking, retained tombstones and append-only event protection. This is local SQLite validation, not a live Cloudflare D1 migration.
 - Retention policy/automatic expiry cleanup remains future work. Cloudflare D1 has not been provisioned or bound; the feature remains preview-only.
+
+
+## 24. Memory purge verification — 15 November 2026
+
+- GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43747844597 passed **272/272 tests**, Node.js 22, at commit 9ad133444ac43d230db6dc42c451f7e77de6dabb.
+- Seven shared migrations were exercised in SQLite. The first attempt exposed a real migration defect: memory audit triggers still referenced the event table while it was being rebuilt. Migration 0007 now drops and recreates those triggers around the table swap.
+- Re-run confirmed: all seven migrations apply; owner/project constraints work; correction links are safely unlinked; the memory row is physically deleted; a minimal purged tombstone remains; the audit table remains append-only.
+- This is SQLite verification only. D1 remains unprovisioned/unbound; no live user memory was deleted and no production binding changed.
