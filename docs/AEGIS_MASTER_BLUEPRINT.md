@@ -423,3 +423,15 @@ The first native memory slice is on feature branch `feature/native-memory-substr
 This slice is an in-memory read model only. It is not persistent, not connected to chat or APIs, and does not authenticate callers. The authenticated API must derive owner identity from the signed AEGIS session and check Project Spaces membership. No embedding provider, model, GPU, computer-use agent, browser worker or external source code has been installed.
 
 Next sequence: verify tests on the final branch head; add D1-backed owner/project-scoped persistence and lifecycle audit; add authenticated API and review/correction controls; then integrate bounded retrieval into chat. Only after that should optional embeddings/reranking be benchmarked. Computer use remains blocked until an isolated worker, vault, Sentinel invocation path, approval UI and audit are wired end-to-end.
+
+
+### Native memory implementation update — 15 November 2026
+
+The first persistent-memory slice now includes:
+- D1 schema `migrations/memory/0001_memories.sql`.
+- D1 repository in `functions/lib/memory-substrate.mjs`, with exact owner/project scope enforced in SQL, lifecycle filtering and bounded lexical search.
+- Authenticated endpoints `/api/memories` and `/api/memories/:id` for candidate creation, search/list, detail and owner review/retraction.
+- New records are always candidates; only accepted and unexpired records enter ordinary retrieval.
+- Project memory is rejected unless the target is an active Project Space owned by the same deployment owner.
+
+The migration is **not applied** and D1 is **not provisioned or bound**. No production runtime is changed. The legacy KV notes endpoint is untouched. This is code and schema prepared for review, not a live persistent-memory deployment. Lifecycle event history, correction/supersession, retention/export/deletion, chat retrieval and UI remain subsequent slices.
