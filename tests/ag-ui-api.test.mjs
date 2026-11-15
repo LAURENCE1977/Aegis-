@@ -161,3 +161,21 @@ test('AG-UI endpoint bounds and validates run identifiers before model access',a
   });
   assert.equal(control.status,400);
 });
+
+
+test('AG-UI rejects invalid or non-owned Project Space context before model access',async()=>{
+  const invalid=await onRequestPost({
+    request:await request(input({projectId:'bad project id'})),
+    env:{...envBase,AI:{async run(){throw new Error('must not run');}}},
+  });
+  assert.equal(invalid.status,400);
+  const missing=await onRequestPost({
+    request:await request(input({projectId:'project-123'})),
+    env:{
+      ...envBase,
+      AEGIS_DB:{prepare(){return {bind(){return this;},async first(){return null;}};}},
+      AI:{async run(){throw new Error('must not run');}},
+    },
+  });
+  assert.equal(missing.status,404);
+});
