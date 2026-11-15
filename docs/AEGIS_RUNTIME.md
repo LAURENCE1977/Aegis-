@@ -142,3 +142,8 @@ CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
 The initial runtime branch test run completed with **82 tests passed, 0 failed**. Tests cover strict job validation, UUIDs, terminal states, auth fail-closed behavior, hostile Origin rejection, readiness checks, durable submission, idempotency, successful queue execution and a lease-recovery race regression. The regression failed against the old implementation (82 passed, 1 failed) and passed after the atomic-claim fix (83 passed, 0 failed). This is source-level test evidence, not a live Cloudflare integration test.
 
 Next: add D1/Queue integration tests against a disposable non-production environment, then provision and deploy only after the free-tier and resource configuration are checked.
+
+
+## Durable specialist agent orchestration
+
+The runtime now also supports authenticated `POST /v1/agent-runs` and `GET /v1/agent-runs/:id`. Runs are persisted in `agent_runs` with event history in `agent_run_events`, dispatched through the existing `JOBS` Queue, and recovered by the existing Cron outbox/lease sweep. Apply `migrations/runtime/0002_agent_runs.sql` after `0001_jobs.sql` to the same runtime D1 database. The first orchestration stage is deliberately plan-only: it validates a bounded objective and fixed specialist roles, creates a deterministic researcher/planner/engineer/security/reviewer plan, and invokes no model or tools. Every future execution step must pass through Sentinel and exact approval checks. See `docs/AEGIS_AGENT_ORCHESTRATION.md`. This source change is not deployed; no D1 migration or Cloudflare resource was applied.
