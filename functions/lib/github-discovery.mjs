@@ -203,7 +203,7 @@ export async function readGitHubBlob(sourceUrl, blobSha, fetchImpl = fetch) {
   if (!data || typeof data !== 'object' || data.sha?.toLowerCase() !== blobSha.toLowerCase() ||
       data.encoding !== 'base64' || !Number.isSafeInteger(data.size) ||
       data.size < 0 || data.size > MAX_SOURCE_FILE_BYTES || typeof data.content !== 'string') {
-    throw new GitHubSourceError('Source blob is invalid or exceeds the 32 KiB inspection limit.', 413);
+    throw new GitHubSourceError('Source blob size is invalid or exceeds the 32 KiB inspection limit.', 413);
   }
   let binary;
   try { binary = atob(data.content.replace(/\\s+/g, '')); }
