@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTextRunEvents, encodeAgUiSse } from '../functions/lib/ag-ui.mjs';
+import { createTextRunEvents, createTextRunFinishEvents, encodeAgUiSse } from '../functions/lib/ag-ui.mjs';
 
 test('text run emits the AG-UI 1.0 start, text and finish lifecycle in order', () => {
   const events=createTextRunEvents({
@@ -41,9 +41,8 @@ test('SSE encoding emits one JSON data frame per event and rejects invalid event
 });
 
 test('run finish can explicitly report a producer-cancelled outcome', () => {
-  const events=createTextRunEvents({threadId:'t',runId:'r',message:'partial',now:1});
-  const finish=events.at(-1);
-  finish.outcome='cancelled';
-  const encoded=encodeAgUiSse([finish]);
-  assert.equal(JSON.parse(encoded.trim().slice(6)).outcome,'cancelled');
+  const finish=createTextRunFinishEvents({threadId:'t',runId:'r',now:1,outcome:'cancelled'});
+  const encoded=encodeAgUiSse(finish);
+  assert.equal(JSON.parse(encoded.trim().split('\\n\\n').at(-1).slice(6)).outcome,'cancelled');
+  assert.throws(()=>createTextRunFinishEvents({threadId:'t',runId:'r',outcome:'mystery'}),/outcome/i);
 });
