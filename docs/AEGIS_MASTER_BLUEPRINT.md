@@ -669,3 +669,14 @@ Cloudflare Pages production deployment:
 Impact: a production redeploy did occur, but the two main-branch commits changed Markdown documentation only. No application source, functions, migrations, dependencies, secrets, permissions, D1 resources or runtime infrastructure were changed by those commits. The new AEGIS memory, Forge, AG-UI, Projects, Approvals and PWA code remains on the feature branch and was not included in that production deployment.
 
 The current production Pages configuration still shows the existing MEMORY KV and AI bindings, with no AEGIS_DB D1 binding. No new Cloudflare resources or secrets were created. Do not revert or redeploy production without explicit owner approval.
+
+
+## 23. Owner-controlled permanent memory purge — 15 November 2026
+
+- Added authenticated same-origin DELETE /api/memories/:id. The request requires an explicit confirmation body and exact owner/project scope.
+- Memory repository uses one transactional D1 batch: unlink any correction records that reference the target, then delete the selected memory row.
+- Migration 0007 rebuilds the lifecycle event table without a foreign key to memory rows and adds immutable supersession-unlinked and purged tombstone triggers.
+- The selected memory's content, provenance and row are removed from live D1. A minimal append-only audit record retains only memory ID, owner/project scope, prior/current lifecycle status and timestamp; it does not retain deleted content or source URL.
+- The memory review panel exposes a per-record Delete permanently action with a browser confirmation. It does not provide a bulk delete.
+- Seven shared migrations have been exercised together in SQLite: Project Spaces, memory records, lifecycle audit, correction/supersession, Forge candidate registry, Forge licence gates and permanent memory purge. The purge test confirmed content-row removal, safe correction unlinking, retained tombstones and append-only event protection. This is local SQLite validation, not a live Cloudflare D1 migration.
+- Retention policy/automatic expiry cleanup remains future work. Cloudflare D1 has not been provisioned or bound; the feature remains preview-only.
