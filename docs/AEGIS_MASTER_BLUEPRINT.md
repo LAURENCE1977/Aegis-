@@ -181,8 +181,10 @@ PR #4 contains the first isolated Worker source slice:
 2. D1 schema for durable job records and audit events.
 3. Queue-backed consumer.
 4. Cron outbox recovery for pending dispatches and expired leases.
-5. Attempt fencing and optional idempotency key.
+5. Attempt fencing and optional idempotency key. Attempt IDs are captured atomically with `UPDATE ... RETURNING attempts`, preventing a stale worker from adopting a newer attempt after lease recovery.
 6. Strict allowlist containing only a no-argument health-check task.
+
+PR #4 is open and mergeable (not merged). Latest implementation commit: `97a8e4ae2403024ef88c6d17eb7049bc863cd2b0`. Latest CI run `43725405757`: **83 tests passed, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The active Pages preview is `https://1e1ec7e7.aegis-6yk.pages.dev`; it does not deploy the Worker. Production Pages remains unchanged.
 
 Still missing:
 - Cloudflare D1/Queue resource provisioning and deployment.
