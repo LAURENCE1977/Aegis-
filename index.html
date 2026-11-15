@@ -146,6 +146,8 @@
         </form>
         <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
         <div id="forgeFileList" aria-live="polite"></div>
+        <h3>Saved source candidates</h3>
+        <div id="forgeCandidateList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
@@ -205,6 +207,7 @@
     const forgeInspectBtn = document.getElementById('forgeInspectBtn');
     const forgeStatus = document.getElementById('forgeStatus');
     const forgeFileList = document.getElementById('forgeFileList');
+    const forgeCandidateList = document.getElementById('forgeCandidateList');
     const forgeFilePreview = document.getElementById('forgeFilePreview');
     const forgePreviewTitle = document.getElementById('forgePreviewTitle');
     const workspaceSection = document.getElementById('workspaceSection');
@@ -558,7 +561,7 @@
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
-      if (panel === 'forge') forgeSourceUrl.focus();
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
@@ -748,6 +751,12 @@
           ' · ' + (repo.primaryLanguage || 'Language unknown') +
           (repo.archived ? ' · archived' : '') + (repo.truncated ? ' · tree truncated' : '');
         forgeFileList.append(summary);
+        const saveCandidate = document.createElement('button');
+        saveCandidate.type = 'button';
+        saveCandidate.id = 'forgeSaveCandidateBtn';
+        saveCandidate.textContent = 'Save pinned source as candidate';
+        saveCandidate.addEventListener('click', saveForgeCandidate);
+        forgeFileList.append(saveCandidate);
         (repo.files || []).forEach(file => {
           const item = document.createElement('article');
           item.className = 'workspace-card';
@@ -769,6 +778,57 @@
         forgeInspectBtn.disabled = false;
       }
     });
+
+    async function loadForgeCandidates() {
+      forgeCandidateList.replaceChildren();
+      try {
+        const data = await controlApi('/api/forge/candidates');
+        if (!Array.isArray(data.candidates) || !data.candidates.length) {
+          forgeCandidateList.textContent = 'No saved source candidates yet.';
+          forgeCandidateList.className = 'memory-empty';
+          return;
+        }
+        forgeCandidateList.className = '';
+        data.candidates.forEach(candidate => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const candidateNode = document.createElement('h3');
+          candidateNode.textContent = candidate.metadata.fullName;
+          const detail = document.createElement('p');
+          detail.textContent = candidate.status + ' · ' + candidate.decision +
+            ' · licence ' + candidate.licence.identifier + ' (' + candidate.licence.review + ')';
+          const pin = document.createElement('p');
+          pin.textContent = 'Pinned tree ' + candidate.version.slice(0, 12);
+          item.append(candidateNode, detail, pin);
+          forgeCandidateList.append(item);
+        });
+      } catch (error) {
+        forgeCandidateList.textContent = error.message.includes('not configured')
+          ? 'Candidate storage is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        forgeCandidateList.className = 'memory-empty';
+      }
+    }
+
+    async function saveForgeCandidate() {
+      if (!forgeRepository) return;
+      const button = document.getElementById('forgeSaveCandidateBtn');
+      if (button) button.disabled = true;
+      forgeStatus.textContent = 'Saving pinned source to the Forge library…';
+      try {
+        const result = await controlApi('/api/forge/candidates', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl: forgeRepository.sourceUrl }),
+        });
+        forgeStatus.textContent = result.created
+          ? 'Candidate saved. Licence review is still required; no code was executed.'
+          : 'This exact source revision is already saved in Forge.';
+        await loadForgeCandidates();
+      } catch (error) {
+        forgeStatus.textContent = error.message;
+        if (button) button.disabled = false;
+      }
+    }
 
     async function readForgeBlob(file) {
       if (!forgeRepository || !file?.sha) return;
