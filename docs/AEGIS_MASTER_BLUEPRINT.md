@@ -641,3 +641,12 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - Added shared migration migrations/shared/0006_forge_candidate_review.sql after 0005.
 - GitHub Actions run https://github.com/LAURENCE1977/Aegis-/actions/runs/43746614703: **258 tests passed, 0 failed**, Node.js 22, at code head bf76e3b81efd7be391e50d1fa43dcbb99744ec21.
 - No candidate has been legally verified by this automation; review is an explicit owner action. No code execution, package installation, deployment or production D1 change.
+
+
+### Optional Qwen provider adapter
+
+- AEGIS now has a provider-neutral streaming adapter with Workers AI as the unchanged default and Alibaba Qwen as an explicit optional provider.
+- Qwen routing requires server-side AEGIS_MODEL_PROVIDER=alibaba-qwen, an encrypted API-key secret, validated workspace ID, allowlisted region and optional model ID.
+- The endpoint is constructed from the validated workspace and region; arbitrary hosts are not accepted. There is no silent provider fallback.
+- Remote prompts, history and retrieved memory would be sent to the selected Model Studio region. This route is not enabled and no API key, workspace, paid plan or billing resource has been configured.
+- See docs/AEGIS_MODEL_PROVIDERS.md. Unit and integration tests cover provider selection, endpoint validation and error handling.
