@@ -199,7 +199,9 @@ async function processJob(message, env) {
     message.ack();
     return;
   }
-  await audit(env, jobId, 'running');
+  const claimedRow = await env.DB.prepare('SELECT attempts FROM jobs WHERE id = ?').bind(jobId).first();
+  const attempt = Number(claimedRow?.attempts || 0);
+  await audit(env, jobId, 'running', { attempt });
 
   try {
     if (row.type !== 'aegis.health_check') throw new Error('Unsupported persisted job type.');
@@ -207,24 +209,23 @@ async function processJob(message, env) {
     if (!result.checks.database || !result.checks.queue) throw new Error('Runtime dependency unavailable.');
     const finishedAt = new Date().toISOString();
     await env.DB.prepare(
-      "UPDATE jobs SET status = 'succeeded', result_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
-    ).bind(JSON.stringify(result), finishedAt, jobId).run();
-    await audit(env, jobId, 'succeeded');
+      "UPDATE jobs SET status = 'succeeded', result_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
+    ).bind(JSON.stringify(result), finishedAt, jobId, attempt).run();
+    if (finished.meta?.changes) await audit(env, jobId, 'succeeded', { attempt });
     message.ack();
   } catch {
-    const attempts = Number(row.attempts || 0) + 1;
-    if (attempts >= MAX_ATTEMPTS) {
+    if (attempt >= MAX_ATTEMPTS) {
       await env.DB.prepare(
-        "UPDATE jobs SET status = 'failed', error_code = 'JOB_EXECUTION_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
-      ).bind(new Date().toISOString(), jobId).run();
-      await audit(env, jobId, 'failed', { code: 'JOB_EXECUTION_FAILED' });
+        "UPDATE jobs SET status = 'failed', error_code = 'JOB_EXECUTION_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
+      ).bind(new Date().toISOString(), jobId, attempt).run();
+      await audit(env, jobId, 'failed', { code: 'JOB_EXECUTION_FAILED', attempt });
       message.ack();
     } else {
       await env.DB.prepare(
-        "UPDATE jobs SET status = 'queued', error_code = 'JOB_EXECUTION_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
-      ).bind(new Date().toISOString(), jobId).run();
-      await audit(env, jobId, 'retry_scheduled', { attempt: attempts });
-      message.retry({ delaySeconds: Math.min(300, 2 ** attempts * 5) });
+        "UPDATE jobs SET status = 'queued', error_code = 'JOB_EXECUTION_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
+      ).bind(new Date().toISOString(), jobId, attempt).run();
+      await audit(env, jobId, 'retry_scheduled', { attempt });
+      message.retry({ delaySeconds: Math.min(300, 2 ** attempt * 5) });
     }
   }
 }
