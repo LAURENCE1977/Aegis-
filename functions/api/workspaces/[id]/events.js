@@ -17,8 +17,12 @@ export async function onRequestGet({ request, env, params }) {
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Workspace storage is not configured." }, 503);
   }
+  const id = params?.id;
+  if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(id)) {
+    return jsonResponse({ error: "Workspace not found." }, 404);
+  }
   try {
-    const events = await listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, params?.id, 50);
+    const events = await listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, id, 50);
     if (!events) return jsonResponse({ error: "Workspace not found." }, 404);
     return jsonResponse({ events, total: events.length });
   } catch {
