@@ -3,6 +3,7 @@ import {
   constantTimeEqual,
   createSessionToken,
   isAuthorized,
+  isSameOriginRequest,
   sessionCookie,
   clearSessionCookie,
 } from "../lib/auth.mjs";
@@ -16,16 +17,6 @@ const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(b
   },
 });
 
-function sameOrigin(request) {
-  const origin = request.headers.get("Origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).origin === new URL(request.url).origin;
-  } catch {
-    return false;
-  }
-}
-
 export async function onRequestGet({ request, env }) {
   if (!authConfigAvailable(env)) {
     return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
@@ -37,7 +28,7 @@ export async function onRequestPost({ request, env }) {
   if (!authConfigAvailable(env)) {
     return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
   }
-  if (!sameOrigin(request)) return json({ error: "Invalid request origin." }, 403);
+  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
 
   let body;
   try {
@@ -55,6 +46,6 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestDelete({ request }) {
-  if (!sameOrigin(request)) return json({ error: "Invalid request origin." }, 403);
+  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
   return json({ authenticated: false }, 200, { "Set-Cookie": clearSessionCookie() });
 }
