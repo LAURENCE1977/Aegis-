@@ -846,6 +846,7 @@
             messages,
             tools: [],
             context: [],
+            projectId: chatProjectSelect.value || undefined,
           })
         });
         if (res.status === 401) {
