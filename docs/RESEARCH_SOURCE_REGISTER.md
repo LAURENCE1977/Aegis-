@@ -263,3 +263,112 @@ AEGIS decision:
 
 Source: https://github.com/msitarzewski/agency-agents
 
+
+
+## Workflow, ingestion and always-on agent candidates — 15 November 2026
+
+These candidates are architecture references or optional adapters. They are not installed, connected or granted permissions by this register.
+
+### OpenDots — CopilotKit
+
+Primary candidate: https://github.com/CopilotKit/OpenDots. MIT licence. An open-source web/mobile agent-workspace template using CopilotKit and AG-UI. It models persistent specialist "Dots", Spaces/pages, per-Dot research and memory permissions, MCP connections, human approval cards, activity receipts, browser/computer work and voice/Slack extensions.
+
+The README says conversations require CopilotKit Intelligence (hosted service, local Docker evaluation, or licensed self-hosting). The local evaluation has substantial machine requirements and a CopilotKit account. The project describes itself as an early single-owner starting point; shared editing and some integrations/group-agent features remain further work. Its security notes say it is not a security-audited autonomous agent.
+
+**AEGIS decision:** Very high-priority UX and agent-workspace reference. Study per-agent permissions, human approval, visible computer activity, persistent workspace and status presentation. Do not replace AEGIS core or copy its whole stack. Keep AEGIS identity, policy, durable jobs, memory and audit authoritative. Run computer/browser tools in a separate sandbox; require approval for writes, sends, purchases and deployments. Do not treat the starter as proof that 24/7 execution or production security is solved.
+
+### Firecrawl
+
+Primary candidate: https://github.com/firecrawl/firecrawl. Core repository is AGPL-3.0; some SDKs/UI components have separate licences. It provides web crawling, page scraping, site mapping and search/extraction workflows, with hosted and self-hosted modes. Scraping remains subject to target-site terms, robots directives, privacy rules and applicable law.
+
+**AEGIS decision:** High-priority optional ingestion adapter, not a core dependency. Define a provider-neutral web-ingestion contract for discovery, fetch, crawl, normalize, provenance and status so native retrieval, Firecrawl or another provider can be swapped. Start with bounded permitted public-page retrieval. Enforce domain policy, robots/terms checks, SSRF protections (including DNS and redirect checks), request/time/size limits, content-type validation and deduplication. Store canonical URL, retrieval time, content hash, source version, licence/terms review and extraction method. Treat page content as untrusted prompt-injection input. AGPL-3.0 is a material distribution/modified-service consideration; isolate it behind an adapter and obtain legal review before distributing or offering a modified network service.
+
+### Oxylabs Web API
+
+Primary candidate: https://github.com/oxylabs/web-api. Commercial hosted service, not an open-source engine to embed. Provides web search and scraping with rendering, proxy rotation and geo-targeting. Public pricing advertises a small free trial and paid usage tiers; actual costs depend on product, result type and volume. Its acceptable-use policy restricts accessing non-public or sensitive personal data without permission and requires lawful, policy-compliant collection.
+
+**AEGIS decision:** Defer as a paid fallback provider. Use only if ordinary web retrieval or a compliant Firecrawl setup cannot access a needed public source. Never make it a default dependency for the shoestring-budget build. Add hard spend caps, per-job budgets and usage telemetry; require explicit opt-in before paid requests. Restrict targets to permitted public information. Do not bypass access controls, collect sensitive data or evade site restrictions. Keep credentials server-side and assess data processing, retention and geographic handling before connecting.
+
+### n8n
+
+Primary candidate: https://github.com/n8n-io/n8n. Source-available under the Sustainable Use License (SUL) and separate Enterprise terms; it is not OSI-approved open source. Broad visual workflow automation with many integrations, custom nodes and AI-related features. n8n's current licensing FAQ says internal/private use is allowed in defined cases, but allowing outside customers to build/configure workflows, white-labelling or hosting n8n as a service requires a commercial licence.
+
+**AEGIS decision:** Study its workflow-builder UX and connector catalogue; do not embed or fork as the AEGIS automation engine without written licence clearance. A private, single-owner instance could be considered as an optional external automation service, but it adds a separately operated system and must not become the source of truth for AEGIS jobs or permissions. If connected, expose only allowlisted webhook/API operations, isolate credentials, require approval for consequential actions and verify licensing for the exact use case.
+
+### Activepieces
+
+Primary candidate: https://github.com/activepieces/activepieces. Community Edition repository states MIT; enterprise packages/features are commercially licensed. TypeScript integration framework ("Pieces") with workflow automation, branching/retries, versioning and integrations that can be exposed as MCP tools. The project advertises hundreds of integrations; confirm each connector's current status, permissions and licence individually.
+
+**AEGIS decision:** High-priority connector-catalogue and workflow UX reference; possible optional adapter. Evaluate individual pieces as connector candidates rather than installing the whole platform. Build AEGIS-native capability manifests with explicit scopes, read/write classification, schemas, rate limits and approval policies. A connector's presence in Activepieces must never grant it permission in AEGIS. Keep enterprise-only features separate and review connector-specific third-party licences and data handling.
+
+### Temporal
+
+Primary candidate: https://github.com/temporalio/temporal. Temporal server repository reports MIT licence. Mature durable-execution platform: workflow state survives process failures, with retryable activities and replayable workflow orchestration. It is a server platform with workers and persistence, not a small library or a Cloudflare Worker drop-in.
+
+**AEGIS decision:** Top-tier durability architecture reference and long-term candidate. Study workflow history, deterministic orchestration, activity retry, cancellation, signals, timers, versioning and recovery semantics. Do not add a Temporal cluster to the current low-cost Cloudflare setup: it introduces a separately operated server, persistence and worker fleet. Continue the minimal AEGIS D1/Queue runtime for the first health-check slice. Reassess Temporal only when multi-step jobs justify the operational footprint.
+
+### Hatchet
+
+Primary candidate: https://github.com/hatchet-dev/hatchet. Repository reports MIT licence. Orchestrates background tasks, AI agents and durable workflows across TypeScript, Python, Go and Ruby; includes retries, schedules, event/webhook triggers, concurrency controls, task routing and observability. Self-hosted operation requires a separate service and infrastructure (including Docker for the documented local path).
+
+**AEGIS decision:** High-priority comparison candidate for the next runtime stage. Compare worker model, durable sleep/event waits, retries, concurrency and operational footprint against the existing AEGIS Worker/D1/Queue implementation and Temporal. Do not run Hatchet and a full AEGIS scheduler/queue in parallel for the same jobs. If adopted, one engine owns execution state; AEGIS remains the identity, policy, approval and user-facing control plane. Run a small proof of concept only after defining resource limits, backup/restore, security boundaries and migration/exit strategy.
+
+### Trigger.dev
+
+Primary candidate: https://github.com/triggerdotdev/trigger.dev. Repository reports Apache-2.0. TypeScript-first durable background jobs and AI workflows with retries, queues, idempotency, long-running execution, schedules, observability and progress streaming. Supports managed cloud and self-hosted Docker/Kubernetes deployments. Self-hosting the full stack is operationally heavier than deploying one Cloudflare Worker; review the exact current compose/Helm footprint before estimating costs.
+
+**AEGIS decision:** High-priority developer-experience and TypeScript workflow reference; optional future runtime alternative. Study checkpointing, retries, idempotency, run traces, progress streaming and human-wait patterns. Its TypeScript orientation may fit AEGIS better than Python-first systems, but do not assume its runtime fits Cloudflare Workers or a free Chromebook-only setup. Compare with Hatchet and Temporal using the same representative AEGIS jobs before selecting any engine.
+
+### Inngest — provisional interpretation of user's "ingest"
+
+Primary candidate: https://github.com/inngest/inngest. The server/CLI licensing is described by its repository as Server Side Public License with delayed open-source publication under Apache-2.0; SDKs are Apache-2.0. Verify exact component and release terms. Durable event-driven functions combine triggers, cron schedules, retries, step state and coordination. Supports self-hosted server and hosted platform.
+
+**AEGIS decision:** Study event-driven function and developer-experience patterns; defer server adoption. Do not describe the whole server as OSI-open-source or copy server code without checking SSPL/DOSP terms. Evaluate SDK/API integration separately from server licensing. Compare it with Trigger.dev, Hatchet and the native AEGIS runtime before adding another scheduler/queue. The user's spelling "ingest" has been interpreted as Inngest; confirm if a different product was intended.
+
+### Kestra
+
+Primary candidate: https://github.com/kestra-io/kestra. Apache-2.0. Declarative YAML, event-driven orchestration for data, infrastructure, business processes and AI agents; has MCP support and Python/JavaScript SDKs. Official requirements describe a Java runtime, PostgreSQL or MySQL for OSS queue/repository, and at least 4 GiB RAM plus 2 vCPUs for a standalone server. Script tasks may require Docker-in-Docker.
+
+**AEGIS decision:** Architecture reference for declarative workflows, event triggers, versioning and data pipelines; not a current deployment candidate. Infrastructure footprint is disproportionate to the current free-tier Cloudflare-first build. Revisit only if AEGIS develops substantial multi-source ETL or scheduled data operations that cannot be handled by small isolated jobs.
+
+### Windmill
+
+Primary candidate: https://github.com/windmill-labs/windmill. Core Community Edition is AGPLv3; APIs/OpenAPI clients and some components have separate licences. Commercial licensing applies to certain embedding, managed-service and redistribution scenarios. Code-first scripts, workflows, apps and AI agents; supports many languages, Git sync, worker isolation and environment promotion.
+
+**AEGIS decision:** Study worker isolation, code-first workflow composition and review/promotion patterns; do not embed the platform. AGPL and commercial-use boundaries need careful review before any distribution or user-facing integration. Its PostgreSQL/worker deployment footprint is heavier than the initial AEGIS runtime. Do not create a second workflow control plane just to gain a visual editor.
+
+### Apache Airflow
+
+Primary candidate: https://github.com/apache/airflow. Apache-2.0. Programmatic DAG authoring, scheduling and monitoring for data pipelines. Its own README says it is best for workflows whose DAG structure is mostly static and slowly changing.
+
+**AEGIS decision:** Reference-only for future bulk data engineering/ETL, not interactive agent jobs. Airflow is designed around a scheduler, metadata database, executor and workers; it is operationally excessive for the current small event-driven runtime. Do not use it for user-facing, approval-driven agent conversations or low-latency tasks. If AEGIS later needs large scheduled data pipelines, compare it with Kestra and managed data services.
+
+### OpenOutreach
+
+Primary candidate: https://github.com/eracle/OpenOutreach. Repository reports GPL-3.0. Self-hosted B2B lead discovery/qualification and email outreach agent. It uses a licensed data provider and can send email through a connected mailbox; some operations consume paid credits.
+
+**AEGIS decision:** Not a core AEGIS capability. This is a specialised sales/outbound lead-generation workflow. Study only its modular CLI producer/consumer contract, transparent qualification rationale and spend gates if AEGIS later gains a user-requested outreach module. Never enable mailbox sending, purchase lead credits or contact third parties by default. Require explicit per-campaign approval, recipient/source provenance, opt-out/suppression checks and applicable UK GDPR/PECR compliance review. GPL-3.0 and data-provider terms require review before reuse. No outbound messaging capability is authorised by this entry.
+
+## Workflow-engine selection guidance
+
+These products overlap, but are not interchangeable:
+
+| Candidate | Best-fit problem | AEGIS position |
+|---|---|---|
+| Existing AEGIS Worker + D1 + Queue | Small, bounded jobs on Cloudflare | Keep as first runtime slice |
+| Temporal | Mature durable, multi-step execution | Benchmark/reference; future option |
+| Hatchet | Agent/background tasks, retries and concurrency | Closest runtime comparison |
+| Trigger.dev | TypeScript developer experience and long-running AI jobs | Strong alternative to benchmark |
+| Inngest | Event-driven durable functions | SDK/pattern study; server licence review |
+| Kestra | Declarative business/data workflows | Later data-orchestration option |
+| Airflow | Scheduled DAG/data engineering pipelines | Not agent runtime |
+| Activepieces / n8n / Windmill | Visual or code-first integrations and automation | Optional external automation layer; licensing matters |
+
+**Architecture rule:** AEGIS must retain one canonical job identity, state machine, policy engine, approval record and audit trail. An external workflow engine may execute work behind an adapter, but must not create a second conflicting source of truth. Do not deploy multiple overlapping engines before a benchmark proves the need.
+
+## Source-intake clarifications
+
+- "Ingest" was interpreted as Inngest.
+- "Open Outreach" was interpreted as eracle/OpenOutreach.
+- "OpenDots" was interpreted as CopilotKit/OpenDots.
+- No code, package, connector, account or service from this list has been installed or authorised.
