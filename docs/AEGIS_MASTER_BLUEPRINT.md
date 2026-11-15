@@ -495,7 +495,7 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Architecture and security acceptance criteria: `docs/AEGIS_COPILOTKIT_AGUI.md`.
 - Research register updated: `docs/RESEARCH_SOURCE_REGISTER.md`.
 - Implemented: `functions/lib/ag-ui.mjs` bounded AG-UI 1.0 text-run and SSE primitives; authenticated `POST /api/ag-ui` builds the same approved-memory/skill context as `/api/ask`, calls Workers AI with `stream: true`, parses provider SSE chunks and emits incremental AG-UI events. The mobile PWA consumes the stream and renders deltas as they arrive. Output is capped at 12,000 characters and provider errors are redacted. Tool calls, ambient context, resume and multimodal payloads are rejected until Sentinel and durable lifecycle support are connected.
-- CI: implementation head `a042fb2f100505945166d7cdeee96799b2ea1a88` passed run 43743962701, 215/215 tests. Branch preview deployed successfully; login requires the two Preview secrets.
+- CI: verified branch head `17a0a2171621f7e34fd6ba17ad31fda3dc40ce3d` passed run 43744350226, 219/219 tests. Project Spaces, approvals, memory and installable PWA shell are present; preview login still requires the two Preview secrets.
 - No CopilotKit package, React migration, CopilotKit service or upstream code has been installed; no production deployment has occurred. Token streaming, resumable runs, generative UI and tool/approval events remain future work.
 
 
