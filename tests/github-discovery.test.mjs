@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createSessionToken } from '../functions/lib/auth.mjs';
 import { discoverGitHubRepository } from '../functions/lib/github-discovery.mjs';
+import { onRequestPost } from '../functions/api/forge/discover.js';
+
+const secret = 'test-only-forge-session-secret-with-sufficient-entropy';
+const configuredEnv = {
+  AEGIS_PASSWORD: 'a-long-test-password-value',
+  AEGIS_SESSION_SECRET: secret,
+};
 
 test('GitHub discovery normalises public repository metadata without fetching source code', async () => {
   let requestedUrl = '';
@@ -52,4 +60,73 @@ test('GitHub discovery reports missing and private repositories without exposing
       new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 })),
     (error) => error.status === 404 && !String(error.message).includes('Not Found'),
   );
+});
+
+test('Forge discovery API fails closed when authentication is not configured', async () => {
+  const response = await onRequestPost({
+    request: new Request('https://aegis.example/api/forge/discover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ sourceUrl: 'https://github.com/example/repo' }),
+    }),
+    env: {},
+  });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+});
+
+test('Forge discovery API rejects unauthenticated and cross-origin requests', async () => {
+  const unauthenticated = await onRequestPost({
+    request: new Request('https://aegis.example/api/forge/discover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ sourceUrl: 'https://github.com/example/repo' }),
+    }),
+    env: configuredEnv,
+  });
+  const token = await createSessionToken(secret);
+  const crossOrigin = await onRequestPost({
+    request: new Request('https://aegis.example/api/forge/discover', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://attacker.example',
+        Cookie: '__Host-aegis_session=' + token,
+      },
+      body: JSON.stringify({ sourceUrl: 'https://github.com/example/repo' }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(crossOrigin.status, 403);
+});
+
+test('Forge discovery API returns safe metadata for an authenticated same-origin request', async () => {
+  const token = await createSessionToken(secret);
+  const response = await onRequestPost({
+    request: new Request('https://aegis.example/api/forge/discover', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://aegis.example',
+        Cookie: '__Host-aegis_session=' + token,
+      },
+      body: JSON.stringify({ sourceUrl: 'https://github.com/example/repo' }),
+    }),
+    env: configuredEnv,
+    fetchImpl: async () => new Response(JSON.stringify({
+      full_name: 'example/repo',
+      html_url: 'https://github.com/example/repo',
+      default_branch: 'main',
+      private: false,
+      license: { spdx_id: 'Apache-2.0', name: 'Apache License 2.0' },
+    }), { status: 200 }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  const body = await response.json();
+  assert.equal(body.repository.fullName, 'example/repo');
+  assert.equal(body.repository.licenseSpdx, 'Apache-2.0');
+  assert.equal(body.repository.private, false);
 });
