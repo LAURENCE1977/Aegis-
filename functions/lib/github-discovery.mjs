@@ -106,6 +106,19 @@ const GITHUB_REQUEST_TIMEOUT_MS = 8000;
 
 async function readBoundedResponseText(response, maxBytes = MAX_GITHUB_JSON_BYTES) {
   if (!response?.body || typeof response.body.getReader !== 'function') {
+    // Lightweight test doubles and non-streaming fetch implementations may expose
+    // only json(). Serialize their parsed value before accepting it so the same
+    // byte ceiling still applies to the normalized representation.
+    if (typeof response.text !== 'function' && typeof response.json === 'function') {
+      let value;
+      try { value = await response.json(); }
+      catch { throw new GitHubSourceError('GitHub returned unreadable source metadata.', 502); }
+      const serialized = JSON.stringify(value);
+      if (new TextEncoder().encode(serialized).byteLength > maxBytes) {
+        throw new GitHubSourceError('GitHub response is too large to inspect safely.', 413);
+      }
+      return serialized;
+    }
     const text = await response.text();
     if (new TextEncoder().encode(text).byteLength > maxBytes) {
       throw new GitHubSourceError('GitHub response is too large to inspect safely.', 413);
