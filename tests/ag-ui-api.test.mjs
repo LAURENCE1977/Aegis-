@@ -134,3 +134,30 @@ test('AG-UI reports a safe terminal error if the provider stream breaks mid-run'
   assert.equal(frames[3].type,'RUN_ERROR');
   assert.doesNotMatch(JSON.stringify(frames),/provider internals/);
 });
+
+
+test('AG-UI endpoint rejects unknown top-level and message fields',async()=>{
+  const unknownTop=await onRequestPost({
+    request:await request(input({tools:[],experimentalExecution:true})),
+    env:{...envBase,AI:{async run(){throw new Error('must not run');}}},
+  });
+  assert.equal(unknownTop.status,400);
+  const unknownMessage=await onRequestPost({
+    request:await request(input({messages:[{id:'x',role:'user',content:'hello',toolCalls:[{name:'shell'}]}]})),
+    env:{...envBase,AI:{async run(){throw new Error('must not run');}}},
+  });
+  assert.equal(unknownMessage.status,400);
+});
+
+test('AG-UI endpoint bounds and validates run identifiers before model access',async()=>{
+  const longRun=await onRequestPost({
+    request:await request(input({runId:'r'.repeat(129)})),
+    env:{...envBase,AI:{async run(){throw new Error('must not run');}}},
+  });
+  assert.equal(longRun.status,400);
+  const control=await onRequestPost({
+    request:await request(input({threadId:'thread\u0000bad'})),
+    env:{...envBase,AI:{async run(){throw new Error('must not run');}}},
+  });
+  assert.equal(control.status,400);
+});
