@@ -119,6 +119,10 @@ test('Forge candidate review refuses unverified reuse and terminal candidate reo
   const created = await createForgeCandidate(db, 'owner', repository());
   await assert.rejects(() => updateForgeCandidateReview(db, 'owner', created.candidate.id, {
     licenceReview: 'review-required', decision: 'reuse', status: 'assessed',
+    licenceEvidenceUrl: null,
+    reviewNote: 'Licence review has not been completed yet.',
+    licenceAttested: false,
+    expectedUpdatedAt: created.candidate.updatedAt,
   }), /verified licence/i);
   const rejected = await updateForgeCandidateReview(db, 'owner', created.candidate.id, {
     licenceReview: 'review-required', decision: 'reject', status: 'rejected',
@@ -138,3 +142,18 @@ test('Forge candidate review refuses unverified reuse and terminal candidate reo
   });
   assert.equal(reopened, null);
 });
+
+test('Forge candidate review uses optimistic concurrency to reject stale owner edits', async () => {
+  const db = new CandidateD1();
+  const created = await createForgeCandidate(db, 'owner', repository());
+  await assert.rejects(() => updateForgeCandidateReview(db, 'owner', created.candidate.id, {
+    licenceReview: 'review-required',
+    decision: 'rebuild',
+    status: 'assessed',
+    licenceEvidenceUrl: null,
+    reviewNote: 'Reviewed the source and will rebuild independently.',
+    licenceAttested: false,
+    expectedUpdatedAt: '2026-11-14T00:00:00.000Z',
+  }), /changed since it was loaded/i);
+});
+
