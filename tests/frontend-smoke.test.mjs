@@ -8,7 +8,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 test('mobile AEGIS page has a chat and memory review surface', () => {
   for (const id of [
     'loginPanel','appPanel','chatTab','memoryTab','chatSection','memorySection',
-    'memoryForm','memoryKind','memoryContent','saveMemoryBtn','memoryStatus','memoryList',
+    'memoryForm','memoryKind','memoryContent','saveMemoryBtn','memoryStatus','memoryList','exportMemoriesBtn',
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing UI element: ' + id);
   }
@@ -110,4 +110,12 @@ test('chat and memory controls expose the selected Project Space scope end to en
   assert.match(html, /memoryProjectSelect\.addEventListener\('change',\s*loadMemories\)/);
   assert.match(html, /memoryApi\('\?review=1&projectId='\s*\+\s*encodeURIComponent\(memoryProjectSelect\.value\)\)/);
   assert.match(html, /encodeURIComponent\(memory\.projectId\)/);
+});
+
+
+test('memory review UI offers an authenticated no-store JSON export', () => {
+  assert.match(html, /id="exportMemoriesBtn"/);
+  assert.match(html, /fetch\('\/api\/memories\/export/);
+  assert.match(html, /URL\.createObjectURL\(await response\.blob\(\)\)/);
+  assert.match(html, /download\s*=\s*'aegis-memory-export\.json'/);
 });
