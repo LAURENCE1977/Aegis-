@@ -150,3 +150,43 @@ export async function listForgeCandidates(db, ownerId, limit = 50) {
   `).bind(ownerId, limit).all();
   return (result?.results ?? []).map(mapCandidateRow);
 }
+
+
+const LICENCE_REVIEWS = new Set(['verified', 'review-required', 'not-applicable']);
+const CANDIDATE_DECISIONS = new Set(['unassessed', 'reuse', 'adapt', 'rebuild', 'combine', 'reject']);
+const CANDIDATE_STATUSES = new Set(['discovered', 'inspected', 'assessed', 'approved', 'rejected', 'archived']);
+
+export async function updateForgeCandidateReview(db, ownerId, id, review, now = Date.now()) {
+  assertDatabase(db);
+  requireOwner(ownerId);
+  if (typeof id !== 'string' || !ID_PATTERN.test(id)) throw new TypeError('Invalid Forge candidate identifier');
+  if (!review || typeof review !== 'object' || Array.isArray(review) ||
+      Object.keys(review).length !== 3 ||
+      !LICENCE_REVIEWS.has(review.licenceReview) ||
+      !CANDIDATE_DECISIONS.has(review.decision) ||
+      !CANDIDATE_STATUSES.has(review.status)) {
+    throw new TypeError('Invalid Forge candidate review');
+  }
+  if (['reuse', 'adapt', 'combine'].includes(review.decision) && review.licenceReview !== 'verified') {
+    throw new TypeError('A verified licence review is required before reuse, adaptation or combination');
+  }
+  if (review.status === 'approved' &&
+      (review.decision === 'unassessed' || review.decision === 'reject' || review.licenceReview !== 'verified')) {
+    throw new TypeError('An approved candidate requires a reviewed licence and a positive engineering decision');
+  }
+  if ((review.decision === 'reject') !== (review.status === 'rejected')) {
+    throw new TypeError('A rejected decision and rejected status must be recorded together');
+  }
+  if (!Number.isFinite(now)) throw new TypeError('Invalid Forge review clock');
+
+  const row = await db.prepare(`
+    UPDATE forge_candidates
+    SET licence_review = ?, decision = ?, status = ?, updated_at = ?
+    WHERE id = ? AND owner_id = ? AND status NOT IN ('archived', 'rejected')
+    RETURNING *
+  `).bind(
+    review.licenceReview, review.decision, review.status,
+    new Date(now).toISOString(), id, ownerId,
+  ).first();
+  return mapCandidateRow(row);
+}
