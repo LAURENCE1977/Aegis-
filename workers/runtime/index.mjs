@@ -7,7 +7,6 @@ import {
 
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ATTEMPTS = 5;
-const JOB_ID_PATTERN = /^[0-9a-f-]{36}$/i;
 
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
@@ -71,6 +70,10 @@ async function audit(env, jobId, eventType, detail = {}) {
 
 async function dispatchPending(env, limit = 25) {
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE jobs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until < ?"
+  ).bind(now, now).run();
   const result = await env.DB.prepare(
     "SELECT id FROM jobs WHERE status = 'pending_dispatch' ORDER BY created_at ASC LIMIT ?"
   ).bind(Math.max(1, Math.min(100, limit))).all();
@@ -80,7 +83,7 @@ async function dispatchPending(env, limit = 25) {
     try {
       await env.JOBS.send({ jobId: row.id });
       await env.DB.prepare(
-        "UPDATE jobs SET status = 'queued', updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
+        "UPDATE jobs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
       ).bind(new Date().toISOString(), row.id).run();
       await audit(env, row.id, 'queued');
       dispatched += 1;
@@ -190,8 +193,8 @@ async function processJob(message, env) {
 
   const startedAt = new Date().toISOString();
   const claimed = await env.DB.prepare(
-    "UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch')"
-  ).bind(startedAt, jobId).run();
+    "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch')"
+  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId).run();
   if (!claimed.meta?.changes) {
     message.ack();
     return;
@@ -204,7 +207,7 @@ async function processJob(message, env) {
     if (!result.checks.database || !result.checks.queue) throw new Error('Runtime dependency unavailable.');
     const finishedAt = new Date().toISOString();
     await env.DB.prepare(
-      "UPDATE jobs SET status = 'succeeded', result_json = ?, error_code = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
+      "UPDATE jobs SET status = 'succeeded', result_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
     ).bind(JSON.stringify(result), finishedAt, jobId).run();
     await audit(env, jobId, 'succeeded');
     message.ack();
@@ -212,13 +215,13 @@ async function processJob(message, env) {
     const attempts = Number(row.attempts || 0) + 1;
     if (attempts >= MAX_ATTEMPTS) {
       await env.DB.prepare(
-        "UPDATE jobs SET status = 'failed', error_code = 'JOB_EXECUTION_FAILED', updated_at = ? WHERE id = ? AND status = 'running'"
+        "UPDATE jobs SET status = 'failed', error_code = 'JOB_EXECUTION_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
       ).bind(new Date().toISOString(), jobId).run();
       await audit(env, jobId, 'failed', { code: 'JOB_EXECUTION_FAILED' });
       message.ack();
     } else {
       await env.DB.prepare(
-        "UPDATE jobs SET status = 'queued', error_code = 'JOB_EXECUTION_RETRY', updated_at = ? WHERE id = ? AND status = 'running'"
+        "UPDATE jobs SET status = 'queued', error_code = 'JOB_EXECUTION_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running'"
       ).bind(new Date().toISOString(), jobId).run();
       await audit(env, jobId, 'retry_scheduled', { attempt: attempts });
       message.retry({ delaySeconds: Math.min(300, 2 ** attempts * 5) });
