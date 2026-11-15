@@ -1,0 +1,27 @@
+name = "aegis-runtime"
+main = "index.mjs"
+compatibility_date = "2026-11-15"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aegis-runtime"
+database_id = "REPLACE_WITH_CREATED_D1_DATABASE_ID"
+migrations_dir = "../../migrations/runtime"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "aegis-jobs"
+
+[[queues.consumers]]
+queue = "aegis-jobs"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "aegis-jobs-dlq"
