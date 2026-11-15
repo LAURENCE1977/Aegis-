@@ -564,7 +564,7 @@ These are three distinct source tracks, not interchangeable products.
 - Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
 - Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
 - AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; Workers AI deltas stream incrementally to the mobile PWA, with provider errors redacted and a 12,000-character output cap. Frontend tools/context/resume/multimodal payloads fail closed.
-- Latest verified feature-branch head `637174f3ffa6c083d40faee3a1a2ef81e0d780f4` passed GitHub Actions run 43752010145: 296 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
+- Latest verified feature-branch head `cdad016e3ebf56476e9af2e9284b22b50855b5fd` passed GitHub Actions run 43752415969: 297 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
 - Latest Cloudflare Pages branch preview deployed successfully at https://7aef49d9.aegis-6yk.pages.dev; preview login remains blocked by missing Preview secrets. No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
 
@@ -643,3 +643,5 @@ Reviewed: 15 November 2026. These are research candidates, not installed depende
 - Decisions/procedures are prioritized; memory content is shortened under a 1,000–12,000-character budget (6,000 default). Output includes included/omitted counts, truncation and a rough characters/4 token estimate.
 - Every included event/memory is labelled untrusted reference data. The brief cannot create a task, grant a capability, start an agent or call an external provider.
 - Source inspiration: CogniCore's bounded handover briefs and curated context. AEGIS uses its own D1 schema and access policy; no upstream runtime dependency.
+
+- Selected Project Space chat now also receives up to eight recent event summaries from that exact project scope. Raw event bodies are excluded and summaries are labelled untrusted; this adapts curated project context without introducing a second memory store.
