@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createForgeCandidate, listForgeCandidates } from '../functions/lib/forge-candidates.mjs';
+import { createForgeCandidate, listForgeCandidates, updateForgeCandidateReview, listForgeCandidateEvents } from '../functions/lib/forge-candidates.mjs';
+import { readFile } from 'node:fs/promises';
 
 class CandidateD1 {
   constructor(){this.rows=new Map();this.events=[];}
@@ -91,4 +92,29 @@ test('Forge candidate lists are isolated to the authenticated owner',async()=>{
   const results=await listForgeCandidates(db,'owner');
   assert.equal(results.length,1);
   assert.equal(results[0].ownerId,'owner');
+});
+
+test('Forge review transitions are represented by an append-only D1 audit trigger', async () => {
+  const migration = await readFile(new URL('../migrations/shared/0005_forge_candidates.sql', import.meta.url), 'utf8');
+  assert.match(migration, /CREATE TRIGGER IF NOT EXISTS trg_forge_candidate_review_audit[\\s\\S]*?AFTER UPDATE ON forge_candidates/);
+  assert.match(migration, /'review_changed'/);
+  assert.match(migration, /'status_changed'/);
+  assert.match(migration, /trg_forge_candidate_events_no_update/);
+  assert.match(migration, /trg_forge_candidate_events_no_delete/);
+});
+
+test('Forge candidate review refuses unverified reuse and terminal candidate reopening', async () => {
+  const db = new CandidateD1();
+  const created = await createForgeCandidate(db, 'owner', repository());
+  await assert.rejects(() => updateForgeCandidateReview(db, 'owner', created.candidate.id, {
+    licenceReview: 'review-required', decision: 'reuse', status: 'assessed',
+  }), /verified licence/i);
+  const rejected = await updateForgeCandidateReview(db, 'owner', created.candidate.id, {
+    licenceReview: 'review-required', decision: 'reject', status: 'rejected',
+  });
+  assert.equal(rejected.status, 'rejected');
+  const reopened = await updateForgeCandidateReview(db, 'owner', created.candidate.id, {
+    licenceReview: 'verified', decision: 'reuse', status: 'approved',
+  });
+  assert.equal(reopened, null);
 });
