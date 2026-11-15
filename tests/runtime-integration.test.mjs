@@ -16,7 +16,7 @@ class MemoryD1 {
         if (sql.includes('WHERE idempotency_key = ?')) {
           return [...db.jobs.values()].find((row) => row.idempotency_key === v[0]) || null;
         }
-        if (sql.includes('SELECT attempts FROM jobs')) return db.jobs.get(v[0]) ? { attempts: db.jobs.get(v[0]).attempts } : null;
+        if (sql.includes('UPDATE jobs SET status = \'running\'')) {\n          const row = db.jobs.get(v[2]);\n          if (!row || !['queued', 'pending_dispatch'].includes(row.status)) return null;\n          row.status = 'running'; row.attempts += 1; row.lease_until = v[0]; row.updated_at = v[1];\n          const claimedAttempt = row.attempts;\n          if (db.afterClaim) db.afterClaim(row);\n          return { attempts: claimedAttempt };\n        }\n        if (sql.includes('SELECT attempts FROM jobs')) {\n          const row = db.jobs.get(v[0]);\n          if (row && db.afterAttemptRead) db.afterAttemptRead(row);\n          return row ? { attempts: row.attempts } : null;\n        }
         if (sql.includes('WHERE id = ?')) return db.jobs.get(v[0]) || null;
         return null;
       },
@@ -110,7 +110,7 @@ test('idempotency key prevents duplicate persisted jobs and queue messages', asy
   assert.equal(sent.length, 1);
 });
 
-test('queue consumer executes only the persisted health-check job and acknowledges success', async () => {
+test('a stale worker cannot adopt a newer attempt number after its lease is reclaimed', async () => {\n  const { env, DB } = makeEnv();\n  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);\n  const { job } = await response.json();\n  DB.afterClaim = (row) => {\n    // Simulate lease recovery and a second consumer claiming the same job\n    // after the first claim commits but before its result is processed.\n    row.status = 'running';\n    row.attempts = 2;\n  };\n  let acked = false;\n  await runtime.queue({ messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }] }, env);\n  assert.equal(DB.jobs.get(job.id).status, 'running');\n  assert.equal(DB.jobs.get(job.id).attempts, 2);\n  assert.equal(DB.jobs.get(job.id).result_json, undefined);\n  assert.equal(acked, true);\n});\n\ntest('queue consumer executes only the persisted health-check job and acknowledges success', async () => {
   const { env, DB } = makeEnv();
   const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
   const { job } = await response.json();
