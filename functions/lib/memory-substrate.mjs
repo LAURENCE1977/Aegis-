@@ -121,8 +121,8 @@ export function createMemoryStore(records = []) {
       return record && inScope(record, ownerId, projectId) ? clone(record) : null;
     },
     list({ ownerId, projectId = null, now = Date.now(), limit = 20 } = {}) {
-      if (!validScope(ownerId, projectId) || !Number.isFinite(now) ||
-          !Number.isInteger(limit) || limit < 1 || limit > 50) return [];
+      if (!validScope(ownerId, projectId) || !Number.isFinite(now)) return [];
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid memory result limit');
       return [...byId.values()]
         .filter((record) => inScope(record, ownerId, projectId) && isRetrievable(record, now))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
@@ -131,8 +131,8 @@ export function createMemoryStore(records = []) {
     },
     search({ ownerId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
       if (!validScope(ownerId, projectId) || typeof query !== 'string' ||
-          !query.trim() || query.length > 200 || !Number.isFinite(now) ||
-          !Number.isInteger(limit) || limit < 1 || limit > 50) return [];
+          !query.trim() || query.length > 200 || !Number.isFinite(now)) return [];
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid memory result limit');
       const terms = [...new Set(query.toLocaleLowerCase().match(/[a-z0-9-]+/g) ?? [])];
       if (!terms.length) return [];
       return [...byId.values()]
