@@ -1,4 +1,4 @@
-import { authConfigAvailable, isAuthorized } from "../lib/auth.mjs";
+import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
 
 const KEY = "notes";
 const MAX_NOTES = 50;
@@ -37,6 +37,7 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const denied = await authorize(request, env);
   if (denied) return denied;
+  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
   if (!env.MEMORY) return unavailable();
 
   let body;
@@ -59,6 +60,7 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   const denied = await authorize(request, env);
   if (denied) return denied;
+  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
   if (!env.MEMORY) return unavailable();
 
   let body = {};
