@@ -30,12 +30,12 @@ class MemoryD1 {
       async first() {
         const v = this.values;
         if (sql.includes('UPDATE capability_approvals') && sql.includes("status = 'approved'") && sql.includes("status = 'consumed'")) {
-          const [consumedAt, id, now, principal, capability, version, action, resource, connection, digest] = v;
+          const [consumedAt, id, now, principal, capability, version, action, resource, summary, connection, digest] = v;
           const row = db.rows.get(id);
           if (!row || row.status !== 'approved' || row.consumed_at || row.expires_at <= now ||
               row.principal_id !== principal || row.capability_id !== capability ||
               row.capability_version !== version || row.action_id !== action ||
-              row.resource_id !== resource || row.connection_id !== connection ||
+              row.resource_id !== resource || row.operation_summary !== summary || row.connection_id !== connection ||
               row.input_digest !== digest) return null;
           row.status = 'consumed'; row.consumed_at = consumedAt;
           return { ...row };
@@ -81,6 +81,7 @@ test('creates a pending approval bound to an exact operation without granting it
   assert.equal(record.status, 'pending');
   assert.equal(record.capabilityId, binding.capabilityId);
   assert.equal(record.inputDigest, binding.inputDigest);
+  assert.equal(record.operationSummary, binding.operationSummary);
   assert.equal(record.consumedAt, null);
 });
 
