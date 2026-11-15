@@ -16,11 +16,10 @@ function isRecord(value) {
 
 function requireText(value, label, max = 500) {
   if (typeof value !== 'string' || !value.trim() || value.length > max ||
-      /[\\u0000-\\u001f\\u007f]/.test(value)) {
+      /[\u0000-\u001f\u007f]/.test(value)) {
     throw new TypeError('Invalid MCP server ' + label);
   }
 }
-
 function requireHttpsUrl(value, label) {
   requireText(value, label, 2048);
   let url;
