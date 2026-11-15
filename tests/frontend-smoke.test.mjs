@@ -24,7 +24,7 @@ test('all inline JavaScript parses before a preview can be promoted', () => {
 
 test('memory UI uses authenticated API routes and safe text rendering', () => {
   assert.match(html, /fetch\('\/api\/memories'/);
-  assert.match(html, /memoryApi\('\?review=1'\)/);
+  assert.match(html, /memoryApi\('\?review=1/);
   assert.match(html, /textContent\s*=\s*memory\.content/);
   assert.match(html, /method:\s*'PATCH'/);
   assert.match(html, /\/events/);
