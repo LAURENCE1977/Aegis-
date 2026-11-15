@@ -140,3 +140,13 @@ test('Forge candidate review UI requires an explicit licence decision and record
   assert.match(html, /licenceConfirmed\.checked/);
   assert.match(html, /candidateReviewForm\.addEventListener\('submit'/);
 });
+
+
+test('Forge candidate review UI requires an explicit owner licence decision', () => {
+  assert.match(html, /candidateReviewForm/);
+  assert.match(html, /candidate\.licence\.review/);
+  assert.match(html, /method:\s*'PATCH'/);
+  assert.match(html, /licenceReview/);
+  assert.match(html, /review-required/);
+  assert.match(html, /approved candidate requires/i);
+});
