@@ -130,7 +130,6 @@
       <label class="project-context" for="chatProjectSelect">Chat context
         <select id="chatProjectSelect" aria-label="Project Space context"><option value="">Personal memory only</option></select>
       </label>
-      <div class="project-context"><label for="chatProjectSelect">Chat memory scope</label><select id="chatProjectSelect"><option value="">Personal memory only</option></select></div>
       <div class="chat-box" id="chatBox" aria-live="polite"></div>
       <div class="input-area">
         <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off" />
@@ -468,6 +467,8 @@
         list.append(entry);
       }
     }
+
+    memoryProjectSelect.addEventListener('change', loadMemories);
 
     memoryForm.addEventListener('submit', async event => {
       event.preventDefault();
