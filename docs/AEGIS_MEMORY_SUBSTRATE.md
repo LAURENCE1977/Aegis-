@@ -33,6 +33,7 @@ Apply **one ordered directory** to the shared Project Spaces + Memory database:
 3. `migrations/shared/0003_memory_lifecycle_audit.sql`
 4. `migrations/shared/0004_memory_corrections.sql`
 5. `migrations/shared/0005_forge_candidates.sql`
+6. `migrations/shared/0006_forge_candidate_review.sql`
 
 This avoids running multiple nested directories that reuse migration numbers. The original `migrations/workspaces` and `migrations/memory` files are feature-source copies; do not independently apply them to the same D1 database in addition to `migrations/shared`.
 
