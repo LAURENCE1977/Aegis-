@@ -52,7 +52,7 @@ class MemoryD1 {
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
         }
-        if (sql.includes("SET status = 'queued'")) {
+        if (sql.includes("SET status = 'queued'") && !sql.includes("JOB_EXECUTION_RETRY")) {
           const row = db.jobs.get(v[1]);
           if (row && row.status === 'pending_dispatch') { row.status = 'queued'; row.updated_at = v[0]; return { meta: { changes: 1 } }; }
           return { meta: { changes: 0 } };
