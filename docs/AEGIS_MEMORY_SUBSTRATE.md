@@ -104,3 +104,16 @@ Reported Apache-2.0 personal computer-use agent with desktop-hosted browser/work
 - No automatic acceptance of model-generated memories.
 - No vector database/GPU requirement for the first release.
 - No arbitrary shell, filesystem or browser execution from the control plane.
+
+
+## Relevance-ranked retrieval — 15 November 2026
+
+The D1 repository and in-memory read model share the same bounded BM25-style lexical ranking:
+
+- Exact token boundaries prevent substring false positives (for example, searching for "art" does not match "partial", "artifice" or "artist").
+- Content tokens have baseline weight; memory kind and tags receive explicit field boosts.
+- Inverse document frequency and document-length normalization rank records containing more of the query meaning above weak one-term matches.
+- D1 first selects a maximum of 200 owner/project-scoped, accepted, unexpired, non-restricted candidates; ranking and final result limiting happen in the application layer.
+- No embedding model, vector database, external service or new dependency is required.
+
+The design borrows only the lightweight lexical and bounded-context ideas reviewed in CogniCore; AEGIS keeps its own D1 schema, owner policy, review lifecycle and audit. Lexical retrieval still cannot reliably bridge vocabulary that has no shared terms; semantic retrieval remains an optional future adapter, not a hidden paid dependency.
