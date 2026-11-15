@@ -98,6 +98,12 @@ export async function runSentinelInvocation(request, dependencies = {}) {
     return recordDenied(request, dependencies, decision.reasonCode, now);
   }
 
+  try {
+    await dependencies.recordAudit(auditEvent(request, 'invocation_policy_allowed', 'ALLOW', now));
+  } catch {
+    return { allowed: false, reasonCode: 'AUDIT_UNAVAILABLE' };
+  }
+
   const action = request.manifest.actions.find((item) => item.id === request.actionId);
   if (action.approval === 'human-always') {
     if (typeof dependencies.consumeApproval !== 'function' || !approval?.id) {
