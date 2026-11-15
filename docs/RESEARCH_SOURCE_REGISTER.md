@@ -564,9 +564,27 @@ These are three distinct source tracks, not interchangeable products.
 - Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
 - Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
 - AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; Workers AI deltas stream incrementally to the mobile PWA, with provider errors redacted and a 12,000-character output cap. Frontend tools/context/resume/multimodal payloads fail closed.
-- Latest branch head `26e96f593313441bfadc100a8bba114a537097b6` passed GitHub Actions run 43743243590: 212 passed, 0 failed.
+- Latest verified feature-branch head `18a150b84e2304365a5cc8d7dd575391f26caad3` passed GitHub Actions run 43750239054: 285 passed, 0 failed (Node.js 22). The run includes the native AG-UI cancelled-output fix and relevance-ranked memory retrieval.
 - Latest Cloudflare Pages branch preview deployed successfully at https://7aef49d9.aegis-6yk.pages.dev; preview login remains blocked by missing Preview secrets. No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
+
+### Composio-assisted CopilotKit ecosystem review
+
+Reviewed 15 November 2026 using the connected GitHub account through Composio. Repository contents and source documents were inspected; no external code or service was installed.
+
+| Candidate | Licence / observed stack | AEGIS decision |
+|---|---|---|
+| [CopilotKit/OpenBot](https://github.com/CopilotKit/OpenBot) | MIT application template; Hono/React/PostgreSQL, AG-UI agent endpoints, dedicated computer containers. The documented full stack also uses CopilotKit Intelligence, which is separately licensed, plus Kubernetes/container infrastructure. | Do not adopt wholesale. Adapt server-side policy gateway, audit-before-forwarding, isolated computer workspaces, secret separation, network egress controls and human takeover. |
+| [CopilotKit/openfuse](https://github.com/CopilotKit/openfuse) | MIT alpha. README requires Node 24, pnpm, CopilotKit Intelligence project key and model-provider key; documented hosted layout uses persistent paid service/disk and a separate browser worker. Upstream verification notes report 154 tests and Chromium/Docker smoke checks for its September 2026 release. | Architecture reference only. Adapt durable work plans, pause/resume/cancel, receipts, browser takeover and task/worker separation. Do not adopt external Intelligence, React Native or hosted service as AEGIS requirements. |
+| [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) | MIT; exact source review pinned to 2330368a2a74573902858867072406638ba3073d. | Native compatibility subset implemented. Read normative 1.0 run lifecycle, text-message and run-input definitions before expanding event support. AEGIS remains deliberately partial until tool/state/resume flows are mediated and persisted. |
+| [cognicore-dev/cognicore-env](https://github.com/cognicore-dev/cognicore-env) | Apache-2.0; local SQLite, MCP, bounded session handover briefs, curated project context and lexical BM25/TF-IDF; optional semantic retrieval adds dependencies. | Adapt suggested-then-confirmed context and compact handover ideas. Its README notes lexical vocabulary mismatch; do not add the Python runtime or hosted MCP server. |
+| [Uranid/mnem](https://github.com/Uranid/mnem) | Apache-2.0; local/offline Rust binary, content-addressed/versioned knowledge graph, vector + keyword + graph retrieval, token-budget reporting, optional bundled embedding. | Adapt provenance/versioning and explicit token-budget reporting. Do not add Rust, embeddings or a second memory store to the Cloudflare core. |
+| [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | Apache-2.0; broad persistent memory and skill-reuse system. | Comparison source only; larger runtime/dependency footprint than AEGIS needs. |
+
+Concrete AEGIS adaptations now implemented:
+- AG-UI 1.0 text-run lifecycle and authenticated SSE stream; output safety-cap termination now emits RUN_FINISHED with outcome=cancelled, not false success.
+- Memory retrieval uses bounded BM25-style lexical ranking, exact token boundaries, kind/tag weighting and a 200-row maximum D1 candidate pool. No embeddings, external vector DB, Python/Rust runtime or new model API cost.
+- OpenBot's policy and computer-isolation patterns are recorded as security requirements for the future AEGIS computer-use worker. No shell/browser execution is enabled by the AG-UI endpoint.
 
 
 ## New Forge intake — model providers, harnesses, memory, research and browsers
