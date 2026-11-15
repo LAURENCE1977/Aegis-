@@ -220,3 +220,11 @@ Xiryn (https://github.com/SouravBeraAkaSpeed/xiryn) is a high-value architecture
 **Platform fit:** requires a Node/Docker-capable computer; not an iPhone/iPad host or Cloudflare Worker. ChromeOS Linux support must be proven on the actual Chromebook. Local models need suitable host resources. Provider, Firecrawl, Telegram and optional Cloudflare tunnel traffic are external data paths, so local-first does not mean every interaction stays local.
 
 No code, containers, credentials, bot or service has been installed or connected.
+
+
+### DevToys
+https://github.com/DevToys-app/DevToys is an MIT-licensed desktop developer-toolbox reference: converters, encoders/decoders, formatters, hash/checksum, regex/JSONPath testers, text/Markdown utilities and extensions. Its separate CLI can support selected terminal/CI workflows, but GUI tool support must not be assumed to exist in the CLI.
+
+**AEGIS fit:** reuse the product pattern, not the desktop application. Build small browser-native, offline-friendly AEGIS utilities behind pure, tested functions so they work on Chromebook, iPhone and iPad without a separate installation. Potential first set: JSON formatter/validator, JSON↔YAML only if a vetted parser is bundled, Base64/URL/HTML encode-decode, JWT *inspection only* (never imply signature verification without a key), hash/checksum, date/number conversion, regex tester with execution limits, and text diff. Expose them as local UI utilities first; only register them as agent capabilities when a clear machine-use case and action policy exist.
+
+**Security gate:** GHSA-ggxr-h6fm-p2qh reports extension archive path traversal affecting DevToys v2.0.0.0–2.0.8.0; v2.0.9.0 is listed as patched, but the inspected release entry was marked pre-release. Do not install old builds or untrusted extensions. Verify a stable patched release and package integrity before any trial. Treat extension loading and clipboard access as trust boundaries. No DevToys code, package, CLI or extension is installed.
