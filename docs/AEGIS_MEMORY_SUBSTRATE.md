@@ -32,10 +32,11 @@ Apply **one ordered directory** to the shared Project Spaces + Memory database:
 2. `migrations/shared/0002_memories.sql`
 3. `migrations/shared/0003_memory_lifecycle_audit.sql`
 4. `migrations/shared/0004_memory_corrections.sql`
+5. `migrations/shared/0005_forge_candidates.sql`
 
 This avoids running multiple nested directories that reuse migration numbers. The original `migrations/workspaces` and `migrations/memory` files are feature-source copies; do not independently apply them to the same D1 database in addition to `migrations/shared`.
 
-The runtime job database is a separate service/database and keeps its own migration directory.
+The shared database now also includes the owner-scoped Forge candidate registry and its append-only event log. The runtime job database is a separate service/database and keeps its own migration directory.
 
 ## Security model and limitations
 
