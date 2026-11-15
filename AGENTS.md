@@ -13,3 +13,6 @@ Before any task:
 10. Report only verified outcomes. Distinguish implemented, tested, preview-deployed and production-live states.
 
 Do not merely produce plans when authorised tools can perform the work. Do not invent tool access or capabilities. Keep the master blueprint updated after significant milestones.
+
+11. Treat Sentinel as the mandatory final gate before any capability adapter side effect. Never allow an agent to grant itself permissions, supply its own trusted operation digest, bypass exact-operation approvals or execute an adapter before Sentinel allows the unchanged normalized operation.
+12. A Sentinel allow decision is not proof that an external action ran. Keep policy decision, approval consumption, adapter execution and durable invocation audit as separate verified stages. No general shell/code execution or broad write tools until each stage is implemented and tested.
