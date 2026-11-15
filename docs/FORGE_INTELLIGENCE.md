@@ -159,3 +159,7 @@ The first clean-room Sentinel invocation gate is being built as `functions/lib/s
 - **Cost discovery:** ingest free-for.dev as candidate provider metadata; verify all quotas, duration, billing triggers and commercial-use terms against official sources before use. A missing repository licence means do not copy its content wholesale.
 - **Reverse-engineering curriculum:** use Build Your Own X to select small foundational builds. Record the concept, upstream tutorial/source, rights, architecture notes, acceptance tests, prototype result and decision to adopt/adapt/reject.
 - **Native implementation sequence:** MCP catalogue → server admission scanner → Free-Tier Ledger → Build Lab exercises. Sentinel remains the only authority for invoking admitted capabilities.
+
+## MCP Forge implementation milestone
+
+The first native module is functions/lib/mcp-forge-catalogue.mjs with focused tests in tests/mcp-forge-catalogue.test.mjs. It validates provenance-pinned metadata and declared per-action effects, exposes list/get/search over defensive copies, and intentionally has no execute/connect/install method. This is the catalogue layer only; the admission scanner and isolated ingestion worker are not implemented yet. See AEGIS_MCP_FORGE.md.
