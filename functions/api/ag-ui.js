@@ -176,6 +176,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
 
 function validateRunInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return "Invalid AG-UI request.";
+  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
@@ -185,6 +186,7 @@ function validateRunInput(input) {
   if (input.state !== undefined || input.forwardedProps !== undefined || input.parentRunId !== undefined) return "Unsupported AG-UI run fields.";
   for (const message of input.messages) {
     if (!message || typeof message !== "object" || Array.isArray(message) ||
+        Object.keys(message).some(key => !["id", "role", "content"].includes(key)) ||
         !["user", "assistant"].includes(message.role) ||
         typeof message.content !== "string" || message.content.length > MAX_TEXT ||
         typeof message.id !== "string" || !message.id.trim() || message.id.length > 128) {
