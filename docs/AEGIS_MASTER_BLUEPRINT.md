@@ -688,3 +688,13 @@ The current production Pages configuration still shows the existing MEMORY KV an
 - Seven shared migrations were exercised in SQLite. The first attempt exposed a real migration defect: memory audit triggers still referenced the event table while it was being rebuilt. Migration 0007 now drops and recreates those triggers around the table swap.
 - Re-run confirmed: all seven migrations apply; owner/project constraints work; correction links are safely unlinked; the memory row is physically deleted; a minimal purged tombstone remains; the audit table remains append-only.
 - This is SQLite verification only. D1 remains unprovisioned/unbound; no live user memory was deleted and no production binding changed.
+
+
+## 21. Unified Project Space timeline and Security Centre — 15 November 2026
+
+- Project Space event feed now combines workspace activity with owner/project-scoped memory lifecycle events. Memory entries are presented as metadata-only timeline records; memory content itself is not copied into the timeline.
+- If the shared memory lifecycle table is not yet available, workspace activity remains readable and the API reports memory-event availability separately.
+- The Projects panel now reads the merged event feed and displays the source (Project or Memory), event type, status transition and timestamp.
+- The Control Centre now includes a read-only Security Centre panel backed by the authenticated /api/modules and /api/capabilities registries.
+- The Security Centre lists module status, declared capability count, manifest version/provider/status and each action's effect/risk/approval policy. It does not expose grants, execute tools or change permissions.
+- Full GitHub Actions verification after these changes: Node.js 22, 278 tests passed, 0 failed (run https://github.com/LAURENCE1977/Aegis-/actions/runs/43748595330). The latest subsequent frontend refactor is still being verified.
