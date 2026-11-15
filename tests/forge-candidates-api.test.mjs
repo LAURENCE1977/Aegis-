@@ -27,6 +27,15 @@ class CandidateD1 {
           };
           db.rows.set(row.id,row);db.events.push({candidate_id:row.id});return {meta:{changes:1}};
         }
+        if(sql.includes('UPDATE forge_candidates')){
+          const row=db.rows.get(v[4]);
+          if(!row||row.owner_id!==v[5]||['archived','rejected'].includes(row.status))return {meta:{changes:0}};
+          const old={...row};
+          row.licence_review=v[0];row.decision=v[1];row.status=v[2];row.updated_at=v[3];
+          if(old.licence_review!==row.licence_review||old.decision!==row.decision)db.events.push({type:'review_changed',id:row.id});
+          if(old.status!==row.status)db.events.push({type:'status_changed',id:row.id});
+          return {meta:{changes:1}};
+        }
         return {meta:{changes:0}};
       },
       async first(){
