@@ -89,10 +89,12 @@ export function buildProjectBrief({
   // Reserve room for final budget counters and serialization metadata.
   const selectionBudget = maxChars - 160;
   for (const memory of eligibleMemories) {
+    const rawContent = boundedText(memory.content, 4000);
     const entry = {
       id: memory.id,
       kind: memory.kind,
-      content: boundedText(memory.content, 1200),
+      content: '',
+      contentTruncated: false,
       confidence: memory.confidence,
       source: boundedText(memory.source?.attribution, 160) || 'Unattributed',
       observedAt: validTimestamp(memory.source?.observedAt) ? memory.source.observedAt : null,
@@ -100,6 +102,20 @@ export function buildProjectBrief({
       trust: 'untrusted-reference',
     };
     brief.memories.push(entry);
+    const available = selectionBudget - measure(brief);
+    if (available < 80) {
+      brief.memories.pop();
+      brief.budget.omittedMemories += 1;
+      continue;
+    }
+    let contentLimit = Math.min(1200, available);
+    entry.content = rawContent.slice(0, contentLimit);
+    entry.contentTruncated = rawContent.length > contentLimit;
+    while (measure(brief) > selectionBudget && contentLimit > 80) {
+      contentLimit = Math.max(80, Math.floor(contentLimit * 0.8));
+      entry.content = rawContent.slice(0, contentLimit);
+      entry.contentTruncated = rawContent.length > contentLimit;
+    }
     if (measure(brief) > selectionBudget) {
       brief.memories.pop();
       brief.budget.omittedMemories += 1;
@@ -125,7 +141,7 @@ export function buildProjectBrief({
   brief.budget.omittedEvents += events.length - eligibleEvents.length;
   brief.budget.truncated = brief.budget.omittedMemories > 0 ||
     brief.budget.omittedEvents > 0 ||
-    brief.memories.some((entry, index) => entry.content.length < eligibleMemories[index]?.content.length);
+    brief.memories.some((entry) => entry.contentTruncated);
 
   brief.budget.usedChars = measure(brief);
   brief.budget.estimatedTokens = Math.ceil(brief.budget.usedChars / 4);
