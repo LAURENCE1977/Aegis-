@@ -57,6 +57,25 @@
     button:disabled { opacity: 0.5; }
     .logout { position: absolute; right: 0; top: 0; padding: .45rem .7rem; font-size: .8rem; }
     .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
+    .toolbar { display: flex; gap: .6rem; margin: 0 0 1rem; }
+    .toolbar button { flex: 1; padding: .7rem .9rem; }
+    .secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .memory-panel { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+    .memory-panel h2 { font-size: 1.05rem; margin-bottom: .4rem; }
+    .memory-help { color: var(--muted); font-size: .82rem; line-height: 1.45; margin-bottom: .8rem; }
+    .memory-form { display: grid; gap: .6rem; margin-bottom: 1rem; }
+    .memory-form select, .memory-form textarea {
+      width: 100%; padding: .75rem; border-radius: .7rem; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font: inherit;
+    }
+    .memory-form textarea { min-height: 5rem; resize: vertical; }
+    .memory-item { border-top: 1px solid var(--border); padding: .9rem 0; }
+    .memory-item p { line-height: 1.45; overflow-wrap: anywhere; }
+    .memory-meta { color: var(--muted); font-size: .75rem; margin: .35rem 0 .6rem; }
+    .memory-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .memory-actions button { padding: .5rem .7rem; font-size: .78rem; }
+    .memory-history { margin-top: .6rem; padding-left: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    .memory-empty { color: var(--muted); font-size: .85rem; padding: .75rem 0; }
     @media (max-width: 420px) {
       .logout { position: static; margin-top: .75rem; }
       .input-area button { padding-inline: 1rem; }
@@ -82,12 +101,26 @@
     </section>
 
     <main id="appPanel" hidden>
+      <div class="toolbar"><button class="secondary" id="chatTab" type="button">Chat</button><button class="secondary" id="memoryTab" type="button">Memory</button></div>
+      <section id="chatSection">
       <div class="chat-box" id="chatBox" aria-live="polite"></div>
       <div class="input-area">
         <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off" />
         <button id="sendBtn" type="button">Send</button>
       </div>
       <p class="status" id="status">Ready</p>
+      </section>
+      <section class="memory-panel" id="memorySection" hidden>
+        <h2>My AEGIS memory</h2>
+        <p class="memory-help">New memories are saved as candidates. They only become trusted recall after you approve them. This area needs the AEGIS D1 memory store to be connected.</p>
+        <form class="memory-form" id="memoryForm">
+          <select id="memoryKind" aria-label="Memory type"><option value="fact">Fact</option><option value="preference">Preference</option><option value="decision">Decision</option><option value="event">Event</option><option value="procedure">Procedure</option><option value="artifact">Project / artifact</option></select>
+          <textarea id="memoryContent" maxlength="4000" placeholder="What should AEGIS remember?" required></textarea>
+          <button id="saveMemoryBtn" type="submit">Save for review</button>
+        </form>
+        <p class="status" id="memoryStatus" role="status" aria-live="polite">Loading memory…</p>
+        <div id="memoryList" aria-live="polite"></div>
+      </section>
     </main>
   </div>
 
@@ -103,6 +136,16 @@
     const loginStatus = document.getElementById('loginStatus');
     const appPanel = document.getElementById('appPanel');
     const logoutBtn = document.getElementById('logoutBtn');
+    const chatTab = document.getElementById('chatTab');
+    const memoryTab = document.getElementById('memoryTab');
+    const chatSection = document.getElementById('chatSection');
+    const memorySection = document.getElementById('memorySection');
+    const memoryForm = document.getElementById('memoryForm');
+    const memoryKind = document.getElementById('memoryKind');
+    const memoryContent = document.getElementById('memoryContent');
+    const saveMemoryBtn = document.getElementById('saveMemoryBtn');
+    const memoryStatus = document.getElementById('memoryStatus');
+    const memoryList = document.getElementById('memoryList');
 
     const STORE_KEY = 'aegis_chat_v1';
     const MAX_SENT = 10;
@@ -157,6 +200,8 @@
       loginPanel.hidden = true;
       appPanel.hidden = false;
       logoutBtn.hidden = false;
+      chatSection.hidden = false;
+      memorySection.hidden = true;
       chatBox.replaceChildren();
       loadHistory();
       addMessage('Hello! How can I help you today?');
@@ -206,6 +251,147 @@
     logoutBtn.addEventListener('click', async () => {
       try { await fetch('/api/login', { method: 'DELETE' }); } catch (e) {}
       showLogin('You have signed out.');
+    });
+
+
+    async function memoryApi(path = '', options = {}) {
+      const res = await fetch('/api/memories' + path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store'
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Memory service error ' + res.status));
+      return data;
+    }
+
+    function memoryButton(label, action, secondary = true) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = secondary ? 'secondary' : '';
+      button.textContent = label;
+      button.addEventListener('click', action);
+      return button;
+    }
+
+    async function loadMemories() {
+      memoryStatus.textContent = 'Loading memories…';
+      memoryList.replaceChildren();
+      try {
+        const data = await memoryApi('?review=1');
+        if (!Array.isArray(data.memories) || !data.memories.length) {
+          memoryList.textContent = 'No memories yet. Add one above, or continue chatting.';
+          memoryList.className = 'memory-empty';
+        } else {
+          memoryList.className = '';
+          data.memories.forEach(memory => {
+            const item = document.createElement('article');
+            item.className = 'memory-item';
+            const content = document.createElement('p');
+            content.textContent = memory.content;
+            const meta = document.createElement('div');
+            meta.className = 'memory-meta';
+            meta.textContent = memory.kind + ' · ' + memory.status + ' · ' + (memory.source?.attribution || 'Source recorded');
+            item.append(content, meta);
+            const actions = document.createElement('div');
+            actions.className = 'memory-actions';
+            if (memory.status === 'candidate') {
+              actions.append(
+                memoryButton('Approve', () => changeMemoryStatus(memory.id, 'accepted'), false),
+                memoryButton('Reject', () => changeMemoryStatus(memory.id, 'retracted'))
+              );
+            }
+            actions.append(memoryButton('History', () => showMemoryHistory(memory.id)));
+            item.append(actions);
+            const history = document.createElement('ol');
+            history.className = 'memory-history';
+            history.hidden = true;
+            history.id = 'history-' + memory.id;
+            item.append(history);
+            memoryList.append(item);
+          });
+        }
+        memoryStatus.textContent = data.memories.length + ' memory record(s) · owner-only';
+      } catch (error) {
+        memoryStatus.textContent = error.message.includes('503') || error.message.includes('temporarily')
+          ? 'Persistent memory is not active yet. The D1 database and binding still need to be provisioned.'
+          : error.message;
+      }
+    }
+
+    async function changeMemoryStatus(id, nextStatus) {
+      memoryStatus.textContent = 'Saving review…';
+      try {
+        await memoryApi('/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          body: JSON.stringify({ status: nextStatus })
+        });
+        await loadMemories();
+      } catch (error) { memoryStatus.textContent = error.message; }
+    }
+
+    async function showMemoryHistory(id) {
+      const list = document.getElementById('history-' + id);
+      if (!list) return;
+      if (!list.hidden) { list.hidden = true; return; }
+      list.hidden = false;
+      list.replaceChildren();
+      try {
+        const data = await memoryApi('/' + encodeURIComponent(id) + '/events');
+        data.events.forEach(event => {
+          const entry = document.createElement('li');
+          entry.textContent = event.type + ': ' + (event.fromStatus || 'new') + ' → ' + event.toStatus + ' · ' + new Date(event.occurredAt).toLocaleString();
+          list.append(entry);
+        });
+        if (!data.events.length) list.textContent = 'No history available.';
+      } catch (error) {
+        const entry = document.createElement('li');
+        entry.textContent = error.message;
+        list.append(entry);
+      }
+    }
+
+    memoryForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const content = memoryContent.value.trim();
+      if (!content) return;
+      saveMemoryBtn.disabled = true;
+      memoryStatus.textContent = 'Saving memory for review…';
+      try {
+        await memoryApi('', {
+          method: 'POST',
+          body: JSON.stringify({
+            kind: memoryKind.value,
+            content,
+            source: {
+              type: 'user-stated',
+              url: 'https://aegis.local/manual-entry',
+              attribution: 'Owner entered this memory in AEGIS'
+            },
+            confidence: 1,
+            sensitivity: 'private'
+          })
+        });
+        memoryContent.value = '';
+        await loadMemories();
+      } catch (error) { memoryStatus.textContent = error.message; }
+      finally { saveMemoryBtn.disabled = false; }
+    });
+
+    memoryTab.addEventListener('click', () => {
+      chatSection.hidden = true;
+      memorySection.hidden = false;
+      loadMemories();
+    });
+    chatTab.addEventListener('click', () => {
+      memorySection.hidden = true;
+      chatSection.hidden = false;
+      userInput.focus();
     });
 
     async function memoryCall(method, body) {
