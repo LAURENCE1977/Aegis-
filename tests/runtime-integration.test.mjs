@@ -53,14 +53,6 @@ class MemoryD1 {
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
         }
-        if (sql.includes("SET status = 'failed'")) {
-          const row = db.jobs.get(v[1]);
-          if (row && !['succeeded', 'failed'].includes(row.status)) {
-            row.status = 'failed'; row.error_code = 'JOB_DELIVERY_EXHAUSTED'; row.lease_until = null; row.updated_at = v[0];
-            return { meta: { changes: 1 } };
-          }
-          return { meta: { changes: 0 } };
-        }
         if (sql.includes("SET status = 'failed'") && sql.includes("JOB_DELIVERY_EXHAUSTED")) {
           const row = db.jobs.get(v[1]);
           const expiredLease = row?.status === 'running' && (!row.lease_until || row.lease_until <= v[2]);
@@ -253,5 +245,26 @@ test('unknown queue batches are acknowledged without executing jobs', async () =
   }, env);
 
   assert.equal(saved.status, 'queued');
+  assert.equal(acked, true);
+});
+
+
+test('dead-letter delivery does not fail a job with an active lease', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'running';
+  saved.lease_until = new Date(Date.now() + 60_000).toISOString();
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'running');
+  assert.equal(saved.error_code, undefined);
+  assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
   assert.equal(acked, true);
 });
