@@ -345,3 +345,12 @@ Two additional Forge candidates have been evaluated and recorded in [RESEARCH_SO
 **Decision:** selectively adapt it as a high-priority source for AEGIS engineering standards. Highest-value additions are constraint-driven quality contracts, context engineering, source-driven and doubt-driven review, incremental implementation, browser testing, security hardening, observability and safe release practices.
 
 Do not duplicate the ten existing AEGIS-native Superpowers adaptations or replace AEGIS orchestration with upstream slash commands. Every adopted skill must be provenance-pinned, overlap-checked, converted to the AEGIS capability/policy model where tools are involved, and covered by evidence-based tests. Personas do not grant authority; shared references must travel with adapted skills. No upstream package or plugin has been installed.
+
+
+## 18. CoreDeck — optional Android QA tooling
+
+[devmuaz/CoreDeck](https://github.com/devmuaz/CoreDeck) is recorded in the [research source register](RESEARCH_SOURCE_REGISTER.md) as an MIT-licensed Android SDK/device-tooling reference. It provides a native desktop interface to official Android SDK/JDK tools for AVDs, emulators, ADB/device workflows, SDK health, APK inspection/signing and keystores.
+
+**Decision:** reference-only; optional external QA workstation if AEGIS later ships an Android client. It is not an agent runtime, CI service, remote browser or 24/7 host. Its published native targets are Windows, macOS and Linux, not Chromebook browser or iOS/iPadOS. Therefore it does not change the first-delivery priority: responsive web/PWA on Chromebook, iPhone and iPad.
+
+Any future AEGIS device-control adapter must isolate the ADB host, scope access to disposable test devices/accounts, classify every action through the Capability System, require explicit approval for consequential device or signing operations, keep private keys out of agent context/logs, and record redacted evidence. No CoreDeck binary or service has been installed or connected.
