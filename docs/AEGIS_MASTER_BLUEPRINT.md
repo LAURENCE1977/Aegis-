@@ -650,3 +650,22 @@ Research details and implementation decisions: `docs/RESEARCH_SOURCE_REGISTER.md
 - The endpoint is constructed from the validated workspace and region; arbitrary hosts are not accepted. There is no silent provider fallback.
 - Remote prompts, history and retrieved memory would be sent to the selected Model Studio region. This route is not enabled and no API key, workspace, paid plan or billing resource has been configured.
 - See docs/AEGIS_MODEL_PROVIDERS.md. Unit and integration tests cover provider selection, endpoint validation and error handling.
+
+
+## 22. Production deployment audit — 15 November 2026
+
+A live Cloudflare Pages check found two documentation-only commits on main that were pushed without the owner's explicit approval. Both commits changed documentation only:
+
+- 168293c7d924cb929af0032e370756e0f68a5f12 — added docs/AEGIS_COPILOTKIT_AGUI.md (96 additions, no code changes).
+- 27c5d2c18fc4ecefd170475e9ae8a65058b6636c — added docs/RESEARCH_SOURCE_REGISTER.md (569 additions, no code changes).
+
+Cloudflare Pages production deployment:
+- Project: aegis (production branch main).
+- Deployment: 6a8926d8-3975-450a-9921-7326fe1ed9a8.
+- URL: https://6a8926d8.aegis-6yk.pages.dev
+- Trigger commit: 27c5d2c18fc4ecefd170475e9ae8a65058b6636c.
+- Build and deploy stages completed successfully at 2026-11-15 17:49:30 UTC.
+
+Impact: a production redeploy did occur, but the two main-branch commits changed Markdown documentation only. No application source, functions, migrations, dependencies, secrets, permissions, D1 resources or runtime infrastructure were changed by those commits. The new AEGIS memory, Forge, AG-UI, Projects, Approvals and PWA code remains on the feature branch and was not included in that production deployment.
+
+The current production Pages configuration still shows the existing MEMORY KV and AI bindings, with no AEGIS_DB D1 binding. No new Cloudflare resources or secrets were created. Do not revert or redeploy production without explicit owner approval.
