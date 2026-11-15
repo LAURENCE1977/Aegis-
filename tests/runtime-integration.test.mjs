@@ -162,3 +162,28 @@ test('queue consumer executes only the persisted health-check job and acknowledg
   assert.equal(acked, true);
   assert.equal(retried, false);
 });
+
+
+test('dead-letter delivery marks a non-terminal job failed and records the delivery exhaustion', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'queued';
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{
+      body: { jobId: job.id },
+      ack() { acked = true; },
+      retry() {},
+    }],
+  }, env);
+
+  assert.equal(saved.status, 'failed');
+  assert.equal(saved.error_code, 'JOB_DELIVERY_EXHAUSTED');
+  assert.equal(saved.lease_until, null);
+  assert.equal(acked, true);
+  assert.ok(DB.events.some((event) => event.event_type === 'delivery_exhausted'));
+});
