@@ -800,6 +800,40 @@
           const pin = document.createElement('p');
           pin.textContent = 'Pinned tree ' + candidate.version.slice(0, 12);
           item.append(candidateNode, detail, pin);
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'Review history';
+          historyButton.addEventListener('click', async () => {
+            const existing = item.querySelector('.candidate-history');
+            if (existing) { existing.remove(); return; }
+            const history = document.createElement('ol');
+            history.className = 'candidate-history memory-history';
+            const loading = document.createElement('li');
+            loading.textContent = 'Loading review history…';
+            history.append(loading);
+            item.append(history);
+            try {
+              const result = await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id) + '/events');
+              history.replaceChildren();
+              (result.events || []).forEach(event => {
+                const entry = document.createElement('li');
+                entry.textContent = event.type + ' · ' +
+                  (event.fromStatus || 'new') + ' → ' + event.toStatus +
+                  ' · ' + (event.fromDecision || 'unassessed') + ' → ' + event.toDecision +
+                  ' · ' + new Date(event.occurredAt).toLocaleString();
+                history.append(entry);
+              });
+              if (!history.children.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'No review history recorded.';
+                history.append(empty);
+              }
+            } catch (error) {
+              history.textContent = error.message;
+            }
+          });
+          item.append(historyButton);
           if (!['archived', 'rejected'].includes(candidate.status)) {
             const reviewButton = document.createElement('button');
             reviewButton.type = 'button';
