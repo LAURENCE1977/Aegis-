@@ -189,3 +189,13 @@ test('Sentinel does not consume approval when the operation payload changes', as
   assert.equal(result.reasonCode, 'APPROVAL_MISMATCH');
   assert.equal(db.rows.get(pending.id).status, 'approved');
 });
+
+test('Sentinel refuses a protected write when no approval ID is supplied', async () => {
+  const manifest = writeManifest();
+  const result = await authorizeSentinelInvocation({
+    capabilityId: manifest.id, actionId: 'update', principalId, resourceId,
+    input, grant: grantFor(manifest), registryLookup: () => manifest,
+  });
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'APPROVAL_REQUIRED');
+});
