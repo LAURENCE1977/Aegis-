@@ -16,7 +16,7 @@ class MemoryD1 {
       bind(...values) { this.values = values; return this; },
       async run() {
         const v = this.values;
-        if (sql.includes("UPDATE capability_connections SET status = 'revoked'") && sql.includes('expires_at <= ?')) {
+        if (sql.includes('UPDATE capability_connections') && sql.includes("SET status = 'revoked'") && sql.includes('expires_at <= ?')) {
           const [revokedAt, principal, provider, now] = v;
           let changes = 0;
           for (const row of db.rows.values()) {
@@ -44,7 +44,7 @@ class MemoryD1 {
           });
           return { meta: { changes: 1 } };
         }
-        if (sql.includes("UPDATE capability_connections SET status = 'revoked'")) {
+        if (sql.includes('UPDATE capability_connections') && sql.includes("SET status = 'revoked'")) {
           const [revokedAt, id, principal] = v;
           const row = db.rows.get(id);
           if (!row || row.principal_id !== principal || row.status !== 'active') {
