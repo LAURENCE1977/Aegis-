@@ -86,3 +86,6 @@ The canonical architecture, operating principles, verified baseline, roadmap and
 ## Cross-platform roadmap
 
 AEGIS is being designed around one portable core and replaceable client/platform adapters. The first target is a responsive web/PWA experience across Chromebook, iPhone and iPad browsers, with Android, Windows, macOS and Linux extensions added when validated. See [docs/PLATFORM_COMPATIBILITY.md](docs/PLATFORM_COMPATIBILITY.md). This roadmap does not claim those later clients are already implemented.
+
+
+**Sentinel integration status:** a strict agent-to-Sentinel capability bridge now exists in source, with server-bound identity, canonical registry lookup, JSON input digesting and fail-closed dependencies. It is deliberately not wired to agent execution yet; grant/connection persistence, vault, audit composition and isolated adapters remain prerequisites. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md).
