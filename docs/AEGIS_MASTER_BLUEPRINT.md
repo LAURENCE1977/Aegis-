@@ -566,3 +566,16 @@ The older `migrations/workspaces/` and `migrations/memory/` directories are feat
 - Memory review UI downloads the export as JSON. No third-party service is used.
 - CI at `e3b79ff795e1181576e7f9c3a66f5784e17bcf7e`: 230/230 tests passed.
 - D1 is still not provisioned or bound. Preview secrets remain unconfigured; production application code and data are unchanged by this feature branch.
+
+
+## 20. Operational deployment note — 15 November 2026
+
+- Two documentation-only commits were unintentionally written to the repository's default `main` branch because a GitHub file update omitted the intended feature-branch target:
+  - `168293c7d924cb929af0032e370756e0f68a5f12` — added the CopilotKit/AG-UI architecture document.
+  - `27c5d2c18fc4ecefd170475e9ae8a65058b6636c` — added/updated the research source register.
+- Cloudflare Pages automatically produced successful production deployments:
+  - https://3b6d73fa.aegis-6yk.pages.dev
+  - https://6a8926d8.aegis-6yk.pages.dev
+- GitHub commit inspection confirmed both commits changed Markdown documentation only. No application source, production data, secrets, D1/Queue resources, permissions or infrastructure changed.
+- No rollback was attempted because that would require another production action. All subsequent code work remains on `feature/native-memory-substrate`; PR #27 remains draft and unmerged.
+- This was an operational error. Future file mutations must specify the intended feature branch explicitly and verify the resulting commit branch before proceeding.
