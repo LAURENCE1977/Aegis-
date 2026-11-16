@@ -23,6 +23,12 @@ The job states are:
 
 A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it.
 
+## Dead-letter recovery
+
+The runtime now distinguishes the primary `aegis-jobs` queue from `aegis-jobs-dlq` using the Cloudflare `MessageBatch.queue` value. Exhausted deliveries conditionally fail only queued/pending jobs or running jobs whose lease has expired, set `JOB_DELIVERY_EXHAUSTED`, clear the lease and append a deterministic, idempotent `delivery_exhausted` audit event. Active leases and terminal jobs are preserved. Unknown queue batches are acknowledged without executing their payloads.
+
+The Wrangler example registers the dedicated DLQ consumer. This is source/configuration only: no Cloudflare D1 database, Queue or runtime Worker has been provisioned or deployed. The regression tests use an in-memory D1/Queue adapter and are not a substitute for live Cloudflare integration tests.
+
 ## API contract
 
 All endpoints require:
