@@ -87,6 +87,7 @@ test('agent tools remain disabled unless the owner explicitly enables a supporte
   assert.equal(isAgentToolingEnabled({ ...configured, AEGIS_MODEL_PROVIDER: 'workers-ai' }), false);
   assert.equal(isAgentToolingEnabled({ ...configured, AEGIS_DB: undefined }), false);
   assert.equal(isAgentToolingEnabled({ ...configured, AEGIS_QWEN_API_KEY: undefined }), false);
+  assert.equal(isAgentToolingEnabled({ ...configured, AEGIS_QWEN_MODEL: 'qwen2.5-14b-instruct' }), false);
 });
 
 test('unknown tool names and malformed arguments fail before D1 access', async () => {

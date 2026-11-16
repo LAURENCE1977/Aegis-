@@ -146,3 +146,17 @@ test('Qwen follow-up accepts one bounded assistant tool call and matching tool r
   assert.equal(captured.messages[1].tool_calls[0].function.name, 'aegis_list_modules');
   assert.equal(captured.messages[2].role, 'tool');
 });
+test('Qwen tool calling is restricted to the model with verified tool-call support', async () => {
+  await assert.rejects(() => createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen2.5-14b-instruct',
+    },
+    messages: [{ role: 'user', content: 'List my modules.' }],
+    tools: serverTools,
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /tool calling is not enabled for this qwen model/i);
+});
