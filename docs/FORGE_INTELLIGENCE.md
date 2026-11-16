@@ -155,3 +155,8 @@ Use AEGIS Project Spaces as the durable context and activity layer for projects.
 ## Free-Tier Ledger — currentness rule
 
 Free-tier records are evidence, not entitlements. Only a recently verified record may be treated as current; candidates, unknown terms and expired records require review. Check official provider pricing and terms before use, especially billing triggers, overage and commercial-use restrictions. The ledger cannot provision or create accounts.
+
+
+## Free-Tier Ledger implementation boundary
+
+The current implementation treats only `verified` records inside the freshness window as current. Candidate and expired offers remain discoverable research leads, not usable capacity. This avoids presenting unverified listings as free resources. No account creation, provider connection, provisioning, or paid overage is performed by the ledger.
