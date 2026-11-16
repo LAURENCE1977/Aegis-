@@ -112,7 +112,7 @@ Idempotency-Key: review-runtime-0001
 }
 ```
 
-The specialist list is optional and is limited to the server-defined roles: researcher, planner, engineer, security and reviewer. The default is researcher, engineer and reviewer. The response contains the durable run ID and current state.
+The specialist list is optional and is limited to the server-defined roles: researcher, planner, engineer, security and reviewer. The default is researcher, engineer and reviewer. The response contains the durable run ID and current state. The submission endpoint enforces its 8 KiB request-body limit while streaming the request, so absent or dishonest `Content-Length` headers cannot cause an unbounded body to be buffered; oversized streams are cancelled and rejected with `413` before JSON parsing or persistence.
 
 ```http
 GET /v1/agent-runs/<uuid>
