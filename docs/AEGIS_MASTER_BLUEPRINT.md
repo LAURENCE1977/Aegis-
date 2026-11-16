@@ -408,6 +408,11 @@ The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-
 A second fixed Sentinel adapter, `aegis-github-public-discovery:discover`, reads public repository metadata only. Its destination is pinned to `api.github.com`, redirects are rejected, request timeouts are bounded, and streamed response bodies are capped at 64 KiB. It accepts exactly one canonical GitHub repository URL and does not read repository files, execute code, access private repositories or derive destinations from user-supplied endpoints. The adapter is registered in the server-side adapter map but is not exposed through a Sentinel route. Before exposure, add an atomic per-principal/action rate limiter and verify exact-resource grants for the target repository. Existing Forge source inspection remains a separate read-only research route.
 
 
+## Forge candidate evidence and licence review
+
+Forge candidates are owner-scoped and pinned to immutable Git tree revisions. Discovery never implies approval: candidates begin unassessed and licence-review-required. Reuse, adaptation, combination or approval requires explicit owner attestation, HTTPS evidence and a review note. D1 triggers protect source identity, enforce licence gates and preserve append-only review/status events. Candidate review is metadata-only; it does not install, build or execute upstream code.
+
+
 ## Atomic capability invocation rate limits
 
 Migration `0006_invocation_limits.sql` adds an atomic per-principal, capability and action counter in fixed UTC-minute windows. A conditional D1 UPSERT reserves a slot only while the manifest's `requestsPerMinute` budget remains; old buckets are pruned after 24 hours. Sentinel requires a successful reservation after exact policy checks and before pre-execution audit, approval consumption or adapter execution. Exhaustion returns HTTP 429; rate-limit store failure returns 503. Both fail closed and attempt a redacted denial audit. CI applies migrations 0001–0006 to disposable local D1 and asserts three reservations against a limit of two leave the counter at exactly two. No remote or production D1 database is changed.
