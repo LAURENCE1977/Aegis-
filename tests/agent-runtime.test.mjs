@@ -575,6 +575,26 @@ test('runtime authorisation requires an exact one-time approval binding and neve
   const changedDigest = await authorize({ ...binding, inputDigest: 'sha256:' + '0'.repeat(64) });
   assert.equal(changedDigest.status, 409, 'a different plan digest cannot be authorised');
   assert.equal(sent.length, 1);
+
+  let staleAcked = false;
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{
+    body: { agentRunId: run.id },
+    ack() { staleAcked = true; },
+    retry() { assert.fail('authorised plan must not be retried as work'); },
+  }] }, env);
+  assert.equal(staleAcked, true);
+  assert.equal(saved.status, 'planned');
+  assert.equal(saved.authorization_approval_id, binding.approvalId);
+  assert.equal(sent.length, 1, 'authorisation and stale delivery must not dispatch another worker');
+
+  const cancelled = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id + '/cancel',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(cancelled.status, 200);
+  const cancelledRun = (await cancelled.json()).run;
+  assert.equal(cancelledRun.status, 'cancelled');
+  assert.equal(cancelledRun.executionAuthorized, true);
 });
 
 test('runtime authorisation rejects missing credentials, non-planned runs and malformed claims', async () => {
