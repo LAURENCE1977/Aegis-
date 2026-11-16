@@ -637,3 +637,18 @@ test('runtime authorisation rejects oversized bodies even when Content-Length is
   assert.equal(response.status, 413);
   assert.deepEqual(await response.json(), { error: 'Request body is too large.' });
 });
+
+
+test('agent-run submission rejects oversized streamed bodies before persistence when Content-Length is absent', async () => {
+  const { env, DB } = makeEnv();
+  const request = new Request('https://runtime.example/v1/agent-runs', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ objective: 'x'.repeat(9000) }),
+  });
+  assert.equal(request.headers.get('Content-Length'), null);
+  const response = await handleRuntimeFetch(request, env);
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: 'Request body is too large.' });
+  assert.equal(DB.runs.size, 0);
+});
