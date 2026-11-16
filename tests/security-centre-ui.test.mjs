@@ -111,6 +111,15 @@ test('agent workforce shows persisted authorisation and prevents duplicate appro
   assert.match(html, /run\.executionAuthorized === true/);
 });
 
+test('Forge exposes an owner-reviewed searchable Knowledge Library without auto-acceptance', () => {
+  assert.match(html, /id="forgeKnowledgeForm"/);
+  assert.match(html, /id="forgeKnowledgeSources"/);
+  assert.match(html, /id="forgeKnowledgeQuery"/);
+  assert.match(html, /id="forgeKnowledgeReviewNote"/);
+  assert.match(html, /\/api\/forge\/knowledge/);
+  assert.match(html, /Draft saved; not accepted or used by agents/i);
+});
+
 test('Agent Workforce can bind a run to an owner-selected Project Space memory context', () => {
   assert.match(html, /id="agentRunProjectId"/);
   assert.match(html, /agentRunProjectSelect/);
