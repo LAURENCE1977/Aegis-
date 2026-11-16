@@ -27,7 +27,11 @@ At execution time:
 - The adapter receives a frozen, minimal context. It contains no vault secret, secret reference, arbitrary endpoint or path.
 - The factory does not resolve credentials. A future authenticated adapter must resolve a secret only after Sentinel policy approval, using the exact owner/provider connection and the vault's principal/connection binding.
 
-## First built-in adapter\n\n\`createBuiltinAdapterRegistry\` currently supplies one local-only adapter: \`aegis-module-catalogue:list\`. It returns the descriptive module catalogue, rejects all non-empty input, and performs no network, filesystem, secret or process operations. The adapter is tested both directly and through the Sentinel composition root. It remains unreachable from a public invocation route until the D1 and route prerequisites below are met.\n\n## Current limitations
+## First built-in adapter
+
+`createBuiltinAdapterRegistry` currently supplies one local-only adapter: `aegis-module-catalogue:list`. It returns the descriptive module catalogue, rejects all non-empty input, and performs no network, filesystem, secret or process operations. The adapter is tested both directly and through the Sentinel composition root. It remains unreachable from a public invocation route until the D1 and route prerequisites below are met.
+
+## Current limitations
 
 This is not yet wired to a public route or a deployed Worker. The current capability registry includes descriptive capabilities, but there is not yet a production adapter implementation or a live D1 database. No user or agent can invoke this composition root through the deployed site.
 
