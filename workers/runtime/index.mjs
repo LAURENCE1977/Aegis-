@@ -1,5 +1,6 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
+import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -230,6 +231,12 @@ async function submitAgentRun(request, env) {
       if (expectedDigest !== submission.projectContext.digest) {
         return json({ error: 'Project context digest does not match its contents.' }, 400);
       }
+      if (submission.projectContext.knowledge !== undefined) {
+        const expectedKnowledgeDigest = await digestCanonicalInput(submission.projectContext.knowledge);
+        if (expectedKnowledgeDigest !== submission.projectContext.knowledgeDigest) {
+          return json({ error: 'Forge knowledge digest does not match its contents.' }, 400);
+        }
+      }
     } catch {
       return json({ error: 'Project context could not be verified.' }, 400);
     }
@@ -258,7 +265,8 @@ async function submitAgentRun(request, env) {
   const storedContextDigest = row.context_digest || null;
   if (row.objective !== submission.objective ||
       row.specialists_json !== JSON.stringify(submission.specialists) ||
-      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest) {
+      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest ||
+      (row.context_json || null) !== contextJson) {
     return json({ error: 'Idempotency-Key was already used for a different agent run request.' }, 409);
   }
   if (row.status === 'pending_dispatch') {
@@ -527,7 +535,9 @@ async function processAgentRun(message, env) {
     const specialists = JSON.parse(row.specialists_json);
     const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
     if (projectContext && (row.context_digest !== projectContext.digest ||
-        await digestProjectBrief(projectContext.brief) !== projectContext.digest)) {
+        await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
+        (projectContext.knowledge !== undefined &&
+          await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
       throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
     }
     const plan = createAgentPlan({
