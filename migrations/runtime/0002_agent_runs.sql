@@ -30,3 +30,15 @@ CREATE TABLE IF NOT EXISTS agent_run_events (
 
 CREATE INDEX IF NOT EXISTS idx_agent_run_events_run_created
   ON agent_run_events (agent_run_id, created_at);
+
+CREATE TRIGGER IF NOT EXISTS agent_run_events_no_update
+BEFORE UPDATE ON agent_run_events
+BEGIN
+  SELECT RAISE(ABORT, 'agent run events are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS agent_run_events_no_delete
+BEFORE DELETE ON agent_run_events
+BEGIN
+  SELECT RAISE(ABORT, 'agent run events are append-only');
+END;
