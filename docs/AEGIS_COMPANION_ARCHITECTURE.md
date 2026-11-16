@@ -201,13 +201,16 @@ The companion architecture is not complete until tests and user-facing checks de
 
 ## 14. Current implementation status
 
-The first companion foundation is now present on the active AEGIS branch:
+The first companion foundation and a dedicated companion-led Home experience are now present on the active AEGIS branch:
 
 - `functions/lib/companion-contracts.mjs` defines a versioned, provider-neutral companion profile contract and a pure presence-state transition function.
 - `tests/companion-contracts.test.mjs` covers official identity reservation, custom profile validation, prohibited authority fields, explicit external-voice opt-in, consent-gated listening, interruption, pause and disconnect behaviour.
-- `index.html` contains the first companion-first signed-in home layout: a responsive presentation stage alongside the existing conversation, with an accessible static avatar placeholder and clear disclosure that the interactive avatar runtime is still in development.
-- `tests/companion-first-ui.test.mjs` checks the presentation stage, responsive styling and preservation of the existing chat controls.
+- `index.html` now opens the signed-in experience on a dedicated Home dashboard. The companion presentation stage is the centrepiece of the Home view; conversation is a separate focused workspace.
+- The Home dashboard has working navigation shortcuts to Conversation, Project Spaces, Memory, Knowledge Forge, Approvals and Security. The experience is responsive and uses the existing dependency-light HTML/CSS/JavaScript shell.
+- `tests/companion-first-ui.test.mjs` now specifies the companion-led Home route, navigation targets, separation of the conversation workspace and responsive layout.
+- GitHub Actions run 43954785649 completed successfully after these changes, including the full Node.js/Miniflare suite and isolated capability, runtime and Forge D1 safeguards.
+- Cloudflare Pages preview for commit `4d37eed7ebbb609cff7b5e2541cfb182a651e095` deployed successfully at `https://a673ccea.aegis-6yk.pages.dev`.
 
-These are source-level foundations, not a completed human companion. Profile persistence, profile switching/customisation UI, a real 2D/3D renderer, speech input/output, live perception and authenticated browser verification remain unimplemented. The current preview's sign-in page loads, but its Preview environment still needs its own `AEGIS_PASSWORD` and `AEGIS_SESSION_SECRET` encrypted secrets before the signed-in workspace can be tested.
+This is a real interface improvement, not a completed lifelike companion. The current visual avatar remains a clearly disclosed static placeholder. Profile persistence, profile switching/customisation UI, real 2D/3D rendering, speech input/output, live perception and authenticated browser verification remain unimplemented. The Preview environment still needs its own secure authentication configuration before the signed-in workspace can be tested against live authenticated services. No credentials should be shared in chat.
 
 The next engineering task is to connect profile selection and presence events to the existing authenticated session without creating a second identity, memory store or permission system. Sentinel remains the sole authority for protected operations and capture consent.
