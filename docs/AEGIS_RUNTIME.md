@@ -151,6 +151,25 @@ Migrations:
 - `agent_run_events` stores append-only agent-run lifecycle events.
 - Foreign keys and indexes support job lookup, pending dispatch and lease recovery.
 
+## Pages owner proxy and Agent Workforce console
+
+The Pages app now exposes owner-authenticated proxy routes for the separate runtime Worker:
+
+- `GET /api/agent-runs?limit=20` — list recent runs.
+- `POST /api/agent-runs` — submit a bounded objective and optional specialist list.
+- `GET /api/agent-runs/:id` — inspect a run and its plan.
+- `GET /api/agent-runs/:id/events` — read the append-only event timeline.
+- `POST /api/agent-runs/:id/cancel` — cancel an eligible run.
+
+The Security Centre contains an Agent Workforce console for creating, inspecting, refreshing and cancelling plan-only runs. It clearly labels the current stage: no specialist model calls, tool execution or external actions occur.
+
+Configure these as **server-side Pages environment variables** only after the runtime Worker is deployed:
+
+- `AEGIS_RUNTIME_URL` — the HTTPS origin of the dedicated runtime Worker, with no path, query or credentials.
+- `AEGIS_JOB_TOKEN` — the same high-entropy bearer secret configured on the runtime Worker.
+
+The Pages proxy never sends the runtime token to the browser. It requires the existing owner session, checks same-origin writes, uses fixed allowlisted runtime paths, rejects redirects, bounds request/response sizes and applies an eight-second upstream timeout. Missing or invalid configuration fails closed. Do not put either value in `index.html`, client JavaScript, source control or chat.
+
 ## Deployment preparation
 
 The Worker has a Wrangler template at `workers/runtime/wrangler.toml.example`. It contains a placeholder D1 database ID and is intentionally not a deployable production config until the real resource ID is inserted.
@@ -183,7 +202,7 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 
 ## Security and limitations
 
-- The Worker is separate from the existing Pages production deployment.
+- The Worker is separate from the existing Pages production deployment. The Pages proxy and Agent Workforce console are now in source and preview builds, but remain unavailable until the separate runtime Worker is deployed and the two server-side Pages variables above are configured.
 - Bearer-token auth is an interim private service credential, not OAuth 2.1 or multi-user identity.
 - Origin validation is applied when a browser Origin is present; server-to-server clients may omit Origin.
 - No permissive CORS is enabled.
