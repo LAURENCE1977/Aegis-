@@ -225,3 +225,8 @@ The approval record now persists the bounded operation summary alongside the exa
 `functions/lib/sentinel.mjs` introduces `runSentinelInvocation` as the single server-side mediation function between an agent request and a capability adapter. A trusted composition root supplies the registry lookup, grant/connection/approval loaders, atomic approval consumer, durable audit writer and adapter executor. The gate evaluates the exact registered manifest and action, fails closed when policy dependencies are missing, records redacted authorization/denial events, consumes `human-always` approvals atomically before execution, and reduces adapter errors to a fixed error class.
 
 This is a library primitive, not a live execution API. It is not yet wired to a public route or agent runtime; persistent grant/connection stores, encrypted vault, concrete D1 audit composition, adapter isolation/egress controls, revocation and server-side payload digest derivation remain integration gates. No production resources or deployment are enabled by this slice.
+
+
+## Trusted Sentinel composition root
+
+`functions/lib/sentinel-composition.mjs` binds the persistent grant, connection, exact approval, atomic consumption and append-only audit stores to the Sentinel gate. A fixed server-side adapter registry currently contains one local read-only module-catalogue adapter. This is not a public invocation route and does not resolve secrets or enable external effects. The trusted caller must validate input and derive the exact digest with `digestCanonicalInput`. See [AEGIS Sentinel composition](AEGIS_SENTINEL_COMPOSITION.md).
