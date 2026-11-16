@@ -120,3 +120,13 @@ test('approved registry metadata does not itself grant capability permissions', 
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.discover'), false);
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.write'), false);
 });
+test('private GitHub metadata capability requires an OAuth connection and human approval', () => {
+  const manifest = getCapabilityManifest('aegis-github-private-metadata');
+  assert.ok(manifest);
+  assert.equal(manifest.auth.mode, 'oauth2');
+  assert.equal(manifest.provider.id, 'github');
+  assert.equal(manifest.actions[0].approval, 'human-always');
+  assert.equal(manifest.actions[0].requiredScopes.includes('github:private-metadata:read'), true);
+  assert.equal(manifest.data.classification, 'confidential');
+  assert.deepEqual(manifest.network.egressHosts, ['api.github.com']);
+});
