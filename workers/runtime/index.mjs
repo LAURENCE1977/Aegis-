@@ -89,6 +89,7 @@ function parseAgentRun(row) {
     cancelledAt: row.cancelled_at || null,
     executionAuthorized: Boolean(row.authorization_approval_id && row.execution_authorized_at),
     executionAuthorizedAt: row.execution_authorized_at || null,
+    executionGrantId: row.authorization_grant_id || null,
     plan,
     errorCode: row.error_code || null,
   };
@@ -339,12 +340,13 @@ async function authorizeAgentRun(request, env, id) {
   if (length > 2048) return json({ error: 'Request body is too large.' }, 413);
   let body;
   try { body = JSON.parse(await request.text()); } catch { return json({ error: 'Invalid JSON.' }, 400); }
-  const keys = ['approvalId', 'capabilityId', 'capabilityVersion', 'actionId', 'inputDigest'];
+  const keys = ['approvalId', 'capabilityId', 'capabilityVersion', 'actionId', 'inputDigest', 'grantId'];
   if (!body || typeof body !== 'object' || Array.isArray(body) ||
       Object.keys(body).length !== keys.length || Object.keys(body).some((key) => !keys.includes(key)) ||
       typeof body.approvalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.approvalId) ||
       typeof body.capabilityId !== 'string' || typeof body.capabilityVersion !== 'string' ||
       typeof body.actionId !== 'string' || typeof body.inputDigest !== 'string' ||
+      typeof body.grantId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.grantId) ||
       !/^sha256:[a-f0-9]{64}$/i.test(body.inputDigest)) {
     return json({ error: 'Invalid execution authorisation binding.' }, 400);
   }
@@ -375,14 +377,17 @@ async function authorizeAgentRun(request, env, id) {
     UPDATE agent_runs
     SET authorization_approval_id = COALESCE(authorization_approval_id, ?),
         execution_authorized_at = COALESCE(execution_authorized_at, ?),
+        authorization_grant_id = COALESCE(authorization_grant_id, ?),
         updated_at = ?
     WHERE id = ? AND status = 'planned' AND cancelled_at IS NULL
       AND (authorization_approval_id IS NULL OR authorization_approval_id = ?)
+      AND (authorization_grant_id IS NULL OR authorization_grant_id = ?)
     RETURNING *
-  `).bind(body.approvalId, now, now, id, body.approvalId).first();
+  `).bind(body.approvalId, now, body.grantId, now, id, body.approvalId, body.grantId).first();
   if (!authorised) return json({ error: 'Agent run changed before authorisation could be recorded.' }, 409);
   await auditAgentRun(env, id, 'execution_authorized', {
     approvalId: body.approvalId,
+    grantId: body.grantId,
     capabilityId: expected.capabilityId,
     capabilityVersion: expected.capabilityVersion,
     actionId: expected.actionId,
