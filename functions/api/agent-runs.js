@@ -62,6 +62,10 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
       if (!validSubmission(parsed.body)) {
         return jsonResponse({ error: 'Provide an objective and optional unique list of known AEGIS specialists.' }, 400);
       }
+      const idempotencyKey = request.headers.get('Idempotency-Key');
+      if (idempotencyKey !== null && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) {
+        return jsonResponse({ error: 'Invalid Idempotency-Key.' }, 400);
+      }
       let projectContext;
       if (parsed.body.projectId !== undefined) {
         if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
@@ -73,10 +77,6 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
           return jsonResponse({ error: 'Project Space context could not be loaded.' }, 503);
         }
         if (!projectContext) return jsonResponse({ error: 'Active Project Space not found.' }, 404);
-      }
-      const idempotencyKey = request.headers.get('Idempotency-Key');
-      if (idempotencyKey !== null && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) {
-        return jsonResponse({ error: 'Invalid Idempotency-Key.' }, 400);
       }
       return proxy({
         env,
