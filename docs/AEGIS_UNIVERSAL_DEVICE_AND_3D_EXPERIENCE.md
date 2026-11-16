@@ -201,7 +201,23 @@ A new platform must be addable through an adapter and conformance suite, not by 
 - Each platform's support status is backed by a published test matrix.
 - Platform-specific restrictions are documented honestly; no universal compatibility claims without evidence.
 
-## 14. Research references
+## 14. Cooperative multi-device experience (future capability)
+
+Explore an optional, user-paired AEGIS device group in which each device contributes only the capabilities the user explicitly authorises. For example, a television or desktop could present the companion, a phone could act as a microphone or touch controller, and a tablet could show a shared workspace. A capable home PC could optionally render a high-fidelity avatar for a low-powered client on the same trusted network.
+
+Requirements:
+- Pair devices through a clear, authenticated, revocable flow; never silently discover or join nearby devices.
+- Show which device is providing each capability and let the user stop sharing immediately.
+- Encrypt device-to-device traffic and authenticate every peer; do not trust the local network by default.
+- Keep the core assistant usable if any peer disconnects.
+- Make remote rendering an optional self-hosted capability, not a mandatory paid cloud dependency.
+- Avoid relaying raw camera or microphone streams unless the user explicitly starts and can visibly stop that session.
+- Define latency, bandwidth, battery and privacy budgets before enabling real-time audio/video or remote rendering.
+- Support handoff of an active conversation or task between devices without duplicating agent authority or creating conflicting actions.
+
+This could make AEGIS feel like one companion that can move between a desk, pocket, living-room screen and headset, while remaining safe and useful when devices are offline or unavailable.
+
+## 15. Research references
 
 - MDN, WebGPU API and feature detection: https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API
 - MDN, WebXR Device API and compatibility caveats: https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API
