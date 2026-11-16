@@ -118,7 +118,7 @@ async function connectedDb() {
     principalId: 'owner',
     providerId: 'composio',
     secretRef: stored.secretRef,
-    scopes: ['composio:github:repository:read'],
+    scopes: ['composio:github-repository:read'],
     createdBy: 'owner',
   });
   return db;
@@ -311,7 +311,7 @@ test('runs the private repository read only after Sentinel validates the exact g
     principalId: 'owner',
     providerId: 'composio',
     status: 'active',
-    scopes: ['composio:github:repository:read'],
+    scopes: ['composio:github-repository:read'],
   };
   const dependencies = {
     loadGrant: async () => ({
@@ -379,7 +379,7 @@ test('Sentinel denies a missing exact-resource grant before the Composio adapter
     loadGrant: async () => null,
     loadConnection: async () => ({
       id: connectionId, principalId: 'owner', providerId: 'composio',
-      status: 'active', scopes: ['composio:github:repository:read'],
+      status: 'active', scopes: ['composio:github-repository:read'],
     }),
     loadApproval: async () => null,
     reserveRateLimit: async () => true,
