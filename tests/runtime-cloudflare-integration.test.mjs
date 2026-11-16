@@ -14,6 +14,53 @@ const migrations = [
   '0006_agent_run_execution_authorization.sql',
 ];
 
+function splitSqlStatements(sql) {
+  const statements = [];
+  let current = '';
+  let quote = null;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let i = 0; i < sql.length; i += 1) {
+    const char = sql[i];
+    const next = sql[i + 1];
+
+    if (lineComment) {
+      if (char === '\n') { current += '\n'; lineComment = false; }
+      continue;
+    }
+    if (blockComment) {
+      if (char === '*' && next === '/') { blockComment = false; i += 1; }
+      continue;
+    }
+    if (quote) {
+      current += char;
+      if (char === quote) {
+        if (next === quote) { current += next; i += 1; }
+        else quote = null;
+      }
+      continue;
+    }
+    if (char === '-' && next === '-') { lineComment = true; i += 1; continue; }
+    if (char === '/' && next === '*') { blockComment = true; i += 1; continue; }
+    if (char === "'" || char === '"') { quote = char; current += char; continue; }
+
+    if (char === ';') {
+      current += char;
+      const statement = current.trim();
+      const isTrigger = /^CREATE\s+(?:TEMP(?:ORARY)?\s+)?TRIGGER\b/i.test(statement);
+      if (isTrigger && !/\bEND\s*;$/i.test(statement)) continue;
+      if (statement && !/^PRAGMA\b/i.test(statement)) statements.push(statement);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+
+  if (current.trim() && !/^PRAGMA\b/i.test(current.trim())) statements.push(current.trim());
+  return statements;
+}
+
 async function eventually(assertion, timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
   let lastError;
@@ -66,7 +113,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     for (const migration of migrations) {
       const sql = await readFile(new URL('../migrations/runtime/' + migration, import.meta.url), 'utf8');
       // D1 does not permit SQLite PRAGMA statements; Cloudflare manages FK enforcement.
-      await db.exec(sql.replace(/^\s*PRAGMA\s+foreign_keys\s*=\s*ON\s*;\s*/gim, ''));
+      for (const statement of splitSqlStatements(sql)) {\n        await db.prepare(statement).run();\n      }
     }
     const schema = await db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
