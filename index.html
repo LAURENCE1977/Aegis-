@@ -912,9 +912,10 @@
         const run = data.run;
         if (!run || run.id !== agentRunId) throw new Error('Agent runtime returned an invalid run record.');
         agentRunDetailStatus.textContent = run.status + ' · ' + run.objective +
-          ' · attempts: ' + run.attempts + (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '');
+          ' · attempts: ' + run.attempts + (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '') +
+          (run.executionAuthorized ? ' · owner approval consumed; authorisation recorded' : '');
         agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
-        agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan;
+        agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
         await loadAgentRunEvents(agentRunId);
       } catch (error) {
         agentRunDetailStatus.textContent = error.message;
