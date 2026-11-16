@@ -17,9 +17,10 @@ const runId = '00000000-0000-4000-8000-000000000001';
 const plan = {
   runId,
   objective: 'Review the AEGIS runtime',
+  createdAt: '2026-11-16T12:00:00.000Z',
   execution: 'plan-only',
   requiresHumanApprovalBeforeExecution: true,
-  steps: [{ id: 'step-1', specialist: 'reviewer', status: 'planned', tools: [], output: null }],
+  steps: [{ id: runId + ':1', specialist: 'reviewer', status: 'planned', tools: [], output: null }],
   safety: {
     toolsInvoked: false,
     externalEffects: false,
