@@ -97,6 +97,10 @@ jobs:
             echo "Expected append-only agent-run step event trigger to reject deletion."
             exit 1
           fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_runs SET context_json = '{}' WHERE id = '550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected immutable Project Space context trigger to reject mutation."
+            exit 1
+          fi
 
       - name: Verify runtime D1 and Queue integration in Miniflare
         env:
