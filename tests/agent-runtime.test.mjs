@@ -92,6 +92,17 @@ class AgentMemoryD1 {
           row.cancelled_at = v[0]; row.lease_until = null; row.updated_at = v[1];
           return { meta: { changes: 1 } };
         }
+        if (sql.includes('INSERT INTO agent_run_events') && sql.includes('SELECT ?, id')) {
+          const [eventId, createdAt, runId] = v;
+          if (!db.runs.has(runId) || db.events.some(event => event.event_id === eventId)) {
+            return { meta: { changes: 0 } };
+          }
+          db.events.push({
+            event_id: eventId, agent_run_id: runId, event_type: 'created',
+            detail_json: '{}', created_at: createdAt,
+          });
+          return { meta: { changes: 1 } };
+        }
         if (sql.includes('INSERT INTO agent_run_events')) {
           if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], agent_run_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
@@ -128,6 +139,12 @@ class AgentMemoryD1 {
         return { meta: { changes: 0 } };
       },
     };
+  }
+
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
   }
 }
 
