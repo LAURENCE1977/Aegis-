@@ -1099,7 +1099,6 @@
       addMessage('Hello! How can I help you today?');
       loadChatProjects();
       history.forEach(m => addMessage(m.content, m.role));
-      userInput.focus();
     }
 
     async function checkSession() {
