@@ -661,3 +661,10 @@ A fourth fixed read-only GitHub tool is now implemented:
 - Added client, adapter, manifest and endpoint tests. The full Node/D1/Forge workflow passed on commit `266c8af916de70de3eb9acb98166d776f359a1d9`; Cloudflare Pages preview deployed.
 
 **Next:** update the owner-facing Composio connection/capability UI to explain the new read-only scopes and reconnect requirement, then test a real approved connection and exact-resource grants. No write-capable GitHub tools are to be added as part of this monitoring pack.
+
+
+## Composio GitHub Actions read-only intelligence — 16 November 2026
+
+The fixed Composio GitHub session now includes four read-only tools: repository metadata, one pull request, bounded workflow-run summaries and bounded latest-attempt workflow-job/step summaries. Workflow jobs are bound to the exact owner/repository/run ID, have a separate Sentinel capability and grant scope, and return an allowlisted summary rather than logs, artifacts, runner details or arbitrary provider fields. Job URLs must be canonical HTTPS github.com paths for the exact run and job; query strings and fragments are rejected. The complete contract is in [docs/AEGIS_COMPOSIO_GITHUB_READONLY.md](AEGIS_COMPOSIO_GITHUB_READONLY.md).
+
+The job-list client method is covered by fixed-tool request tests; adapter tests cover exact-run matching and output minimization; endpoint tests cover authentication, origin and exact input validation. The workflow job capability remains read-only. Do not add workflow log downloads, artifact downloads, reruns, dispatch, cancellation or other Actions write operations without separate risk analysis, approval design and a dedicated Sentinel action.
