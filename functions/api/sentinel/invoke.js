@@ -63,8 +63,9 @@ export async function onRequestPost({ request, env }) {
 
   try {
     const now = Date.now();
+    const invocationId = crypto.randomUUID();
     const result = await runSentinelInvocation({
-      invocationId: crypto.randomUUID(),
+      invocationId,
       principalId: OWNER_ID,
       manifest,
       actionId: ACTION_ID,
@@ -89,7 +90,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     return jsonResponse({
-      invocationId: result.output.contextId || undefined,
+      invocationId,
       reasonCode: result.reasonCode,
       output: result.output,
       auditRecorded: result.auditRecorded === true,
