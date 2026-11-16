@@ -108,7 +108,7 @@ jobs:
         run: node --test tests/runtime-cloudflare-integration.test.mjs
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
-      - name: Verify Forge licence gates, immutable source identity and append-only review events
+      - name: Verify Forge licence gates, immutable source identity, Knowledge Library review lifecycle and append-only events
         shell: bash
         run: |
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-seed.sql
@@ -127,6 +127,28 @@ jobs:
           fi
           if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM forge_candidate_events WHERE candidate_id = 'forge-smoke'"; then
             echo "Expected append-only candidate event trigger to reject deletion."
+            exit 1
+          fi
+          knowledge_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status || ':' || version FROM forge_knowledge_records WHERE id = 'knowledge-smoke'")
+          echo "$knowledge_state"
+          grep -q "accepted:3" <<< "$knowledge_state"
+          knowledge_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM forge_knowledge_events WHERE record_id = 'knowledge-smoke'")
+          echo "$knowledge_events"
+          grep -q "3" <<< "$knowledge_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_knowledge_records SET summary = 'tampered after review' WHERE id = 'knowledge-smoke'"; then
+            echo "Expected reviewed Knowledge Library content to be immutable."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_knowledge_events SET to_status = 'draft' WHERE record_id = 'knowledge-smoke'"; then
+            echo "Expected append-only Knowledge Library event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM forge_knowledge_events WHERE record_id = 'knowledge-smoke'"; then
+            echo "Expected append-only Knowledge Library event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO forge_knowledge_records (id, owner_id, title, domain, knowledge_type, summary, evidence_level, status, sources_json, limitations_json, applicable_capabilities_json, review_note, reviewer_id, version, created_at, updated_at, reviewed_at, accepted_at) VALUES ('knowledge-bypass', 'owner', 'Bypass review', 'coding-agents', 'benchmark', 'Attempt to create accepted knowledge without the review workflow.', 'high', 'accepted', '[{\"url\":\"https://example.org/source\",\"title\":\"Source\",\"attribution\":\"Author\"}]', '[]', '[]', 'This record attempts to bypass owner review.', 'owner', 3, '2026-11-16T00:00:00.000Z', '2026-11-16T00:02:00.000Z', '2026-11-16T00:01:00.000Z', '2026-11-16T00:02:00.000Z')"; then
+            echo "Expected Knowledge Library inserts to start as drafts only."
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql
