@@ -312,3 +312,24 @@ test('dead-letter delivery does not fail a job with an active lease', async () =
   assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
   assert.equal(acked, true);
 });
+
+test('dead-letter delivery fails a running job only after its lease has expired', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'running';
+  saved.lease_until = new Date(Date.now() - 60_000).toISOString();
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'failed');
+  assert.equal(saved.error_code, 'JOB_DELIVERY_EXHAUSTED');
+  assert.equal(saved.lease_until, null);
+  assert.equal(acked, true);
+  assert.equal(DB.events.filter((event) => event.event_type === 'delivery_exhausted').length, 1);
+});
