@@ -27,6 +27,22 @@ class AgentMemoryD1 {
         return null;
       },
       async all() {
+        if (sql.includes('FROM agent_run_events WHERE agent_run_id = ? AND created_at < ?')) {
+          const rows = db.events
+            .filter((event) => event.agent_run_id === this.values[0] &&
+              (event.created_at < this.values[1] ||
+                (event.created_at === this.values[2] && event.event_id < this.values[3])))
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.event_id.localeCompare(a.event_id))
+            .slice(0, this.values[4]);
+          return { results: rows };
+        }
+        if (sql.includes('FROM agent_run_events WHERE agent_run_id = ? ORDER BY')) {
+          const rows = db.events
+            .filter((event) => event.agent_run_id === this.values[0])
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.event_id.localeCompare(a.event_id))
+            .slice(0, this.values[1]);
+          return { results: rows };
+        }
         if (sql.includes('FROM agent_runs WHERE created_at < ?')) {
           const rows = [...db.runs.values()]
             .filter((row) => row.created_at < this.values[0] ||
