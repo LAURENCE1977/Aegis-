@@ -32,6 +32,7 @@ export function createAgentRunProjectContextBuilder({
         ownerId: OWNER_ID,
         projectId,
         limit: 50,
+        now,
       }),
     ]);
     if (!events) return null;
