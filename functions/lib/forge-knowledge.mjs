@@ -155,7 +155,7 @@ export async function updateForgeKnowledgeReview(db, ownerId, id, input, now = D
       ['high', 'medium'].includes(current.evidenceLevel)) ||
     (current.status === 'accepted' && input.status === 'superseded');
   if (!allowedTransition) throw new TypeError('Knowledge status transition is not allowed');
-  const updatedAt = new Date(now).toISOString();
+  const updatedAt = new Date(Math.max(now, Date.parse(current.updatedAt) + 1)).toISOString();
   const result = await db.prepare(
     "UPDATE forge_knowledge_records SET status = ?, review_note = ?, reviewer_id = ?, updated_at = ?, version = version + 1, reviewed_at = CASE WHEN ? = 'reviewed' THEN ? ELSE reviewed_at END, accepted_at = CASE WHEN ? = 'accepted' THEN ? ELSE accepted_at END, superseded_at = CASE WHEN ? = 'superseded' THEN ? ELSE superseded_at END WHERE id = ? AND owner_id = ? AND updated_at = ? AND status = ?"
   ).bind(
