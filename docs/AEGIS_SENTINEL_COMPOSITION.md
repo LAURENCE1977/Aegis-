@@ -52,3 +52,8 @@ Write, delete, arbitrary shell, arbitrary HTTP, arbitrary MCP, browser automatio
 `aegis-github-public-discovery:discover` is implemented in the fixed adapter registry but is not exposed by the owner invocation route. It accepts exactly one canonical `https://github.com/{owner}/{repository}` source URL, then calls only `https://api.github.com`. Redirects are rejected, timeouts are bounded to five seconds and response bodies are capped at 64 KiB while streaming. It returns public repository metadata only; it does not read source files, access private repositories, install packages or execute code.
 
 Do not expose this action until an atomic per-principal/action rate limiter and exact-resource grant validation for `github:repo:{owner}/{repository}` are implemented and tested. No public route currently selects this adapter.
+
+
+## First owner-facing invocation route
+
+`POST /api/sentinel/invoke` exposes exactly one action: `aegis-module-catalogue:list` on resource `aegis:modules` with empty input. It requires a valid owner session, same-origin request, configured AEGIS D1 and an exact active grant. The route derives the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root. It returns output only after the success audit is recorded. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. This is a source-level restricted route, not a general tool endpoint; no external or consequential action is exposed.
