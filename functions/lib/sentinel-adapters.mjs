@@ -62,8 +62,8 @@ async function boundedGitHubFetch(url, options, fetchImpl, timeoutMs, maxRespons
 
 /**
  * First-party, fixed adapter set. The module catalogue is local-only. Public
- * GitHub discovery reads metadata from one pinned API host and never reads or
- * executes repository source code.
+ * GitHub adapters read bounded repository metadata from one pinned API host;
+ * the private adapter receives a credential only from the trusted vault path.
  */
 export function createBuiltinAdapterRegistry({
   fetchImpl = fetch,
@@ -94,6 +94,22 @@ export function createBuiltinAdapterRegistry({
       }
       return discoverGitHubRepository(input.sourceUrl, (url, options) =>
         boundedGitHubFetch(url, options, fetchImpl, timeoutMs, maxResponseBytes));
+    },
+    'aegis-github-private-metadata:discover': async (input, context) => {
+      if (!input || typeof input !== 'object' || Array.isArray(input) ||
+          Object.keys(input).length !== 1 || typeof input.sourceUrl !== 'string') {
+        throw new TypeError('Private GitHub metadata adapter requires exactly one sourceUrl field');
+      }
+      const credential = context?.credential;
+      if (typeof credential !== 'string' ||
+          !/^(?:github_pat_|ghp_|gho_|ghu_)[A-Za-z0-9_]{20,200}$/.test(credential)) {
+        throw new TypeError('An authorized GitHub bearer credential is required');
+      }
+      return discoverGitHubRepository(input.sourceUrl, (url, options) =>
+        boundedGitHubFetch(url, {
+          ...options,
+          headers: { ...(options.headers || {}), Authorization: 'Bearer ' + credential },
+        }, fetchImpl, timeoutMs, maxResponseBytes), { allowPrivate: true });
     },
   });
 }
