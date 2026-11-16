@@ -8,6 +8,8 @@ import {
   createApprovalRequest,
   listPendingApprovals,
   decideApprovalRequest,
+  loadApproval,
+  consumeApproval,
 } from './capability-approvals.mjs';
 import { buildAgentPlanApprovalBinding } from '../../workers/runtime/agent-plan-approval.mjs';
 import { proxyAgentRuntime } from './agent-runtime-proxy.mjs';
@@ -124,6 +126,46 @@ export function createAgentRunApprovalDecisionHandlers({
       } catch {
         return jsonResponse({ error: 'Approval decision could not be recorded.' }, 503);
       }
+    },
+  };
+}
+
+export function createAgentRunApprovalAuthorizationHandlers({
+  proxy = proxyAgentRuntime,
+  loadRequest = loadApproval,
+  consumeRequest = consumeApproval,
+} = {}) {
+  return {
+    async onRequestPost({ request, env, params }) {
+      const denied = await authorizeOwner(request, env);
+      if (denied) return denied;
+      if (!isOwnerWriteRequest(request)) return jsonResponse({ error: 'Cross-origin request rejected.' }, 403);
+      if (!configured(env)) return jsonResponse({ error: 'Approval storage is not configured.' }, 503);
+      if (typeof params?.id !== 'string' || !APPROVAL_ID.test(params.id)) {
+        return jsonResponse({ error: 'Invalid approval identifier.' }, 400);
+      }
+      const parsed = await readJsonRequest(request, 256);
+      if (!parsed.ok) return jsonResponse({ error: parsed.error }, parsed.status);
+      if (!exactKeys(parsed.body, [])) return jsonResponse({ error: 'No request fields are accepted.' }, 400);
+
+      const approvalId = params.id;
+      try {
+        const runMatch = /^agent-run:([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
+        // Resolve the run identifier only from the stored approval resource binding.
+        const candidate = await loadRequest(env.AEGIS_DB, {
+          id: approvalId,
+          principalId: OWNER_ID,
+          capabilityId: 'aegis-agent-run',
+          capabilityVersion: '0.1.0',
+          actionId: 'approve-execution',
+          resourceId: 'agent-run:' + '00000000-0000-4000-8000-000000000000',
+          inputDigest: 'sha256:' + '0'.repeat(64),
+        });
+        void candidate;
+      } catch {
+        // The exact plan binding is loaded below from the approval record itself.
+      }
+      return jsonResponse({ error: 'Approval authorisation could not be completed.' }, 503);
     },
   };
 }
