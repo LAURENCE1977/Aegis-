@@ -10,8 +10,9 @@ const envBase = {
 };
 
 class MemoryD1 {
-  constructor(grantRow = null) {
+  constructor(grantRow = null, failAuditAt = 0) {
     this.grantRow = grantRow;
+    this.failAuditAt = failAuditAt;
     this.auditRows = [];
     this.prepareCalls = 0;
   }
@@ -26,7 +27,10 @@ class MemoryD1 {
         return null;
       },
       async run() {
-        if (sql.includes('INSERT INTO capability_invocation_audit')) db.auditRows.push(this.values);
+        if (sql.includes('INSERT INTO capability_invocation_audit')) {
+          if (db.failAuditAt && db.auditRows.length + 1 >= db.failAuditAt) throw new Error('audit store unavailable');
+          db.auditRows.push(this.values);
+        }
         return { meta: { changes: 1 } };
       },
     };
@@ -146,4 +150,16 @@ test('Sentinel invokes only the granted read-only module adapter and records the
   assert.equal(db.auditRows.length, 3);
   assert.ok(db.auditRows.every(row => row[1] === body.invocationId));
   assert.equal(JSON.stringify(body).includes('inputDigest'), false);
+});
+
+test('Sentinel invocation does not return adapter output when the outcome audit cannot be persisted', async () => {
+  const db = new MemoryD1(activeGrant(), 3);
+  const response = await onRequestPost({
+    request: await request(),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.error, 'The read-only adapter could not complete the request.');
+  assert.equal('output' in body, false);
 });
