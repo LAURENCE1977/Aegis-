@@ -155,3 +155,8 @@ Use AEGIS Project Spaces as the durable context and activity layer for projects.
 ## MCP Forge Catalogue — native metadata layer
 
 The native catalogue validates pinned MCP source metadata and action-level effects, risk, scopes and approval policy. It is intentionally metadata-only: no source fetching, package installation, process launch, remote connection or tool execution. Source URLs reject IP literals and local/internal hostnames. Next steps are isolated source ingestion, licence/advisory review, dependency analysis, sandbox conformance and owner-controlled admission. Sentinel remains the only authority for any later invocation.
+
+
+## Free-Tier Ledger — currentness rule
+
+Free-tier records are evidence, not entitlements. Only a recently verified record may be treated as current; candidates, unknown terms and expired records require review. Check official provider pricing and terms before use, especially billing triggers, overage and commercial-use restrictions. The ledger cannot provision or create accounts.
