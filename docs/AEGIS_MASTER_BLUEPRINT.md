@@ -354,3 +354,8 @@ PR #21 extends the D1 approval records with a bounded human-readable operation s
 ## Project Spaces and Agent Teams — implementation foundation
 
 Project Spaces provide owner-scoped durable project context and an append-only typed activity timeline. The implementation adds authenticated workspace list/create/detail and event APIs, a shared D1 schema, and bounded request validation. The workspace timeline can surface memory lifecycle events where the required migrations are present. This is a persistence/API foundation, not an autonomous agent runtime: AEGIS's canonical job runtime remains the source of job state, and the capability registry, grants, approvals, Sentinel and audit remain the authority for actions. Source and regression tests are present on `repair/project-spaces-clean-main`; production D1 resources, migration application, UI integration and deployment have not been verified.
+
+
+## Sentinel invocation gate — source integration
+
+The Sentinel mediation primitive is being ported onto the clean Project Spaces branch as `functions/lib/sentinel.mjs`, with focused tests. Its intended sequence is trusted policy-context loading, exact-manifest policy evaluation, redacted audit, atomic consumption of any one-time human approval, then adapter invocation. It is deliberately not exposed through a public API or agent runtime yet. A complete execution boundary still requires persistent grants and connections, encrypted secret resolution, concrete durable audit, payload digest derivation, isolated adapters and egress enforcement. Source integration is not deployment; no D1 migration or production resource is enabled by this step.
