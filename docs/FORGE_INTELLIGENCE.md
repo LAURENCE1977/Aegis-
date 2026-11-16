@@ -150,3 +150,8 @@ Use AEGIS Project Spaces as the durable context and activity layer for projects.
 ## Sentinel mediation foundation
 
 `runSentinelInvocation` is the server-side gate between an agent and an adapter. It must remain the only route to capability execution, with current grants, exact resources, approvals, budget and audit checked for each invocation. The current code is a library primitive only; do not expose generic tool execution until persistent policy stores, secret vault, durable audit, payload binding and isolated adapter/egress controls are composed and tested.
+
+
+## MCP Forge Catalogue — native metadata layer
+
+The native catalogue validates pinned MCP source metadata and action-level effects, risk, scopes and approval policy. It is intentionally metadata-only: no source fetching, package installation, process launch, remote connection or tool execution. Source URLs reject IP literals and local/internal hostnames. Next steps are isolated source ingestion, licence/advisory review, dependency analysis, sandbox conformance and owner-controlled admission. Sentinel remains the only authority for any later invocation.
