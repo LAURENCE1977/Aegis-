@@ -144,3 +144,15 @@ test('registers bounded read-only workflow run metadata as its own capability', 
   assert.equal(workflows.interface.path, '/api/sentinel/composio-github-workflows');
   assert.deepEqual(workflows.data.writes, []);
 });
+
+
+test('registers latest-attempt workflow job metadata as a separate exact-run capability', () => {
+  const jobs = getCapabilityManifest('aegis-composio-github-workflow-jobs-readonly');
+  assert.ok(jobs);
+  assert.equal(validateCapabilityManifest(jobs), true);
+  assert.equal(jobs.actions[0].id, 'list-workflow-jobs');
+  assert.equal(jobs.actions[0].effect, 'read');
+  assert.equal(jobs.actions[0].requiredScopes[0], 'github:workflow-jobs:read');
+  assert.equal(jobs.interface.path, '/api/sentinel/composio-github-workflow-jobs');
+  assert.deepEqual(jobs.data.writes, []);
+});
