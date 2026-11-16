@@ -693,3 +693,12 @@ The server-owned Qwen tool registry now includes `aegis_read_github_workflow_run
 AG-UI now passes server environment bindings into the agent tool runner so the Composio adapter can use the server-side API key and encrypted session reference. The browser still cannot supply credentials, tool schemas or permissions. The feature remains subject to the existing explicit agent-tool opt-in and Qwen model allowlist. The tool registry now contains three fixed read-only actions; one tool call per run remains the maximum.
 
 Tests cover tool registration, malformed/extra arguments, exact-resource derivation, denial without a grant, AG-UI tool routing and audit lineage. CI for the current implementation is being verified; do not mark the change complete until Node tests, local D1/Forge checks and Pages preview all finish successfully.
+
+
+### Exact workflow-job inspection available to AEGIS agents — 16 November 2026
+
+A fourth server-owned agent tool, `aegis_read_github_workflow_jobs`, is now registered alongside module listing, public GitHub discovery and workflow-run summaries. It accepts exactly owner, repository and a positive integer workflow run ID. AEGIS derives the exact `github:workflow-run:{owner}/{repo}/{runId}` resource and invokes the fixed Composio latest-attempt job reader through Sentinel.
+
+The separate capability `aegis-composio-github-workflow-jobs-readonly` and `github:workflow-jobs:read` scope are mandatory. The model cannot select a tool slug, connection, account, session, endpoint, resource or permission. Results are limited to twenty jobs and bounded step name/number/status/conclusion summaries; provider runner details, logs, artifacts, reruns, dispatch and cancellation are excluded.
+
+The agent tool registry now has four fixed schemas, matching the provider adapter's maximum tool count. Tests verify invalid run IDs and extra fields are rejected, no-grant calls are audited and denied before Composio network execution, and AG-UI routes the tool correctly. Node.js tests, local D1 capability/rate-limit/audit checks, Forge licence/source-integrity checks and Cloudflare Pages preview passed on code commit `df7b3459fb9cb47c1257541caa2a0c32c29ee738`.
