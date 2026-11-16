@@ -218,3 +218,21 @@ test('agent dead-letter cannot overwrite a completed plan', async () => {
   assert.equal(DB.runs.get(run.id).status, 'planned');
   assert.equal(DB.events.filter(event => event.event_type === 'delivery_exhausted').length, 0);
 });
+
+
+test('owner can cancel a queued agent run and the cancellation is recorded durably', async () => {
+  const { env, DB } = makeEnv();
+  const submitted = await handleRuntimeFetch(postRun({ objective: 'Cancel before planning' }), env);
+  const { run } = await submitted.json();
+  const response = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id + '/cancel',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.run.id, run.id);
+  assert.equal(body.run.status, 'cancelled');
+  assert.ok(body.run.cancelledAt);
+  assert.ok(DB.events.some((event) =>
+    event.agent_run_id === run.id && event.event_type === 'cancelled'));
+});
