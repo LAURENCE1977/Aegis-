@@ -67,6 +67,7 @@ test('agent tools are server-defined and expose only the approved read-only acti
     'aegis_list_modules',
     'aegis_discover_public_github_repository',
     'aegis_read_github_workflow_runs',
+    'aegis_read_github_workflow_jobs',
   ]);
   assert.equal(tools.every(tool => tool.type === 'function'), true);
   assert.equal(tools[0].function.parameters.additionalProperties, false);
@@ -211,5 +212,44 @@ test('workflow run agent tool rejects arbitrary endpoints and resource overrides
   });
   assert.equal(result.ok, false);
   assert.equal(result.reasonCode, 'INVALID_TOOL_ARGUMENTS');
+  assert.equal(db.auditRows.length, 0);
+});
+
+
+test('workflow job agent tool requires an exact workflow-run grant before contacting Composio', async () => {
+  const db = new MemoryD1();
+  let providerCalls = 0;
+  const result = await executeAgentToolCall({
+    name: 'aegis_read_github_workflow_jobs',
+    argumentsText: JSON.stringify({ owner: 'LAURENCE1977', repo: 'Aegis-', runId: 43864244104 }),
+    db,
+    env: { COMPOSIO_API_KEY: 'test-composio-api-key-long-enough', AEGIS_DB: db },
+    fetchImpl: async () => { providerCalls += 1; throw new Error('must not contact Composio without exact grant'); },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reasonCode, 'GRANT_REQUIRED');
+  assert.equal(providerCalls, 0);
+  assert.equal(db.auditRows.length, 1);
+  assert.equal(db.auditRows[0][4], 'aegis-composio-github-workflow-jobs-readonly');
+  assert.equal(db.auditRows[0][7], 'github:workflow-run:LAURENCE1977/Aegis-/43864244104');
+});
+
+test('workflow job agent tool rejects invalid run IDs and arbitrary provider fields', async () => {
+  const db = new MemoryD1();
+  for (const args of [
+    { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 0 },
+    { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 1.2 },
+    { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 12, toolSlug: 'GITHUB_DELETE_REPOSITORY' },
+  ]) {
+    const result = await executeAgentToolCall({
+      name: 'aegis_read_github_workflow_jobs',
+      argumentsText: JSON.stringify(args),
+      db,
+      env: { AEGIS_DB: db },
+      fetchImpl: async () => { throw new Error('must not fetch'); },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reasonCode, 'INVALID_TOOL_ARGUMENTS');
+  }
   assert.equal(db.auditRows.length, 0);
 });
