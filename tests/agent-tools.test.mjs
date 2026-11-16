@@ -66,6 +66,7 @@ test('agent tools are server-defined and expose only the two approved read-only 
   assert.deepEqual(tools.map(tool => tool.function.name), [
     'aegis_list_modules',
     'aegis_discover_public_github_repository',
+    'aegis_read_github_workflow_runs',
   ]);
   assert.equal(tools.every(tool => tool.type === 'function'), true);
   assert.equal(tools[0].function.parameters.additionalProperties, false);
@@ -164,5 +165,51 @@ test('GitHub tool cannot choose a different resource or endpoint and requires th
   assert.equal(result.ok, false);
   assert.equal(result.reasonCode, 'INVALID_TOOL_ARGUMENTS');
   assert.equal(fetchCalls, 0);
+  assert.equal(db.auditRows.length, 0);
+});
+
+
+test('workflow run agent tool requires an exact repository grant before contacting Composio', async () => {
+  const db = new MemoryD1();
+  let providerCalls = 0;
+  const result = await executeAgentToolCall({
+    name: 'aegis_read_github_workflow_runs',
+    argumentsText: JSON.stringify({
+      owner: 'LAURENCE1977',
+      repo: 'Aegis-',
+      branch: 'feature/composio-audit-lineage-verified',
+    }),
+    db,
+    env: {
+      COMPOSIO_API_KEY: 'test-composio-api-key-long-enough',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async () => {
+      providerCalls += 1;
+      throw new Error('Composio must not be contacted without a grant');
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reasonCode, 'NO_ACTIVE_GRANT');
+  assert.equal(providerCalls, 0);
+  assert.equal(db.auditRows.length, 1);
+});
+
+test('workflow run agent tool rejects arbitrary endpoints and resource overrides', async () => {
+  const db = new MemoryD1();
+  const result = await executeAgentToolCall({
+    name: 'aegis_read_github_workflow_runs',
+    argumentsText: JSON.stringify({
+      owner: 'LAURENCE1977',
+      repo: 'Aegis-',
+      endpoint: 'https://attacker.example',
+      resourceId: 'github:repository:other/repo',
+    }),
+    db,
+    env: { AEGIS_DB: db },
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reasonCode, 'INVALID_TOOL_ARGUMENTS');
   assert.equal(db.auditRows.length, 0);
 });
