@@ -24,7 +24,14 @@ This does not copy ChatGPT's private infrastructure, alter GPT-6 weights or inje
 - Primary device: Chromebook; also iPad Air and iPhone.
 - Browser/mobile-first. Do not assume the Chromebook is available while the user is working.
 - User is on ChatGPT Free. Do not assume paid Codex/cloud features or permanent ChatGPT background access.
-- Prefer free or very low-cost services and verify current free-tier limits before depending on them.
+- **Mandatory: free-to-use and open-source core.** No paid subscription, API key or proprietary hosted service may be required for core AEGIS operation.
+- Prefer OSI-approved, self-hostable components with licences compatible with AEGIS's MIT licence; unknown or restrictive licences are quarantined pending review.
+- Paid APIs, hosted models and commercial integrations are optional adapters only, disabled by default, with explicit opt-in, visible cost estimates, budgets and hard limits.
+- Core memory, orchestration, identity, Sentinel/policy, audit, task state and provider interfaces remain AEGIS-owned and portable.
+- Maintain a dependency/model/dataset/service licence register, SBOM, third-party notices, automated licence and vulnerability checks.
+- Distinguish open-source software from open-weight models; verify weights, datasets and usage licences separately.
+- Target zero mandatory software/API spend. Be transparent that optional hosting, compute, storage, domains and electricity may still cost money.
+- Follow [AEGIS Free and Open-Source Policy](AEGIS_FREE_OPEN_SOURCE_POLICY.md) for all new dependencies and release decisions.
 - Avoid terminal-heavy setup and avoid making the user do work the assistant can perform through authorised integrations.
 - Never request passwords, API keys, PATs, session secrets or other credentials in chat.
 - Be autonomous and decisive, but honest. No invented progress, tests, permissions, merges or deployments.
