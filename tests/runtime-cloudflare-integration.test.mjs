@@ -211,6 +211,15 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
         .bind(JSON.stringify({ ...projectContext, digest: 'sha256:' + '0'.repeat(64) }), run.id).run(),
       /agent run project context is immutable/,
     );
+    await assert.rejects(
+      db.prepare("INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, created_at, updated_at, project_id, context_digest, context_json) VALUES (?, ?, '[\"researcher\"]', 'pending_dispatch', 0, ?, ?, ?, ?, ?)")
+        .bind(
+          randomUUID(), 'Reject mismatched project context',
+          '2026-11-16T12:00:00.000Z', '2026-11-16T12:00:00.000Z',
+          'different-project', projectContext.digest, JSON.stringify(projectContext),
+        ).run(),
+      /agent run project context binding is invalid/,
+    );
 
     const events = await db.prepare(
       'SELECT event_type FROM agent_run_events WHERE agent_run_id = ? ORDER BY rowid'
