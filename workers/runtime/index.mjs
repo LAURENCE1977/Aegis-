@@ -466,10 +466,25 @@ async function processAgentRun(message, env) {
   try {
     const specialists = JSON.parse(row.specialists_json);
     const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
-    const saved = await env.DB.prepare(
+    const planJson = JSON.stringify(plan);
+    const completedAt = new Date().toISOString();
+    const statements = [env.DB.prepare(
       "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
-    ).bind(JSON.stringify(plan), new Date().toISOString(), runId, attempt).run();
-    if (saved.meta?.changes) await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    ).bind(planJson, completedAt, runId, attempt)];
+
+    for (const [index, step] of plan.steps.entries()) {
+      statements.push(env.DB.prepare(
+        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
+      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), completedAt, completedAt, runId, attempt, planJson));
+      statements.push(env.DB.prepare(
+        "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, agent_run_id, 'planned', ?, ? FROM agent_run_steps WHERE id = ? AND agent_run_id = ? ON CONFLICT(event_id) DO NOTHING"
+      ).bind('planned:' + step.id, JSON.stringify({ stepIndex: index + 1, specialist: step.specialist }), completedAt, step.id, runId));
+    }
+
+    const results = await env.DB.batch(statements);
+    if (results[0]?.meta?.changes) {
+      await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    }
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
