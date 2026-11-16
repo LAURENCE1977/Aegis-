@@ -693,6 +693,8 @@ test('runtime authorisation requires an exact one-time approval binding and neve
   const cancelledRun = (await cancelled.json()).run;
   assert.equal(cancelledRun.status, 'cancelled');
   assert.equal(cancelledRun.executionAuthorized, true);
+  assert.equal(cancelledRun.steps.length, 3);
+  assert.ok(cancelledRun.steps.every((step) => step.status === 'cancelled'));
   assert.ok([...DB.steps.values()].every((step) => step.status === 'cancelled'));
   assert.equal(DB.stepEvents.filter((event) =>
     event.agent_run_id === run.id && event.event_type === 'cancelled').length, 3);
