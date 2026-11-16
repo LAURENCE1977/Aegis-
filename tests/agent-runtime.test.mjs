@@ -182,8 +182,12 @@ test('idempotency keys prevent duplicate durable agent runs and queue messages',
   const headers = { 'Idempotency-Key': 'agent-request-0001' };
   const first = await handleRuntimeFetch(postRun({ objective: 'Review runtime' }, headers), env);
   const second = await handleRuntimeFetch(postRun({ objective: 'Review runtime' }, headers), env);
-  assert.equal((await first.json()).run.id, (await second.json()).run.id);
+  const firstRun = (await first.json()).run;
+  const secondRun = (await second.json()).run;
+  assert.equal(firstRun.id, secondRun.id);
   assert.equal(DB.runs.size, 1);
+  assert.equal(DB.events.filter((event) =>
+    event.agent_run_id === firstRun.id && event.event_type === 'created').length, 1);
   assert.equal(sent.length, 1);
 });
 
