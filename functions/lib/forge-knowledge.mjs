@@ -50,6 +50,11 @@ function mapKnowledgeRow(row) {
     supersededAt: row.superseded_at || null,
   };
   validateKnowledgeRecord(record);
+  if (!Number.isInteger(record.version) || record.version < 1 ||
+      !Number.isFinite(Date.parse(record.createdAt)) ||
+      !Number.isFinite(Date.parse(record.updatedAt))) {
+    throw new TypeError('Invalid Knowledge Library record metadata');
+  }
   return record;
 }
 
