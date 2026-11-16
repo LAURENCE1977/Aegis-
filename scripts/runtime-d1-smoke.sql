@@ -1,14 +1,15 @@
 INSERT INTO agent_runs (
   id, objective, specialists_json, status, attempts, idempotency_key,
   plan_json, error_code, lease_until, created_at, updated_at, cancelled_at,
-  project_id, context_json
+  project_id, context_digest, context_json
 ) VALUES (
   '550e8400-e29b-41d4-a716-446655440000',
   'Runtime cancellation migration smoke test',
   '["researcher"]', 'queued', 0, 'runtime-cancel-smoke',
   NULL, NULL, NULL, '2026-11-16T00:00:00.000Z',
   '2026-11-16T00:00:00.000Z', NULL,
-  'project-smoke', '{"brief":{},"digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}'
+  'project-smoke', 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+  '{"brief":{},"digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}'
 );
 
 INSERT INTO agent_run_steps (
