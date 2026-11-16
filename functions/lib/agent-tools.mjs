@@ -115,6 +115,10 @@ export async function executeAgentToolCall({
   principalId = 'owner',
   fetchImpl = fetch,
   now = Date.now(),
+  taskId = null,
+  sessionId = null,
+  parentSessionId = null,
+  workerId = 'aegis-agent-tools',
 } = {}) {
   const parsed = parseArguments(name, argumentsText);
   if (parsed === undefined) return { ok: false, reasonCode: 'TOOL_NOT_ALLOWED' };
@@ -136,6 +140,10 @@ export async function executeAgentToolCall({
       resourceId: parsed.resourceId,
       inputDigest: await digestCanonicalInput(parsed.input),
       input: parsed.input,
+      taskId,
+      sessionId,
+      parentSessionId,
+      workerId,
       now,
     }, createSentinelDependencies({
       db,
