@@ -602,3 +602,19 @@ Runtime rules:
 9. Add team, social and productivity connectors only when a real user workflow requires them and the relevant account is actively connected.
 
 **Audit conclusion:** Composio is valuable as a broad connector catalogue and replaceable execution adapter. It should not become AEGIS's operating system, memory authority, workflow database, model router, security boundary or unrestricted agent tool belt. The strongest near-term additions are read-only GitHub intelligence, supply-chain/security evidence, a carefully sandboxed browser adapter and a measured workflow-engine comparison. No new integration is enabled by this research record.
+
+
+## Composio GitHub read-only expansion — 16 November 2026
+
+The first incremental expansion of the catalogue audit is now implemented on the canonical Composio feature branch:
+
+- Added a separate `aegis-composio-github-pull-request-readonly` capability and owner-authenticated endpoint.
+- The action reads one exact pull request, with exact owner/repository/PR resource binding and a distinct `github:pull-request:read` grant scope.
+- Added a fixed Composio client action for `GITHUB_GET_A_PULL_REQUEST`; no agent-supplied tool slug, account, endpoint or arbitrary arguments.
+- The session allowlist now contains exactly two read-only tools: `GITHUB_GET_A_REPOSITORY` and `GITHUB_GET_A_PULL_REQUEST`. No write tools, MCP, shell or multi-execute.
+- Pull-request output is allowlisted and omits body/comments/review text. It verifies the returned PR number and base repository against the exact requested resource; branch refs and SHAs and change counts are bounded.
+- Existing one-tool sessions remain valid for repository metadata. Pull-request reads require an owner reconnect to create the refreshed two-tool session; the adapter fails closed when the PR tool is absent.
+- Added endpoint, client, adapter, manifest and response-binding tests. The implementation and full Node/D1/Forge workflow passed on commit `5417937c52bbc140401290b2f54eac8ce7aa9807`; Cloudflare Pages preview also succeeded.
+- Documentation: `docs/AEGIS_COMPOSIO_GITHUB_READONLY.md`.
+
+**Not yet implemented:** GitHub Actions workflow/run/job reads, commit and branch intelligence, issue reads, security/CVE feeds, browser execution, Temporal/Trigger.dev comparisons, and provider/monitoring adapters. Each remains a separate reviewable capability; do not widen the current allowlist implicitly.
