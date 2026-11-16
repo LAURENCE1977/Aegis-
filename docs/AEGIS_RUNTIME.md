@@ -23,6 +23,8 @@ The job states are:
 
 A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it.
 
+Agent runs currently create a plan only; they do not execute specialist work. The owner can cancel an agent run with `POST /v1/agent-runs/{id}/cancel`. Cancellation is stored in `cancelled_at` and exposed as the terminal API status `cancelled`, preserving the existing constrained status enum and event foreign keys. Pending dispatch, queued, running and planned runs can be cancelled; failed runs cannot. Claims, plan completion, retries and outbox dispatch all check the cancellation marker, so a queue delivery racing with cancellation is acknowledged without planning or retrying. Repeating cancellation is idempotent and the append-only event is written once.
+
 ## Dead-letter recovery
 
 The runtime now distinguishes the primary `aegis-jobs` queue from `aegis-jobs-dlq` using the Cloudflare `MessageBatch.queue` value. Exhausted deliveries conditionally fail only queued/pending jobs or running jobs whose lease has expired, set `JOB_DELIVERY_EXHAUSTED`, clear the lease and append a deterministic, idempotent `delivery_exhausted` audit event. Active leases and terminal jobs are preserved. Unknown queue batches are acknowledged without executing their payloads.
@@ -73,7 +75,11 @@ Health only reports ready when both D1 and Queue bindings are present.
 
 ## Storage
 
-Migration: `migrations/runtime/0001_jobs.sql`
+Migrations:
+
+- `migrations/runtime/0001_jobs.sql` — durable jobs and job events.
+- `migrations/runtime/0002_agent_runs.sql` — durable agent run plans and append-only events.
+- `migrations/runtime/0003_agent_run_cancellation.sql` — cancellation marker and pending-dispatch index.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
@@ -117,7 +123,7 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 - No permissive CORS is enabled.
 - Request bodies are capped at 8 KiB.
 - Only the health-check task is accepted; payload fields are rejected.
-- No job cancellation, approval workflow, user-supplied code, arbitrary connectors, model calls or agent execution are implemented.
+- Job cancellation is implemented for agent runs only. General job cancellation, approval workflow, user-supplied code, arbitrary connectors, model calls or specialist execution are not implemented.
 - D1 and Queue resource creation/deployment need explicit review and a cost/limit check before use.
 - Queue delivery is at-least-once. Idempotent state transitions, leases and attempt fencing reduce duplicate execution risks; new task handlers must themselves be idempotent.
 
