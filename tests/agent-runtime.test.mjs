@@ -5,7 +5,7 @@ import runtime, { handleRuntimeFetch } from '../workers/runtime/index.mjs';
 const token = 'agent-runtime-test-token-with-at-least-32-characters';
 
 class AgentMemoryD1 {
-  constructor() { this.runs = new Map(); this.events = []; }
+  constructor() { this.runs = new Map(); this.events = []; this.steps = new Map(); this.stepEvents = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -243,6 +243,11 @@ test('queue consumer creates a plan-only result and never invokes tools', async 
   assert.equal(plan.safety.toolsInvoked, false);
   assert.deepEqual(plan.steps.map((step) => step.specialist), ['researcher', 'engineer', 'reviewer']);
   assert.ok(plan.steps.every((step) => step.tools.length === 0));
+  const persistedSteps = [...DB.steps.values()].sort((a, b) => a.step_index - b.step_index);
+  assert.equal(persistedSteps.length, 3);
+  assert.deepEqual(persistedSteps.map((step) => step.specialist), ['researcher', 'engineer', 'reviewer']);
+  assert.ok(persistedSteps.every((step) => step.status === 'planned' && step.attempts === 0));
+  assert.equal(DB.stepEvents.filter((event) => event.event_type === 'planned').length, 3);
   assert.equal(acked, true);
   assert.ok(DB.events.some((event) => event.event_type === 'planned'));
 });
