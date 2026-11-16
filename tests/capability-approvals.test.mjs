@@ -4,6 +4,7 @@ import {
   createApprovalRequest,
   decideApprovalRequest,
   listPendingApprovals,
+  loadApproval,
   consumeApproval,
 } from '../functions/lib/capability-approvals.mjs';
 
@@ -50,6 +51,15 @@ class MemoryD1 {
           if (!row || row.status !== 'pending' || row.expires_at <= now) return null;
           row.status = decision; row.decided_by = decidedBy; row.decided_at = decidedAt;
           return { ...row };
+        }
+        if (sql.includes('SELECT * FROM capability_approvals') && sql.includes('principal_id = ?')) {
+          const [principal, capability, version, action, resource, digest, now] = v;
+          const row = [...db.rows.values()].find(item =>
+            item.principal_id === principal && item.capability_id === capability &&
+            item.capability_version === version && item.action_id === action &&
+            item.resource_id === resource && item.input_digest === digest &&
+            item.status === 'approved' && !item.consumed_at && item.expires_at > now);
+          return row ? { ...row } : null;
         }
         if (sql.includes('SELECT * FROM capability_approvals')) {
           const row = db.rows.get(v[0]);
@@ -183,4 +193,46 @@ test('an expired pending request cannot be approved', async () => {
     now: Date.now() + 2000,
   });
   assert.equal(result, null);
+});
+test('loads only an approved, unused approval bound to the exact principal, action, resource and digest', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, request(), Date.now());
+  await decideApprovalRequest(db, {
+    id: pending.id, decision: 'approved', decidedBy: 'owner', now: Date.now(),
+  });
+  const loaded = await loadApproval(db, {
+    principalId: binding.principalId,
+    capabilityId: binding.capabilityId,
+    capabilityVersion: binding.capabilityVersion,
+    actionId: binding.actionId,
+    resourceId: binding.resourceId,
+    inputDigest: binding.inputDigest,
+  }, Date.now());
+  assert.equal(loaded.id, pending.id);
+  assert.equal(loaded.connectionId, binding.connectionId);
+  assert.equal(await loadApproval(db, {
+    principalId: 'another-owner',
+    capabilityId: binding.capabilityId,
+    capabilityVersion: binding.capabilityVersion,
+    actionId: binding.actionId,
+    resourceId: binding.resourceId,
+    inputDigest: binding.inputDigest,
+  }, Date.now()), null);
+  assert.equal(await loadApproval(db, {
+    principalId: binding.principalId,
+    capabilityId: binding.capabilityId,
+    capabilityVersion: binding.capabilityVersion,
+    actionId: binding.actionId,
+    resourceId: binding.resourceId,
+    inputDigest: 'sha256:' + 'a'.repeat(64),
+  }, Date.now()), null);
+  await consumeApproval(db, { id: pending.id, ...binding, now: Date.now() });
+  assert.equal(await loadApproval(db, {
+    principalId: binding.principalId,
+    capabilityId: binding.capabilityId,
+    capabilityVersion: binding.capabilityVersion,
+    actionId: binding.actionId,
+    resourceId: binding.resourceId,
+    inputDigest: binding.inputDigest,
+  }, Date.now()), null);
 });
