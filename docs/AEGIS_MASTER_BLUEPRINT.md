@@ -171,7 +171,7 @@ Forge documentation says:
 
 - Cloudflare Pages project: `aegis`, connected to this GitHub repository; production branch `main`, branch previews enabled (last known configuration).
 - Verify current production deployment and branch preview before claiming deployment success.
-- Cloudflare account inspection on 15 November 2026 found no D1 databases or Queues. Two existing Worker scripts were unrelated to AEGIS. The runtime source in PR #4 is not yet deployed; no AEGIS Queue consumer or Cron job is running.
+- Cloudflare account inspection on 16 November 2026 again found no D1 databases or Queues. The two existing Worker scripts are unrelated to AEGIS. The Cloudflare connection cannot read billing usage because it lacks the Billing Read permission, so current plan and free-tier headroom remain unverified. No AEGIS runtime Worker, Queue consumer or Cron job is deployed or running.
 - Expected encrypted Pages secrets:
   - `AEGIS_PASSWORD` — unique value, at least 12 characters.
   - `AEGIS_SESSION_SECRET` — cryptographically random, at least 32 characters.
@@ -192,12 +192,13 @@ PR #4 contains the first isolated Worker source slice:
 
 PR #4 is merged into `main` at `33820ca985b97be6152575ed6b267d0b5f8155e6`. Its final Node.js CI run `43725405757` passed **83 tests, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The Cloudflare Pages preview did not deploy the separate runtime Worker; no production Worker deployment is implied by this merge.
 
-Still missing:
-- Cloudflare D1/Queue resource provisioning and deployment.
-- Real D1/Queue integration tests and live Worker verification.
-- Durable Workflows/checkpointing for longer multi-step tasks.
-- Approval gates, task cancellation, notifications and Control Centre UI.
-- Specialist agents, provider routing and authorised connectors.
+Still missing or incomplete:
+- Cloudflare D1/Queue resource provisioning and production Worker deployment.
+- Live Cloudflare verification of health, Queue delivery, Cron recovery and DLQ behaviour. The isolated Miniflare D1/Queue integration test now passes.
+- Durable multi-step checkpoints and resumable specialist execution; current agent runs still produce plans only.
+- Execution-time approval enforcement for real worker/tool invocation. The current owner approval handoff records authorisation but does not execute work.
+- Background agent-run integration with Project Space memory and persisted Knowledge Forge records.
+- Full controlled connector manager, dynamic provider/cost routing, notifications and the complete mobile-first Control Centre.
 
 Cloudflare free-tier reference check (15 November 2026): Workers Free includes 100,000 requests/day and 10 ms CPU per invocation; D1 Free includes 5 million rows read/day, 100,000 rows written/day and 5 GB total account storage; Queues Free includes 10,000 operations/day and 24-hour message retention. D1 overages are rejected at free limits; Queue operations/retries count toward the daily allowance. The design must monitor usage and remain within limits. Sources: Cloudflare Workers pricing/limits, D1 pricing/limits, and Queues pricing/limits. Do not assume an account's current plan or remaining usage without checking it.
 
@@ -240,6 +241,21 @@ These are research-only candidates. None is connected, installed or granted perm
 A new feature branch `feature/aegis-runtime-dlq-recovery` ports the previously developed PR #8 dead-letter recovery behavior onto the current `main` baseline, avoiding the stale integration-test conflict. It adds regression coverage for exhausted deliveries, idempotent audit, terminal-job protection, active-lease protection and unknown-queue fail-closed handling; implements queue-aware processing; and registers the dedicated `aegis-jobs-dlq` consumer. The change is source-only and must pass fresh tests and preview checks before merge. It does not provision or deploy D1, Queues or the separate runtime Worker.
 
 ## 10. Implementation sequence
+
+### Current execution status — 16 November 2026
+
+- **Step 1 — live-state inspection:** complete for the current session. PR #101 is the canonical open draft on `feature/composio-audit-lineage-verified`; it remains unmerged.
+- **Step 2 — runtime/DLQ and capability registry review:** complete. PR #8 is closed and superseded, not separately mergeable; its dead-letter recovery behaviour is present in the current runtime source and tests. PR #13 is already merged.
+- **Step 3 — local D1/Queue integration:** complete at code commit `e74c5f41b2ffb7879c545ced832aaebfbff59490`. GitHub Actions run [43907037911](https://github.com/LAURENCE1977/Aegis-/actions/runs/43907037911) passed: 556 Node tests (555 passed, 0 failed, 1 separately-run integration test skipped in the general suite), the dedicated Miniflare D1/Queue integration test (1 passed), capability/runtime/Forge migration checks, and the associated security/constraint checks. The emulator test submits an authenticated agent run, consumes the real local Queue message, verifies its D1 plan and event timeline, and checks idempotent replay. It is local-emulator evidence, not live Cloudflare production evidence.
+- **Step 4 — resource provisioning:** blocked. The connected Cloudflare account currently has no D1 databases or Queues, and the connection cannot read billing usage without Billing Read permission. Do not create resources until plan/headroom and billing implications can be verified and the user explicitly approves provisioning.
+- **Step 5 — live Worker deployment:** blocked by step 4. No production runtime Worker or encrypted runtime token has been configured.
+- **Step 6 — controlled jobs and approval:** partially implemented. The generic job allowlist contains only `aegis.health_check`; agent runs are durable and cancellable, and the owner approval-to-runtime-authorisation record is implemented. Agent runs remain plan-only; no specialist model or tool executes.
+- **Step 7 — memory and Knowledge Forge:** partially implemented. Native owner-scoped memory and Project Spaces are merged and used by interactive chat. Background agent-run context snapshots and durable Knowledge Forge record persistence/search still need implementation.
+- **Step 8 — MCP/OpenAPI and connectors:** partially implemented. The read-only MCP bridge and scoped Composio GitHub read-only capabilities exist; a general schema-pinned connector manager is not complete.
+- **Step 9 — Control Centre:** partially implemented. Agent Workforce and approval inbox surfaces exist in the Security Centre; the full mobile-first jobs/agents/logs/health Control Centre remains unfinished.
+- **Step 10 — specialists and model routing:** partially implemented. Workers AI, Anthropic and Alibaba Qwen adapters exist; dynamic quality/cost/latency routing, fallback policy and reproducible provider benchmarks remain unfinished.
+- **Step 11 — self-improvement:** partially implemented. Forge has candidate, source-integrity and licence-review foundations; controlled isolated build/test/review/promote loops remain unfinished.
+
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
 2. Review and integrate PR #8 dead-letter recovery against the now-merged runtime, then review PR #13 capability registry. Preserve the distinction between source merge, resource provisioning and live Worker deployment.
