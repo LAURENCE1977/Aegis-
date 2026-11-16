@@ -379,3 +379,8 @@ The current-main capability stack adds exact-resource grants, principal/provider
 ## Durable specialist orchestration — plan-only foundation
 
 The runtime Worker can persist bounded agent-run objectives, queue them through the existing job Queue, and produce deterministic specialist plans with lease recovery and idempotency. This is not autonomous execution: no model, tool, browser, shell, MCP or external API is invoked. Agent orchestration is disabled unless `AGENT_RUNS_ENABLED=true`, and requires `migrations/runtime/0002_agent_runs.sql` before activation. The migration and Worker changes are source-only until explicitly deployed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
+
+
+## Forge repository inspection
+
+AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
