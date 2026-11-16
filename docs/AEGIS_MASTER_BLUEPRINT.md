@@ -782,3 +782,12 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - It returns descriptive AEGIS module metadata, rejects non-empty input and has no network, filesystem, secret or process access.
 - Tests exercise the adapter directly and through the D1 composition root. It is not exposed by a route and cannot be invoked by an agent or browser yet.
 - The full route, grant lifecycle, D1 migration validation and egress work remain prerequisites.
+
+## Owner capability grant management
+
+- Added an owner-only `/api/grants` route for bounded grant history, creation and revocation.
+- The API accepts capability ID, registered action IDs, exact resource and expiry; it derives the principal, actor, capability version and scopes server-side from the approved capability registry.
+- Caller-supplied principal IDs, actors and scopes are rejected. Wildcard resources are rejected by the grant repository; grant TTL is capped at 90 days; revocation is scoped to the owner.
+- CI run 43789320560 on commit 161e69899a045a83635110efe50b0f89870727f0 passed **353 tests, 0 failures** under Node.js 22.
+- No D1 database has been provisioned/migrated and no live grant or production deployment has been created. This route is not yet operational until the clean capability stack and migration chain are reviewed and deployed deliberately.
+- Details: `docs/AEGIS_CAPABILITY_GRANT_MANAGEMENT.md`.
