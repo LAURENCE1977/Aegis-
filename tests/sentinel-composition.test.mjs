@@ -31,6 +31,10 @@ test('requires a D1 database and an explicit fixed adapter registry', () => {
     db: fakeDb(),
     adapters: { 'aegis-github-public-discovery:discover': true },
   }), /adapter/i);
+  assert.throws(() => createSentinelDependencies({
+    db: fakeDb(),
+    adapters: { 'made-up-capability:run': async () => null },
+  }), /approved, registered capability action/i);
 });
 
 test('composes the persistent stores and dispatches only an explicitly registered adapter', async () => {
@@ -71,10 +75,11 @@ test('composes the persistent stores and dispatches only an explicitly registere
 
 test('does not derive adapter destinations from capability manifest URLs or paths', async () => {
   let calls = 0;
+  let receivedContext;
   const dependencies = createSentinelDependencies({
     db: fakeDb(),
     adapters: {
-      'aegis-github-public-discovery:discover': async () => { calls += 1; return 'fixed'; },
+      'aegis-github-public-discovery:discover': async (_input, context) => { calls += 1; receivedContext = context; return 'fixed'; },
     },
   });
   const result = await dependencies.execute(
@@ -88,4 +93,8 @@ test('does not derive adapter destinations from capability manifest URLs or path
   );
   assert.equal(result, 'fixed');
   assert.equal(calls, 1);
+  assert.equal(Object.isFrozen(receivedContext), true);
+  assert.equal('endpoint' in receivedContext, false);
+  assert.equal('path' in receivedContext, false);
+  assert.equal('secretRef' in receivedContext, false);
 });
