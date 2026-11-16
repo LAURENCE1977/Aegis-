@@ -15,7 +15,11 @@ const WORKFLOW_RUNS_CAPABILITY_ID = 'aegis-composio-github-workflow-readonly';
 const WORKFLOW_RUNS_ACTION_ID = 'list-workflow-runs';
 const WORKFLOW_RUNS_GRANT_SCOPE = 'github:workflow:read';
 const WORKFLOW_RUNS_TOOL_SLUG = 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY';
-const APPROVED_TOOL_SLUGS = new Set([TOOL_SLUG, PULL_REQUEST_TOOL_SLUG, WORKFLOW_RUNS_TOOL_SLUG]);
+const WORKFLOW_JOBS_CAPABILITY_ID = 'aegis-composio-github-workflow-jobs-readonly';
+const WORKFLOW_JOBS_ACTION_ID = 'list-workflow-jobs';
+const WORKFLOW_JOBS_GRANT_SCOPE = 'github:workflow-jobs:read';
+const WORKFLOW_JOBS_TOOL_SLUG = 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN';
+const APPROVED_TOOL_SLUGS = new Set([TOOL_SLUG, PULL_REQUEST_TOOL_SLUG, WORKFLOW_RUNS_TOOL_SLUG, WORKFLOW_JOBS_TOOL_SLUG]);
 
 function exactKeys(value, keys) {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -78,6 +82,86 @@ function validateWorkflowRunsInput(input) {
        input.branch.includes('..') || input.branch.includes('//'))) {
     throw new TypeError('Invalid GitHub workflow branch');
   }
+}
+
+
+function validateWorkflowJobsInput(input) {
+  if (!exactKeys(input, ['owner', 'repo', 'runId'])) {
+    throw new TypeError('Composio workflow job lookup requires exactly owner, repo and runId');
+  }
+  if (typeof input.owner !== 'string' ||
+      !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(input.owner)) {
+    throw new TypeError('Invalid GitHub owner');
+  }
+  if (typeof input.repo !== 'string' || !/^[A-Za-z0-9_.-]{1,100}$/.test(input.repo)) {
+    throw new TypeError('Invalid GitHub repository name');
+  }
+  if (!Number.isSafeInteger(input.runId) || input.runId < 1) {
+    throw new TypeError('Invalid GitHub workflow run identifier');
+  }
+}
+
+function safeWorkflowJobsResult(data, owner, repo, runId) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      !Number.isSafeInteger(data.total_count) || data.total_count < 0 ||
+      !Array.isArray(data.jobs) || data.jobs.length > 20) {
+    throw new Error('Composio returned an invalid workflow job collection');
+  }
+  const statuses = new Set(['queued', 'in_progress', 'completed', 'waiting', 'requested', 'pending']);
+  const conclusions = new Set(['success', 'failure', 'neutral', 'cancelled', 'skipped', 'timed_out', 'action_required']);
+  const stepStatuses = new Set(['queued', 'in_progress', 'completed', 'pending']);
+  const jobs = data.jobs.map((job) => {
+    if (!job || typeof job !== 'object' || Array.isArray(job) ||
+        !Number.isSafeInteger(job.id) || job.id < 1 || job.run_id !== runId ||
+        !statuses.has(job.status) ||
+        (job.conclusion !== null && job.conclusion !== undefined && !conclusions.has(job.conclusion)) ||
+        typeof job.name !== 'string' || !job.name.trim() || job.name.length > 200 ||
+        typeof job.head_sha !== 'string' || !/^[a-f0-9]{40}$/i.test(job.head_sha) ||
+        typeof job.head_branch !== 'string' || job.head_branch.length > 128) {
+      throw new Error('Composio returned workflow job metadata outside the exact requested run');
+    }
+    const item = {
+      id: job.id,
+      runId: job.run_id,
+      name: job.name,
+      status: job.status,
+      conclusion: job.conclusion ?? null,
+      headSha: job.head_sha,
+      headBranch: job.head_branch,
+    };
+    if (Number.isSafeInteger(job.run_attempt) && job.run_attempt > 0) item.runAttempt = job.run_attempt;
+    if (Array.isArray(job.steps)) {
+      if (job.steps.length > 100) throw new Error('Composio returned too many workflow job steps');
+      item.steps = job.steps.map((step) => {
+        if (!step || typeof step !== 'object' || Array.isArray(step) ||
+            typeof step.name !== 'string' || !step.name.trim() || step.name.length > 200 ||
+            !Number.isSafeInteger(step.number) || step.number < 1 || !stepStatuses.has(step.status) ||
+            (step.conclusion !== undefined && step.conclusion !== null &&
+             !conclusions.has(step.conclusion))) {
+          throw new Error('Composio returned invalid workflow step metadata');
+        }
+        return {
+          name: step.name,
+          number: step.number,
+          status: step.status,
+          conclusion: step.conclusion ?? null,
+        };
+      });
+    }
+    const url = safeString(job.html_url, 2048);
+    if (url) {
+      let parsed;
+      try { parsed = new URL(url); } catch { throw new Error('Composio returned an invalid workflow job URL'); }
+      const expectedPath = '/' + owner + '/' + repo + '/actions/runs/' + runId + '/job/' + job.id;
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'github.com' ||
+          parsed.pathname !== expectedPath || parsed.username || parsed.password || parsed.port) {
+        throw new Error('Composio returned a workflow job URL outside the exact run');
+      }
+      item.url = parsed.toString();
+    }
+    return item;
+  });
+  return { totalCount: data.total_count, jobs };
 }
 
 function safeWorkflowRunsResult(data, owner, repo, branch) {
@@ -453,9 +537,81 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
     };
   };
 
+
+  const workflowJobsHandler = async (input, context = {}) => {
+    validateWorkflowJobsInput(input);
+    if (context.capabilityId !== WORKFLOW_JOBS_CAPABILITY_ID ||
+        context.actionId !== WORKFLOW_JOBS_ACTION_ID ||
+        typeof context.principalId !== 'string' || !context.principalId ||
+        typeof context.connectionId !== 'string' || !context.connectionId ||
+        !Array.isArray(context.scopes) || !context.scopes.includes(WORKFLOW_JOBS_GRANT_SCOPE)) {
+      throw new Error('Composio workflow job invocation context is not authorised');
+    }
+
+    const expectedResource = 'github:workflow-run:' + input.owner + '/' + input.repo + '/' + input.runId;
+    if (context.resourceId !== expectedResource) {
+      throw new Error('Composio workflow job invocation does not match the exact workflow run resource');
+    }
+
+    const connection = await loadConnection(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+    });
+    if (!connection || connection.id !== context.connectionId ||
+        !connection.scopes.includes(CONNECTION_SCOPE)) {
+      throw new Error('The exact active Composio connection is unavailable');
+    }
+
+    const stored = await resolveVaultSecret(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+      secretRef: connection.secretRef,
+    }, env);
+    let session;
+    try { session = JSON.parse(stored || ''); } catch {
+      throw new Error('The Composio session reference is unavailable');
+    }
+    if (!exactKeys(session, ['sessionId', 'connectedAccountId'])) {
+      throw new Error('The Composio session reference is invalid');
+    }
+
+    const client = createComposioClient({
+      apiKey: env.COMPOSIO_API_KEY,
+      fetchImpl,
+      timeoutMs: 8000,
+      maxResponseBytes: 64 * 1024,
+    });
+    const connected = await client.getGitHubConnectionStatus({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+    });
+    if (!connected) throw new Error('The Composio GitHub account is not active');
+
+    const tools = await client.listSessionTools({ sessionId: session.sessionId });
+    if (!tools.includes(WORKFLOW_JOBS_TOOL_SLUG) ||
+        tools.length < 1 || tools.length > APPROVED_TOOL_SLUGS.size ||
+        tools.some((slug) => !APPROVED_TOOL_SLUGS.has(slug))) {
+      throw new Error('Composio session does not contain the approved workflow job read-only tool');
+    }
+
+    const result = await client.executeGitHubListWorkflowJobs({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+      owner: input.owner,
+      repo: input.repo,
+      runId: input.runId,
+    });
+    return {
+      ...safeWorkflowJobsResult(result.data, input.owner, input.repo, input.runId),
+      provider: 'composio',
+      logId: result.logId,
+    };
+  };
+
   return Object.freeze({
     [CAPABILITY_ID + ':' + ACTION_ID]: handler,
     [PULL_REQUEST_CAPABILITY_ID + ':' + PULL_REQUEST_ACTION_ID]: pullRequestHandler,
     [WORKFLOW_RUNS_CAPABILITY_ID + ':' + WORKFLOW_RUNS_ACTION_ID]: workflowRunsHandler,
+    [WORKFLOW_JOBS_CAPABILITY_ID + ':' + WORKFLOW_JOBS_ACTION_ID]: workflowJobsHandler,
   });
 }
