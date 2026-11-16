@@ -27,7 +27,7 @@ export async function onRequestGet({ request, env, params }) {
   }
   try {
     const events = await listForgeKnowledgeEvents(env.AEGIS_DB, OWNER_ID, id, limit);
-    return json({ events, total: events.length });
+    return events ? json({ events, total: events.length }) : json({ error: "Knowledge record not found." }, 404);
   } catch (error) {
     if (error instanceof TypeError) return json({ error: error.message }, 400);
     return json({ error: "Knowledge event history is temporarily unavailable." }, 503);
