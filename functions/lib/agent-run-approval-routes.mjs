@@ -12,6 +12,8 @@ import {
   consumeApproval,
 } from './capability-approvals.mjs';
 import { buildAgentPlanApprovalBinding } from '../../workers/runtime/agent-plan-approval.mjs';
+import { loadCapabilityGrant } from './capability-grants.mjs';
+import { getCapabilityManifest } from './capability-registry.mjs';
 import { proxyAgentRuntime } from './agent-runtime-proxy.mjs';
 
 const OWNER_ID = 'owner';
@@ -133,6 +135,7 @@ export function createAgentRunApprovalDecisionHandlers({
 export function createAgentRunApprovalAuthorizationHandlers({
   proxy = proxyAgentRuntime,
   loadRequest = loadApprovedApprovalById,
+  loadGrant = loadCapabilityGrant,
   consumeRequest = consumeApproval,
 } = {}) {
   return {
@@ -171,6 +174,28 @@ export function createAgentRunApprovalAuthorizationHandlers({
             approval.requestedBy !== OWNER_ID) {
           return jsonResponse({ error: 'Approval no longer matches the persisted plan.' }, 409);
         }
+        const manifest = getCapabilityManifest(binding.capabilityId);
+        const action = manifest?.actions?.find((item) => item.id === binding.actionId);
+        if (!manifest || manifest.status !== 'approved' || !action) {
+          return jsonResponse({ error: 'The registered execution capability is unavailable.' }, 503);
+        }
+        const grant = await loadGrant(env.AEGIS_DB, {
+          principalId: OWNER_ID,
+          capabilityId: binding.capabilityId,
+          capabilityVersion: binding.capabilityVersion,
+          resourceId: binding.resourceId,
+        });
+        if (!grant || grant.status !== 'active' ||
+            grant.principalId !== OWNER_ID ||
+            grant.capabilityId !== binding.capabilityId ||
+            grant.capabilityVersion !== binding.capabilityVersion ||
+            grant.resourceId !== binding.resourceId ||
+            !action.requiredScopes.every((scope) => grant.scopes?.includes(scope))) {
+          return jsonResponse({
+            error: 'An active exact-resource Sentinel grant with every required scope is required before authorisation.',
+            reasonCode: 'ACTIVE_EXACT_RESOURCE_GRANT_REQUIRED',
+          }, 403);
+        }
         const consumed = await consumeRequest(env.AEGIS_DB, {
           id: approvalId,
           ...binding,
@@ -189,6 +214,7 @@ export function createAgentRunApprovalAuthorizationHandlers({
             capabilityVersion: binding.capabilityVersion,
             actionId: binding.actionId,
             inputDigest: binding.inputDigest,
+            grantId: grant.id,
           },
         });
         if (!upstream.ok) {
