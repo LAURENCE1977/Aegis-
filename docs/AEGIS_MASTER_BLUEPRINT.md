@@ -406,3 +406,8 @@ The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-
 ## Bounded GitHub public-discovery adapter
 
 A second fixed Sentinel adapter, `aegis-github-public-discovery:discover`, reads public repository metadata only. Its destination is pinned to `api.github.com`, redirects are rejected, request timeouts are bounded, and streamed response bodies are capped at 64 KiB. It accepts exactly one canonical GitHub repository URL and does not read repository files, execute code, access private repositories or derive destinations from user-supplied endpoints. The adapter is registered in the server-side adapter map but is not exposed through a Sentinel route. Before exposure, add an atomic per-principal/action rate limiter and verify exact-resource grants for the target repository. Existing Forge source inspection remains a separate read-only research route.
+
+
+## Forge candidate evidence and licence review
+
+Forge candidates are owner-scoped and pinned to immutable Git tree revisions. Discovery never implies approval: candidates begin unassessed and licence-review-required. Reuse, adaptation, combination or approval requires explicit owner attestation, HTTPS evidence and a review note. D1 triggers protect source identity, enforce licence gates and preserve append-only review/status events. Candidate review is metadata-only; it does not install, build or execute upstream code.
