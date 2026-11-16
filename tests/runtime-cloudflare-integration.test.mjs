@@ -198,11 +198,12 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     });
 
     const persisted = await db.prepare(
-      'SELECT status, attempts, plan_json, project_id, context_json FROM agent_runs WHERE id = ?'
+      'SELECT status, attempts, plan_json, project_id, context_digest, context_json FROM agent_runs WHERE id = ?'
     ).bind(run.id).first();
     assert.equal(persisted.status, 'planned');
     assert.equal(persisted.attempts, 1);
     assert.equal(persisted.project_id, 'project-a');
+    assert.equal(persisted.context_digest, projectContext.digest);
     assert.equal(JSON.parse(persisted.context_json).digest, projectContext.digest);
     assert.ok(JSON.parse(persisted.plan_json));
     await assert.rejects(
