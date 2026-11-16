@@ -107,15 +107,16 @@ export async function loadCapabilityGrant(db, {
   return mapGrant(row);
 }
 
-export async function revokeCapabilityGrant(db, id, now = Date.now()) {
+export async function revokeCapabilityGrant(db, id, principalId, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) {
     throw new TypeError('Grant database and valid clock are required');
   }
   requiredId(id, 'identifier');
+  requiredId(principalId, 'principal');
   const result = await db.prepare(`
     UPDATE capability_grants
     SET status = 'revoked', revoked_at = ?
-    WHERE id = ? AND status = 'active'
-  `).bind(new Date(now).toISOString(), id).run();
+    WHERE id = ? AND principal_id = ? AND status = 'active'
+  `).bind(new Date(now).toISOString(), id, principalId).run();
   return Number(result?.meta?.changes || 0) === 1;
 }
