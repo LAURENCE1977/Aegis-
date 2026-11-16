@@ -25,3 +25,9 @@ max_batch_size = 10
 max_batch_timeout = 5
 max_retries = 5
 dead_letter_queue = "aegis-jobs-dlq"
+
+[[queues.consumers]]
+queue = "aegis-jobs-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 5

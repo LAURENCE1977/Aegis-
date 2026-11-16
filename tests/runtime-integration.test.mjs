@@ -49,8 +49,18 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO job_events')) {
+          if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
+        }
+        if (sql.includes("SET status = 'failed'") && sql.includes("JOB_DELIVERY_EXHAUSTED")) {
+          const row = db.jobs.get(v[1]);
+          const expiredLease = row?.status === 'running' && (!row.lease_until || row.lease_until <= v[2]);
+          if (row && (['queued', 'pending_dispatch'].includes(row.status) || expiredLease)) {
+            row.status = 'failed'; row.error_code = 'JOB_DELIVERY_EXHAUSTED'; row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
         }
         if (sql.includes("SET status = 'queued'") && !sql.includes("JOB_EXECUTION_RETRY")) {
           const row = db.jobs.get(v[1]);
@@ -143,7 +153,7 @@ test('a stale worker cannot adopt a newer attempt number after its lease is recl
   DB.afterClaim = simulateNewerAttempt;
   DB.afterAttemptRead = simulateNewerAttempt;
   let acked = false;
-  await runtime.queue({ messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }] }, env);
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }] }, env);
   assert.equal(DB.jobs.get(job.id).status, 'running');
   assert.equal(DB.jobs.get(job.id).attempts, 2);
   assert.equal(DB.jobs.get(job.id).result_json, undefined);
@@ -157,6 +167,7 @@ test('queue consumer executes only the persisted health-check job and acknowledg
   let acked = false;
   let retried = false;
   await runtime.queue({
+    queue: 'aegis-jobs',
     messages: [{
       body: { jobId: job.id },
       ack() { acked = true; },
@@ -216,4 +227,122 @@ test('a transient task failure is returned to queued with a delayed retry', asyn
   assert.deepEqual(retryOptions, [{ delaySeconds: 10 }]);
   assert.equal(acked, false);
   assert.ok(DB.events.some((event) => event.event_type === 'retry_scheduled'));
+});
+
+
+test('dead-letter delivery marks a non-terminal job failed and records the delivery exhaustion', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'queued';
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'failed');
+  assert.equal(saved.error_code, 'JOB_DELIVERY_EXHAUSTED');
+  assert.equal(saved.lease_until, null);
+  assert.equal(acked, true);
+  assert.ok(DB.events.some((event) => event.event_type === 'delivery_exhausted'));
+
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() {}, retry() {} }],
+  }, env);
+  assert.equal(DB.events.filter((event) => event.event_type === 'delivery_exhausted').length, 1);
+});
+
+test('dead-letter delivery never overwrites a succeeded job', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'succeeded';
+  saved.result_json = JSON.stringify({ ok: true });
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'succeeded');
+  assert.deepEqual(JSON.parse(saved.result_json), { ok: true });
+  assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
+  assert.equal(acked, true);
+});
+
+test('unknown queue batches are acknowledged without executing jobs', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'queued';
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'unexpected-queue',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'queued');
+  assert.equal(acked, true);
+});
+
+test('dead-letter delivery does not fail a job with an active lease', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'running';
+  saved.lease_until = new Date(Date.now() + 60_000).toISOString();
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'running');
+  assert.equal(saved.error_code, undefined);
+  assert.equal(DB.events.some((event) => event.event_type === 'delivery_exhausted'), false);
+  assert.equal(acked, true);
+});
+
+test('dead-letter delivery fails a running job only after its lease has expired', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const saved = DB.jobs.get(job.id);
+  saved.status = 'running';
+  saved.lease_until = new Date(Date.now() - 60_000).toISOString();
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: job.id }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(saved.status, 'failed');
+  assert.equal(saved.error_code, 'JOB_DELIVERY_EXHAUSTED');
+  assert.equal(saved.lease_until, null);
+  assert.equal(acked, true);
+  assert.equal(DB.events.filter((event) => event.event_type === 'delivery_exhausted').length, 1);
+});
+
+test('dead-letter consumer acknowledges malformed identifiers without touching job state', async () => {
+  const { env, DB } = makeEnv();
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: '../not-a-job-id' }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(DB.jobs.size, 0);
+  assert.equal(DB.events.length, 0);
+  assert.equal(acked, true);
 });
