@@ -64,6 +64,22 @@ Authorization: Bearer <token>
 
 The response includes state, attempts, timestamps, result and a stable error code. It does not return secrets or internal exception messages.
 
+### List recent agent runs
+
+```http
+GET /v1/agent-runs?limit=20
+Authorization: Bearer <token>
+```
+
+The owner-only history endpoint returns at most 50 runs per page, newest first. It uses a stable keyset cursor so runs sharing the same timestamp are not skipped or duplicated:
+
+```http
+GET /v1/agent-runs?limit=20&before=<createdAt>&beforeId=<uuid>
+Authorization: Bearer <token>
+```
+
+The response contains `runs` and either a `nextCursor` object or `null`. Unknown query parameters, repeated parameters, invalid timestamps and incomplete cursors are rejected.
+
 ### Submit, inspect and cancel an agent run
 
 Agent runs currently create a deterministic plan only; they do not invoke models, specialist workers or external tools.
@@ -110,6 +126,7 @@ Migrations:
 - `migrations/runtime/0001_jobs.sql` — durable jobs and job events.
 - `migrations/runtime/0002_agent_runs.sql` — durable agent run plans and append-only events.
 - `migrations/runtime/0003_agent_run_cancellation.sql` — cancellation marker and pending-dispatch index.
+- `migrations/runtime/0004_agent_run_listing.sql` — stable creation-time/ID index for keyset pagination.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
