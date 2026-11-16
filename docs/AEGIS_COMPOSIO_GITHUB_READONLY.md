@@ -2,7 +2,7 @@
 
 ## Scope
 
-The current Composio GitHub session is deliberately pinned to two read-only tools:
+The current Composio GitHub session is deliberately pinned to four read-only tools:
 
 - `GITHUB_GET_A_REPOSITORY` — repository metadata for one exact owner/repository.
 - `GITHUB_GET_A_PULL_REQUEST` — metadata for one exact pull request.
@@ -47,4 +47,4 @@ Newly created Composio sessions enable exactly the four approved read-only tool 
 - Reconnect/consent and exact resource grants are separate from manifest registration.
 - Any additional GitHub operation must receive its own action contract, input validation, exact resource binding, output normalizer, tests and reviewed allowlist change.
 - Never enable arbitrary Composio tool selection, MCP, multi-execute or shell execution.
-- Workflow run/job inspection may be a future read-only action, but is not enabled by this implementation.
+- Workflow run/job inspection is enabled only through the two separately registered read-only capabilities and exact resource grants described above.
