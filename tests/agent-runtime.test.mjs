@@ -92,6 +92,33 @@ class AgentMemoryD1 {
           row.cancelled_at = v[0]; row.lease_until = null; row.updated_at = v[1];
           return { meta: { changes: 1 } };
         }
+        if (sql.includes('INSERT INTO agent_run_steps')) {
+          const [stepId, stepIndex, specialist, stepJson, createdAt, updatedAt, runId, attempt, planJson] = v;
+          const run = db.runs.get(runId);
+          if (!run || run.status !== 'planned' || run.attempts !== attempt ||
+              run.cancelled_at || run.plan_json !== planJson || db.steps.has(stepId)) {
+            return { meta: { changes: 0 } };
+          }
+          db.steps.set(stepId, {
+            id: stepId, agent_run_id: runId, step_index: stepIndex, specialist,
+            status: 'planned', attempts: 0, step_json: stepJson, checkpoint_json: '{}',
+            created_at: createdAt, updated_at: updatedAt,
+          });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('INSERT INTO agent_run_step_events')) {
+          const [eventId, detailJson, createdAt, stepId, runId] = v;
+          const step = db.steps.get(stepId);
+          if (!step || step.agent_run_id !== runId ||
+              db.stepEvents.some(event => event.event_id === eventId)) {
+            return { meta: { changes: 0 } };
+          }
+          db.stepEvents.push({
+            event_id: eventId, agent_run_step_id: stepId, agent_run_id: runId,
+            event_type: 'planned', detail_json: detailJson, created_at: createdAt,
+          });
+          return { meta: { changes: 1 } };
+        }
         if (sql.includes('INSERT INTO agent_run_events') && sql.includes('SELECT ?, id')) {
           const [eventId, createdAt, runId] = v;
           if (!db.runs.has(runId) || db.events.some(event => event.event_id === eventId)) {
