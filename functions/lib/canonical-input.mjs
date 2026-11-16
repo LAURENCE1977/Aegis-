@@ -8,7 +8,7 @@ function canonicalValue(value, seen, depth) {
   if (depth > MAX_DEPTH) throw new TypeError('Canonical input exceeds maximum depth');
   if (value === null) return 'null';
   if (typeof value === 'string') {
-    if (value.length > MAX_STRING_CHARS) throw new TypeError('Canonical input string is too large');
+    if (value.length > MAX_STRING_CHARS) throw new TypeError('Canonical input string exceeds the size limit');
     return JSON.stringify(value);
   }
   if (typeof value === 'boolean') return value ? 'true' : 'false';
