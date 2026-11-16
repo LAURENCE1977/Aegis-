@@ -119,6 +119,8 @@ GET /v1/agent-runs/<uuid>
 Authorization: Bearer <token>
 ```
 
+The detail response includes the ordered durable step records, each with its specialist, status, attempt count, plan-step snapshot, checkpoint, result and stable error code. This is inspection only; the records remain `planned` until an approved step executor is implemented.
+
 ```http
 POST /v1/agent-runs/<uuid>/cancel
 Authorization: Bearer <token>
