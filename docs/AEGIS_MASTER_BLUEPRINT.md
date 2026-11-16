@@ -396,3 +396,8 @@ AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public G
 ## Owner-controlled capability grants
 
 The owner-only `/api/grants` route provides bounded grant history, exact-resource grant creation and revocation. The server derives principal, actor, capability version and scopes from the approved registry; browser-supplied principals/scopes are rejected. A grant is not an approval and cannot bypass Sentinel's human approval gate. See [AEGIS capability grant management](AEGIS_CAPABILITY_GRANT_MANAGEMENT.md).
+
+
+## Project Space handover briefs
+
+The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-only handover brief from one active Project Space. It includes recent event summaries and accepted, non-restricted, unexpired project memories only; source URLs and raw event bodies are excluded. Content is marked untrusted reference data and never grants permissions. See [AEGIS Project Space briefs](AEGIS_PROJECT_BRIEFS.md).

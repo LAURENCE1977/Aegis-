@@ -86,3 +86,8 @@ A delegated task is a child of one canonical AEGIS job. It records requested wor
 ## Licensing and provenance
 
 LangAlpha's repository identifies Apache-2.0; OpenCompany's repository identifies MIT. AEGIS records these as source licences only. This implementation uses independently authored AEGIS contracts and code. If future work copies any upstream code or substantial text, it must separately preserve the relevant notices and licence obligations. No packages, desktop apps, containers, connectors or upstream agent definitions have been installed.
+
+
+## Project Space handover briefs
+
+The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-only handover brief from one active Project Space. It includes recent event summaries and accepted, non-restricted, unexpired project memories only; source URLs and raw event bodies are excluded. Content is marked untrusted reference data and never grants permissions. See [AEGIS Project Space briefs](AEGIS_PROJECT_BRIEFS.md).
