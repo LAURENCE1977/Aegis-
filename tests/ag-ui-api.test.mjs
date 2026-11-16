@@ -368,3 +368,26 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
   assert.equal(captured.tools, undefined);
   assert.equal(db.auditRows.length, 0);
 });
+
+test('AG-UI rejects an oversized provider frame before parsing or forwarding it', async () => {
+  const hugeFrame = 'data: ' + JSON.stringify({ response: 'x'.repeat(20_000) }) + '\n\n';
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AI: { async run() { return modelSseStream([hugeFrame]); } } },
+  });
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT'), false);
+  assert.equal(events.at(-1).type, 'RUN_ERROR');
+  assert.equal(events.at(-1).code, 'PROVIDER_FRAME_TOO_LARGE');
+});
+
+test('AG-UI cancels provider streams that exceed the total byte budget', async () => {
+  const oversized = ': keepalive\n\n'.repeat(24_000);
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AI: { async run() { return modelSseStream([oversized]); } } },
+  });
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(events.at(-1).type, 'RUN_ERROR');
+  assert.equal(events.at(-1).code, 'PROVIDER_STREAM_TOO_LARGE');
+});
