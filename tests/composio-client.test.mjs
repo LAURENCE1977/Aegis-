@@ -135,6 +135,7 @@ test('executes only the fixed read-only repository metadata tool', async () => {
     sessionId,
     owner: 'octocat',
     repo: 'Hello-World',
+    connectedAccountId: 'ca_abc123xyz',
   });
 
   assert.deepEqual(result, {
@@ -145,6 +146,7 @@ test('executes only the fixed read-only repository metadata tool', async () => {
   assert.deepEqual(captured.body, {
     tool_slug: 'GITHUB_GET_A_REPOSITORY',
     arguments: { owner: 'octocat', repo: 'Hello-World' },
+    account: 'ca_abc123xyz',
   });
   assert.equal(captured.options.headers['x-api-key'], apiKey);
   assert.equal(captured.options.redirect, 'error');
