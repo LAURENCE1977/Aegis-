@@ -107,6 +107,27 @@ export async function loadCapabilityGrant(db, {
   return mapGrant(row);
 }
 
+/**
+ * Returns a bounded grant history for one principal. Revoked records remain
+ * visible so the owner can distinguish an old grant from its replacement.
+ */
+export async function listCapabilityGrants(db, principalId, limit = 50) {
+  if (!db || typeof db.prepare !== 'function') {
+    throw new TypeError('Grant database is required');
+  }
+  requiredId(principalId, 'principal');
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Grant list limit must be between 1 and 100');
+  }
+  const result = await db.prepare(`
+    SELECT * FROM capability_grants
+    WHERE principal_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `).bind(principalId, limit).all();
+  return (result?.results || []).map(mapGrant).filter(Boolean);
+}
+
 export async function revokeCapabilityGrant(db, id, principalId, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) {
     throw new TypeError('Grant database and valid clock are required');
