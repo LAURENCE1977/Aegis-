@@ -525,7 +525,8 @@ async function processAgentRun(message, env) {
   try {
     const specialists = JSON.parse(row.specialists_json);
     const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
-    if (projectContext && await digestProjectBrief(projectContext.brief) !== projectContext.digest) {
+    if (projectContext && (row.context_digest !== projectContext.digest ||
+        await digestProjectBrief(projectContext.brief) !== projectContext.digest)) {
       throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
     }
     const plan = createAgentPlan({
