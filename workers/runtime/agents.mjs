@@ -48,7 +48,7 @@ function validProjectContext(context) {
           item.limitations.some((value) => typeof value !== 'string' || !value.trim() || value.length > 200) ||
           !Array.isArray(item.applicableCapabilities) || item.applicableCapabilities.length > 6 ||
           item.applicableCapabilities.some((value) => typeof value !== 'string' ||
-            !/^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,47}$/.test(value)) ||
+            !/^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0,47}$/.test(value)) ||
           !Number.isInteger(item.version) || item.version < 1 || !validTimestamp(item.updatedAt) ||
           item.trust !== 'untrusted-reference') return false;
       const source = item.sources[0];
