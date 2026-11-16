@@ -148,3 +148,7 @@ CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
 The initial runtime branch test run completed with **82 tests passed, 0 failed**. Tests cover strict job validation, UUIDs, terminal states, auth fail-closed behavior, hostile Origin rejection, readiness checks, durable submission, idempotency, successful queue execution and a lease-recovery race regression. The regression failed against the old implementation (82 passed, 1 failed) and passed after the atomic-claim fix (83 passed, 0 failed). This is source-level test evidence, not a live Cloudflare integration test.
 
 Next: add D1/Queue integration tests against a disposable non-production environment, then provision and deploy only after the free-tier and resource configuration are checked.
+
+### Dead-letter recovery regression coverage
+
+The current DLQ recovery change also covers two edge cases: a running job whose lease has expired is failed with the stable `JOB_DELIVERY_EXHAUSTED` code, while a malformed dead-letter identifier is acknowledged without mutating any job or audit state. A fresh full-suite CI run is required for the latest PR head. The Pages preview does not deploy the separate runtime Worker or apply its D1 migrations.
