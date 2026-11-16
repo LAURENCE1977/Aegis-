@@ -379,3 +379,8 @@ The current-main capability stack adds exact-resource grants, principal/provider
 ## Durable specialist orchestration — plan-only foundation
 
 The runtime Worker can persist bounded agent-run objectives, queue them through the existing job Queue, and produce deterministic specialist plans with lease recovery and idempotency. This is not autonomous execution: no model, tool, browser, shell, MCP or external API is invoked. Agent orchestration is disabled unless `AGENT_RUNS_ENABLED=true`, and requires `migrations/runtime/0002_agent_runs.sql` before activation. The migration and Worker changes are source-only until explicitly deployed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
+
+
+## Trusted Sentinel composition root
+
+`functions/lib/sentinel-composition.mjs` binds the persistent grant, connection, exact approval, atomic consumption and append-only audit stores to the Sentinel gate. A fixed server-side adapter registry currently contains one local read-only module-catalogue adapter. This is not a public invocation route and does not resolve secrets or enable external effects. The trusted caller must validate input and derive the exact digest with `digestCanonicalInput`. See [AEGIS Sentinel composition](AEGIS_SENTINEL_COMPOSITION.md).
