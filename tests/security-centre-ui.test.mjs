@@ -99,3 +99,9 @@ test('planned agent runs expose an explicit human approval request and use the s
   assert.match(html, /method:\s*'PATCH'/);
   assert.match(html, /Request execution approval/);
 });
+
+test('agent-run approval inbox explicitly consumes an approved plan through Sentinel', () => {
+  assert.match(html, /Approve & authorise plan/);
+  assert.match(html, /\/api\/sentinel\/agent-run-approval\/['"]?\s*\+\s*encodeURIComponent\(approval\.id\)\s*\+\s*['"]\/authorize/);
+  assert.match(html, /Plan authorised\. Specialist execution remains disabled\./);
+});
