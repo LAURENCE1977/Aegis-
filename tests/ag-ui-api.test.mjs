@@ -345,6 +345,7 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
     'aegis_list_modules',
     'aegis_discover_public_github_repository',
     'aegis_read_github_workflow_runs',
+    'aegis_read_github_workflow_jobs',
   ]);
   assert.equal(calls[0].tool_choice, 'auto');
   assert.equal(calls[1].tools, undefined);
@@ -492,4 +493,56 @@ test('AG-UI routes the Composio workflow reader through Sentinel and refuses it 
   assert.equal(db.auditRows.length, 1);
   assert.equal(db.auditRows[0][4], 'aegis-composio-github-workflow-readonly');
   assert.equal(db.auditRows[0][7], 'github:repository:LAURENCE1977/Aegis-');
+});
+
+
+test('AG-UI routes the Composio workflow job reader through Sentinel and refuses it without an exact run grant', async () => {
+  const db = new AgentToolMemoryD1(null);
+  const calls = [];
+  const response = await onRequestPost({
+    request: await request(input({
+      messages: [{ id: 'user-1', role: 'user', content: 'Inspect the jobs for this workflow run.' }],
+    })),
+    env: {
+      ...envBase,
+      AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      COMPOSIO_API_KEY: 'test-composio-api-key-long-enough',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      const payload = JSON.parse(options.body);
+      calls.push(payload);
+      if (calls.length === 1) {
+        return new Response(modelSseStream([
+          qwenToolDelta({ tool_calls: [{
+            index: 0, id: 'call_workflow_jobs_1', type: 'function',
+            function: {
+              name: 'aegis_read_github_workflow_jobs',
+              arguments: '{"owner":"LAURENCE1977","repo":"Aegis-","runId":43864244104}',
+            },
+          }] }),
+          'data: [DONE]\n\n',
+        ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      }
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'An exact workflow-run grant is required before I can inspect job details.' }),
+        'data: [DONE]\n\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.deepEqual(events.filter(event => event.type === 'TEXT_MESSAGE_CONTENT').map(event => event.delta), [
+    'An exact workflow-run grant is required before I can inspect job details.',
+  ]);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].messages.at(-1).content, /GRANT_REQUIRED/);
+  assert.equal(db.auditRows.length, 1);
+  assert.equal(db.auditRows[0][4], 'aegis-composio-github-workflow-jobs-readonly');
+  assert.equal(db.auditRows[0][7], 'github:workflow-run:LAURENCE1977/Aegis-/43864244104');
 });
