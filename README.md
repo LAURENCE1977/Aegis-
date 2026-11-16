@@ -103,3 +103,8 @@ The owner-only `/api/grants` route provides bounded grant history, exact-resourc
 ## Project Space handover briefs
 
 The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-only handover brief from one active Project Space. It includes recent event summaries and accepted, non-restricted, unexpired project memories only; source URLs and raw event bodies are excluded. Content is marked untrusted reference data and never grants permissions. See [AEGIS Project Space briefs](AEGIS_PROJECT_BRIEFS.md).
+
+
+## Forge candidate review
+
+Forge can persist inspected public repositories as owner-reviewed candidates pinned to a Git tree SHA. Candidates begin unassessed and licence-review-required; owner attestation and evidence are required before reuse/adaptation or approval. D1 triggers enforce the licence gate and append-only history. No repository is installed or executed.
