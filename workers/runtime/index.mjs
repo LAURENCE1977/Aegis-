@@ -257,9 +257,18 @@ async function cancelAgentRun(env, id) {
   }
 
   const now = new Date().toISOString();
-  const updated = await env.DB.prepare(
-    "UPDATE agent_runs SET cancelled_at = ?, lease_until = NULL, updated_at = ? WHERE id = ? AND cancelled_at IS NULL AND status IN ('pending_dispatch', 'queued', 'running', 'planned')"
-  ).bind(now, now, id).run();
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE agent_runs SET cancelled_at = ?, lease_until = NULL, updated_at = ? WHERE id = ? AND cancelled_at IS NULL AND status IN ('pending_dispatch', 'queued', 'running', 'planned')"
+    ).bind(now, now, id),
+    env.DB.prepare(
+      "UPDATE agent_run_steps SET status = 'cancelled', lease_until = NULL, updated_at = ? WHERE agent_run_id = ? AND status IN ('planned', 'pending_dispatch', 'queued', 'running') AND EXISTS (SELECT 1 FROM agent_runs WHERE id = ? AND cancelled_at = ?)"
+    ).bind(now, id, id, now),
+    env.DB.prepare(
+      "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT 'cancelled:' || id, id, agent_run_id, 'cancelled', '{}', ? FROM agent_run_steps WHERE agent_run_id = ? AND status = 'cancelled' AND EXISTS (SELECT 1 FROM agent_runs WHERE id = ? AND cancelled_at = ?) ON CONFLICT(event_id) DO NOTHING"
+    ).bind(now, id, id, now),
+  ]);
+  const updated = results[0];
   if (!updated.meta?.changes) {
     const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
     if (!current) return json({ error: 'Agent run not found.' }, 404);
