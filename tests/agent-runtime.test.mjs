@@ -27,6 +27,20 @@ class AgentMemoryD1 {
         return null;
       },
       async all() {
+        if (sql.includes('FROM agent_runs WHERE created_at < ?')) {
+          const rows = [...db.runs.values()]
+            .filter((row) => row.created_at < this.values[0] ||
+              (row.created_at === this.values[1] && row.id < this.values[2]))
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+            .slice(0, this.values[3]);
+          return { results: rows };
+        }
+        if (sql.includes('FROM agent_runs ORDER BY created_at DESC')) {
+          const rows = [...db.runs.values()]
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+            .slice(0, this.values[0]);
+          return { results: rows };
+        }
         if (sql.includes("FROM agent_runs WHERE status = 'running'")) return { results: [] };
         if (sql.includes("FROM agent_runs WHERE status = 'pending_dispatch'")) {
           return { results: [...db.runs.values()].filter((row) => row.status === 'pending_dispatch' && !row.cancelled_at).map((row) => ({ id: row.id })) };
@@ -362,4 +376,43 @@ test('owner can list recent agent runs with a bounded page and stable next curso
     before: '2026-11-16T12:02:00.000Z',
     beforeId: '00000000-0000-4000-8000-000000000002',
   });
+});
+
+
+test('agent run listing rejects malformed, duplicate and unbounded cursors', async () => {
+  const { env } = makeEnv();
+  for (const query of [
+    '?limit=0',
+    '?limit=51',
+    '?limit=1&limit=2',
+    '?before=2026-11-16T12%3A00%3A00.000Z',
+    '?before=not-a-date&beforeId=00000000-0000-4000-8000-000000000001',
+    '?before=2026-11-16T12%3A00%3A00.000Z&beforeId=not-a-uuid',
+    '?unknown=true',
+  ]) {
+    const response = await handleRuntimeFetch(new Request(
+      'https://runtime.example/v1/agent-runs' + query,
+      { headers: { Authorization: 'Bearer ' + token } },
+    ), env);
+    assert.equal(response.status, 400, query);
+  }
+});
+
+test('agent run listing exposes cancelled status and returns no next cursor on the final page', async () => {
+  const { env, DB } = makeEnv();
+  const id = '00000000-0000-4000-8000-000000000004';
+  DB.runs.set(id, {
+    id, objective: 'Cancelled task', specialists_json: '["researcher"]',
+    status: 'queued', attempts: 0, created_at: '2026-11-16T12:04:00.000Z',
+    updated_at: '2026-11-16T12:04:00.000Z', cancelled_at: '2026-11-16T12:05:00.000Z',
+  });
+  const response = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs',
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.runs[0].status, 'cancelled');
+  assert.equal(body.runs[0].cancelledAt, '2026-11-16T12:05:00.000Z');
+  assert.equal(body.nextCursor, null);
 });
