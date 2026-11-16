@@ -411,3 +411,13 @@ A second fixed Sentinel adapter, `aegis-github-public-discovery:discover`, reads
 ## Forge candidate evidence and licence review
 
 Forge candidates are owner-scoped and pinned to immutable Git tree revisions. Discovery never implies approval: candidates begin unassessed and licence-review-required. Reuse, adaptation, combination or approval requires explicit owner attestation, HTTPS evidence and a review note. D1 triggers protect source identity, enforce licence gates and preserve append-only review/status events. Candidate review is metadata-only; it does not install, build or execute upstream code.
+
+
+## First owner-facing invocation route
+
+`POST /api/sentinel/invoke` exposes exactly one action: `aegis-module-catalogue:list` on resource `aegis:modules` with empty input. It requires a valid owner session, same-origin request, configured AEGIS D1 and an exact active grant. The route derives the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root. It returns output only after the success audit is recorded. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. This is a source-level restricted route, not a general tool endpoint; no external or consequential action is exposed.
+
+
+## Atomic capability invocation rate limits
+
+Migration `0006_invocation_limits.sql` adds an atomic per-principal, capability and action counter in fixed UTC-minute windows. A conditional D1 UPSERT reserves a slot only while the manifest's `requestsPerMinute` budget remains; old buckets are pruned after 24 hours. Sentinel requires a successful reservation after exact policy checks and before pre-execution audit, approval consumption or adapter execution. Exhaustion returns HTTP 429; rate-limit store failure returns 503. Both fail closed and attempt a redacted denial audit. CI applies migrations 0001–0006 to disposable local D1 and asserts three reservations against a limit of two leave the counter at exactly two. No remote or production D1 database is changed.
