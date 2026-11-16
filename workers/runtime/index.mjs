@@ -9,6 +9,7 @@ import {
 } from './lib.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024;
+const MAX_AGENT_RUN_BODY_BYTES = 24 * 1024;
 const MAX_ATTEMPTS = 5;
 
 function agentRunsEnabled(env) { return env?.AGENT_RUNS_ENABLED === 'true'; }
@@ -211,9 +212,9 @@ async function submitAgentRun(request, env) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
-  if (length > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
+  if (length > MAX_AGENT_RUN_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
   let raw;
-  try { raw = await readBoundedRequestText(request, MAX_BODY_BYTES); } catch (error) {
+  try { raw = await readBoundedRequestText(request, MAX_AGENT_RUN_BODY_BYTES); } catch (error) {
     if (error instanceof RangeError) return json({ error: 'Request body is too large.' }, 413);
     return json({ error: 'Invalid JSON.' }, 400);
   }
