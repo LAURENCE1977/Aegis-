@@ -816,3 +816,13 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - CI applies migrations 0001–0006 to local D1 and executes three upserts against a limit of two, asserting the final counter remains exactly two.
 - The GitHub public-metadata adapter remains unexposed until the exact repository-resource grant route is wired.
 - Details: `docs/AEGIS_RATE_LIMITING.md`.
+
+## Sentinel-mediated public GitHub discovery
+
+- Added `POST /api/sentinel/github-discover`, fixed to public repository metadata discovery.
+- The server derives `github:public:{owner}/{repository}` from a canonical HTTPS GitHub URL; an exact active grant is required.
+- The adapter is pinned to `api.github.com`, rejects redirects, enforces a five-second timeout and 64 KiB streamed response limit, and refuses private repositories.
+- Sentinel atomically reserves the manifest's 30-per-minute budget before audit and execution. Exhausted budgets return 429; storage failure returns 503.
+- Forge now has an explicit manual button to run this metadata check through Sentinel. It does not create grants or fetch source files.
+- No remote D1 database, credentials or production deployment was changed.
+- Details: `docs/AEGIS_GITHUB_DISCOVERY.md`.

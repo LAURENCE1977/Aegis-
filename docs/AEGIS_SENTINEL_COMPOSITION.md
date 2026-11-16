@@ -2,86 +2,71 @@
 
 ## Purpose
 
-`createSentinelDependencies` is the trusted server-side composition root that binds the persistent capability repositories to `runSentinelInvocation`. It is a library module; only the explicitly listed Pages Functions expose it to an authenticated owner.
+`createSentinelDependencies` is the trusted server-side composition root that binds the persistent capability repositories to `runSentinelInvocation`. Only the explicitly listed Pages Functions expose it to an authenticated owner.
 
 ## Persistent stores
 
-The factory composes one D1-compatible binding with:
-
-- Exact principal/capability/version/resource grant loading.
-- Principal/provider connection loading.
-- Exact approved, unused and unexpired approval loading.
-- Atomic one-time approval consumption.
-- Append-only, redacted invocation audit writes.
-
-A trusted clock is injected for deterministic tests. Construction fails if the database, clock or adapter registry is missing or malformed.
+The factory composes one D1-compatible binding with exact grant, connection and approval lookups, atomic approval consumption, atomic rate-limit reservation and append-only redacted invocation audit writes.
 
 ## Adapter boundary
 
 Adapters are supplied by trusted server-side code as a copied fixed map keyed by `capabilityId:actionId`. Registration is rejected unless the key maps to an approved capability and declared action in the trusted registry.
 
-At execution time:
-
 - Dispatch uses only the exact registered capability/action pair.
 - Manifest URLs, interface paths, request fields and agent-provided tool names are never interpreted as adapter destinations.
 - Unknown adapter keys fail closed.
-- Handlers receive a frozen minimal context with principal, capability/version, action, exact resource, granted scopes, connection ID and input digest.
-- No vault secret or secret reference is passed to adapters by the composition root.
-- No arbitrary shell, browser, MCP, HTTP, write, delete or self-modifying adapter is registered.
+- Handlers receive a frozen minimal context.
+- No vault secret or secret reference is passed by the composition root.
+- Arbitrary shell, browser, MCP, HTTP, write, delete and self-modifying adapters remain disabled.
 
 ## Built-in adapters
 
 ### AEGIS module catalogue
 
-`aegis-module-catalogue:list` returns descriptive module metadata locally. It accepts only an empty object and has no network, filesystem, process or secret access. It is exposed through the restricted owner invocation route below.
+`aegis-module-catalogue:list` returns descriptive module metadata locally. It accepts only an empty object and has no network, filesystem, process or secret access.
 
 ### Public GitHub repository metadata
 
-`aegis-github-public-discovery:discover` is implemented in the adapter registry but is **not yet exposed by a Sentinel route**.
-
-Its current protections are:
+`aegis-github-public-discovery:discover` returns public repository metadata only.
 
 - Exactly one `sourceUrl` input field.
 - Canonical HTTPS `github.com/{owner}/{repository}` URLs only.
-- API requests pinned to `https://api.github.com`; no user-supplied endpoint.
-- Redirects rejected.
-- Five-second request timeout.
-- Streamed response limit of 64 KiB.
-- Public repository metadata only; private repositories and source-file reads are not included.
-
-The atomic per-principal/action rate limiter is now mandatory in Sentinel and is backed by D1 migration 0006. Before exposing this adapter, wire and test the exact-resource grant path for `github:repo:{owner}/{repository}` and add the owner-facing route. The existing Forge manual discovery route is separate from agent/tool adapter execution.
+- The route derives the exact resource ID as `github:public:{owner}/{repository}`; the caller cannot choose the grant target.
+- API requests are pinned to `https://api.github.com`; redirects are rejected.
+- Five-second timeout and 64 KiB streamed response limit.
+- Private repositories and source-file reads are not included.
+- Atomic per-principal/action rate limit: 30 requests per minute from the capability manifest.
 
 ## Owner-facing routes
 
 ### `POST /api/sentinel/invoke`
 
-This route exposes exactly one action: the empty-input, local read-only module catalogue. It requires a valid owner session, same-origin request, configured D1 binding and an active exact grant for principal `owner`, capability `aegis-module-catalogue`, action `list`, resource `aegis:modules`.
+Exposes only the empty-input local module catalogue. Requires an owner session, same-origin request, configured D1 and an active exact grant for `aegis:modules`.
 
-The input digest is computed server-side. The route calls `runSentinelInvocation` through the trusted composition root and returns the audited invocation ID, safe output and audit status. It cannot select another adapter, provider, URL, MCP server, shell command, browser action, write or delete operation.
+### `POST /api/sentinel/github-discover`
 
-The Security Centre provides a manual button. It does not auto-run or create permissions.
+Exposes only the fixed public GitHub metadata adapter. Requires an owner session, same-origin request, configured D1 and an active grant for the exact repository resource `github:public:{owner}/{repository}`.
+
+The input digest and resource identity are computed server-side. Sentinel performs policy, atomic rate-limit reservation, audit and fixed adapter dispatch. Exhausted budgets return 429; rate-limit store failure returns 503. The Forge panel has an explicit manual button; it does not auto-run or create grants.
+
+The existing Forge source-inspection workflow is a separate user-initiated read-only feature. It does not run code or expose arbitrary agent tool routing.
 
 ### `/api/grants`
 
-The owner-only grant API lists bounded grant history, creates grants from approved capability/action selections and revokes active grants. Principal, creator, version and scopes are derived server-side. The browser cannot submit arbitrary scopes or another principal.
+The owner-only grant API lists bounded grant history, creates grants from approved capability/action selections and revokes active grants. Principal, creator, version and scopes are derived server-side.
 
 ## D1 migration verification
 
-GitHub Actions uses a separate `wrangler.d1-test.toml` and explicit `--local` commands to apply capability migrations 0001–0006 to a disposable local D1 database. CI smoke-inserts into the five capability tables and verifies:
-
-- The active-grant unique index rejects duplicate active grants.
-- The invocation-audit UPDATE trigger rejects mutation.
-- The invocation-audit DELETE trigger rejects deletion.
-- The rate-limit bucket accepts only the configured number of atomic reservations.
+GitHub Actions uses a separate `wrangler.d1-test.toml` and explicit `--local` commands to apply migrations 0001–0006 to a disposable local D1 database. CI smoke-inserts into the capability tables, verifies the active-grant unique index, append-only audit triggers, and performs three rate-limit upserts against a limit of two.
 
 This is local test evidence only. No remote or production D1 database has been provisioned or migrated.
 
-## Current limitations and next steps
+## Current limitations
 
-- The preview environment has no configured authentication secrets, so the owner-only Security Centre cannot be entered there.
+- The preview environment has no configured authentication secrets, so owner-only Security Centre routes cannot be entered there.
 - No production D1 binding, vault keyring or provider connection has been provisioned.
-- The public GitHub adapter is implemented but not reachable through a Sentinel route; rate limiting and exact-resource invocation wiring remain outstanding.
-- Connection lifecycle and encrypted-secret entry/revocation routes remain to be built and reviewed.
-- The route and adapter stack needs a non-production end-to-end deployment only after source review, local D1 checks and explicit configuration.
+- No private GitHub access, OAuth connection, source execution, MCP, browser automation, shell, write or delete adapter is exposed.
+- The generic agent-to-tool router is not enabled; the two Sentinel routes are fixed, narrow capabilities only.
+- A non-production deployment and full operational verification remain outstanding.
 
-Do not enable generic tool routing. Keep arbitrary HTTP, MCP, browser automation, shell execution, write/delete operations and self-modifying tools disabled.
+Keep generic tool routing disabled until every new adapter has its own exact manifest, grants, rate limits, egress policy and integration tests.
