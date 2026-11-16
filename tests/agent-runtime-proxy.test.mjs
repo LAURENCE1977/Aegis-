@@ -63,6 +63,31 @@ test('sends bounded JSON and idempotency key without forwarding browser credenti
   }));
 });
 
+test('allows bounded Project Space snapshots only on agent-run submission', async () => {
+  let captured;
+  const proxy = createAgentRuntimeProxy(async (_url, options) => {
+    captured = options;
+    return Response.json({ run: { id: 'run-context-1' } }, { status: 201 });
+  });
+  const largeContext = { objective: 'Review project', projectContext: {
+    brief: { content: 'x'.repeat(10 * 1024) },
+    digest: 'sha256:' + 'a'.repeat(64),
+  } };
+  const accepted = await proxy({
+    env, method: 'POST', path: '/v1/agent-runs', body: largeContext,
+  });
+  assert.equal(accepted.status, 201);
+  assert.ok(new TextEncoder().encode(captured.body).byteLength > 8 * 1024);
+
+  const blocked = await proxy({
+    env,
+    method: 'POST',
+    path: '/v1/agent-runs/00000000-0000-4000-8000-000000000001/authorize',
+    body: { padding: 'x'.repeat(10 * 1024) },
+  });
+  assert.equal(blocked.status, 413);
+});
+
 test('fails closed when runtime URL or token is missing or unsafe', async () => {
   let calls = 0;
   const proxy = createAgentRuntimeProxy(async () => {
