@@ -76,7 +76,7 @@ export function isFreeTierRecordCurrent(record, now = Date.now(), maxAgeDays = 3
     throw new TypeError('Invalid free-tier verification age');
   }
   return now - Date.parse(record.verifiedAt) <= maxAgeDays * 24 * 60 * 60 * 1000 &&
-    record.status !== 'expired';
+    record.status === 'verified';
 }
 
 function clone(value) {
