@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSentinelDependencies } from '../functions/lib/sentinel-composition.mjs';
+import { createBuiltinAdapterRegistry } from '../functions/lib/sentinel-adapters.mjs';
 
 const manifest = {
   id: 'aegis-github-public-discovery',
@@ -97,4 +98,23 @@ test('does not derive adapter destinations from capability manifest URLs or path
   assert.equal('endpoint' in receivedContext, false);
   assert.equal('path' in receivedContext, false);
   assert.equal('secretRef' in receivedContext, false);
+});
+test('composes the built-in module catalogue through the trusted Sentinel adapter registry', async () => {
+  const dependencies = createSentinelDependencies({
+    db: fakeDb(),
+    adapters: createBuiltinAdapterRegistry(),
+  });
+  const result = await dependencies.execute({}, {
+    capabilityId: 'aegis-module-catalogue',
+    actionId: 'list',
+    invocationId: 'catalogue-1',
+    principalId: 'owner',
+    capabilityVersion: '0.1.0',
+    resourceId: 'aegis:modules',
+    scopes: ['aegis:module-catalogue:read'],
+    inputDigest: 'sha256:' + 'a'.repeat(64),
+    connectionId: null,
+  });
+  assert.equal(result.total, result.modules.length);
+  assert.ok(result.modules.some((module) => module.id === 'forge'));
 });
