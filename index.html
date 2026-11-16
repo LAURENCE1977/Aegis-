@@ -203,21 +203,21 @@
           <input id="composioPullNumber" type="number" min="1" step="1" placeholder="e.g. 101" />
           <div class="input-area">
             <button id="composioPreparePullRequestGrantBtn" class="secondary" type="button">Prepare exact PR grant</button>
-            <button id="composioReadPullRequestBtn" type="button">Read pull request</button>
+            <button id="composioReadPullRequestBtn" type="button" disabled>Read pull request</button>
           </div>
           <h4>GitHub Actions workflow runs</h4>
           <label for="composioWorkflowBranch">Branch filter (optional)</label>
           <input id="composioWorkflowBranch" maxlength="128" placeholder="e.g. feature/composio-audit-lineage-verified" />
           <div class="input-area">
             <button id="composioPrepareWorkflowGrantBtn" class="secondary" type="button">Prepare repository workflow grant</button>
-            <button id="composioReadWorkflowRunsBtn" type="button">Read workflow runs</button>
+            <button id="composioReadWorkflowRunsBtn" type="button" disabled>Read workflow runs</button>
           </div>
           <h4>Workflow job and step summaries</h4>
           <label for="composioWorkflowRunId">Workflow run ID</label>
           <input id="composioWorkflowRunId" type="number" min="1" step="1" placeholder="e.g. 123456789" />
           <div class="input-area">
             <button id="composioPrepareWorkflowJobsGrantBtn" class="secondary" type="button">Prepare exact workflow-run grant</button>
-            <button id="composioReadWorkflowJobsBtn" type="button">Read jobs and steps</button>
+            <button id="composioReadWorkflowJobsBtn" type="button" disabled>Read jobs and steps</button>
           </div>
         </div>
         <pre id="composioOutput" class="forge-preview" hidden></pre>
@@ -301,6 +301,7 @@
     const composioWorkflowRunId = document.getElementById('composioWorkflowRunId');
     const composioPrepareWorkflowJobsGrantBtn = document.getElementById('composioPrepareWorkflowJobsGrantBtn');
     const composioReadWorkflowJobsBtn = document.getElementById('composioReadWorkflowJobsBtn');
+    const composioReadButtons = [composioReadMetadataBtn, composioReadPullRequestBtn, composioReadWorkflowRunsBtn, composioReadWorkflowJobsBtn];
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
     const grantForm = document.getElementById('grantForm');
@@ -897,11 +898,11 @@
         const connected = data.connected === true;
         composioConnectBtn.disabled = configured;
         composioDisconnectBtn.hidden = !configured;
-        composioReadMetadataBtn.disabled = !connected;
+        composioReadButtons.forEach(button => { button.disabled = !connected; });
         composioStatus.textContent = !configured
           ? 'Not connected. Connect GitHub to begin the read-only setup.'
           : connected
-            ? 'Connected · GitHub account verified · repository metadata only.'
+            ? 'Connected · GitHub account verified · four fixed read-only tools. If a newer action is unavailable, reconnect to refresh the session.'
             : 'Setup exists, but GitHub authorisation is not complete. Revoke and reconnect if you abandoned the authorisation step.';
       } catch (error) {
         composioConnectBtn.disabled = /not configured|server secret|storage/i.test(error.message);
