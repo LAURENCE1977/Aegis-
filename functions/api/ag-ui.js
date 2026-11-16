@@ -304,6 +304,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               name: call.function.name,
               argumentsText: call.function.arguments,
               db: toolContext.db,
+              env: toolContext.env,
               principalId: "owner",
               fetchImpl: toolContext.fetchImpl,
               taskId: toolContext.taskId,
