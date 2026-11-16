@@ -444,6 +444,11 @@ test('owner-only Composio setup stores session material in the vault and support
     const createdBody = await created.json();
     assert.equal(createdBody.redirectUrl, 'https://app.composio.dev/link/lt_abc123');
     assert.equal(createdBody.connection.providerId, 'composio');
+    const linkCall = calls.find((call) => call.url.endsWith('/link'));
+    assert.deepEqual(JSON.parse(linkCall.options.body), {
+      toolkit: 'github',
+      callback_url: 'https://aegis.example/?composio=connected',
+    });
     assert.equal('secretRef' in createdBody.connection, false);
     assert.equal(JSON.stringify(createdBody).includes(env.COMPOSIO_API_KEY), false);
     assert.equal(JSON.stringify(createdBody).includes(sessionId), false);
