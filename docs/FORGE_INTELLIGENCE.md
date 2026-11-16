@@ -160,3 +160,8 @@ The native catalogue validates pinned MCP source metadata and action-level effec
 ## Free-Tier Ledger — currentness rule
 
 Free-tier records are evidence, not entitlements. Only a recently verified record may be treated as current; candidates, unknown terms and expired records require review. Check official provider pricing and terms before use, especially billing triggers, overage and commercial-use restrictions. The ledger cannot provision or create accounts.
+
+
+## Governed capability persistence and intelligence routing
+
+The next native foundation adds exact-resource capability grants, owner/provider connection metadata, encrypted vault storage, append-only invocation audit and a provider/model registry with conservative token estimation and context fitting. Keep the provider registry descriptive and versioned; a model is eligible only when its provider is enabled and verification is fresh. Routing must respect context/output limits, provider quotas and estimated cost, with deterministic fallback when no route is eligible. The token estimator is a planning heuristic, not a provider tokenizer. These libraries do not themselves connect a provider or execute an agent.
