@@ -314,3 +314,47 @@ test('deletes a validated Composio session without exposing provider response da
   assert.equal(captured.options.method, 'DELETE');
   assert.equal(captured.options.redirect, 'error');
 });
+
+
+test('allows only a same-origin HTTPS callback for Composio OAuth', async () => {
+  let body;
+  const client = createComposioClient({
+    apiKey,
+    callbackOrigin: 'https://aegis.example',
+    fetchImpl: async (_url, options) => {
+      body = JSON.parse(options.body);
+      return jsonResponse({
+        redirect_url: 'https://app.composio.dev/link/lt_abc123',
+        connected_account_id: 'ca_abc123xyz',
+      }, 201);
+    },
+  });
+
+  await client.createGitHubLink({
+    sessionId,
+    callbackUrl: 'https://aegis.example/?composio=connected',
+  });
+  assert.deepEqual(body, {
+    toolkit: 'github',
+    callback_url: 'https://aegis.example/?composio=connected',
+  });
+});
+
+test('rejects a cross-origin or non-HTTPS Composio callback before network access', async () => {
+  let calls = 0;
+  const client = createComposioClient({
+    apiKey,
+    callbackOrigin: 'https://aegis.example',
+    fetchImpl: async () => { calls += 1; return jsonResponse({}); },
+  });
+
+  await assert.rejects(client.createGitHubLink({
+    sessionId,
+    callbackUrl: 'https://attacker.example/return',
+  }), /callback URL/i);
+  await assert.rejects(client.createGitHubLink({
+    sessionId,
+    callbackUrl: 'http://aegis.example/return',
+  }), /callback URL/i);
+  assert.equal(calls, 0);
+});
