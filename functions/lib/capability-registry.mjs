@@ -210,6 +210,33 @@ const CAPABILITY_MANIFESTS = [
     licence: { identifier: 'first-party', review: 'not-applicable' },
     status: 'approved',
   },
+  {
+    id: 'aegis-composio-github-readonly',
+    version: '0.1.0',
+    name: 'Composio GitHub repository metadata',
+    description: 'Read repository metadata through a pinned Composio session after exact-resource Sentinel authorization.',
+    provider: { id: 'composio', kind: 'external' },
+    interface: { kind: 'internal', method: 'POST', path: '/api/sentinel/composio-github-repository' },
+    actions: [{
+      id: 'get-repository',
+      capability: 'github.repository-read',
+      effect: 'read',
+      risk: 'medium',
+      approval: 'none',
+      requiredScopes: ['github:repository:read'],
+    }],
+    data: {
+      classification: 'confidential',
+      reads: ['GitHub repository metadata, including private repository metadata when the connected account permits it'],
+      writes: [],
+    },
+    network: { egressHosts: ['backend.composio.dev'] },
+    auth: { mode: 'secret-reference', secretRef: 'secret://connections/composio-github-readonly' },
+    limits: { requestsPerMinute: 20, timeoutMs: 8000, maxRequestBytes: 2048 },
+    provenance: { sourceUrl: SOURCE_URL, revision: SOURCE_REVISION },
+    licence: { identifier: 'first-party', review: 'not-applicable' },
+    status: 'approved',
+  },
 ];
 
 for (const manifest of CAPABILITY_MANIFESTS) validateCapabilityManifest(manifest);
