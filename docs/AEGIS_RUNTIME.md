@@ -64,6 +64,36 @@ Authorization: Bearer <token>
 
 The response includes state, attempts, timestamps, result and a stable error code. It does not return secrets or internal exception messages.
 
+### Submit, inspect and cancel an agent run
+
+Agent runs currently create a deterministic plan only; they do not invoke models, specialist workers or external tools.
+
+```http
+POST /v1/agent-runs
+Content-Type: application/json
+Authorization: Bearer <token>
+Idempotency-Key: review-runtime-0001
+
+{
+  "objective": "Review the AEGIS runtime for reliability gaps",
+  "specialists": ["researcher", "engineer", "security", "reviewer"]
+}
+```
+
+The specialist list is optional and is limited to the server-defined roles: researcher, planner, engineer, security and reviewer. The default is researcher, engineer and reviewer. The response contains the durable run ID and current state.
+
+```http
+GET /v1/agent-runs/<uuid>
+Authorization: Bearer <token>
+```
+
+```http
+POST /v1/agent-runs/<uuid>/cancel
+Authorization: Bearer <token>
+```
+
+Cancellation is idempotent. The API returns the run with status `cancelled`; a worker or queue delivery that races with cancellation cannot persist a plan or schedule a retry. Failed runs return `409` because they are already terminal.
+
 ### Health
 
 ```http
@@ -83,6 +113,8 @@ Migrations:
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
+- `agent_runs` stores bounded objectives, approved specialist-role selections, plan output, attempt/lease state and the cancellation marker.
+- `agent_run_events` stores append-only agent-run lifecycle events.
 - Foreign keys and indexes support job lookup, pending dispatch and lease recovery.
 
 ## Deployment preparation
