@@ -158,6 +158,33 @@ test('idempotency keys prevent duplicate durable agent runs and queue messages',
   assert.equal(sent.length, 1);
 });
 
+test('rejects reuse of an idempotency key with a different objective or specialist selection', async () => {
+  const { env, DB, sent } = makeEnv();
+  const headers = { 'Idempotency-Key': 'agent-request-0002' };
+  const first = await handleRuntimeFetch(postRun({
+    objective: 'Review runtime',
+    specialists: ['researcher', 'reviewer'],
+  }, headers), env);
+  assert.equal(first.status, 201);
+
+  const changedObjective = await handleRuntimeFetch(postRun({
+    objective: 'Delete production data',
+    specialists: ['researcher', 'reviewer'],
+  }, headers), env);
+  assert.equal(changedObjective.status, 409);
+  assert.deepEqual(await changedObjective.json(), {
+    error: 'Idempotency-Key was already used for a different agent run request.',
+  });
+
+  const changedSpecialists = await handleRuntimeFetch(postRun({
+    objective: 'Review runtime',
+    specialists: ['security'],
+  }, headers), env);
+  assert.equal(changedSpecialists.status, 409);
+  assert.equal(DB.runs.size, 1);
+  assert.equal(sent.length, 1);
+});
+
 test('rejects unknown fields and unsafe specialist roles before persistence', async () => {
   const { env, DB } = makeEnv();
   const response = await handleRuntimeFetch(postRun({ objective: 'Review runtime', tools: ['shell.exec'] }), env);
