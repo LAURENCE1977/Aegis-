@@ -32,6 +32,15 @@ test('AG-UI endpoint rejects cross-origin writes',async()=>{
   assert.equal(response.status,403);
 });
 
+test('AG-UI rejects thread and run IDs outside the server audit identifier format', async () => {
+  const response = await onRequestPost({
+    request: await request(input({ threadId: 'thread with spaces' })),
+    env: envBase,
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 400);
+});
+
 test('AG-UI endpoint rejects frontend tools and ambient context until Sentinel mediation is connected',async()=>{
   const toolResponse=await onRequestPost({
     request:await request(input({tools:[{name:'dangerous-tool'}]})),
@@ -341,6 +350,12 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
   assert.deepEqual(calls[1].messages.slice(-2).map(message => message.role), ['assistant', 'tool']);
   assert.match(calls[1].messages.at(-1).content, /"ok":true/);
   assert.equal(db.auditRows.length, 3);
+  const successAudit = db.auditRows.at(-1);
+  assert.equal(successAudit[11], 'agent-grant-1');
+  assert.equal(successAudit[14], 'run-123');
+  assert.equal(successAudit[15], 'thread-123');
+  assert.equal(successAudit[17], 'aegis-ag-ui');
+  assert.equal(successAudit[18], null);
 });
 
 test('AG-UI never offers or executes tools unless the owner explicitly enables supported Qwen plus D1', async () => {
