@@ -374,3 +374,8 @@ The native Free-Tier Ledger validates provider allowance records against officia
 ## Governed capability persistence and intelligence foundation
 
 The current-main capability stack adds exact-resource grants, principal/provider connection metadata, AES-256-GCM credential storage with versioned keyring support, append-only invocation audit, and a validated provider/model catalogue with conservative token estimation and context fitting. These are persistence and planning primitives only: no provider credentials or vault keyring have been configured, no migrations applied to production D1, no provider connections established, and no adapter execution enabled. All real actions remain gated by Sentinel and exact-operation approval.
+
+
+## Durable specialist-agent orchestration — plan-only foundation
+
+The runtime adds durable specialist-run records and a fixed researcher/planner/engineer/security/reviewer workflow. Submissions are authenticated, bounded and persisted before dispatch through the existing jobs Queue; the existing Cron recovers pending outbox rows and expired leases. Queue processing writes a deterministic plan with no tools and no external effects. The exact capability bridge canonicalizes and hashes validated JSON input and routes future calls through Sentinel, but it is not connected to the plan-only Queue. No general agent execution, shell, browser control, arbitrary URL fetch or external write is enabled. Runtime D1 migration `0002_agent_runs.sql` and Worker deployment remain separate approval-gated steps.
