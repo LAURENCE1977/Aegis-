@@ -1907,7 +1907,7 @@
             approvalList.append(card);
           });
         }
-        approvalStatus.textContent = data.total + ' pending request(s) · decisions are recorded, not executed';
+        approvalStatus.textContent = data.total + ' pending request(s) · approved plans can be authorised; specialist execution remains disabled';
       } catch (error) {
         approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
