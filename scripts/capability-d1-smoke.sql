@@ -47,3 +47,9 @@ INSERT INTO capability_invocation_audit (
   'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   'SUCCESS', '2026-11-16T00:00:00.000Z'
 );
+INSERT INTO capability_invocation_limits (
+  principal_id, capability_id, action_id, window_start_ms, request_count, updated_at
+) VALUES (
+  'owner', 'aegis-module-catalogue', 'list', 1794787200000, 1,
+  '2026-11-16T00:00:00.000Z'
+);
