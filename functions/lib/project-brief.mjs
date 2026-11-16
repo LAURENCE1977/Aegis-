@@ -92,7 +92,8 @@ export function buildProjectBrief({
   const selectionBudget = maxChars - 160;
   let memoryContentTruncated = false;
   for (const memory of eligibleMemories) {
-    const content = boundedText(memory.content, 1200);
+    const rawContent = memory.content.trim();
+    const content = rawContent.slice(0, 1200);
     const createEntry = (text) => ({
       id: memory.id,
       kind: memory.kind,
@@ -127,7 +128,7 @@ export function buildProjectBrief({
       continue;
     }
     brief.memories.push(createEntry(content.slice(0, bestLength)));
-    if (bestLength < content.length) memoryContentTruncated = true;
+    if (bestLength < content.length || rawContent.length > content.length) memoryContentTruncated = true;
   }
 
   for (const event of eligibleEvents) {
