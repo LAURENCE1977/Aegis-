@@ -29,7 +29,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
   const mf = new Miniflare({
     scriptPath: new URL('../workers/runtime/index.mjs', import.meta.url).pathname,
     modules: true,
-    compatibilityDate: '2026-11-16',
+    compatibilityDate: '2026-08-06',
     bindings: {
       AEGIS_JOB_TOKEN: token,
       AGENT_RUNS_ENABLED: 'true',
