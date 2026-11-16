@@ -179,6 +179,26 @@
         </form>
         <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
         <div id="grantList" aria-live="polite"></div>
+        <h3>Composio · GitHub (read-only)</h3>
+        <p class="memory-help">Connect one GitHub account through Composio. AEGIS keeps the Composio key server-side and the session reference in its encrypted vault. Repository reads still require an exact-resource Sentinel grant.</p>
+        <div class="input-area">
+          <button id="composioConnectBtn" type="button">Connect GitHub</button>
+          <button id="composioRefreshBtn" class="secondary" type="button">Refresh status</button>
+          <button id="composioDisconnectBtn" class="secondary" type="button" hidden>Revoke AEGIS access</button>
+        </div>
+        <p class="status" id="composioStatus" role="status" aria-live="polite">Connection status has not been checked.</p>
+        <form class="memory-form" id="composioLookupForm">
+          <label for="composioOwner">GitHub owner or organisation</label>
+          <input id="composioOwner" maxlength="39" pattern="[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]|[A-Za-z0-9]" placeholder="e.g. octocat" required />
+          <label for="composioRepo">Repository</label>
+          <input id="composioRepo" maxlength="100" pattern="[A-Za-z0-9_.-]+" placeholder="e.g. Hello-World" required />
+          <div class="input-area">
+            <button id="composioPrepareGrantBtn" class="secondary" type="button">Prepare exact grant</button>
+            <button id="composioReadMetadataBtn" type="submit" disabled>Read metadata through Sentinel</button>
+          </div>
+        </form>
+        <pre id="composioOutput" class="forge-preview" hidden></pre>
+        <p class="memory-help">Revoking AEGIS access removes its session and vault reference. It does not revoke the upstream GitHub OAuth grant in Composio; disconnect that separately if required.</p>
         <h3>Sentinel read-only test</h3>
         <p class="memory-help">This manual test invokes only the local module catalogue. It requires an active exact-resource grant and records the invocation in Sentinel's audit trail.</p>
         <button id="invokeModuleCatalogueBtn" type="button">Run module catalogue through Sentinel</button>
@@ -239,6 +259,16 @@
     const securityTab = document.getElementById('securityTab');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
+    const composioConnectBtn = document.getElementById('composioConnectBtn');
+    const composioRefreshBtn = document.getElementById('composioRefreshBtn');
+    const composioDisconnectBtn = document.getElementById('composioDisconnectBtn');
+    const composioStatus = document.getElementById('composioStatus');
+    const composioLookupForm = document.getElementById('composioLookupForm');
+    const composioOwner = document.getElementById('composioOwner');
+    const composioRepo = document.getElementById('composioRepo');
+    const composioPrepareGrantBtn = document.getElementById('composioPrepareGrantBtn');
+    const composioReadMetadataBtn = document.getElementById('composioReadMetadataBtn');
+    const composioOutput = document.getElementById('composioOutput');
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
     const grantForm = document.getElementById('grantForm');
@@ -740,6 +770,7 @@
         securityCapabilities = capabilityData.capabilities || [];
         populateGrantCapabilities();
         await loadGrantManager();
+        await loadComposioStatus();
         securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
           (capabilityData.total || 0) + ' capability manifest(s) · registry inventory';
       } catch (error) {
@@ -823,6 +854,104 @@
           : error.message;
       }
     }
+
+    async function loadComposioStatus() {
+      composioStatus.textContent = 'Checking Composio connection…';
+      composioDisconnectBtn.hidden = true;
+      composioReadMetadataBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/connections/composio');
+        const configured = data.configured === true;
+        const connected = data.connected === true;
+        composioConnectBtn.disabled = configured;
+        composioDisconnectBtn.hidden = !configured;
+        composioReadMetadataBtn.disabled = !connected;
+        composioStatus.textContent = !configured
+          ? 'Not connected. Connect GitHub to begin the read-only setup.'
+          : connected
+            ? 'Connected · GitHub account verified · repository metadata only.'
+            : 'Setup exists, but GitHub authorisation is not complete. Revoke and reconnect if you abandoned the authorisation step.';
+      } catch (error) {
+        composioConnectBtn.disabled = /not configured|server secret|storage/i.test(error.message);
+        composioStatus.textContent = error.message;
+      }
+    }
+
+    composioConnectBtn.addEventListener('click', async () => {
+      composioConnectBtn.disabled = true;
+      composioStatus.textContent = 'Creating a restricted Composio session…';
+      try {
+        const data = await controlApi('/api/connections/composio', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        composioStatus.textContent = 'Opening GitHub authorisation…';
+        window.location.assign(data.redirectUrl);
+      } catch (error) {
+        composioStatus.textContent = error.message;
+        composioConnectBtn.disabled = false;
+      }
+    });
+
+    composioRefreshBtn.addEventListener('click', loadComposioStatus);
+
+    composioDisconnectBtn.addEventListener('click', async () => {
+      if (!window.confirm('Revoke AEGIS access to this Composio GitHub session? The GitHub OAuth grant itself may remain in Composio.')) return;
+      composioDisconnectBtn.disabled = true;
+      composioStatus.textContent = 'Revoking AEGIS session and vault access…';
+      try {
+        await controlApi('/api/connections/composio', { method: 'DELETE' });
+        composioStatus.textContent = 'AEGIS access revoked.';
+        await loadComposioStatus();
+      } catch (error) {
+        composioStatus.textContent = error.message;
+      } finally {
+        composioDisconnectBtn.disabled = false;
+      }
+    });
+
+    composioPrepareGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      grantCapabilitySelect.value = 'aegis-composio-github-readonly';
+      populateGrantActions();
+      [...grantActionSelect.options].forEach(option => {
+        option.selected = option.value === 'get-repository';
+      });
+      grantResourceId.value = 'github:repository:' + owner + '/' + repo;
+      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      expiry.setMinutes(expiry.getMinutes() - expiry.getTimezoneOffset());
+      grantExpiresAt.value = expiry.toISOString().slice(0, 16);
+      grantStatus.textContent = 'Review the exact GitHub repository grant below, then select Create exact grant.';
+      grantForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    composioLookupForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      composioReadMetadataBtn.disabled = true;
+      composioOutput.hidden = true;
+      composioStatus.textContent = 'Checking exact grant and reading repository metadata through Sentinel…';
+      try {
+        const result = await controlApi('/api/sentinel/composio-github-repository', {
+          method: 'POST',
+          body: JSON.stringify({ owner, repo }),
+        });
+        composioOutput.textContent = JSON.stringify(result.output, null, 2);
+        composioOutput.hidden = false;
+        composioStatus.textContent = 'Success · exact repository read audited · invocation ' + result.invocationId;
+      } catch (error) {
+        composioStatus.textContent = error.message +
+          ' Prepare an exact grant for github:repository:' + owner + '/' + repo + ' and try again.';
+      } finally {
+        await loadComposioStatus();
+      }
+    });
 
     invokeModuleCatalogueBtn.addEventListener('click', async () => {
       invokeModuleCatalogueBtn.disabled = true;
