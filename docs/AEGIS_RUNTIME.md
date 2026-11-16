@@ -23,7 +23,7 @@ The job states are:
 
 A retry returns a running job to `queued`. An expired running lease is returned to `pending_dispatch` so the outbox sweep can re-enqueue it.
 
-Agent runs currently create a plan only; they do not execute specialist work. The owner can cancel an agent run with `POST /v1/agent-runs/{id}/cancel`. Cancellation is stored in `cancelled_at` and exposed as the terminal API status `cancelled`, preserving the existing constrained status enum and event foreign keys. Pending dispatch, queued, running and planned runs can be cancelled; failed runs cannot. Claims, plan completion, retries and outbox dispatch all check the cancellation marker, so a queue delivery racing with cancellation is acknowledged without planning or retrying. Repeating cancellation is idempotent and the append-only event is written once.
+Agent runs currently create a plan only; they do not execute specialist work. Each plan step is materialised as a durable `agent_run_steps` record with a stable run-scoped ID, ordered index, specialist, immutable plan-step snapshot, status, attempt count and checkpoint/result slots. A corresponding append-only `agent_run_step_events` record tracks the planned transition. Plan completion and step materialisation are committed in one D1 batch; a cancelled or stale worker cannot create step records. These rows are a durable checkpoint foundation only: every step remains `planned` until a separately implemented, approved executor is available. The owner can cancel an agent run with `POST /v1/agent-runs/{id}/cancel`. Cancellation is stored in `cancelled_at` and exposed as the terminal API status `cancelled`, preserving the existing constrained status enum and event foreign keys. Pending dispatch, queued, running and planned runs can be cancelled; failed runs cannot. Claims, plan completion, retries and outbox dispatch all check the cancellation marker, so a queue delivery racing with cancellation is acknowledged without planning or retrying. Repeating cancellation is idempotent and the append-only event is written once.
 
 ## Dead-letter recovery
 
@@ -195,11 +195,13 @@ Migrations:
 - `migrations/runtime/0004_agent_run_listing.sql` — stable creation-time/ID index for keyset pagination.
 - `migrations/runtime/0005_agent_run_event_listing.sql` — per-run event timeline cursor index.
 - `migrations/runtime/0006_agent_run_execution_authorization.sql` — one-time approval ID, exact grant ID and authorisation timestamp, with a unique approval-consumption index.
+- `migrations/runtime/0007_agent_run_steps.sql` — durable ordered agent-run steps, checkpoint/result slots, append-only step events and lease/status indexes.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
 - `agent_runs` stores bounded objectives, approved specialist-role selections, plan output, attempt/lease state and the cancellation marker.
 - `agent_run_events` stores append-only agent-run lifecycle events, including one-time execution-authorisation records.
+- `agent_run_steps` stores each deterministic plan step and its checkpoint/result state; `agent_run_step_events` stores append-only per-step lifecycle records.
 - `agent_runs.authorization_approval_id`, `authorization_grant_id` and `execution_authorized_at` record the consumed owner approval, exact resource grant and authorisation time; the unique partial index prevents one approval being attached to multiple runs.
 - Foreign keys and indexes support job lookup, pending dispatch and lease recovery.
 
