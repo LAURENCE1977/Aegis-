@@ -129,6 +129,27 @@ function parseAgentRun(row) {
   };
 }
 
+function parseAgentRunStep(row) {
+  if (!row) return null;
+  const parseJson = (value, fallback) => {
+    try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
+  };
+  return {
+    id: row.id,
+    stepIndex: row.step_index,
+    specialist: row.specialist,
+    status: row.status,
+    attempts: row.attempts,
+    step: parseJson(row.step_json, null),
+    checkpoint: parseJson(row.checkpoint_json, {}),
+    result: parseJson(row.result_json, null),
+    errorCode: row.error_code || null,
+    leaseUntil: row.lease_until || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypto.randomUUID()) {
   await env.DB.prepare(
     'INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(event_id) DO NOTHING'
@@ -447,7 +468,12 @@ async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run not found.' }, 404);
-  return json({ run: parseAgentRun(row) });
+  const stepRows = await env.DB.prepare(
+    'SELECT * FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
+  ).bind(id).all();
+  const run = parseAgentRun(row);
+  run.steps = (stepRows.results || []).map(parseAgentRunStep);
+  return json({ run });
 }
 
 async function processAgentRun(message, env) {
