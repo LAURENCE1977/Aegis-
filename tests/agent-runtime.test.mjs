@@ -38,8 +38,16 @@ class AgentMemoryD1 {
           if (v[3] && [...db.runs.values()].some((row) => row.idempotency_key === v[3])) return { meta: { changes: 0 } };
           db.runs.set(v[0], {
             id: v[0], objective: v[1], specialists_json: v[2], status: 'pending_dispatch',
-            attempts: 0, idempotency_key: v[3], created_at: v[4], updated_at: v[5],
+            attempts: 0, idempotency_key: v[3], created_at: v[4], updated_at: v[5], cancelled_at: null,
           });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('UPDATE agent_runs SET cancelled_at')) {
+          const row = db.runs.get(v[2]);
+          if (!row || row.cancelled_at || !['pending_dispatch', 'queued', 'running', 'planned'].includes(row.status)) {
+            return { meta: { changes: 0 } };
+          }
+          row.cancelled_at = v[0]; row.lease_until = null; row.updated_at = v[1];
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO agent_run_events')) {
@@ -235,4 +243,47 @@ test('owner can cancel a queued agent run and the cancellation is recorded durab
   assert.ok(body.run.cancelledAt);
   assert.ok(DB.events.some((event) =>
     event.agent_run_id === run.id && event.event_type === 'cancelled'));
+});
+
+
+test('repeated cancellation is idempotent and a cancelled queue delivery is acknowledged without planning', async () => {
+  const { env, DB } = makeEnv();
+  const submitted = await handleRuntimeFetch(postRun({ objective: 'Cancel before planning' }), env);
+  const { run } = await submitted.json();
+  const cancelRequest = () => new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id + '/cancel',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token } },
+  );
+  const first = await handleRuntimeFetch(cancelRequest(), env);
+  const second = await handleRuntimeFetch(cancelRequest(), env);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(DB.events.filter((event) =>
+    event.agent_run_id === run.id && event.event_type === 'cancelled').length, 1);
+
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { agentRunId: run.id },
+      ack() { acked = true; },
+      retry() { assert.fail('cancelled run must not be retried'); },
+    }],
+  }, env);
+  assert.equal(acked, true);
+  assert.equal(DB.runs.get(run.id).status, 'queued');
+  assert.equal(DB.runs.get(run.id).plan_json, undefined);
+});
+
+test('cannot cancel a failed agent run', async () => {
+  const { env, DB } = makeEnv();
+  const submitted = await handleRuntimeFetch(postRun({ objective: 'Already failed' }), env);
+  const { run } = await submitted.json();
+  DB.runs.get(run.id).status = 'failed';
+  const response = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id + '/cancel',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(response.status, 409);
+  assert.equal(DB.runs.get(run.id).cancelled_at, null);
 });
