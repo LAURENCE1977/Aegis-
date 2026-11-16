@@ -431,3 +431,19 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+## Live build handover correction — 16 November 2026, 11:18 UTC
+
+**Use this section as the current PR/branch status; older Composio notes above describe the earlier PR #101 snapshot and are superseded where they conflict.**
+
+- Current integration branch: `feature/sentinel-lineage-verified`.
+- Current integration commit: `276dccb9f27715e323b3ea3e95ff9253f365b65b`.
+- Current draft review PR: https://github.com/LAURENCE1977/Aegis-/pull/102.
+- PR #102 includes the Composio read-only GitHub connection/Sentinel work plus AG-UI correlation: validated `runId` is passed as task correlation and `threadId` as session correlation to the trusted Sentinel adapter context. These identifiers are not permissions; caller-supplied parent lineage remains rejected and full trusted session-registry lineage is future work.
+- PR #101 (branch `feature/composio-audit-lineage-verified`) is an earlier overlapping implementation. Do not merge both PRs. Review #102 as the candidate integration and close/supersede #101 only after confirming the #102 diff and CI remain healthy.
+- Verified for commit `276dccb9f27715e323b3ea3e95ff9253f365b65b`: GitHub Actions Node.js tests and local D1 migration verification succeeded; Cloudflare Pages branch preview deployed successfully at https://feature-sentinel-lineage-ver.aegis-6yk.pages.dev. These are preview/CI results, not a production deployment. The exact test count for this commit was not independently established in this handover.
+- PR #102 remains open/draft. Do not merge, provision resources, configure secrets or activate live Composio OAuth without the required owner approval and separate live integration checks.
+
+### OpenJarvis adoption boundary
+
+OpenJarvis (https://github.com/open-jarvis/OpenJarvis) is assessed as an optional local-inference adapter/reference, not a replacement AEGIS orchestrator or security boundary. AEGIS must retain canonical model/provider policy, task state, memory, grants, Sentinel, approvals and audit. Before adopting code, complete a pinned-commit source/dependency/licence/security review and isolate the Python runtime from Cloudflare Workers. Hardware-aware local inference may reduce hosted inference spend but is not cost-free and does not guarantee unlimited capacity.
