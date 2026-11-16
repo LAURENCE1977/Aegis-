@@ -6,6 +6,7 @@ import { digestProjectBrief } from './project-context-digest.mjs';
 const OWNER_ID = 'owner';
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_CONTEXT_CHARS = 6000;
+const MAX_CONTEXT_BYTES = 11 * 1024;
 
 export function createAgentRunProjectContextBuilder({
   getWorkspace: getWorkspaceImpl = getWorkspace,
@@ -37,15 +38,19 @@ export function createAgentRunProjectContextBuilder({
     ]);
     if (!events) return null;
 
-    const brief = buildProjectBriefImpl({
-      workspace,
-      events,
-      memories,
-      maxChars: MAX_CONTEXT_CHARS,
-      now,
-    });
+    let maxChars = MAX_CONTEXT_CHARS;
+    let brief = buildProjectBriefImpl({ workspace, events, memories, maxChars, now });
+    while (new TextEncoder().encode(JSON.stringify(brief)).byteLength > MAX_CONTEXT_BYTES &&
+        maxChars > 1000) {
+      maxChars = Math.max(1000, Math.floor(maxChars * 0.75));
+      brief = buildProjectBriefImpl({ workspace, events, memories, maxChars, now });
+    }
     const digest = await digestProjectBriefImpl(brief);
-    return { brief, digest };
+    const context = { brief, digest };
+    if (new TextEncoder().encode(JSON.stringify(context)).byteLength > MAX_CONTEXT_BYTES + 128) {
+      throw new RangeError('Project Space context exceeds the byte budget');
+    }
+    return context;
   };
 }
 
