@@ -117,3 +117,15 @@ test('unknown companion states and events fail closed', () => {
     { state: 'idle', allowed: false, reasonCode: 'UNKNOWN_EVENT' },
   );
 });
+
+test('companion profiles are returned as isolated values and cannot mutate shared defaults', () => {
+  const first = createDefaultAegisCompanionProfile();
+  first.interaction.warmth = 0;
+  const second = createDefaultAegisCompanionProfile();
+  assert.equal(second.interaction.warmth, 70);
+
+  const source = customProfile();
+  const validated = validateCompanionProfile(source);
+  validated.interaction.warmth = 1;
+  assert.equal(source.interaction.warmth, 75);
+});
