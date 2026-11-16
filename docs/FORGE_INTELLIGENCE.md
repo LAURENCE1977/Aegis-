@@ -205,3 +205,8 @@ Owner-only Pages API:
 Migration: `migrations/forge/0003_knowledge_records.sql`.
 
 The Knowledge Library is currently a persisted API-backed foundation. Its dedicated Forge UI and retrieval of accepted records into Agent Workforce context remain follow-on work. No external source is automatically trusted or ingested, and no record can trigger a tool or deployment.
+
+
+## Mandatory Reverse Engineering Assessment (REA)
+
+All upstream candidates follow [the AEGIS Reverse Engineering Assessment standard](AEGIS_REVERSE_ENGINEERING_STANDARD.md). It defines source pinning, architecture/data-flow inspection, mechanism extraction, AEGIS ownership mapping, hard gates, weighted evaluation, minimal implementation design, TDD/benchmark proof and the required evidence report. Batch triage is not represented as full reverse engineering. The standard's hard gates override candidate scores.
