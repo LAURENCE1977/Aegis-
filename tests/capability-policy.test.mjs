@@ -220,3 +220,13 @@ test('invalid manifests fail closed without throwing', () => {
   });
   assert.deepEqual(decision, { allowed: false, reasonCode: 'MANIFEST_INVALID' });
 });
+test('accepts persistent connection records using the canonical principalId field', () => {
+  const manifest = { ...readManifest(), auth: { mode: 'oauth2' }, provider: { id: 'github', kind: 'external' } };
+  const grant = grantFor(manifest);
+  const connection = { id: 'conn-2', status: 'active', principalId, providerId: 'github' };
+  const decision = evaluateCapabilityPolicy({
+    manifest, actionId: 'discover', principalId, resourceId, inputDigest,
+    grant, connection, registryLookup: () => manifest,
+  });
+  assert.deepEqual(decision, { allowed: true, reasonCode: 'ALLOW' });
+});
