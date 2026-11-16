@@ -770,18 +770,17 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - Wires exact grant, connection and approval lookups, atomic approval consumption, and append-only invocation audit to one injected D1 binding.
 - Adapter registration is a copied, fixed allowlist keyed by exact `capabilityId:actionId`. Startup rejects keys that do not map to an approved capability and an action in the trusted registry.
 - Adapter dispatch never derives destinations from manifest URLs, interface paths, request fields or user-provided tool names. The adapter receives a frozen, minimal context containing the principal, exact capability/action/resource, scopes, connection ID and input digest; no vault secret or secret reference is passed.
-- The D1 binding, trusted clock and adapter handlers are injected by server-side code. No public route is wired to this composition root yet.
+- The D1 binding, trusted clock and adapter handlers are injected by server-side code. The owner-facing `/api/sentinel/invoke` route is wired only to the local module catalogue; the GitHub adapter remains unexposed.
 - CI run 43788852555 on commit 4dbe23c656f4842d48a045ace07c301461ece558 passed **340 tests, 0 failures** under Node.js 22. The first composition test run exposed a synchronous adapter-dispatch error; dispatch was changed to reject asynchronously and the final suite passed.
-- This is a library-level composition milestone, not a live integration. No D1 binding was provisioned, migrations applied, vault keyring configured, external adapter registered, provider call made or deployment initiated.
-- Before enabling a route: add owner-authenticated grant/connection lifecycle endpoints, validate the D1 migration chain in an isolated database, implement an allowlisted read-only adapter, enforce egress/redirect/private-address protections, and test the full request-to-audit lifecycle. Keep arbitrary HTTP/MCP/browser execution disabled.
+- The composition code is wired to one restricted owner route, but no production D1 binding was provisioned, no remote migrations applied, no vault keyring configured, no provider connection created and no production deployment initiated. CI applies the capability schema only to a disposable local D1 database.
+- Before enabling any external adapter route: add an atomic rate limiter, exact-resource grant checks, provider connection lifecycle, egress/redirect/private-address protections and a non-production end-to-end test. Keep arbitrary HTTP/MCP/browser execution disabled.
 - Details: `docs/AEGIS_SENTINEL_COMPOSITION.md`.
 
-### First local Sentinel adapter
+### Built-in Sentinel adapters
 
-- Added `createBuiltinAdapterRegistry` with one local-only read capability: `aegis-module-catalogue:list`.
-- It returns descriptive AEGIS module metadata, rejects non-empty input and has no network, filesystem, secret or process access.
-- Tests exercise the adapter directly and through the D1 composition root. It is not exposed by a route and cannot be invoked by an agent or browser yet.
-- The full route, grant lifecycle, D1 migration validation and egress work remain prerequisites.
+- `aegis-module-catalogue:list` is local-only, read-only, accepts no input and is exposed only through the owner-authenticated restricted route.
+- `aegis-github-public-discovery:discover` is implemented but not yet exposed by a Sentinel route. It pins requests to `api.github.com`, rejects redirects, enforces a five-second timeout and a 64 KiB streamed response limit, and returns public metadata only.
+- The GitHub adapter must not be exposed until an atomic per-principal/action rate limiter and exact repository-resource grant flow are in place.
 
 ## Owner capability grant management
 
@@ -800,3 +799,11 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - The Security Centre now has an explicit manual button to invoke this one read-only action and display its audited invocation ID/output.
 - The endpoint remains unavailable in the preview until authentication secrets and the D1 binding/migrations are deliberately configured. No secrets, D1 resources or deployments were changed.
 - Details: `docs/AEGIS_SENTINEL_COMPOSITION.md`.
+
+
+## Local D1 migration verification
+
+- CI applies capability migrations 0001–0005 with Wrangler 4.162.0 to a disposable local D1 database using a dedicated test-only config and explicit `--local`.
+- Smoke inserts exercise approvals, grants, connections, encrypted-secret metadata and invocation audit.
+- CI confirms the unique active-grant index rejects duplicates and the append-only audit triggers reject both UPDATE and DELETE.
+- No remote or production D1 database is provisioned or modified. See PR #72.
