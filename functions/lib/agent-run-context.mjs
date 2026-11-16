@@ -8,7 +8,7 @@ import { listForgeKnowledgeRecords } from './forge-knowledge.mjs';
 const OWNER_ID = 'owner';
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_CONTEXT_CHARS = 6000;
-const MAX_BRIEF_BYTES = 8 * 1024;
+const MAX_BRIEF_BYTES = 7 * 1024;
 const MAX_KNOWLEDGE_BYTES = 4 * 1024;
 const MAX_CONTEXT_BYTES = 12 * 1024 - 128;
 
