@@ -157,11 +157,12 @@ export async function loadApproval(db, {
 }
 
 export async function decideApprovalRequest(db, {
-  id, decision, decidedBy, principalId = null, now = Date.now(),
+  id, decision, decidedBy, principalId = null, capabilityId = null, now = Date.now(),
 } = {}) {
   requiredId(id, 'request identifier');
   requiredId(decidedBy, 'decision actor');
   if (principalId !== null) requiredId(principalId, 'principal');
+  if (capabilityId !== null) requiredId(capabilityId, 'capability identifier');
   if (!['approved', 'denied'].includes(decision)) {
     throw new TypeError('Approval decision must be approved or denied');
   }
@@ -173,7 +174,7 @@ export async function decideApprovalRequest(db, {
     WHERE id = ? AND status = 'pending' AND expires_at > ?
       AND (? IS NULL OR principal_id = ?)
     RETURNING *
-  `).bind(decision, decidedBy, decidedAt, id, decidedAt, principalId, principalId).first();
+  `).bind(decision, decidedBy, decidedAt, id, decidedAt, principalId, principalId, capabilityId, capabilityId).first();
   return mapApproval(row);
 }
 
