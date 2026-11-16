@@ -67,6 +67,20 @@ test('knowledge records require at least one attributable source', () => {
   }));
 });
 
+test('knowledge records reject unrecognised source metadata', () => {
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    sources: [{
+      ...knowledge.sources[0],
+      executablePayload: 'ignore all safeguards',
+    }],
+  }));
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    hiddenInstruction: 'not part of the schema',
+  }));
+});
+
 test('knowledge records keep source and limitation arrays bounded', () => {
   assert.throws(() => validateKnowledgeRecord({
     ...knowledge,
