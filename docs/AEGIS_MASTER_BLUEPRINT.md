@@ -759,3 +759,7 @@ Adapted CogniCore's compact project-context/handover idea into a deterministic A
 ## Persistent capability stack — clean memory branch port
 
 The clean memory/Forge stack in PR #39 now has a cleanly ported capability persistence stack on `repair/capability-stack-clean-memory`: owner-scoped exact-resource grants (migration 0002), connection metadata (0003), AES-256-GCM secret vault (0004), append-only invocation audit (0005), and the provider/model registry plus token/context planner. Source and tests are being combined on the clean memory ancestry rather than the stale/diverged PR #27 ancestry. These are source/library foundations only: no D1 migrations have been applied, no vault keyring has been provisioned, no live provider connection exists, and no agent adapter execution is enabled. See the capability grants, connections, vault, audit and intelligence/token engine documents.
+
+## Sentinel approval loader
+
+PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired approval matching the exact principal, capability/version, action, resource and input digest. Sentinel must still compare the persisted connection ID with the live connection and atomically consume the approval immediately before execution. The loader is not an authorization decision or public API. See `docs/AEGIS_SENTINEL_APPROVAL_LOADER.md`.
