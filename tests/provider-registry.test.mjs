@@ -146,3 +146,23 @@ test('preserves unknown provider prices as unknown instead of exposing false zer
   assert.equal(model.inputCost, undefined);
   assert.equal(model.outputCost, undefined);
 });
+
+
+test('marks partially-known model pricing as unknown and excludes it from cost-capped routing', async () => {
+  const { rankEligibleModels } = await import('../functions/lib/provider-registry.mjs');
+  const input = registry();
+  input.providers[0].models[0].inputCost = undefined;
+  input.providers[0].models[0].outputCost = 0;
+  const [listed] = listEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+  });
+  assert.equal(listed.costKnown, false);
+  assert.equal(listed.inputCost, undefined);
+  assert.equal(listed.outputCost, 0);
+  assert.deepEqual(rankEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    maxInputCost: 0,
+  }), []);
+});
