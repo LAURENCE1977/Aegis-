@@ -28,7 +28,7 @@ class AgentMemoryD1 {
       async all() {
         if (sql.includes("FROM agent_runs WHERE status = 'running'")) return { results: [] };
         if (sql.includes("FROM agent_runs WHERE status = 'pending_dispatch'")) {
-          return { results: [...db.runs.values()].filter((row) => row.status === 'pending_dispatch').map((row) => ({ id: row.id })) };
+          return { results: [...db.runs.values()].filter((row) => row.status === 'pending_dispatch' && !row.cancelled_at).map((row) => ({ id: row.id })) };
         }
         return { results: [] };
       },
@@ -58,7 +58,7 @@ class AgentMemoryD1 {
         if (sql.includes("SET status = 'failed'") && sql.includes('AGENT_DELIVERY_EXHAUSTED')) {
           const row = db.runs.get(v[1]);
           const now = v[2];
-          if (row && (['queued', 'pending_dispatch'].includes(row.status) ||
+          if (row && !row.cancelled_at && (['queued', 'pending_dispatch'].includes(row.status) ||
               (row.status === 'running' && (!row.lease_until || row.lease_until <= now)))) {
             row.status = 'failed'; row.error_code = 'AGENT_DELIVERY_EXHAUSTED';
             row.lease_until = null; row.updated_at = v[0];
@@ -68,7 +68,7 @@ class AgentMemoryD1 {
         }
         if (sql.includes("SET status = 'queued'")) {
           const row = db.runs.get(v[1]);
-          if (row && row.status === 'pending_dispatch') { row.status = 'queued'; row.updated_at = v[0]; return { meta: { changes: 1 } }; }
+          if (row && row.status === 'pending_dispatch' && !row.cancelled_at) { row.status = 'queued'; row.updated_at = v[0]; return { meta: { changes: 1 } }; }
           return { meta: { changes: 0 } };
         }
         if (sql.includes("SET status = 'planned'")) {
