@@ -16,9 +16,11 @@ The authenticated AG-UI 1.0 endpoint streams assistant text over Server-Sent Eve
 ## Model provider boundary
 
 - Default: Cloudflare Workers AI using the configured `env.AI` binding.
+- Optional: Anthropic Messages API using the fixed `https://api.anthropic.com/v1/messages` endpoint, server-side `ANTHROPIC_API_KEY` and explicit `AEGIS_ANTHROPIC_MODEL`.
 - Optional: Alibaba Qwen using a fixed regional endpoint, validated workspace/region and server-side `AEGIS_QWEN_API_KEY`.
-- Provider requests reject redirects, use a timeout and require SSE streaming responses.
-- The current provider adapters are an initial slice, not the finished provider-agnostic gateway. Anthropic, custom OpenAI-compatible endpoints, Ollama/LM Studio local endpoints and additional providers remain future adapters.
+- Provider requests reject redirects, use a timeout and require SSE streaming responses. Anthropic named `content_block_delta` text events are translated into the same AG-UI text lifecycle.
+- The current provider adapters are an initial slice, not the finished provider-agnostic gateway. Custom OpenAI-compatible endpoints, Ollama/LM Studio local endpoints and additional providers remain future adapters.
+- Anthropic tool calling is deliberately disabled in this adapter; the governed tool loop currently supports only the explicitly opted-in Qwen model.
 
 ## Governed model tools
 
@@ -30,4 +32,4 @@ No private GitHub access, source-file reading, shell, browser automation, MCP, w
 
 ## Deployment status
 
-Source and tests only. The route has not been deployed or connected to a production provider binding/secret. Tool calling remains inactive until the owner deliberately configures the feature flag, provider credentials and D1 binding.
+Source and tests only. The route has not been deployed or connected to a production provider binding/secret. To use Anthropic, the owner must add `ANTHROPIC_API_KEY` as a Cloudflare Pages/Worker runtime secret and set `AEGIS_MODEL_PROVIDER=anthropic` plus an explicitly chosen `AEGIS_ANTHROPIC_MODEL`. A GitHub Actions repository secret is not automatically available to the Worker runtime. Tool calling remains inactive until the owner deliberately configures the Qwen feature flag, provider credentials and D1 binding.
