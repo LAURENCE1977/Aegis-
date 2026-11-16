@@ -34,7 +34,7 @@ export function createAgentPlan(submission, metadata = {}) {
       new Set(submission.specialists).size !== submission.specialists.length) {
     throw new TypeError('A validated agent run submission is required.');
   }
-  if (typeof metadata.runId !== 'string' || !/^[0-9a-f-]{36}$/i.test(metadata.runId) ||
+  if (typeof metadata.runId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(metadata.runId) ||
       typeof metadata.createdAt !== 'string' || !Number.isFinite(Date.parse(metadata.createdAt))) {
     throw new TypeError('Valid run metadata is required.');
   }
