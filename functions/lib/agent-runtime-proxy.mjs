@@ -1,6 +1,7 @@
 import { jsonResponse } from './owner-api.mjs';
 
 const MAX_REQUEST_BYTES = 8 * 1024;
+const MAX_AGENT_RUN_REQUEST_BYTES = 24 * 1024;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const TIMEOUT_MS = 8000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -104,8 +105,11 @@ export function createAgentRuntimeProxy(fetchImpl = fetch) {
       try { requestBody = JSON.stringify(body); } catch {
         return jsonResponse({ error: 'Invalid agent runtime request body.' }, 400);
       }
+      const maxRequestBytes = method === 'POST' && path === '/v1/agent-runs'
+        ? MAX_AGENT_RUN_REQUEST_BYTES
+        : MAX_REQUEST_BYTES;
       if (typeof requestBody !== 'string' ||
-          new TextEncoder().encode(requestBody).byteLength > MAX_REQUEST_BYTES) {
+          new TextEncoder().encode(requestBody).byteLength > maxRequestBytes) {
         return jsonResponse({ error: 'Agent runtime request body is too large.' }, 413);
       }
     }
