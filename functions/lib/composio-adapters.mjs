@@ -54,8 +54,11 @@ function validatePullRequestInput(input) {
   }
 }
 
-function safePullRequestResult(data, pullNumber) {
+function safePullRequestResult(data, owner, repo, pullNumber) {
+  const baseRepository = data?.base?.repo?.full_name;
   if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      typeof baseRepository !== 'string' ||
+      baseRepository.toLowerCase() !== (owner + '/' + repo).toLowerCase() ||
       data.number !== pullNumber || typeof data.title !== 'string' || !data.title.trim() ||
       data.title.length > 500 || !['open', 'closed'].includes(data.state) ||
       typeof data.draft !== 'boolean' || typeof data.merged !== 'boolean') {
@@ -292,7 +295,7 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
       pullNumber: input.pullNumber,
     });
     return {
-      pullRequest: safePullRequestResult(result.data, input.pullNumber),
+      pullRequest: safePullRequestResult(result.data, input.owner, input.repo, input.pullNumber),
       provider: 'composio',
       logId: result.logId,
     };
