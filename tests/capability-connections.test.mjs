@@ -62,7 +62,7 @@ class MemoryD1 {
         if (sql.includes('SELECT * FROM capability_connections')) {
           if (sql.includes('WHERE id = ?')) {
             const row = db.rows.get(v[0]);
-            return row ? { ...row } : null;
+            return row && row.principal_id === v[1] ? { ...row } : null;
           }
           const [principal, provider, now] = v;
           const row = [...db.rows.values()].find(item =>
