@@ -4,6 +4,7 @@ import { createBuiltinAdapterRegistry } from './sentinel-adapters.mjs';
 import { createSentinelDependencies } from './sentinel-composition.mjs';
 import { runSentinelInvocation } from './sentinel.mjs';
 
+const QWEN_TOOL_MODEL = 'qwen3.8-flash';
 const QWEN_REGIONS = new Set([
   'ap-southeast-1', 'us-east-1', 'cn-beijing', 'cn-hongkong',
   'eu-central-1', 'ap-northeast-1',
@@ -60,6 +61,7 @@ export function isAgentToolingEnabled(env) {
   }
   const key = env.AEGIS_QWEN_API_KEY;
   const workspace = env.AEGIS_QWEN_WORKSPACE_ID;
+  if (env.AEGIS_QWEN_MODEL !== undefined && env.AEGIS_QWEN_MODEL !== QWEN_TOOL_MODEL) return false;
   return typeof key === 'string' && key.length >= 16 && key.length <= 4096 &&
     !/[\r\n\u0000]/.test(key) &&
     typeof workspace === 'string' && workspace.length >= 3 && workspace.length <= 100 &&

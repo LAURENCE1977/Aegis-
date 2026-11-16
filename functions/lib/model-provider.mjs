@@ -132,6 +132,9 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   }
 
   const { endpoint, key, model } = resolveQwenEndpoint(env);
+  if (safeTools.length && model !== 'qwen3.8-flash') {
+    throw new Error('Tool calling is not enabled for this Qwen model.');
+  }
   let response;
   try {
     response = await fetchImpl(endpoint, {
