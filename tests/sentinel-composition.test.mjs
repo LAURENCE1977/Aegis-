@@ -123,7 +123,6 @@ test('composes the built-in module catalogue through the trusted Sentinel adapte
     capabilityVersion: '0.1.0',
     resourceId: 'aegis:modules',
     scopes: ['aegis:module-catalogue:read'],
-    inputDigest: 'sha256:' + 'a'.repeat(64),
     connectionId: null,
   });
   assert.equal(result.total, result.modules.length);
@@ -175,7 +174,7 @@ test('runs the read-only module catalogue end-to-end through real policy and D1 
     manifest,
     actionId: 'list',
     resourceId: 'aegis:modules',
-    inputDigest: 'sha256:' + 'b'.repeat(64),
+    inputDigest: await digestCanonicalInput({}),
     input: {},
     now,
   }, dependencies);
