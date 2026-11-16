@@ -177,8 +177,11 @@ async function submitAgentRun(request, env) {
   }
   const length = Number(request.headers.get('Content-Length') || 0);
   if (length > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
-  const raw = await request.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
+  let raw;
+  try { raw = await readBoundedRequestText(request, MAX_BODY_BYTES); } catch (error) {
+    if (error instanceof RangeError) return json({ error: 'Request body is too large.' }, 413);
+    return json({ error: 'Invalid JSON.' }, 400);
+  }
   let input;
   try { input = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
   let submission;
