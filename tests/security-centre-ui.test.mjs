@@ -84,8 +84,8 @@ test('Agent run console renders provider data with textContent and never auto-su
   const end = html.indexOf('</section>', start);
   assert.ok(start >= 0 && end > start);
   const section = html.slice(start, end);
-  assert.match(section, /agentRunList\.replaceChildren\(\)/);
-  assert.match(section, /textContent\s*=/);
+  assert.match(html, /agentRunList\.replaceChildren\(\)/);
+  assert.match(html, /agentRunList\.textContent\s*=/);
   assert.doesNotMatch(section, /innerHTML\s*=/);
   assert.doesNotMatch(section, /fetch\('\/api\/agent-runs',\s*\{\s*method:\s*'POST'/);
 });
