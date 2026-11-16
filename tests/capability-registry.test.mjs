@@ -132,3 +132,15 @@ test('registers Composio pull request reads as a separate exact-resource capabil
   assert.equal(pull.interface.path, '/api/sentinel/composio-github-pull-request');
   assert.deepEqual(pull.data.writes, []);
 });
+
+
+test('registers bounded read-only workflow run metadata as its own capability', () => {
+  const workflows = getCapabilityManifest('aegis-composio-github-workflow-readonly');
+  assert.ok(workflows);
+  assert.equal(validateCapabilityManifest(workflows), true);
+  assert.equal(workflows.actions[0].id, 'list-workflow-runs');
+  assert.equal(workflows.actions[0].effect, 'read');
+  assert.equal(workflows.actions[0].requiredScopes[0], 'github:workflow:read');
+  assert.equal(workflows.interface.path, '/api/sentinel/composio-github-workflows');
+  assert.deepEqual(workflows.data.writes, []);
+});
