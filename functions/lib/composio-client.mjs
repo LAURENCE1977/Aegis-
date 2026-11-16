@@ -183,6 +183,25 @@ export function createComposioClient({
       };
     },
 
+    async getGitHubConnectionStatus({ sessionId, connectedAccountId } = {}) {
+      requireSessionId(sessionId);
+      if (typeof connectedAccountId !== 'string' ||
+          !ACCOUNT_ID_PATTERN.test(connectedAccountId)) {
+        throw new TypeError('Invalid Composio connected-account ID');
+      }
+      const result = await requestJson(
+        '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId) +
+          '/toolkits?toolkits=github&limit=10',
+      );
+      if (!Array.isArray(result.items) || result.items.length > 10) {
+        throw new Error('Composio returned an invalid toolkit status');
+      }
+      const github = result.items.find((item) => item?.slug === 'github');
+      const account = github?.connected_account;
+      return Boolean(account && account.id === connectedAccountId &&
+        typeof account.status === 'string' && account.status.toLowerCase() === 'active');
+    },
+
     async listSessionTools({ sessionId } = {}) {
       requireSessionId(sessionId);
       const result = await requestJson(
