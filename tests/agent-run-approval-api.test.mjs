@@ -159,6 +159,12 @@ test('Sentinel consumes only an exact approved owner decision before recording r
       assert.equal(scope.capabilityId, 'aegis-agent-run');
       return approval;
     },
+    loadGrant: async (_db, input) => ({
+      id: 'grant-owner-agent-run-001',
+      ...input,
+      status: 'active',
+      scopes: ['aegis:agent-run:execute'],
+    }),
     consumeRequest: async (_db, input) => {
       order.push('consume');
       assert.equal(input.id, approval.id);
@@ -175,6 +181,7 @@ test('Sentinel consumes only an exact approved owner decision before recording r
       assert.equal(path, '/v1/agent-runs/' + runId + '/authorize');
       assert.equal(body.approvalId, approval.id);
       assert.equal(body.inputDigest, binding.inputDigest);
+      assert.equal(body.grantId, 'grant-owner-agent-run-001');
       return Response.json({ authorised: true, executionStarted: false });
     },
   });
@@ -208,4 +215,43 @@ test('Sentinel refuses changed plans and unapproved requests without consuming a
   });
   assert.equal(response.status, 409);
   assert.equal(consumed, false);
+});
+
+test('Sentinel requires an active exact-resource grant with every manifest scope before consuming approval', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  let consumed = false;
+  let runtimeCalled = false;
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async () => ({
+      id: 'approval-needs-grant',
+      ...binding,
+      status: 'approved',
+      decidedBy: 'owner',
+      requestedBy: 'owner',
+      connectionId: null,
+    }),
+    loadGrant: async (_db, requested) => ({
+      id: 'grant-wrong-resource',
+      ...requested,
+      resourceId: 'agent-run:00000000-0000-4000-8000-000000000099',
+      status: 'active',
+      scopes: ['aegis:agent-run:execute'],
+    }),
+    consumeRequest: async () => { consumed = true; return null; },
+    proxy: async ({ method }) => {
+      if (method === 'GET') return Response.json({ run: { id: runId, status: 'planned', plan } });
+      runtimeCalled = true;
+      return Response.json({});
+    },
+  });
+  const response = await handler.onRequestPost({
+    request: await makeRequest('/api/sentinel/agent-run-approval/approval-needs-grant/authorize', 'POST', {}),
+    env: envBase,
+    params: { id: 'approval-needs-grant' },
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).reasonCode, 'ACTIVE_EXACT_RESOURCE_GRANT_REQUIRED');
+  assert.equal(consumed, false);
+  assert.equal(runtimeCalled, false);
 });
