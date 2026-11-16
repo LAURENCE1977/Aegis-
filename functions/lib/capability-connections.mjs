@@ -127,6 +127,22 @@ export async function loadConnection(db, { principalId, providerId } = {}, now =
   return mapConnection(row);
 }
 
+/**
+ * Internal owner-scoped lookup for revocation and vault erasure. This returns
+ * the opaque secret reference and must never be exposed by an API response.
+ */
+export async function loadConnectionById(db, { id, principalId } = {}) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Connection database is required');
+  requiredId(id, 'identifier');
+  requiredId(principalId, 'principal');
+  const row = await db.prepare(`
+    SELECT * FROM capability_connections
+    WHERE id = ? AND principal_id = ?
+    LIMIT 1
+  `).bind(id, principalId).first();
+  return mapConnection(row);
+}
+
 export async function listConnections(db, principalId, limit = 50) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Connection database is required');
   requiredId(principalId, 'principal');
