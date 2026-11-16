@@ -203,6 +203,24 @@ Cloudflare free-tier reference check (15 November 2026): Workers Free includes 1
 
 The next deployment stage needs one D1 database, one Queue and one separate Worker. Resource creation/deployment is not yet performed. Review account usage, ensure no paid upgrade or spending-limit change, then provision only the minimum resources. Never enable billing or exceed free limits without explicit approval.
 
+## Mandatory repository reverse-engineering and adoption policy
+
+This policy applies to **every repository the user supplies or asks AEGIS to investigate**, including repositories discovered through GitHub, social media, articles, lists and other projects.
+
+For each candidate, Forge must:
+1. Identify the exact upstream repository, owner, default branch, relevant commit/tag and project purpose.
+2. Inspect the whole repository when useful: source tree, architecture, entry points, interfaces, tests, build/deployment files, dependencies, security posture, maintenance and issue history. Do not rely on README summaries alone for adoption decisions.
+3. Reverse-engineer the capabilities and design patterns that solve an AEGIS need. Map useful modules, algorithms, workflows, data models and UI patterns to AEGIS interfaces.
+4. Choose explicitly between **rebuild natively**, **adapt selected components**, **combine patterns**, **fork/adopt the whole repository**, or **reject/defer**. Record why.
+5. Prefer an AEGIS-native implementation for core identity, policy, Sentinel, permissions, memory, task state, approvals, audit and provider abstraction. External code must not bypass these boundaries.
+6. If the complete upstream repository is the best technical and maintenance option, prefer a fork into the AEGIS build over an unnecessary rewrite. Verify that forking and the intended modifications/redistribution comply with the exact licence and any third-party notices. A fork is not permission to remove upstream attribution or licence obligations.
+7. Before copying, adapting, forking or deploying, review the applicable licence at repository, package and file level; check trademarks, patents, assets, datasets, model weights and third-party components separately. Unknown or incompatible rights mean hold the candidate and do not copy it.
+8. Keep adopted projects isolated and replaceable where practical. Pin upstream commits, preserve provenance and notices, document local patches, track upstream security fixes and define a merge/rebase strategy. Do not import unnecessary dependencies or weaken AEGIS controls to fit an upstream project.
+9. Never execute untrusted repository code in the AEGIS control plane. Use an isolated, resource-limited build/test environment and inspect install scripts, workflows, binaries and network access before running anything.
+10. Record the decision and evidence in the research register, including exact upstream URL/ref, licence, inspected scope, useful components, adaptation/fork plan, risks, tests, cost, rollback and refresh cadence.
+
+**Default decision rule:** reverse-engineer every candidate; build our own version when that is the better long-term fit; otherwise use a scoped adapter or fork the whole repository when that is demonstrably the best option. Personal-use intent does not override licence, security, privacy or third-party rights. Never claim a repository was fully inspected when only selected files or metadata were reviewed.
+
 ## Research source intake — 15 November 2026
 
 A research source register is maintained at [docs/RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md). It evaluates Vercel AI SDK/UI, Vstorm AgenticOS, Dev.to, Stack Overflow, Frontend Mentor, v0 and Blackbox AI.
