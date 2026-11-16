@@ -130,3 +130,52 @@ test('Forge discovery API returns safe metadata for an authenticated same-origin
   assert.equal(body.repository.licenseSpdx, 'Apache-2.0');
   assert.equal(body.repository.private, false);
 });
+
+
+test('Forge discovery API bounds streaming request reads before GitHub fetch', async () => {
+  const token = await createSessionToken(secret);
+  let fetchCalls = 0;
+  const response = await onRequestPost({
+    request: new Request('https://aegis.example/api/forge/discover', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://aegis.example',
+        Cookie: '__Host-aegis_session=' + token,
+      },
+      body: JSON.stringify({ sourceUrl: 'https://github.com/example/' + 'x'.repeat(5000) }),
+    }),
+    env: configuredEnv,
+    fetchImpl: async () => { fetchCalls++; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 413);
+  assert.equal(fetchCalls, 0);
+});
+
+test('GitHub source requests reject redirects, use a timeout signal and stay on the fixed API origin', async () => {
+  let calledUrl;
+  let calledOptions;
+  await discoverGitHubRepository('https://github.com/example/repo', async (url, options) => {
+    calledUrl = url;
+    calledOptions = options;
+    return new Response(JSON.stringify({
+      full_name: 'example/repo',
+      html_url: 'https://github.com/example/repo',
+      default_branch: 'main',
+      private: false,
+    }), { status: 200 });
+  });
+  assert.equal(new URL(calledUrl).origin, 'https://api.github.com');
+  assert.equal(calledOptions.redirect, 'error');
+  assert.ok(calledOptions.signal instanceof AbortSignal);
+});
+
+test('rejects oversized GitHub metadata responses before JSON parsing', async () => {
+  await assert.rejects(() => discoverGitHubRepository(
+    'https://github.com/example/repo',
+    async () => new Response('{}', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': String(4 * 1024 * 1024 + 1) },
+    }),
+  ), /response size limit/i);
+});
