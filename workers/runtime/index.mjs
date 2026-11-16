@@ -9,6 +9,8 @@ import {
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ATTEMPTS = 5;
 
+function agentRunsEnabled(env) { return env?.AGENT_RUNS_ENABLED === 'true'; }
+
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -95,6 +97,7 @@ async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypt
 }
 
 async function dispatchAgentRuns(env, limit = 25) {
+  if (!agentRunsEnabled(env)) return 0;
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
   const now = new Date().toISOString();
   const expired = await env.DB.prepare(
@@ -128,6 +131,7 @@ async function dispatchAgentRuns(env, limit = 25) {
 }
 
 async function submitAgentRun(request, env) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
@@ -340,6 +344,7 @@ export async function handleRuntimeFetch(request, env) {
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
+    if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
     return getAgentRun(env, url.pathname.slice('/v1/agent-runs/'.length));
   }
@@ -449,10 +454,16 @@ export default {
   async queue(batch, env) {
     for (const message of batch.messages) {
       if (batch.queue === 'aegis-jobs') {
-        if (message?.body?.agentRunId) await processAgentRun(message, env);
+        if (message?.body?.agentRunId) {
+          if (agentRunsEnabled(env)) await processAgentRun(message, env);
+          else message.ack();
+        }
         else await processJob(message, env);
       } else if (batch.queue === 'aegis-jobs-dlq') {
-        if (message?.body?.agentRunId) await processAgentDeadLetter(message, env);
+        if (message?.body?.agentRunId) {
+          if (agentRunsEnabled(env)) await processAgentDeadLetter(message, env);
+          else message.ack();
+        }
         else await processDeadLetter(message, env);
       } else {
         // Fail closed: an unknown queue must never execute a job payload.
@@ -461,6 +472,8 @@ export default {
     }
   },
   scheduled(_controller, env, context) {
-    context.waitUntil(Promise.all([dispatchPending(env), dispatchAgentRuns(env)]));
+    context.waitUntil(agentRunsEnabled(env)
+      ? Promise.all([dispatchPending(env), dispatchAgentRuns(env)])
+      : dispatchPending(env));
   },
 };
