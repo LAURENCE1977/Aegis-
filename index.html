@@ -227,6 +227,11 @@
           <form class="memory-form" id="agentRunForm">
             <label for="agentRunObjective">Objective</label>
             <textarea id="agentRunObjective" rows="4" maxlength="2000" placeholder="Describe the work you want the AEGIS team to plan…" required></textarea>
+            <label for="agentRunProjectId">Project Space context (optional)</label>
+            <select id="agentRunProjectId" aria-label="Project Space context">
+              <option value="">No Project Space context</option>
+            </select>
+            <p class="memory-help">When selected, AEGIS attaches a bounded brief made from accepted, non-restricted project memories and event summaries. Raw event content and source URLs are excluded; memory text remains untrusted reference data.</p>
             <p class="memory-help">Choose one or more specialists.</p>
             <div class="input-area">
               <label><input id="agentSpecialistResearcher" type="checkbox" checked /> Researcher</label>
@@ -334,6 +339,7 @@
     const composioReadButtons = [composioReadMetadataBtn, composioReadPullRequestBtn, composioReadWorkflowRunsBtn, composioReadWorkflowJobsBtn];
     const agentRunForm = document.getElementById('agentRunForm');
     const agentRunObjective = document.getElementById('agentRunObjective');
+    const agentRunProjectSelect = document.getElementById('agentRunProjectId');
     const agentRunSubmitBtn = document.getElementById('agentRunSubmitBtn');
     const agentRunRefreshBtn = document.getElementById('agentRunRefreshBtn');
     const agentRunStatus = document.getElementById('agentRunStatus');
@@ -780,17 +786,21 @@
     async function loadChatProjects() {
       const selectedChat = chatProjectSelect.value;
       const selectedMemory = memoryProjectSelect.value;
-      for (const select of [chatProjectSelect, memoryProjectSelect]) {
+      const selectedAgentRunProject = agentRunProjectSelect.value;
+      const projectSelects = [chatProjectSelect, memoryProjectSelect, agentRunProjectSelect];
+      for (const select of projectSelects) {
         select.replaceChildren();
         const personal = document.createElement('option');
         personal.value = '';
-        personal.textContent = select === chatProjectSelect ? 'Personal memory only' : 'Personal memory';
+        personal.textContent = select === chatProjectSelect
+          ? 'Personal memory only'
+          : select === memoryProjectSelect ? 'Personal memory' : 'No Project Space context';
         select.append(personal);
       }
       try {
         const data = await controlApi('/api/workspaces');
         (data.workspaces || []).forEach(workspace => {
-          for (const select of [chatProjectSelect, memoryProjectSelect]) {
+          for (const select of projectSelects) {
             const option = document.createElement('option');
             option.value = workspace.id;
             option.textContent = workspace.name;
@@ -803,8 +813,11 @@
         if ([...memoryProjectSelect.options].some(option => option.value === selectedMemory)) {
           memoryProjectSelect.value = selectedMemory;
         }
+        if ([...agentRunProjectSelect.options].some(option => option.value === selectedAgentRunProject)) {
+          agentRunProjectSelect.value = selectedAgentRunProject;
+        }
       } catch (error) {
-        // Chat and personal memory remain available without the optional Project Space database.
+        // Chat, personal memory and plan-only runs remain available without the optional Project Space database.
       }
     }
 
@@ -913,8 +926,14 @@
         const data = await controlApi('/api/agent-runs/' + encodeURIComponent(agentRunId));
         const run = data.run;
         if (!run || run.id !== agentRunId) throw new Error('Agent runtime returned an invalid run record.');
+        const stepSummary = (run.steps || []).map(step =>
+          step.stepIndex + '. ' + step.specialist + ': ' + step.status
+        ).join(' · ');
         agentRunDetailStatus.textContent = run.status + ' · ' + run.objective +
-          ' · attempts: ' + run.attempts + (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '') +
+          ' · attempts: ' + run.attempts + (run.projectId ? ' · Project Space: ' + run.projectId : '') +
+          (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '') +
+          (run.plan?.context ? ' · context: ' + run.plan.context.memoryCount + ' memories, ' + run.plan.context.eventCount + ' events' : '') +
+          (stepSummary ? ' · ' + stepSummary : '') +
           (run.executionAuthorized ? ' · owner approval consumed; authorisation recorded' : '');
         agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
         agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
@@ -973,7 +992,11 @@
       try {
         const data = await controlApi('/api/agent-runs', {
           method: 'POST',
-          body: JSON.stringify({ objective, specialists }),
+          body: JSON.stringify({
+            objective,
+            specialists,
+            projectId: agentRunProjectSelect.value || undefined,
+          }),
         });
         if (!data.run || !isAgentRunId(data.run.id)) throw new Error('Agent runtime returned an invalid submission.');
         agentRunStatus.textContent = 'Run created · ' + data.run.id + ' · ' + data.run.status;
