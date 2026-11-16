@@ -56,6 +56,7 @@ test('composes the persistent stores and dispatches only an explicitly registere
   assert.equal(typeof dependencies.loadGrant, 'function');
   assert.equal(typeof dependencies.loadConnection, 'function');
   assert.equal(typeof dependencies.loadApproval, 'function');
+  assert.equal(typeof dependencies.reserveRateLimit, 'function');
   assert.equal(typeof dependencies.consumeApproval, 'function');
   assert.equal(typeof dependencies.recordAudit, 'function');
   assert.equal(typeof dependencies.registryLookup, 'function');
