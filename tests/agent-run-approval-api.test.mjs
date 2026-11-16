@@ -4,6 +4,7 @@ import { createSessionToken } from '../functions/lib/auth.mjs';
 import {
   createAgentRunApprovalHandlers,
   createAgentRunApprovalDecisionHandlers,
+  createAgentRunApprovalAuthorizationHandlers,
 } from '../functions/lib/agent-run-approval-routes.mjs';
 
 const secret = 'agent-run-approval-test-session-secret-with-entropy';
@@ -137,4 +138,74 @@ test('owner decision endpoint rejects an approval belonging to another principal
     params: { id: 'approval-1' },
   });
   assert.equal(response.status, 404);
+});
+
+test('Sentinel consumes only an exact approved owner decision before recording runtime authorisation', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  const approval = {
+    id: 'approval-consume-1',
+    ...binding,
+    status: 'approved',
+    decidedBy: 'owner',
+    requestedBy: 'owner',
+    connectionId: null,
+  };
+  const order = [];
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async (_db, id, scope) => {
+      assert.equal(id, approval.id);
+      assert.equal(scope.principalId, 'owner');
+      assert.equal(scope.capabilityId, 'aegis-agent-run');
+      return approval;
+    },
+    consumeRequest: async (_db, input) => {
+      order.push('consume');
+      assert.equal(input.id, approval.id);
+      assert.equal(input.inputDigest, binding.inputDigest);
+      return { ...approval, status: 'consumed' };
+    },
+    proxy: async ({ method, path, body }) => {
+      if (method === 'GET') {
+        assert.equal(path, '/v1/agent-runs/' + runId);
+        return Response.json({ run: { id: runId, status: 'planned', plan } });
+      }
+      order.push('runtime');
+      assert.equal(method, 'POST');
+      assert.equal(path, '/v1/agent-runs/' + runId + '/authorize');
+      assert.equal(body.approvalId, approval.id);
+      assert.equal(body.inputDigest, binding.inputDigest);
+      return Response.json({ authorised: true, executionStarted: false });
+    },
+  });
+  const response = await handler.onRequestPost({
+    request: await makeRequest('/api/sentinel/agent-run-approval/approval-consume-1/authorize', 'POST', {}),
+    env: envBase,
+    params: { id: approval.id },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(order, ['consume', 'runtime']);
+  const body = await response.json();
+  assert.equal(body.approval.status, 'consumed');
+  assert.equal(body.executionStarted, false);
+});
+
+test('Sentinel refuses changed plans and unapproved requests without consuming an approval', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  let consumed = false;
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async () => ({ id: 'approval-consume-2', ...binding, status: 'approved', decidedBy: 'owner', requestedBy: 'owner', connectionId: null }),
+    consumeRequest: async () => { consumed = true; return null; },
+    proxy: async ({ method }) => method === 'GET'
+      ? Response.json({ run: { id: runId, status: 'planned', plan: { ...plan, objective: 'changed' } } })
+      : assert.fail('runtime must not be called'),
+  });
+  const response = await handler.onRequestPost({
+    request: await makeRequest('/api/sentinel/agent-run-approval/approval-consume-2/authorize', 'POST', {}),
+    env: envBase,
+    params: { id: 'approval-consume-2' },
+  });
+  assert.equal(response.status, 409);
+  assert.equal(consumed, false);
 });
