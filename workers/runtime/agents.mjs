@@ -15,9 +15,7 @@ function exactKeys(value, keys) {
 }
 
 function validTimestamp(value) {
-  if (typeof value !== 'string') return false;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
 
 function validOptionalTimestamp(value) {
