@@ -160,7 +160,22 @@
         <div id="moduleList" aria-live="polite"></div>
         <h3>Capability registry</h3>
         <div id="capabilityList" aria-live="polite"></div>
-        <p class="memory-help">No grants are created by this inventory. No capability is invoked from this screen.</p>
+        <h3>Owner-controlled grants</h3>
+        <p class="memory-help">Grant only the actions and exact resources you intend. A grant is not an approval; human-gated operations still require a separate approval. Scopes are derived by the server from the trusted capability registry.</p>
+        <form class="memory-form" id="grantForm">
+          <label for="grantCapabilitySelect">Approved capability</label>
+          <select id="grantCapabilitySelect" required></select>
+          <label for="grantActionSelect">Actions to grant (select one or more)</label>
+          <select id="grantActionSelect" multiple size="4" required></select>
+          <label for="grantResourceId">Exact resource ID (wildcards are not allowed)</label>
+          <input id="grantResourceId" maxlength="256" placeholder="e.g. aegis:modules" required />
+          <label for="grantExpiresAt">Grant expiry</label>
+          <input id="grantExpiresAt" type="datetime-local" required />
+          <button id="createGrantBtn" type="submit">Create exact grant</button>
+        </form>
+        <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
+        <div id="grantList" aria-live="polite"></div>
+        <p class="memory-help">No capability is invoked from this screen. Revoking a grant blocks future Sentinel policy checks.</p>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -217,6 +232,15 @@
     const securityStatus = document.getElementById('securityStatus');
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
+    const grantForm = document.getElementById('grantForm');
+    const grantCapabilitySelect = document.getElementById('grantCapabilitySelect');
+    const grantActionSelect = document.getElementById('grantActionSelect');
+    const grantResourceId = document.getElementById('grantResourceId');
+    const grantExpiresAt = document.getElementById('grantExpiresAt');
+    const createGrantBtn = document.getElementById('createGrantBtn');
+    const grantStatus = document.getElementById('grantStatus');
+    const grantList = document.getElementById('grantList');
+    let securityCapabilities = [];
     const forgeSection = document.getElementById('forgeSection');
     const forgeForm = document.getElementById('forgeForm');
     const forgeSourceUrl = document.getElementById('forgeSourceUrl');
@@ -699,12 +723,128 @@
           capabilityList.append(card);
         });
         if (!capabilityList.children.length) capabilityList.textContent = 'No capability manifests are registered.';
+        securityCapabilities = capabilityData.capabilities || [];
+        populateGrantCapabilities();
+        await loadGrantManager();
         securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
-          (capabilityData.total || 0) + ' capability manifest(s) · read-only inventory';
+          (capabilityData.total || 0) + ' capability manifest(s) · registry inventory';
       } catch (error) {
         securityStatus.textContent = error.message;
       }
     }
+
+    function populateGrantCapabilities() {
+      grantCapabilitySelect.replaceChildren();
+      const eligible = securityCapabilities.filter(capability =>
+        capability.status === 'approved' &&
+        (capability.actions || []).some(action => (action.requiredScopes || []).length > 0)
+      );
+      eligible.forEach(capability => {
+        const option = document.createElement('option');
+        option.value = capability.id;
+        option.textContent = capability.name + ' · ' + capability.id;
+        grantCapabilitySelect.append(option);
+      });
+      populateGrantActions();
+      if (!eligible.length) {
+        grantStatus.textContent = 'No approved capability actions currently declare grantable scopes.';
+      }
+    }
+
+    function populateGrantActions() {
+      grantActionSelect.replaceChildren();
+      const capability = securityCapabilities.find(item => item.id === grantCapabilitySelect.value);
+      (capability?.actions || []).filter(action => (action.requiredScopes || []).length > 0).forEach(action => {
+        const option = document.createElement('option');
+        option.value = action.id;
+        option.textContent = action.id + ' · ' + action.effect + ' · ' +
+          (action.requiredScopes || []).join(', ');
+        grantActionSelect.append(option);
+      });
+    }
+
+    async function loadGrantManager() {
+      grantList.replaceChildren();
+      grantStatus.textContent = 'Loading owner grant history…';
+      try {
+        const data = await controlApi('/api/grants');
+        (data.grants || []).forEach(grant => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const title = document.createElement('h3');
+          title.textContent = grant.capabilityId + ' · ' + grant.status;
+          const detail = document.createElement('p');
+          detail.textContent = grant.resourceId + ' · ' + grant.scopes.join(', ');
+          const expiry = document.createElement('p');
+          expiry.textContent = 'Expires ' + new Date(grant.expiresAt).toLocaleString() +
+            (grant.revokedAt ? ' · Revoked ' + new Date(grant.revokedAt).toLocaleString() : '');
+          card.append(title, detail, expiry);
+          if (grant.status === 'active') {
+            const revoke = document.createElement('button');
+            revoke.type = 'button';
+            revoke.className = 'secondary';
+            revoke.textContent = 'Revoke grant';
+            revoke.addEventListener('click', async () => {
+              revoke.disabled = true;
+              try {
+                await controlApi('/api/grants', {
+                  method: 'DELETE',
+                  body: JSON.stringify({ id: grant.id }),
+                });
+                await loadGrantManager();
+              } catch (error) {
+                grantStatus.textContent = error.message;
+                revoke.disabled = false;
+              }
+            });
+            card.append(revoke);
+          }
+          grantList.append(card);
+        });
+        if (!grantList.children.length) grantList.textContent = 'No grants have been created.';
+        grantStatus.textContent = data.total + ' grant record(s) · owner-only · exact-resource';
+      } catch (error) {
+        grantStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Grant management is not active yet. The capability D1 migrations and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
+
+    grantCapabilitySelect.addEventListener('change', populateGrantActions);
+    grantForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const actionIds = [...grantActionSelect.selectedOptions].map(option => option.value);
+      if (!actionIds.length) {
+        grantStatus.textContent = 'Select at least one registered action.';
+        return;
+      }
+      let expiresAt;
+      try {
+        expiresAt = new Date(grantExpiresAt.value).toISOString();
+      } catch (error) {
+        grantStatus.textContent = 'Choose a valid grant expiry.';
+        return;
+      }
+      createGrantBtn.disabled = true;
+      grantStatus.textContent = 'Creating exact owner grant…';
+      try {
+        await controlApi('/api/grants', {
+          method: 'POST',
+          body: JSON.stringify({
+            capabilityId: grantCapabilitySelect.value,
+            actionIds,
+            resourceId: grantResourceId.value.trim(),
+            expiresAt,
+          }),
+        });
+        grantStatus.textContent = 'Grant created. It does not bypass any required human approval.';
+        await loadGrantManager();
+      } catch (error) {
+        grantStatus.textContent = error.message;
+      } finally {
+        createGrantBtn.disabled = false;
+      }
+    });
 
     async function loadWorkspaces() {
       workspaceStatus.textContent = 'Loading Project Spaces…';
