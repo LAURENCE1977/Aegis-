@@ -25,8 +25,13 @@ function requireHttpsUrl(value, label) {
   requireText(value, label, 2048);
   let url;
   try { url = new URL(value); } catch { throw new TypeError('Invalid MCP server ' + label); }
-  if (url.protocol !== 'https:' || !url.hostname || url.username || url.password ||
-      url.hostname === 'localhost' || url.hostname.endsWith('.localhost')) {
+  const hostname = url.hostname.toLowerCase();
+  const ipLiteral = hostname.startsWith('[') && hostname.endsWith(']') ||
+    /^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$/.test(hostname);
+  const localHostname = hostname === 'localhost' ||
+    ['.localhost', '.local', '.internal', '.lan', '.home.arpa'].some(suffix => hostname.endsWith(suffix));
+  if (url.protocol !== 'https:' || !hostname || url.username || url.password ||
+      ipLiteral || localHostname) {
     throw new TypeError('Invalid MCP server ' + label);
   }
 }
