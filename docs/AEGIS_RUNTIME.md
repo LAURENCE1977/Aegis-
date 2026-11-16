@@ -152,3 +152,8 @@ Next: add D1/Queue integration tests against a disposable non-production environ
 ### Dead-letter recovery regression coverage
 
 The current DLQ recovery change also covers two edge cases: a running job whose lease has expired is failed with the stable `JOB_DELIVERY_EXHAUSTED` code, while a malformed dead-letter identifier is acknowledged without mutating any job or audit state. A fresh full-suite CI run is required for the latest PR head. The Pages preview does not deploy the separate runtime Worker or apply its D1 migrations.
+
+
+## Durable agent runs
+
+The runtime now has a plan-only agent orchestration extension over the existing `JOBS` Queue, D1 database and Cron. `POST /v1/agent-runs` persists a bounded objective and fixed specialist selection before dispatch; `GET /v1/agent-runs/:id` returns durable plan state. Queue processing creates a deterministic plan only. It does not call a model, run code, invoke tools or perform external writes. Migration `0002_agent_runs.sql` follows the existing runtime jobs migration. Apply it to the same D1 database only as part of an approved deployment.
