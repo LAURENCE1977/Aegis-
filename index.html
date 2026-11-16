@@ -153,6 +153,54 @@
         <div id="forgeFileList" aria-live="polite"></div>
         <h3>Saved source candidates</h3>
         <div id="forgeCandidateList" aria-live="polite"></div>
+        <h3>Knowledge Library</h3>
+        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Only owner-reviewed high/medium evidence can be accepted; accepted records are not yet automatically injected into agent plans.</p>
+        <form class="memory-form" id="forgeKnowledgeForm">
+          <label for="forgeKnowledgeTitle">Knowledge title</label>
+          <input id="forgeKnowledgeTitle" maxlength="200" required placeholder="A clear, reusable finding" />
+          <label for="forgeKnowledgeDomain">Domain slug</label>
+          <input id="forgeKnowledgeDomain" maxlength="80" pattern="[a-z0-9]+(-[a-z0-9]+)*" required placeholder="e.g. coding-agents" />
+          <label for="forgeKnowledgeType">Knowledge type</label>
+          <select id="forgeKnowledgeType" required>
+            <option value="research">Research</option>
+            <option value="practice">Practice</option>
+            <option value="standard">Standard</option>
+            <option value="benchmark">Benchmark</option>
+            <option value="pattern">Pattern</option>
+            <option value="technique">Technique</option>
+          </select>
+          <label for="forgeKnowledgeEvidence">Evidence level</label>
+          <select id="forgeKnowledgeEvidence" required>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="experimental">Experimental</option>
+          </select>
+          <label for="forgeKnowledgeSummary">Finding / summary</label>
+          <textarea id="forgeKnowledgeSummary" rows="4" maxlength="4000" required placeholder="What did the evidence establish?"></textarea>
+          <label for="forgeKnowledgeSources">Sources (JSON array with url, title and attribution)</label>
+          <textarea id="forgeKnowledgeSources" rows="4" required placeholder='[{"url":"https://example.org/paper","title":"Paper title","attribution":"Author / organisation"}]'></textarea>
+          <label for="forgeKnowledgeLimitations">Limitations (one per line)</label>
+          <textarea id="forgeKnowledgeLimitations" rows="3" placeholder="What this evidence does not establish"></textarea>
+          <label for="forgeKnowledgeCapabilities">Applicable capabilities (one per line, e.g. code.test)</label>
+          <textarea id="forgeKnowledgeCapabilities" rows="3" placeholder="benchmark.compare"></textarea>
+          <button id="forgeKnowledgeSaveBtn" type="submit">Save as draft</button>
+        </form>
+        <div class="memory-actions">
+          <input id="forgeKnowledgeQuery" maxlength="120" placeholder="Search accepted knowledge…" />
+          <select id="forgeKnowledgeFilter" aria-label="Knowledge record status">
+            <option value="accepted">Accepted</option>
+            <option value="all">All statuses</option>
+            <option value="draft">Drafts</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="superseded">Superseded</option>
+          </select>
+          <button id="forgeKnowledgeSearchBtn" class="secondary" type="button">Search library</button>
+        </div>
+        <label for="forgeKnowledgeReviewNote">Owner review note (at least 10 characters before changing status)</label>
+        <textarea id="forgeKnowledgeReviewNote" rows="2" maxlength="1000" placeholder="Explain what you checked, evidence quality and remaining limitations."></textarea>
+        <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
+        <div id="forgeKnowledgeList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
@@ -383,6 +431,23 @@
     const forgeStatus = document.getElementById('forgeStatus');
     const forgeFileList = document.getElementById('forgeFileList');
     const forgeCandidateList = document.getElementById('forgeCandidateList');
+    const forgeKnowledgeForm = document.getElementById('forgeKnowledgeForm');
+    const forgeKnowledgeTitle = document.getElementById('forgeKnowledgeTitle');
+    const forgeKnowledgeDomain = document.getElementById('forgeKnowledgeDomain');
+    const forgeKnowledgeType = document.getElementById('forgeKnowledgeType');
+    const forgeKnowledgeEvidence = document.getElementById('forgeKnowledgeEvidence');
+    const forgeKnowledgeSummary = document.getElementById('forgeKnowledgeSummary');
+    const forgeKnowledgeSources = document.getElementById('forgeKnowledgeSources');
+    const forgeKnowledgeLimitations = document.getElementById('forgeKnowledgeLimitations');
+    const forgeKnowledgeCapabilities = document.getElementById('forgeKnowledgeCapabilities');
+    const forgeKnowledgeSaveBtn = document.getElementById('forgeKnowledgeSaveBtn');
+    const forgeKnowledgeQuery = document.getElementById('forgeKnowledgeQuery');
+    const forgeKnowledgeFilter = document.getElementById('forgeKnowledgeFilter');
+    const forgeKnowledgeSearchBtn = document.getElementById('forgeKnowledgeSearchBtn');
+    const forgeKnowledgeReviewNote = document.getElementById('forgeKnowledgeReviewNote');
+    const forgeKnowledgeStatus = document.getElementById('forgeKnowledgeStatus');
+    const forgeKnowledgeList = document.getElementById('forgeKnowledgeList');
+
     const forgeFilePreview = document.getElementById('forgeFilePreview');
     const forgePreviewTitle = document.getElementById('forgePreviewTitle');
     const workspaceSection = document.getElementById('workspaceSection');
@@ -753,7 +818,7 @@
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
-      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
@@ -1843,6 +1908,167 @@
         forgeCandidateList.className = 'memory-empty';
       }
     }
+
+    async function loadForgeKnowledge() {
+      forgeKnowledgeList.replaceChildren();
+      forgeKnowledgeStatus.textContent = 'Loading Knowledge Library…';
+      const params = new URLSearchParams();
+      if (forgeKnowledgeQuery.value.trim()) params.set('q', forgeKnowledgeQuery.value.trim());
+      params.set('status', forgeKnowledgeFilter.value);
+      try {
+        const data = await controlApi('/api/forge/knowledge?' + params.toString());
+        const records = Array.isArray(data.records) ? data.records : [];
+        forgeKnowledgeStatus.textContent = records.length + ' record(s) · ' + forgeKnowledgeFilter.value + ' status filter.';
+        if (!records.length) {
+          forgeKnowledgeList.textContent = 'No matching knowledge records. New submissions are saved as drafts.';
+          forgeKnowledgeList.className = 'memory-empty';
+          return;
+        }
+        forgeKnowledgeList.className = '';
+        records.forEach(record => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const heading = document.createElement('h4');
+          heading.textContent = record.title;
+          const meta = document.createElement('p');
+          meta.textContent = record.status + ' · ' + record.domain + ' · ' +
+            record.knowledgeType + ' · evidence: ' + record.evidenceLevel + ' · v' + record.version;
+          const summary = document.createElement('p');
+          summary.textContent = record.summary;
+          const sourceSummary = document.createElement('p');
+          sourceSummary.textContent = 'Sources: ' + record.sources.map(source =>
+            source.title + ' — ' + source.attribution
+          ).join(' · ');
+          const limits = document.createElement('p');
+          limits.textContent = 'Limitations: ' + (record.limitations || []).join(' · ');
+          const capabilities = document.createElement('p');
+          capabilities.textContent = 'Capabilities: ' + (record.applicableCapabilities || []).join(', ');
+          item.append(heading, meta, summary, sourceSummary, limits, capabilities);
+
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'Knowledge history';
+          historyButton.addEventListener('click', async () => {
+            const existing = item.querySelector('.knowledge-history');
+            if (existing) { existing.remove(); return; }
+            const history = document.createElement('ol');
+            history.className = 'memory-history knowledge-history';
+            const loading = document.createElement('li');
+            loading.textContent = 'Loading knowledge history…';
+            history.append(loading);
+            item.append(history);
+            try {
+              const result = await controlApi('/api/forge/knowledge/' + encodeURIComponent(record.id) + '/events');
+              history.replaceChildren();
+              (result.events || []).forEach(event => {
+                const entry = document.createElement('li');
+                entry.textContent = event.eventType + ' · ' +
+                  (event.fromStatus || 'new') + ' → ' + event.toStatus +
+                  ' · ' + new Date(event.occurredAt).toLocaleString();
+                history.append(entry);
+              });
+              if (!history.children.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'No history recorded.';
+                history.append(empty);
+              }
+            } catch (error) {
+              history.textContent = error.message;
+            }
+          });
+          item.append(historyButton);
+
+          const nextStatus = record.status === 'draft' ? 'reviewed'
+            : record.status === 'reviewed' && ['high', 'medium'].includes(record.evidenceLevel) ? 'accepted'
+            : record.status === 'accepted' ? 'superseded' : null;
+          if (nextStatus) {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed'
+              : nextStatus === 'accepted' ? 'Accept evidence' : 'Supersede record';
+            reviewButton.addEventListener('click', async () => {
+              const reviewNote = forgeKnowledgeReviewNote.value.trim();
+              if (reviewNote.length < 10) {
+                forgeKnowledgeStatus.textContent = 'Add an owner review note of at least 10 characters first.';
+                forgeKnowledgeReviewNote.focus();
+                return;
+              }
+              reviewButton.disabled = true;
+              try {
+                await controlApi('/api/forge/knowledge/' + encodeURIComponent(record.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: nextStatus,
+                    reviewNote,
+                    expectedUpdatedAt: record.updatedAt,
+                  }),
+                });
+                forgeKnowledgeReviewNote.value = '';
+                await loadForgeKnowledge();
+              } catch (error) {
+                forgeKnowledgeStatus.textContent = error.message;
+                reviewButton.disabled = false;
+              }
+            });
+            item.append(reviewButton);
+          } else if (record.status === 'reviewed' && !['high', 'medium'].includes(record.evidenceLevel)) {
+            const note = document.createElement('p');
+            note.textContent = 'Not eligible for acceptance: evidence must be high or medium.';
+            item.append(note);
+          }
+          forgeKnowledgeList.append(item);
+        });
+      } catch (error) {
+        forgeKnowledgeStatus.textContent = error.message.includes('not configured')
+          ? 'Knowledge Library storage is not active yet. The Forge D1 migrations and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        forgeKnowledgeList.className = 'memory-empty';
+      }
+    }
+
+    forgeKnowledgeForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      let sources;
+      try { sources = JSON.parse(forgeKnowledgeSources.value); }
+      catch {
+        forgeKnowledgeStatus.textContent = 'Sources must be a valid JSON array with HTTPS URL, title and attribution.';
+        return;
+      }
+      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      forgeKnowledgeSaveBtn.disabled = true;
+      forgeKnowledgeStatus.textContent = 'Saving a new draft…';
+      try {
+        await controlApi('/api/forge/knowledge', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: forgeKnowledgeTitle.value.trim(),
+            domain: forgeKnowledgeDomain.value.trim(),
+            knowledgeType: forgeKnowledgeType.value,
+            summary: forgeKnowledgeSummary.value.trim(),
+            evidenceLevel: forgeKnowledgeEvidence.value,
+            sources,
+            limitations: splitLines(forgeKnowledgeLimitations.value),
+            applicableCapabilities: splitLines(forgeKnowledgeCapabilities.value),
+          }),
+        });
+        forgeKnowledgeForm.reset();
+        forgeKnowledgeStatus.textContent = 'Draft saved; not accepted or used by agents.';
+        await loadForgeKnowledge();
+      } catch (error) {
+        forgeKnowledgeStatus.textContent = error.message;
+      } finally {
+        forgeKnowledgeSaveBtn.disabled = false;
+      }
+    });
+
+    forgeKnowledgeSearchBtn.addEventListener('click', loadForgeKnowledge);
+    forgeKnowledgeQuery.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        loadForgeKnowledge();
+      }
+    });
 
     async function saveForgeCandidate() {
       if (!forgeRepository) return;
