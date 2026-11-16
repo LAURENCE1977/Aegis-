@@ -6,8 +6,15 @@ import {
   consumeApproval,
 } from './capability-approvals.mjs';
 import { recordCapabilityAudit } from './capability-audit.mjs';
+import { canonicalizeInput, digestCanonicalInput } from './canonical-input.mjs';
 
 const ADAPTER_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
 
 function buildAdapterMap(adapters) {
   if (!adapters || typeof adapters !== 'object' || Array.isArray(adapters)) {
@@ -67,6 +74,12 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
       const key = context?.capabilityId + ':' + context?.actionId;
       const handler = adapterRegistry.get(key);
       if (!handler) throw new Error('Capability adapter is not registered');
+      const canonicalInput = canonicalizeInput(input);
+      const actualDigest = await digestCanonicalInput(input);
+      if (typeof context?.inputDigest !== 'string' || actualDigest !== context.inputDigest) {
+        throw new Error('Adapter input digest does not match the exact invocation input');
+      }
+      const immutableInput = deepFreeze(JSON.parse(canonicalInput));
       const safeContext = Object.freeze({
         invocationId: context.invocationId,
         principalId: context.principalId,
@@ -78,7 +91,7 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
         connectionId: context.connectionId ?? null,
         inputDigest: context.inputDigest,
       });
-      return handler(input, safeContext);
+      return handler(immutableInput, safeContext);
     },
   });
 }
