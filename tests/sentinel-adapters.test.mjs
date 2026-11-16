@@ -72,10 +72,10 @@ test('GitHub adapter rejects arbitrary input fields and non-canonical hosts befo
 
 test('GitHub adapter enforces a bounded response body', async () => {
   const adapters = createBuiltinAdapterRegistry({
-    maxResponseBytes: 16,
-    fetchImpl: async () => new Response('x'.repeat(100), {
+    maxResponseBytes: 1024,
+    fetchImpl: async () => new Response('x'.repeat(2048), {
       status: 200,
-      headers: { 'Content-Length': '100' },
+      headers: { 'Content-Length': '2048' },
     }),
   });
   await assert.rejects(() => adapters['aegis-github-public-discovery:discover']({
