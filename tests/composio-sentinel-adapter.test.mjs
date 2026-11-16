@@ -858,3 +858,39 @@ test('rejects workflow job results belonging to a different run', async () => {
     /exact requested run/i,
   );
 });
+
+
+test('rejects workflow job URLs with query strings or fragments even on the trusted host', async () => {
+  const db = await connectedDb();
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url) => {
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ data: { total_count: 1, jobs: [{
+        id: 55, run_id: 123, name: 'Node tests', status: 'completed', conclusion: 'success',
+        head_sha: 'e'.repeat(40), head_branch: 'main',
+        html_url: 'https://github.com/LAURENCE1977/Aegis-/actions/runs/123/job/55?redirect=attacker#fragment',
+      }] } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  await assert.rejects(
+    adapters['aegis-composio-github-workflow-jobs-readonly:list-workflow-jobs'](
+      { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 123 },
+      {
+        capabilityId: 'aegis-composio-github-workflow-jobs-readonly',
+        actionId: 'list-workflow-jobs',
+        principalId: 'owner',
+        connectionId: [...db.connections.keys()][0],
+        resourceId: 'github:workflow-run:LAURENCE1977/Aegis-/123',
+        scopes: ['github:workflow-jobs:read'],
+      },
+    ),
+    /outside the exact run/i,
+  );
+});
