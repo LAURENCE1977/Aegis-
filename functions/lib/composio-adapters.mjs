@@ -140,6 +140,12 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
       timeoutMs: 8000,
       maxResponseBytes: 64 * 1024,
     });
+    const connected = await client.getGitHubConnectionStatus({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+    });
+    if (!connected) throw new Error('The Composio GitHub account is not active');
+
     const tools = await client.listSessionTools({ sessionId: session.sessionId });
     if (tools.length !== 1 || tools[0] !== TOOL_SLUG) {
       throw new Error('Composio session tool allowlist does not match the approved capability');
