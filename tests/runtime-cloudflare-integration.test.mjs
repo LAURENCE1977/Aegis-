@@ -13,6 +13,7 @@ const migrations = [
   '0005_agent_run_event_listing.sql',
   '0006_agent_run_execution_authorization.sql',
   '0007_agent_run_steps.sql',
+  '0008_agent_run_project_context.sql',
 ];
 
 function splitSqlStatements(sql) {
