@@ -284,7 +284,7 @@ function moduleListGrant() {
 }
 
 function qwenToolDelta(delta) {
-  return 'data: ' + JSON.stringify({ choices: [{ delta }] }) + '\\n\\n';
+  return 'data: ' + JSON.stringify({ choices: [{ delta }] }) + '\n\n';
 }
 
 test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes the audited result', async () => {
@@ -316,18 +316,18 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
           qwenToolDelta({ tool_calls: [{
             index: 0, function: { arguments: '}' },
           }] }),
-          'data: [DONE]\\n\\n',
+          'data: [DONE]\n\n',
         ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
       }
       return new Response(modelSseStream([
         qwenToolDelta({ content: 'I checked AEGIS and found the module catalogue.' }),
-        'data: [DONE]\\n\\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
 
   assert.equal(response.status, 200);
-  const events = (await response.text()).trim().split('\\n\\n').map(frame => JSON.parse(frame.slice(6)));
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.deepEqual(events.filter(event => event.type === 'TEXT_MESSAGE_CONTENT').map(event => event.delta), [
     'I checked AEGIS and found the module catalogue.',
   ]);
@@ -360,7 +360,7 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
       captured = JSON.parse(options.body);
       return new Response(modelSseStream([
         qwenToolDelta({ content: 'Tools are not enabled.' }),
-        'data: [DONE]\\n\\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
