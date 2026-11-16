@@ -85,6 +85,18 @@ test('does not build context for missing or inactive Project Spaces', async () =
   assert.equal(reads, 0);
 });
 
+test('does not attach a Project Space returned for a different owner or identifier', async () => {
+  const wrongOwner = makeBuilder({
+    getWorkspace: async () => ({ ...workspace, ownerId: 'another-owner' }),
+  });
+  const wrongProject = makeBuilder({
+    getWorkspace: async () => ({ ...workspace, id: 'project-b' }),
+  });
+  const db = { prepare() {} };
+  assert.equal(await wrongOwner(db, 'project-a'), null);
+  assert.equal(await wrongProject(db, 'project-a'), null);
+});
+
 test('rejects malformed Project Space identifiers before database access', async () => {
   const builder = makeBuilder();
   await assert.rejects(() => builder({ prepare() {} }, '../private'));
