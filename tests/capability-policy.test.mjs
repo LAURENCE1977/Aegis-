@@ -175,10 +175,10 @@ test('external authentication requires an active connection owned by the princip
   const grant = grantFor(manifest);
   const input = { manifest, actionId: 'discover', principalId, resourceId, inputDigest, grant, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy(input).reasonCode, 'CONNECTION_REQUIRED');
-  const connection = { id: 'conn-1', status: 'active', ownerId: principalId, providerId: 'github' };
+  const connection = { id: 'conn-1', status: 'active', principalId, providerId: 'github' };
   assert.equal(evaluateCapabilityPolicy({ ...input, connection }).allowed, true);
   assert.equal(evaluateCapabilityPolicy({
-    ...input, connection: { ...connection, ownerId: 'other-user' },
+    ...input, connection: { ...connection, principalId: 'other-user' },
   }).reasonCode, 'CONNECTION_INVALID');
 });
 
