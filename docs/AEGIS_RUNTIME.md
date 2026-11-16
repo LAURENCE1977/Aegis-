@@ -293,16 +293,18 @@ References:
 
 CI workflow: `node --test tests/*.test.mjs` on Node.js 22, followed by isolated D1 migration/constraint checks and a Miniflare Worker + D1 + Queue integration test.
 
-At commit `e74c5f41b2ffb7879c545ced832aaebfbff59490`, GitHub Actions run [43907037911](https://github.com/LAURENCE1977/Aegis-/actions/runs/43907037911) completed successfully:
+At commit `a4ac9373ba076a3194b8a0694e6c4fd4b7e3fa1b`, GitHub Actions run [43908042920](https://github.com/LAURENCE1977/Aegis-/actions/runs/43908042920) completed successfully:
 
 - **556 Node.js tests: 555 passed, 0 failed, 1 skipped.** The skipped test is the dedicated integration test, which runs separately with its required emulator flag.
-- **Miniflare integration: 1 passed, 0 failed.** It loads the actual runtime Worker module, applies the runtime D1 migrations to an isolated local D1 database, submits an authenticated agent run through the Worker HTTP endpoint, delivers the message through a local Queue consumer, and verifies the persisted plan, attempt count, ordered audit timeline and idempotent replay.
+- **Miniflare integration: 1 passed, 0 failed.** It loads the actual runtime Worker module, applies all runtime D1 migrations to an isolated local D1 database, submits an authenticated agent run through the Worker HTTP endpoint, delivers the message through a local Queue consumer, and verifies the persisted plan, ordered step records, append-only step events, run audit timeline and idempotent replay.
 - Capability D1 migrations, table/constraint smoke tests, atomic rate-limit reservation, active-grant uniqueness and append-only audit checks passed.
-- Runtime D1 migrations, durable cancellation and append-only event checks passed.
+- Runtime D1 migrations, durable cancellation, step cancellation and append-only event checks passed.
 - Forge migrations, licence gates, immutable source identity and append-only review-event checks passed.
 
 The integration test uses the Cloudflare workerd/Miniflare emulator, not a live Cloudflare account. It proves the Worker/D1/Queue code path in an isolated local runtime; it does **not** prove production resource provisioning, live Cloudflare queue delivery, Cron scheduling, free-tier headroom or a production deployment.
 
-The runtime integration regression also verifies that the initial `created` event is written atomically with the agent-run row. An idempotency-key replay returns the original run and does not append a second creation event.
+Agent-run creation and its initial `created` event are written atomically. Plan completion and all ordered step records/events are committed in one D1 batch. The step ledger has stable run-scoped IDs, plan snapshots, status, attempts, checkpoint/result slots and append-only lifecycle events. Cancellation fences the parent run and marks non-terminal steps cancelled in the same D1 batch. Idempotency-key replay returns the original run and does not append a second creation event. The status endpoint exposes ordered step states to the owner.
+
+These durable step records are a checkpoint foundation only. They remain `planned` until a separately implemented, approved step executor exists; no specialist model, tool or external action is invoked.
 
 The Cloudflare Pages preview remains separate from the dedicated runtime Worker. No production D1 database or Queue has been provisioned, no runtime Worker has been deployed, and no production `AEGIS_JOB_TOKEN` has been configured. Production activation remains gated on account usage review, explicit approval of any resource creation and encrypted secret configuration.
