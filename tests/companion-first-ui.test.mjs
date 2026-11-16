@@ -22,7 +22,7 @@ test('the companion presentation is honest about the avatar runtime and does not
 });
 
 test('the companion stage adapts to narrow screens and respects reduced-motion preferences', () => {
-  assert.match(html, /\.companion-stage[\s\S]*?@media\s*\(max-width:\s*820px\)/);
+  assert.match(html, /\.companion-stage[\s\S]*?@media\s*\(max-width:\s*980px\)/);
   assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
 
