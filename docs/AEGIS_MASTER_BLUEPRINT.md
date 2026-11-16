@@ -391,3 +391,8 @@ The composition root verifies the canonical SHA-256 digest against the exact inp
 ## Forge repository inspection
 
 AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
+
+
+## Owner-controlled capability grants
+
+The owner-only `/api/grants` route provides bounded grant history, creation and revocation. The browser submits only an approved capability ID, registered action IDs, exact resource and expiry; the server fixes the principal/actor to the authenticated owner and derives scopes and capability version from the trusted registry. Caller-supplied principal IDs, actors and scopes are rejected. Grants are exact-resource, wildcard-free and capped at 90 days. Revocation is owner-scoped and preserves history. A grant is not a one-time approval; actions requiring human approval still require a separate exact-operation approval. The API and tests are source-level only until the AEGIS D1 binding and migrations are provisioned and deployed deliberately.
