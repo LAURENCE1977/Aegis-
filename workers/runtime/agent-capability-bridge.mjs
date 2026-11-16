@@ -112,7 +112,7 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
     return { allowed: false, reasonCode: 'INPUT_DIGEST_UNAVAILABLE' };
   }
 
-  const required = ['loadGrant', 'loadConnection', 'loadApproval', 'recordAudit', 'execute'];
+  const required = ['loadGrant', 'loadConnection', 'loadApproval', 'reserveRateLimit', 'recordAudit', 'execute'];
   if (required.some((name) => typeof dependencies[name] !== 'function')) {
     return { allowed: false, reasonCode: 'POLICY_CONTEXT_UNAVAILABLE' };
   }
