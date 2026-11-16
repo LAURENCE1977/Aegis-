@@ -49,3 +49,11 @@ test('the welcome screen has responsive composition, real visual geometry and re
   assert.match(html, /@media\s*\(max-width:\s*820px\)/);
   assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
+
+test('mobile welcome layout hides decorative captions that can collide with the tagline', () => {
+  assert.match(html, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.art-caption\s*\{[^}]*display:\s*none/s);
+});
+
+test('public login status text does not expose deployment secret names', () => {
+  assert.doesNotMatch(html, /Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET/);
+});
