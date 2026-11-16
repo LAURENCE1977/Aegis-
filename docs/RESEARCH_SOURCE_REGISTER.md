@@ -567,3 +567,8 @@ These are three distinct source tracks, not interchangeable products.
 - Latest head `d7a1b28582e4c174e61aeb4011498237ffa29a22` passed GitHub Actions run 43743175694: 212 passed, 0 failed.
 - No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
 - Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
+
+
+## Project Spaces and agent-workspace architecture decision
+
+AEGIS implements a native owner-scoped Project Spaces layer with append-only typed activity events, inspired by agent-workspace patterns. The implementation is independently built; no external workspace runtime is embedded. Preserve the boundaries: AEGIS owns canonical jobs, permissions, approvals, secrets and audit; Project Spaces own project context and timeline. Any future browser, terminal, file or device capability must pass Sentinel, least-privilege policy and human approval for consequential actions.
