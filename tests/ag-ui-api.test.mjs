@@ -490,6 +490,6 @@ test('AG-UI routes the Composio workflow reader through Sentinel and refuses it 
   assert.equal(calls.length, 2);
   assert.match(calls[1].messages.at(-1).content, /GRANT_REQUIRED/);
   assert.equal(db.auditRows.length, 1);
-  assert.equal(db.auditRows[0][5], 'aegis-composio-github-workflow-readonly');
+  assert.equal(db.auditRows[0][4], 'aegis-composio-github-workflow-readonly');
   assert.equal(db.auditRows[0][7], 'github:repository:LAURENCE1977/Aegis-');
 });
