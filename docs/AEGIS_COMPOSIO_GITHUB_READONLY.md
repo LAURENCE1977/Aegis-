@@ -6,8 +6,9 @@ The current Composio GitHub session is deliberately pinned to two read-only tool
 
 - `GITHUB_GET_A_REPOSITORY` — repository metadata for one exact owner/repository.
 - `GITHUB_GET_A_PULL_REQUEST` — metadata for one exact pull request.
+- `GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY` — at most ten workflow-run summaries for one exact repository and optional branch.
 
-No issue comments, workflow execution, repository contents, code writes, branch writes, pull-request writes, shell, MCP, multi-execute, or arbitrary tool discovery is enabled in this session.
+No issue comments, workflow/job log downloads, workflow execution, repository contents, code writes, branch writes, pull-request writes, shell, MCP, multi-execute, or arbitrary tool discovery is enabled in this session.
 
 The Composio API client fixes the backend origin, session ID format, account ID format, tool slugs, request shapes, response byte ceiling, timeout and redirect policy. Provider error bodies and credentials are not returned to callers.
 
@@ -31,9 +32,11 @@ Both actions require the authenticated owner, the exact active Composio connecti
 
 The pull-request normalizer returns only bounded metadata: PR number, title, state, draft/merged flags, GitHub URL, base/head refs and SHAs, and change counts. It deliberately omits PR body text, comments, review text and other untrusted free-form content.
 
+The workflow-run normalizer returns at most ten records, verifies each record's repository and optional branch, and constrains run URLs to the exact GitHub repository. It returns status/conclusion, commit SHA, branch, run number/attempt and timestamps; it deliberately omits commit messages, logs, artifacts and other untrusted free-form content. The Composio client fixes pagination to page 1 and ten records.
+
 ## Existing connection compatibility
 
-Newly created Composio sessions enable both approved read-only tool slugs. An older session created with only repository metadata remains valid for the repository action, but it does not contain the pull-request tool. The owner must reconnect through AEGIS to provision a fresh session before the pull-request action can run. The adapter fails closed rather than dynamically adding tools to an existing session.
+Newly created Composio sessions enable exactly the three approved read-only tool slugs. Older sessions created with only repository metadata remain valid for repository reads; sessions with repository and pull-request tools remain valid for those two actions. Workflow reads require the new workflow tool in the session, so the owner must reconnect through AEGIS to provision a fresh three-tool session before that action can run. The adapter fails closed rather than dynamically adding tools to an existing session.
 
 ## Operational policy
 
