@@ -108,3 +108,8 @@ The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-
 ## Forge candidate review
 
 Forge can persist inspected public repositories as owner-reviewed candidates pinned to a Git tree SHA. Candidates begin unassessed and licence-review-required; owner attestation and evidence are required before reuse/adaptation or approval. D1 triggers enforce the licence gate and append-only history. No repository is installed or executed.
+
+
+## First owner-facing invocation route
+
+`POST /api/sentinel/invoke` exposes exactly one action: `aegis-module-catalogue:list` on resource `aegis:modules` with empty input. It requires a valid owner session, same-origin request, configured AEGIS D1 and an exact active grant. The route derives the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root. It returns output only after the success audit is recorded. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. This is a source-level restricted route, not a general tool endpoint; no external or consequential action is exposed.
