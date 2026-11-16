@@ -572,3 +572,8 @@ These are three distinct source tracks, not interchangeable products.
 ## Project Spaces and agent-workspace architecture decision
 
 AEGIS implements a native owner-scoped Project Spaces layer with append-only typed activity events, inspired by agent-workspace patterns. The implementation is independently built; no external workspace runtime is embedded. Preserve the boundaries: AEGIS owns canonical jobs, permissions, approvals, secrets and audit; Project Spaces own project context and timeline. Any future browser, terminal, file or device capability must pass Sentinel, least-privilege policy and human approval for consequential actions.
+
+
+## Free-Tier Ledger evidence rule
+
+The AEGIS Free-Tier Ledger distinguishes research candidates from verified offers. Candidate records are not current capacity; verification must be recent and supported by official provider pricing and terms. The ledger does not authorize account creation, provisioning, paid overage or provider credential storage.
