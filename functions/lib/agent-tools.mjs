@@ -93,7 +93,7 @@ function parseArguments(name, argumentsText) {
       return {
         capabilityId: 'aegis-github-public-discovery',
         actionId: 'discover',
-        resourceId: 'github:repo:' + repository.owner + '/' + repository.repository,
+        resourceId: 'github:public:' + repository.owner + '/' + repository.repository,
         input: { sourceUrl: repository.canonicalUrl },
       };
     } catch {
