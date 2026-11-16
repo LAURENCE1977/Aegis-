@@ -236,10 +236,10 @@ References:
 
 CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
 
-At commit `5c36daa16378af68b3cee2357d92844983f08c14`, GitHub Actions run [43867919171](https://github.com/LAURENCE1977/Aegis-/actions/runs/43867919171) completed successfully: **509 tests passed, 0 failed**. The same run applied the capability and runtime migrations to an isolated local D1 database and passed the rate-limit, active-grant uniqueness, append-only audit, durable agent-run cancellation/event and Forge licence/source-integrity checks.
+At commit `09189eae9222b11031486f1b54576671a88dea62`, GitHub Actions runs [43870847375](https://github.com/LAURENCE1977/Aegis-/actions/runs/43870847375) and [43870838251](https://github.com/LAURENCE1977/Aegis-/actions/runs/43870838251) both completed successfully: **523 tests passed, 0 failed** in the verified run. Composio independently confirmed both workflow runs and their successful jobs. The same checks applied capability, runtime and Forge migrations to isolated local D1 and passed rate-limit, active-grant uniqueness, append-only audit, durable agent-run cancellation/event and Forge licence/source-integrity verification.
 
-The event timeline tests cover bounded pages, newest-first ordering, timestamp ties, stable cursor continuation and malformed/duplicate query rejection. The migration adds the composite index `(agent_run_id, created_at DESC, event_id DESC)`.
+The suite includes the owner-authenticated agent-run Pages proxy, fixed-path/bounded server-side runtime proxy, plan-only submission controls, event timeline pagination and safe text-only rendering. The event timeline tests cover bounded pages, newest-first ordering, timestamp ties, stable cursor continuation and malformed/duplicate query rejection. The migration adds the composite index `(agent_run_id, created_at DESC, event_id DESC)`.
 
 The Cloudflare Pages preview also deployed successfully for this commit. That preview is the app/site preview only: it does **not** deploy the separate runtime Worker, provision production D1/Queue resources or run a live queue integration test. Production runtime deployment remains gated on explicit configuration, free-tier review and a separate deployment decision.
 
-The suite is source/isolated-D1 evidence, not proof of live Cloudflare Worker + Queue behavior.
+The suite is source/isolated-D1 evidence, not proof of live Cloudflare Worker + Queue behavior. The current agent workforce UI remains explicitly **plan-only**; no specialist model execution or tool execution is enabled.
