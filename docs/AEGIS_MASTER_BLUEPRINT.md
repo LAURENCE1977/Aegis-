@@ -782,3 +782,22 @@ The long-term product must support phone-like software and security updates afte
 - Unit tests specify these rules in `tests/update-policy.test.mjs`.
 
 **Still required before calling this operational:** signed release metadata and trusted-key management, update discovery, artifact download and digest/signature verification, isolated staging, compatibility checks, Sentinel approval and append-only update audit, safe activation, health checks and tested rollback. No unattended updater or live update service is claimed.
+
+
+## 15. Interactive Human Companion
+
+The owner-selected direction is a first-class interactive AI human companion: customisable appearance, primarily full-screen interactive presentation, and both an official recognisable AEGIS persona and user-created companion identities. The companion is an experience/interface layer over the shared AEGIS intelligence core, not a separate chatbot or authority.
+
+The detailed architecture, boundaries, state model, provider-neutral contracts, privacy and Sentinel invariants, free/open-source requirements, delivery sequence and acceptance criteria are defined in [AEGIS Interactive Human Companion Architecture](AEGIS_COMPANION_ARCHITECTURE.md).
+
+Key rules:
+- Keep persona identity separate from appearance, voice, avatar assets, user identity and permissions.
+- User-created companions are profiles, not separate security principals; they cannot acquire or share permissions.
+- Full-screen human interaction is the primary experience, with text, voice-only, compact, invisible and low-resource fallbacks.
+- Camera, microphone, screen and background presence are opt-in, visibly active, purpose-limited and revocable.
+- The companion uses AEGIS governed memory and Sentinel; it has no shadow memory or independent permission authority.
+- No emotional manipulation, false human claims, guilt, possessiveness or dependency-building.
+- No mandatory paid avatar, voice, model, hosting or streaming service. Open, self-hostable and local-first options are preferred.
+- Begin with contracts, threat model and a text-first responsive shell. Do not begin with expensive photorealistic streaming or vendor lock-in.
+
+**Implementation status:** architecture documented; no claim that the avatar, live voice, real-time perception or companion UI is implemented. The next step is to inspect existing client and AG-UI contracts and build the text-first companion shell with profile and presence-state foundations.
