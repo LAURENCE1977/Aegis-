@@ -41,7 +41,7 @@ test('creates a narrowly allowlisted GitHub session with no MCP or broad tool se
   assert.equal(captured.options.headers['x-api-key'], apiKey);
   assert.deepEqual(captured.body.toolkits, { enable: ['github'] });
   assert.deepEqual(captured.body.tools, {
-    github: { enable: ['GITHUB_GET_A_REPOSITORY', 'GITHUB_GET_A_PULL_REQUEST', 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY'] },
+    github: { enable: ['GITHUB_GET_A_REPOSITORY', 'GITHUB_GET_A_PULL_REQUEST', 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY', 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN'] },
   });
   assert.deepEqual(captured.body.search, { enable: false });
   assert.deepEqual(captured.body.execute, { enable_multi_execute: false });
