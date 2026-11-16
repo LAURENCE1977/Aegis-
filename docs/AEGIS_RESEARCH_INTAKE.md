@@ -97,3 +97,9 @@ Inspected selected repository files on 16 November 2026; this is a targeted revi
 - Kiri: three plausible but materially different projects surfaced: kiri.build (local AI workspace), Yeshwanthyk/kiri (keyboard-first local agent control plane), and david-d25/kiri (Telegram autonomous agent). Need exact intended URL before source review or adoption.
 - Hex Brain: no authoritative repository identity established. Do not substitute open-brain or another memory project based on a name guess.
 - Oracle: ORACLE-org/ORACLE is source-reviewed and appears the strongest match for adaptive agent model routing. Namesakes such as oracle/locus and steipete/oracle remain separate and should not be conflated.
+
+
+### HexBrain — security-intelligence source
+- The matching HexBrain site describes a map of publicly disclosed bug-bounty reports, vulnerability classes/weaknesses, programs, CVEs and public exploit references: https://hexbrainai.com/about.
+- This is not yet a verified source repository. No canonical GitHub repository was identified during this pass.
+- Decision: useful as a defensive security research index for threat taxonomy, test-case ideas and security-review coverage. Do not import exploit payloads or automatically execute tests. Every target remains subject to explicit authorisation and scope; verify CVE facts and original disclosures independently.
