@@ -318,6 +318,78 @@ async function listAgentRunEvents(request, env, runId) {
   });
 }
 
+
+async function listAgentRunEvents(request, env, runId) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  if (!isJobId(runId)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  const run = await env.DB.prepare('SELECT id FROM agent_runs WHERE id = ?').bind(runId).first();
+  if (!run) return json({ error: 'Agent run not found.' }, 404);
+
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(['limit', 'before', 'beforeId']);
+  for (const key of params.keys()) {
+    if (!allowed.has(key) || params.getAll(key).length !== 1) {
+      return json({ error: 'Invalid agent run event query.' }, 400);
+    }
+  }
+  const limitText = params.get('limit') ?? '20';
+  if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText)) {
+    return json({ error: 'Agent run event limit must be between 1 and 50.' }, 400);
+  }
+  const limit = Number(limitText);
+  const before = params.get('before');
+  const beforeId = params.get('beforeId');
+  if ((before === null) !== (beforeId === null)) {
+    return json({ error: 'Both before and beforeId are required for event pagination.' }, 400);
+  }
+  if (before !== null) {
+    const time = Date.parse(before);
+    if (!Number.isFinite(time) || new Date(time).toISOString() !== before ||
+        typeof beforeId !== 'string' || !/^[A-Za-z0-9:_-]{1,180}$/.test(beforeId)) {
+      return json({ error: 'Invalid agent run event cursor.' }, 400);
+    }
+  }
+
+  const result = before === null
+    ? await env.DB.prepare(
+      'SELECT event_id, event_type, detail_json, created_at FROM agent_run_events WHERE agent_run_id = ? ORDER BY created_at DESC, event_id DESC LIMIT ?'
+    ).bind(runId, limit + 1).all()
+    : await env.DB.prepare(
+      'SELECT event_id, event_type, detail_json, created_at FROM agent_run_events WHERE agent_run_id = ? AND (created_at < ? OR (created_at = ? AND event_id < ?)) ORDER BY created_at DESC, event_id DESC LIMIT ?'
+    ).bind(runId, before, before, beforeId, limit + 1).all();
+
+  const rows = result.results || [];
+  const hasMore = rows.length > limit;
+  const visible = rows.slice(0, limit);
+  const events = visible.map((row) => {
+    if (typeof row.event_id !== 'string' || !/^[A-Za-z0-9:_-]{1,180}$/.test(row.event_id) ||
+        typeof row.event_type !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(row.event_type)) {
+      throw new Error('Invalid persisted agent run event.');
+    }
+    let detail = {};
+    if (typeof row.detail_json === 'string' && row.detail_json.length <= 4096) {
+      try {
+        const parsed = JSON.parse(row.detail_json);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) detail = parsed;
+      } catch { /* Keep malformed event detail redacted. */ }
+    }
+    return {
+      id: row.event_id,
+      type: row.event_type,
+      detail,
+      createdAt: row.created_at,
+    };
+  });
+  const last = visible[visible.length - 1];
+  return json({
+    events,
+    nextCursor: hasMore && last
+      ? { before: last.created_at, beforeId: last.event_id }
+      : null,
+  });
+}
+
 async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
@@ -497,6 +569,10 @@ export async function handleRuntimeFetch(request, env) {
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/events')) {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+    const id = url.pathname.slice('/v1/agent-runs/'.length, -'/events'.length);
+    return listAgentRunEvents(request, env, id);
+  }
+  if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/events')) {
     const id = url.pathname.slice('/v1/agent-runs/'.length, -'/events'.length);
     return listAgentRunEvents(request, env, id);
   }
