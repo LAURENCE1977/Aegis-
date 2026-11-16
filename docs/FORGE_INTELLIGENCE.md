@@ -145,3 +145,8 @@ The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.m
 ## Project Spaces and agent collaboration
 
 Use AEGIS Project Spaces as the durable context and activity layer for projects. Keep job identity/state in the existing durable runtime and all permissions in the capability/Sentinel control plane. Agent Teams should be built as governed definitions and task assignments over these existing primitives, not as a second job engine. Workspace events are receipts/context, never proof that an external side effect occurred.
+
+
+## Sentinel mediation foundation
+
+`runSentinelInvocation` is the server-side gate between an agent and an adapter. It must remain the only route to capability execution, with current grants, exact resources, approvals, budget and audit checked for each invocation. The current code is a library primitive only; do not expose generic tool execution until persistent policy stores, secret vault, durable audit, payload binding and isolated adapter/egress controls are composed and tested.
