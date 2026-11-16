@@ -76,14 +76,14 @@ function eventTimestamp(value) {
 }
 
 function jsonSseEvent(event) {
-  return 'data: ' + JSON.stringify(event) + '\\n\\n';
+  return 'data: ' + JSON.stringify(event) + '\n\n';
 }
 
 async function readRuntimeJson(proxy, env, path) {
   const response = await proxy({ env, method: 'GET', path });
   if (!response.ok) return { response };
   const contentType = response.headers.get('Content-Type') || '';
-  if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
     return { response: jsonResponse({ error: 'Agent runtime returned an invalid response.' }, 502) };
   }
   try {
