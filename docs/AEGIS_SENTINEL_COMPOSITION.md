@@ -38,10 +38,17 @@ A source-level owner-authenticated `POST /api/sentinel/invoke` route exists, but
 ## Required next steps before enabling execution
 
 1. Validate migrations 0001–0005 in an isolated, disposable D1 database and add migration/integration coverage.
-2. The owner-only grant API is now source-integrated and its D1 schema is tested locally. Provision the AEGIS D1 binding only after explicit owner approval. Connection lifecycle operations still need an owner-authenticated interface; browser input must never supply owner identity, arbitrary scopes, vault references or secret values.
+2. The owner-only grant API is source-integrated and the D1 schema is tested locally. Provision the AEGIS D1 binding only after explicit owner approval. Connection lifecycle operations still need an owner-authenticated interface; browser input must never supply owner identity, arbitrary scopes, vault references or secret values.
 3. Implement one narrowly scoped, read-only first-party adapter with bounded input/output and fixed host allowlisting.
 4. Add outbound network controls: no redirects to unapproved hosts, private/link-local/loopback addresses or DNS rebinding; enforce request size, timeout, rate and response-size limits.
 5. Keep the fixed read-only route under tests; verify that outcome-audit failure never returns adapter output.
 6. Add a separately reviewed non-production deployment only after local D1 migrations and binding configuration are verified.
 
 Write, delete, arbitrary shell, arbitrary HTTP, arbitrary MCP, browser automation and self-modifying tool execution remain disabled.
+
+
+## Additional fixed adapter: public GitHub metadata
+
+`aegis-github-public-discovery:discover` is implemented in the fixed adapter registry but is not exposed by the owner invocation route. It accepts exactly one canonical `https://github.com/{owner}/{repository}` source URL, then calls only `https://api.github.com`. Redirects are rejected, timeouts are bounded to five seconds and response bodies are capped at 64 KiB while streaming. It returns public repository metadata only; it does not read source files, access private repositories, install packages or execute code.
+
+Do not expose this action until an atomic per-principal/action rate limiter and exact-resource grant validation for `github:repo:{owner}/{repository}` are implemented and tested. No public route currently selects this adapter.
