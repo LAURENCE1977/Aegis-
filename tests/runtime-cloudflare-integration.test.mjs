@@ -25,7 +25,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     scriptPath: new URL('../workers/runtime/index.mjs', import.meta.url).pathname,
     modules: true,
     compatibilityDate: '2026-08-06',
-    resourcePersistencePath: new URL('../.wrangler/test-runtime-d1/v3', import.meta.url).pathname,
+    d1Persist: new URL('../.wrangler/test-runtime-d1/v3/d1', import.meta.url).pathname,
     bindings: {
       AEGIS_JOB_TOKEN: token,
       AGENT_RUNS_ENABLED: 'true',
