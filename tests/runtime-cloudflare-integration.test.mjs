@@ -60,7 +60,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     const db = await mf.getD1Database('DB');
     for (const migration of migrationFiles) {
       const sql = await readFile(new URL('../migrations/runtime/' + migration, import.meta.url), 'utf8');
-      await db.exec(sql);
+      // D1 manages foreign-key enforcement; its SQL API intentionally rejects PRAGMA statements.\n      await db.exec(sql.replace(/^\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*;\\s*/gim, ''));
     }
 
     const response = await mf.dispatchFetch('https://runtime.test/v1/agent-runs', {
