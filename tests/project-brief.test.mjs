@@ -69,3 +69,14 @@ test('project brief prioritizes decisions and stays inside a hard character budg
   assert.ok(brief.budget.truncated);
   assert.ok(brief.budget.omittedMemories>0 || brief.budget.omittedEvents>0);
 });
+
+test('reports truncation when a single accepted memory exceeds the per-item text cap', () => {
+  const brief = buildProjectBrief({
+    workspace,
+    memories: [memory({ content: 'x'.repeat(1800) })],
+    maxChars: 6000,
+    now: Date.parse('2026-11-15T12:00:00.000Z'),
+  });
+  assert.equal(brief.memories[0].content.length, 1200);
+  assert.equal(brief.budget.truncated, true);
+});
