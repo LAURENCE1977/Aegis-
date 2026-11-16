@@ -175,7 +175,12 @@
         </form>
         <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
         <div id="grantList" aria-live="polite"></div>
-        <p class="memory-help">No grants are created by this inventory; the controls above manage them separately. No capability is invoked from this screen. Revoking a grant blocks future Sentinel policy checks.</p>
+        <h3>Sentinel read-only test</h3>
+        <p class="memory-help">This manual test invokes only the local module catalogue. It requires an active exact-resource grant and records the invocation in Sentinel's audit trail.</p>
+        <button id="invokeModuleCatalogueBtn" type="button">Run module catalogue through Sentinel</button>
+        <p class="status" id="sentinelInvokeStatus" role="status" aria-live="polite">No invocation run yet.</p>
+        <pre id="sentinelInvokeOutput" class="forge-preview" hidden></pre>
+        <p class="memory-help">No grants are created by this inventory; the controls above manage them separately. Revoking a grant blocks future Sentinel policy checks.</p>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -240,6 +245,9 @@
     const createGrantBtn = document.getElementById('createGrantBtn');
     const grantStatus = document.getElementById('grantStatus');
     const grantList = document.getElementById('grantList');
+    const invokeModuleCatalogueBtn = document.getElementById('invokeModuleCatalogueBtn');
+    const sentinelInvokeStatus = document.getElementById('sentinelInvokeStatus');
+    const sentinelInvokeOutput = document.getElementById('sentinelInvokeOutput');
     let securityCapabilities = [];
     const forgeSection = document.getElementById('forgeSection');
     const forgeForm = document.getElementById('forgeForm');
@@ -809,6 +817,31 @@
           : error.message;
       }
     }
+
+    invokeModuleCatalogueBtn.addEventListener('click', async () => {
+      invokeModuleCatalogueBtn.disabled = true;
+      sentinelInvokeOutput.hidden = true;
+      sentinelInvokeStatus.textContent = 'Checking grant and invoking through Sentinel…';
+      try {
+        const result = await controlApi('/api/sentinel/invoke', {
+          method: 'POST',
+          body: JSON.stringify({
+            capabilityId: 'aegis-module-catalogue',
+            actionId: 'list',
+            resourceId: 'aegis:modules',
+            input: {},
+          }),
+        });
+        sentinelInvokeOutput.textContent = JSON.stringify(result.output, null, 2);
+        sentinelInvokeOutput.hidden = false;
+        sentinelInvokeStatus.textContent = 'Success · invocation ' + result.invocationId +
+          ' · audited: ' + (result.auditRecorded ? 'yes' : 'no');
+      } catch (error) {
+        sentinelInvokeStatus.textContent = error.message;
+      } finally {
+        invokeModuleCatalogueBtn.disabled = false;
+      }
+    });
 
     grantCapabilitySelect.addEventListener('change', populateGrantActions);
     grantForm.addEventListener('submit', async event => {
