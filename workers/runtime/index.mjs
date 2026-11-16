@@ -1,4 +1,5 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -86,6 +87,8 @@ function parseAgentRun(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     cancelledAt: row.cancelled_at || null,
+    executionAuthorized: Boolean(row.authorization_approval_id && row.execution_authorized_at),
+    executionAuthorizedAt: row.execution_authorized_at || null,
     plan,
     errorCode: row.error_code || null,
   };
@@ -325,6 +328,69 @@ async function listAgentRunEvents(request, env, runId) {
   });
 }
 
+async function authorizeAgentRun(request, env, id) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  if (!/^application\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  const length = Number(request.headers.get('Content-Length') || 0);
+  if (length > 2048) return json({ error: 'Request body is too large.' }, 413);
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  const keys = ['approvalId', 'capabilityId', 'capabilityVersion', 'actionId', 'inputDigest'];
+  if (!body || typeof body !== 'object' || Array.isArray(body) ||
+      Object.keys(body).length !== keys.length || Object.keys(body).some((key) => !keys.includes(key)) ||
+      typeof body.approvalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.approvalId) ||
+      typeof body.capabilityId !== 'string' || typeof body.capabilityVersion !== 'string' ||
+      typeof body.actionId !== 'string' || typeof body.inputDigest !== 'string' ||
+      !/^sha256:[a-f0-9]{64}$/i.test(body.inputDigest)) {
+    return json({ error: 'Invalid execution authorisation binding.' }, 400);
+  }
+  const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'Agent run not found.' }, 404);
+  if (row.cancelled_at || row.status !== 'planned' || !row.plan_json) {
+    return json({ error: 'Only an active planned run can be authorised.' }, 409);
+  }
+  let plan;
+  try { plan = JSON.parse(row.plan_json); } catch {
+    return json({ error: 'Persisted agent plan is invalid.' }, 409);
+  }
+  let expected;
+  try { expected = await buildAgentPlanApprovalBinding(plan, 'owner'); } catch {
+    return json({ error: 'Agent plan does not meet the registered approval policy.' }, 409);
+  }
+  if (body.capabilityId !== expected.capabilityId ||
+      body.capabilityVersion !== expected.capabilityVersion ||
+      body.actionId !== expected.actionId ||
+      body.inputDigest !== expected.inputDigest) {
+    return json({ error: 'Execution authorisation does not match the persisted plan and capability.' }, 409);
+  }
+  if (row.authorization_approval_id && row.authorization_approval_id !== body.approvalId) {
+    return json({ error: 'This run has already consumed a different approval.' }, 409);
+  }
+  const now = new Date().toISOString();
+  const authorised = await env.DB.prepare(`
+    UPDATE agent_runs
+    SET authorization_approval_id = COALESCE(authorization_approval_id, ?),
+        execution_authorized_at = COALESCE(execution_authorized_at, ?),
+        updated_at = ?
+    WHERE id = ? AND status = 'planned' AND cancelled_at IS NULL
+      AND (authorization_approval_id IS NULL OR authorization_approval_id = ?)
+    RETURNING *
+  `).bind(body.approvalId, now, now, id, body.approvalId).first();
+  if (!authorised) return json({ error: 'Agent run changed before authorisation could be recorded.' }, 409);
+  await auditAgentRun(env, id, 'execution_authorized', {
+    approvalId: body.approvalId,
+    capabilityId: expected.capabilityId,
+    capabilityVersion: expected.capabilityVersion,
+    actionId: expected.actionId,
+    inputDigest: expected.inputDigest,
+  }, 'execution-authorized:' + id + ':' + body.approvalId);
+  return json({ run: parseAgentRun(authorised), authorised: true, executionStarted: false });
+}
+
 async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
@@ -501,6 +567,10 @@ export async function handleRuntimeFetch(request, env) {
     return cancelAgentRun(env, id);
   }
   if (request.method === 'GET' && url.pathname === '/v1/agent-runs') return listAgentRuns(request, env);
+  if (request.method === 'POST' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/authorize')) {
+    const id = url.pathname.slice('/v1/agent-runs/'.length, -'/authorize'.length);
+    return authorizeAgentRun(request, env, id);
+  }
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/events')) {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
