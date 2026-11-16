@@ -3,6 +3,7 @@ const SESSION_ID_PATTERN = /^trs_[A-Za-z0-9_-]{6,128}$/;
 const ACCOUNT_ID_PATTERN = /^ca_[A-Za-z0-9_-]{6,128}$/;
 const TOOL_SLUG = 'GITHUB_GET_A_REPOSITORY';
 const PULL_REQUEST_TOOL_SLUG = 'GITHUB_GET_A_PULL_REQUEST';
+const WORKFLOW_RUNS_TOOL_SLUG = 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY';
 const MAX_API_KEY_LENGTH = 4096;
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024;
@@ -177,7 +178,7 @@ export function createComposioClient({
         body: {
           user_id: userId,
           toolkits: { enable: ['github'] },
-          tools: { github: { enable: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG] } },
+          tools: { github: { enable: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG, WORKFLOW_RUNS_TOOL_SLUG] } },
           manage_connections: { enable: false },
           workbench: { enable: false },
           search: { enable: false },
@@ -275,6 +276,54 @@ export function createComposioClient({
       return slugs;
     },
 
+
+
+    async executeGitHubListWorkflowRuns({
+      sessionId, owner, repo, branch, connectedAccountId,
+    } = {}) {
+      requireSessionId(sessionId);
+      validateRepositoryPart(owner, 'owner', /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/);
+      validateRepositoryPart(repo, 'repository name', /^[A-Za-z0-9_.-]{1,100}$/);
+      if (branch !== undefined &&
+          (typeof branch !== 'string' || branch.length < 1 || branch.length > 128 ||
+           !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch) ||
+           branch.includes('..') || branch.includes('//'))) {
+        throw new TypeError('Invalid GitHub workflow branch');
+      }
+      if (connectedAccountId !== undefined &&
+          (typeof connectedAccountId !== 'string' || !ACCOUNT_ID_PATTERN.test(connectedAccountId))) {
+        throw new TypeError('Invalid Composio connected-account ID');
+      }
+      const arguments_ = {
+        owner,
+        repo,
+        ...(branch === undefined ? {} : { branch }),
+        page: 1,
+        per_page: 10,
+      };
+      const result = await requestJson(
+        '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId) + '/execute',
+        {
+          method: 'POST',
+          body: {
+            tool_slug: WORKFLOW_RUNS_TOOL_SLUG,
+            arguments: arguments_,
+            ...(connectedAccountId === undefined ? {} : { account: connectedAccountId }),
+          },
+        },
+      );
+      if (result.error !== undefined && result.error !== null && result.error !== '') {
+        throw new Error('Composio GitHub workflow run lookup failed');
+      }
+      if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data) ||
+          !Number.isSafeInteger(result.data.total_count) || result.data.total_count < 0 ||
+          !Array.isArray(result.data.workflow_runs) || result.data.workflow_runs.length > 10) {
+        throw new Error('Composio returned an invalid workflow run result');
+      }
+      const logId = typeof result.log_id === 'string' &&
+        /^[A-Za-z0-9_-]{1,128}$/.test(result.log_id) ? result.log_id : null;
+      return { data: result.data, logId };
+    },
 
     async executeGitHubGetPullRequest({
       sessionId, owner, repo, pullNumber, connectedAccountId,
