@@ -803,3 +803,21 @@ Key rules:
 - Begin with contracts, threat model and a text-first responsive shell. Do not begin with expensive photorealistic streaming or vendor lock-in.
 
 **Implementation status:** architecture documented; no claim that the avatar, live voice, real-time perception or companion UI is implemented. The next step is to inspect existing client and AG-UI contracts and build the text-first companion shell with profile and presence-state foundations.
+
+
+## 16. AEGIS Security Suite
+
+The Security Suite is now a formal architectural pillar. Its threat model, product areas, platform boundaries, trust model, delivery gates and acceptance principles are defined in [AEGIS Security Suite — Architecture and Threat Model](AEGIS_SECURITY_SUITE.md).
+
+The suite covers the Security Centre, account/session protection, device posture, network privacy, separate privacy-VPN and private-mesh use cases, threat detection, secure development/Security Guardian, and recovery/resilience.
+
+**Architecture constraints:**
+- Sentinel remains the only authority for permissions, scopes, approvals, revocation and consequential actions; Vault owns secrets; Forge owns REA and isolated tool evaluation.
+- Use established VPN protocols and OS facilities; do not invent cryptography or promise anonymity.
+- A privacy/exit VPN and a private device mesh are different products and must have distinct contracts and UI.
+- No mandatory paid VPN, hosted scanner, API or subscription. Commercial providers remain optional adapters.
+- iOS/iPadOS and ChromeOS capabilities are restricted; show real platform support and coverage rather than implying full antivirus, firewall or kill-switch access.
+- Read-only and on-demand by default. No covert surveillance, unauthorised scanning, packet-content collection or autonomous destructive remediation.
+- All external tools undergo the mandatory REA standard; all code changes follow TDD and require tests, resource measurements and rollback evidence.
+
+**Status:** architecture accepted and documented. No VPN, endpoint agent, scanner or Security Guardian feature is claimed as implemented. Research and documentation do not increase feature-completion percentage.
