@@ -88,3 +88,8 @@ The repository includes source-level capability grants, provider connection meta
 ## Durable agent orchestration
 
 AEGIS has a plan-only durable specialist-run workflow on the existing runtime Worker and Queue. It stores objectives, idempotency and plans in D1; it does not run LLM agents or tools. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md). Production activation requires the D1 migration and explicit `AGENT_RUNS_ENABLED=true` configuration.
+
+
+## Trusted Sentinel composition root
+
+`functions/lib/sentinel-composition.mjs` binds the persistent grant, connection, exact approval, atomic consumption and append-only audit stores to the Sentinel gate. A fixed server-side adapter registry currently contains one local read-only module-catalogue adapter. This is not a public invocation route and does not resolve secrets or enable external effects. The trusted caller must validate input and derive the exact digest with `digestCanonicalInput`. See [AEGIS Sentinel composition](AEGIS_SENTINEL_COMPOSITION.md).
