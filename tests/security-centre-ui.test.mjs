@@ -110,3 +110,10 @@ test('agent workforce shows persisted authorisation and prevents duplicate appro
   assert.match(html, /run\.executionAuthorized \? ' · owner approval consumed; authorisation recorded' : ''/);
   assert.match(html, /run\.executionAuthorized === true/);
 });
+
+test('Agent Workforce prepares a separate exact-resource grant before owner approval', () => {
+  assert.match(html, /id="agentRunPrepareGrantBtn"/);
+  assert.match(html, /agentRunPrepareGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /'agent-run:' \+ selectedAgentRunId/);
+  assert.match(html, /prepareExactComposioGrant\(\s*'aegis-agent-run',\s*'approve-execution'/);
+});
