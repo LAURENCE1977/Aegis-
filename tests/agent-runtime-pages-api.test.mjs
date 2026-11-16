@@ -4,6 +4,7 @@ import { createSessionToken } from '../functions/lib/auth.mjs';
 import { createAgentRuntimeProxy } from '../functions/lib/agent-runtime-proxy.mjs';
 import { createAgentRunsHandlers } from '../functions/api/agent-runs.js';
 import {
+  createAgentRunAgUiHandlers,
   createAgentRunCancelHandlers,
   createAgentRunDetailHandlers,
   createAgentRunEventsHandlers,
@@ -150,4 +151,135 @@ test('agent run cancel route requires same-origin owner action and uses the fixe
   assert.equal(allowed.status, 200);
   assert.equal(captured.path, '/v1/agent-runs/' + id + '/cancel');
   assert.equal(captured.method, 'POST');
+});
+
+
+test('AG-UI replay is owner-only, bounded, and emits a valid terminal 1.0 SSE stream', async () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  const calls = [];
+  const proxy = async (args) => {
+    calls.push(args.path);
+    if (args.path === '/v1/agent-runs/' + id) {
+      return new Response(JSON.stringify({ run: {
+        id, status: 'planned',
+        createdAt: '2026-11-16T10:00:00.000Z',
+        updatedAt: '2026-11-16T10:00:02.000Z',
+      } }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (args.path === '/v1/agent-runs/' + id + '/events?limit=50') {
+      return new Response(JSON.stringify({
+        events: [{
+          id: 'event-2', type: 'planned',
+          detail: { privatePrompt: 'must not be emitted' },
+          createdAt: '2026-11-16T10:00:02.000Z',
+        }],
+        nextCursor: { before: '2026-11-16T10:00:01.000Z', beforeId: 'event-1' },
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (args.path === '/v1/agent-runs/' + id + '/events?limit=50&before=2026-11-16T10%3A00%3A01.000Z&beforeId=event-1') {
+      return new Response(JSON.stringify({
+        events: [{
+          id: 'event-1', type: 'running',
+          detail: { privateToken: 'must not be emitted' },
+          createdAt: '2026-11-16T10:00:01.000Z',
+        }],
+        nextCursor: null,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    throw new Error('Unexpected runtime path: ' + args.path);
+  };
+  const handlers = createAgentRunAgUiHandlers(proxy);
+  const response = await handlers.onRequestGet({
+    request: await request('/api/agent-runs/' + id + '/ag-ui'),
+    env, params: { id },
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('Content-Type'), /^text\/event-stream/);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store, no-transform');
+  const frames = (await response.text()).trim().split('\n\n');
+  const events = frames.map((frame) => {
+    assert.ok(frame.startsWith('data: '));
+    return JSON.parse(frame.slice(6));
+  });
+  assert.equal(events[0].type, 'RUN_STARTED');
+  assert.equal(events[0].threadId, id);
+  assert.equal(events[0].runId, id);
+  assert.equal(events[0].protocolVersion, '1.0');
+  assert.deepEqual(events.slice(1, 3).map((event) => event.value.eventId), ['event-1', 'event-2']);
+  assert.ok(events.slice(1, 3).every((event) =>
+    event.type === 'CUSTOM' && event.name === 'aegis.agent_run.lifecycle'
+  ));
+  assert.equal(events[3].type, 'RUN_FINISHED');
+  assert.deepEqual(events[3].outcome, { type: 'success' });
+  assert.doesNotMatch(await response.clone().text().catch(() => ''), /privatePrompt|privateToken/);
+  assert.equal(calls.length, 3);
+});
+
+test('AG-UI replay refuses active runs and does not fetch event pages for them', async () => {
+  const id = '00000000-0000-4000-8000-000000000002';
+  let calls = 0;
+  const handlers = createAgentRunAgUiHandlers(async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ run: {
+      id, status: 'running', createdAt: '2026-11-16T10:00:00.000Z',
+    } }), { headers: { 'Content-Type': 'application/json' } });
+  });
+  const response = await handlers.onRequestGet({
+    request: await request('/api/agent-runs/' + id + '/ag-ui'),
+    env, params: { id },
+  });
+  assert.equal(response.status, 409);
+  assert.equal(calls, 1);
+});
+
+test('AG-UI replay maps cancelled and failed runs to their distinct terminal event forms', async () => {
+  const id = '00000000-0000-4000-8000-000000000003';
+  for (const [status, terminalType] of [['cancelled', 'RUN_FINISHED'], ['failed', 'RUN_ERROR']]) {
+    const handlers = createAgentRunAgUiHandlers(async ({ path }) => {
+      if (path === '/v1/agent-runs/' + id) {
+        return new Response(JSON.stringify({ run: {
+          id, status, errorCode: status === 'failed' ? 'JOB_DELIVERY_EXHAUSTED' : null,
+          createdAt: '2026-11-16T10:00:00.000Z',
+        } }), { headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ events: [], nextCursor: null }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const response = await handlers.onRequestGet({
+      request: await request('/api/agent-runs/' + id + '/ag-ui'),
+      env, params: { id },
+    });
+    const frames = (await response.text()).trim().split('\n\n');
+    const terminal = JSON.parse(frames.at(-1).slice(6));
+    assert.equal(terminal.type, terminalType);
+    if (status === 'cancelled') assert.deepEqual(terminal.outcome, { type: 'cancelled' });
+    else {
+      assert.equal(terminal.code, 'JOB_DELIVERY_EXHAUSTED');
+      assert.equal(terminal.message, 'Agent run failed.');
+    }
+  }
+});
+
+test('AG-UI replay rejects unauthenticated, invalid-ID, and unexpected-query requests before proxying', async () => {
+  const id = '00000000-0000-4000-8000-000000000004';
+  let calls = 0;
+  const handlers = createAgentRunAgUiHandlers(async () => { calls += 1; });
+  const unauthenticated = await handlers.onRequestGet({
+    request: await request('/api/agent-runs/' + id + '/ag-ui', { authenticated: false }),
+    env, params: { id },
+  });
+  assert.equal(unauthenticated.status, 401);
+  const invalid = await handlers.onRequestGet({
+    request: await request('/api/agent-runs/not-a-uuid/ag-ui'),
+    env, params: { id: 'not-a-uuid' },
+  });
+  assert.equal(invalid.status, 400);
+  const query = await handlers.onRequestGet({
+    request: await request('/api/agent-runs/' + id + '/ag-ui?raw=1'),
+    env, params: { id },
+  });
+  assert.equal(query.status, 400);
+  assert.equal(calls, 0);
 });
