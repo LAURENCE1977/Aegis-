@@ -160,6 +160,10 @@ async function submitAgentRun(request, env) {
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run could not be persisted.' }, 500);
+  if (row.objective !== submission.objective ||
+      row.specialists_json !== JSON.stringify(submission.specialists)) {
+    return json({ error: 'Idempotency-Key was already used for a different agent run request.' }, 409);
+  }
   if (row.status === 'pending_dispatch') {
     try {
       await env.JOBS.send({ agentRunId: row.id });
