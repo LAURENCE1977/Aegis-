@@ -222,7 +222,7 @@ export async function executeAgentToolCall({
       clock: () => now,
       adapters: {
         ...createBuiltinAdapterRegistry({ fetchImpl }),
-        ...(parsed.capabilityId === 'aegis-composio-github-workflow-readonly'
+        ...(['aegis-composio-github-workflow-readonly', 'aegis-composio-github-workflow-jobs-readonly'].includes(parsed.capabilityId)
           ? createComposioAdapterRegistry({ db, env, fetchImpl })
           : {}),
       },
