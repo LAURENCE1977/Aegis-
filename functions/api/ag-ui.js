@@ -303,6 +303,9 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               db: toolContext.db,
               principalId: "owner",
               fetchImpl: toolContext.fetchImpl,
+              taskId: toolContext.taskId,
+              sessionId: toolContext.sessionId,
+              workerId: "aegis-ag-ui",
             });
             const toolContent = boundedToolResult(toolResult);
             const assistantToolCall = {
@@ -399,6 +402,8 @@ function validateRunInput(input) {
   if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
+  const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+  if (!identifierPattern.test(input.threadId) || !identifierPattern.test(input.runId)) return "Invalid AG-UI thread or run identifier.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
   if (input.tools !== undefined && (!Array.isArray(input.tools) || input.tools.length)) return "Frontend tools are not enabled until Sentinel mediation is connected.";
   if (input.context !== undefined && (!Array.isArray(input.context) || input.context.length)) return "Ambient context is not enabled on this endpoint.";
