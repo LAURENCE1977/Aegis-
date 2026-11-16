@@ -242,7 +242,14 @@ async function submitAgentRun(request, env) {
     }
   }
   const projectId = submission.projectContext?.brief.workspace.id || null;
-  const contextDigest = submission.projectContext?.digest || null;
+  const contextDigest = submission.projectContext
+    ? (submission.projectContext.knowledge === undefined
+      ? submission.projectContext.digest
+      : await digestCanonicalInput({
+        briefDigest: submission.projectContext.digest,
+        knowledgeDigest: submission.projectContext.knowledgeDigest,
+      }))
+    : null;
   const contextJson = submission.projectContext ? JSON.stringify(submission.projectContext) : null;
   const idempotencyKey = request.headers.get('Idempotency-Key');
   if (idempotencyKey && !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
@@ -265,8 +272,7 @@ async function submitAgentRun(request, env) {
   const storedContextDigest = row.context_digest || null;
   if (row.objective !== submission.objective ||
       row.specialists_json !== JSON.stringify(submission.specialists) ||
-      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest ||
-      (row.context_json || null) !== contextJson) {
+      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest) {
     return json({ error: 'Idempotency-Key was already used for a different agent run request.' }, 409);
   }
   if (row.status === 'pending_dispatch') {
@@ -534,7 +540,15 @@ async function processAgentRun(message, env) {
   try {
     const specialists = JSON.parse(row.specialists_json);
     const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
-    if (projectContext && (row.context_digest !== projectContext.digest ||
+    const expectedContextDigest = projectContext
+      ? (projectContext.knowledge === undefined
+        ? projectContext.digest
+        : await digestCanonicalInput({
+          briefDigest: projectContext.digest,
+          knowledgeDigest: projectContext.knowledgeDigest,
+        }))
+      : null;
+    if (projectContext && (row.context_digest !== expectedContextDigest ||
         await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
         (projectContext.knowledge !== undefined &&
           await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
