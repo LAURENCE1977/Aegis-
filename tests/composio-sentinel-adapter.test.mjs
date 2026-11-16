@@ -131,6 +131,11 @@ test('loads the exact owner connection and vault session only after the Sentinel
     env: vaultEnv,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
       if (url.endsWith('/tools?limit=100')) {
         return new Response(JSON.stringify({
           items: [{ slug: 'GITHUB_GET_A_REPOSITORY' }],
@@ -156,10 +161,10 @@ test('loads the exact owner connection and vault session only after the Sentinel
     },
   );
 
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.ok(calls.every((call) => call.url.startsWith('https://backend.composio.dev/')));
   assert.equal(calls[1].options.headers['x-api-key'], vaultEnv.COMPOSIO_API_KEY);
-  assert.deepEqual(JSON.parse(calls[1].options.body), {
+  assert.deepEqual(JSON.parse(calls[2].options.body), {
     tool_slug: 'GITHUB_GET_A_REPOSITORY',
     arguments: { owner: 'octocat', repo: 'Hello-World' },
     account: connectedAccountId,
@@ -210,12 +215,12 @@ test('rejects unexpected tool exposure, extra input fields and missing server se
   const tools = createComposioAdapterRegistry({
     db,
     env: vaultEnv,
-    fetchImpl: async () => new Response(JSON.stringify({
-      items: [
-        { slug: 'GITHUB_GET_A_REPOSITORY' },
-        { slug: 'GITHUB_CREATE_AN_ISSUE' },
-      ],
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    fetchImpl: async (url) => new Response(JSON.stringify(url.includes('/toolkits?toolkits=github')
+      ? { items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }] }
+      : { items: [
+          { slug: 'GITHUB_GET_A_REPOSITORY' },
+          { slug: 'GITHUB_CREATE_AN_ISSUE' },
+        ] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
   });
   await assert.rejects(tools['aegis-composio-github-readonly:get-repository'](
     { owner: 'octocat', repo: 'Hello-World' },
@@ -239,6 +244,6 @@ test('rejects unexpected tool exposure, extra input fields and missing server se
   });
   await assert.rejects(noSecret['aegis-composio-github-readonly:get-repository'](
     { owner: 'octocat', repo: 'Hello-World' },
-    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
+    { capabilityId: 'aegis-composio-github-readonly', actionId: 'get-repository', principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World', scopes: ['github:repository:read'] },
   ), /API key/i);
 });
