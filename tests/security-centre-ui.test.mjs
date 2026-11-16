@@ -37,3 +37,25 @@ test('grant history and invocation output are rendered as text nodes, not HTML',
   assert.match(html, /detail\.textContent\s*=/);
   assert.match(html, /sentinelInvokeOutput\.textContent\s*=/);
 });
+
+
+test('Composio read-only controls expose exact PR, workflow-run and workflow-job grants', () => {
+  for (const id of [
+    'composioPullNumber', 'composioPreparePullRequestGrantBtn', 'composioReadPullRequestBtn',
+    'composioWorkflowBranch', 'composioPrepareWorkflowGrantBtn', 'composioReadWorkflowRunsBtn',
+    'composioWorkflowRunId', 'composioPrepareWorkflowJobsGrantBtn', 'composioReadWorkflowJobsBtn',
+  ]) assert.match(html, new RegExp('id="' + id + '"'));
+  assert.match(html, /controlApi\('\/api\/sentinel\/composio-github-pull-request'/);
+  assert.match(html, /controlApi\('\/api\/sentinel\/composio-github-workflows'/);
+  assert.match(html, /controlApi\('\/api\/sentinel\/composio-github-workflow-jobs'/);
+  assert.match(html, /github:pull-request:/);
+  assert.match(html, /github:workflow-run:/);
+  assert.match(html, /github:repository:/);
+});
+
+test('Composio read-only controls only prepare grants on explicit clicks', () => {
+  assert.match(html, /composioPreparePullRequestGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /composioPrepareWorkflowGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /composioPrepareWorkflowJobsGrantBtn\.addEventListener\('click'/);
+  assert.doesNotMatch(html, /loadComposioStatus\(\)[\s\S]{0,500}createGrant/);
+});
