@@ -333,3 +333,16 @@ test('dead-letter delivery fails a running job only after its lease has expired'
   assert.equal(acked, true);
   assert.equal(DB.events.filter((event) => event.event_type === 'delivery_exhausted').length, 1);
 });
+
+test('dead-letter consumer acknowledges malformed identifiers without touching job state', async () => {
+  const { env, DB } = makeEnv();
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs-dlq',
+    messages: [{ body: { jobId: '../not-a-job-id' }, ack() { acked = true; }, retry() {} }],
+  }, env);
+
+  assert.equal(DB.jobs.size, 0);
+  assert.equal(DB.events.length, 0);
+  assert.equal(acked, true);
+});
