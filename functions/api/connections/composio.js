@@ -107,7 +107,12 @@ export async function onRequestPost({ request, env }) {
 
   let sessionId = null;
   let secretRef = null;
-  const client = createComposioClient({ apiKey: env.COMPOSIO_API_KEY });
+  const callbackOrigin = new URL(request.url).origin;
+  const callbackUrl = new URL('/?composio=connected', request.url).toString();
+  const client = createComposioClient({
+    apiKey: env.COMPOSIO_API_KEY,
+    callbackOrigin,
+  });
   try {
     const existing = await loadConnection(env.AEGIS_DB, {
       principalId: OWNER_ID,
@@ -119,7 +124,7 @@ export async function onRequestPost({ request, env }) {
 
     const session = await client.createReadOnlyGitHubSession({ userId: OWNER_ID });
     sessionId = session.sessionId;
-    const link = await client.createGitHubLink({ sessionId });
+    const link = await client.createGitHubLink({ sessionId, callbackUrl });
 
     const stored = await storeVaultSecret(env.AEGIS_DB, {
       principalId: OWNER_ID,
