@@ -31,3 +31,21 @@ test('the existing chat controls remain present after the companion stage is add
     assert.match(html, new RegExp('id="' + id + '"'));
   }
 });
+
+test('the public sign-in experience is a designed product welcome screen, not a centred legacy form', () => {
+  assert.match(html, /class="welcome-shell"/);
+  assert.match(html, /class="welcome-story"/);
+  assert.match(html, /class="welcome-art"/);
+  assert.match(html, /class="welcome-auth"/);
+  assert.match(html, /id="loginForm"/);
+  assert.match(html, /id="loginPassword"/);
+  assert.match(html, /id="loginStatus"/);
+  assert.match(html, /Built around your life, not the other way around\./);
+});
+
+test('the welcome screen has responsive composition, real visual geometry and reduced-motion support', () => {
+  assert.match(html, /\.welcome-shell[\s\S]*?grid-template-columns/);
+  assert.match(html, /\.welcome-art[\s\S]*?radial-gradient/);
+  assert.match(html, /@media\s*\(max-width:\s*820px\)/);
+  assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+});
