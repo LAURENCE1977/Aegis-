@@ -10,9 +10,10 @@ const envBase = {
 };
 
 class MemoryD1 {
-  constructor(grantRow = null, failAuditAt = 0) {
+  constructor(grantRow = null, rateLimitRow = { request_count: 1 }) {
     this.grantRow = grantRow;
-    this.failAuditAt = failAuditAt;
+    this.rateLimitRow = rateLimitRow;
+    this.failRateLimit = false;
     this.auditRows = [];
     this.prepareCalls = 0;
   }
@@ -24,13 +25,14 @@ class MemoryD1 {
       bind(...values) { this.values = values; return this; },
       async first() {
         if (sql.includes('FROM capability_grants')) return db.grantRow ? { ...db.grantRow } : null;
+        if (sql.includes('INSERT INTO capability_invocation_limits')) {
+          if (db.failRateLimit) throw new Error('rate-limit store unavailable');
+          return db.rateLimitRow;
+        }
         return null;
       },
       async run() {
-        if (sql.includes('INSERT INTO capability_invocation_audit')) {
-          if (db.failAuditAt && db.auditRows.length + 1 >= db.failAuditAt) throw new Error('audit store unavailable');
-          db.auditRows.push(this.values);
-        }
+        if (sql.includes('INSERT INTO capability_invocation_audit')) db.auditRows.push(this.values);
         return { meta: { changes: 1 } };
       },
     };
@@ -151,15 +153,27 @@ test('Sentinel invokes only the granted read-only module adapter and records the
   assert.ok(db.auditRows.every(row => row[1] === body.invocationId));
   assert.equal(JSON.stringify(body).includes('inputDigest'), false);
 });
-
-test('Sentinel invocation does not return adapter output when the outcome audit cannot be persisted', async () => {
-  const db = new MemoryD1(activeGrant(), 3);
+test('Sentinel returns 429 and records a denial when the action budget is exhausted', async () => {
+  const db = new MemoryD1(activeGrant(), null);
   const response = await onRequestPost({
     request: await request(),
     env: { ...envBase, AEGIS_DB: db },
   });
-  assert.equal(response.status, 502);
+  assert.equal(response.status, 429);
   const body = await response.json();
-  assert.equal(body.error, 'The read-only adapter could not complete the request.');
-  assert.equal('output' in body, false);
+  assert.equal(body.reasonCode, 'RATE_LIMITED');
+  assert.equal(db.auditRows.length, 1);
+});
+
+test('Sentinel fails closed with 503 when rate-limit storage is unavailable', async () => {
+  const db = new MemoryD1(activeGrant());
+  db.failRateLimit = true;
+  const response = await onRequestPost({
+    request: await request(),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
+  assert.equal(db.auditRows.length, 1);
 });
