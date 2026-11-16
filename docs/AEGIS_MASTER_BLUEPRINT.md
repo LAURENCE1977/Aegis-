@@ -684,3 +684,12 @@ The UI has explicit buttons to prepare each exact grant and separate buttons to 
 The session is pinned to four fixed read-only GitHub tool slugs. Existing sessions may need owner reconnect to refresh the tool allowlist. Logs, artifacts, dispatch, rerun, cancellation, writes, MCP, shell and arbitrary tool selection remain disabled.
 
 Verification: the full Node/D1/Forge workflow passed for the code/UI commit `1a996add06fe4eebb74a7b0b7b811ec503afc448`; Cloudflare Pages preview deployed successfully. Documentation changes followed in commits `585f6c491c30873898172be2f389a3a67951749c` and `199395832ebddad685aa4c6b5e7419928e22eb95`.
+
+
+### Composio workflow intelligence available to AEGIS agents — 16 November 2026
+
+The server-owned Qwen tool registry now includes `aegis_read_github_workflow_runs`. It accepts only an owner, repository and optional validated branch; AEGIS derives the exact repository resource and invokes the fixed Composio workflow-run adapter through Sentinel. The model cannot choose the Composio tool slug, account, connection, session, URL or permissions. A separate `aegis-composio-github-workflow-readonly` grant with `github:workflow:read` and an active Composio connection are mandatory. No grant means a durable Sentinel denial before provider execution.
+
+AG-UI now passes server environment bindings into the agent tool runner so the Composio adapter can use the server-side API key and encrypted session reference. The browser still cannot supply credentials, tool schemas or permissions. The feature remains subject to the existing explicit agent-tool opt-in and Qwen model allowlist. The tool registry now contains three fixed read-only actions; one tool call per run remains the maximum.
+
+Tests cover tool registration, malformed/extra arguments, exact-resource derivation, denial without a grant, AG-UI tool routing and audit lineage. CI for the current implementation is being verified; do not mark the change complete until Node tests, local D1/Forge checks and Pages preview all finish successfully.
