@@ -618,3 +618,21 @@ The first incremental expansion of the catalogue audit is now implemented on the
 - Documentation: `docs/AEGIS_COMPOSIO_GITHUB_READONLY.md`.
 
 **Not yet implemented:** GitHub Actions workflow/run/job reads, commit and branch intelligence, issue reads, security/CVE feeds, browser execution, Temporal/Trigger.dev comparisons, and provider/monitoring adapters. Each remains a separate reviewable capability; do not widen the current allowlist implicitly.
+
+
+### Composio GitHub Actions read-only monitoring — 16 November 2026
+
+A third fixed read-only Composio GitHub tool is now registered and implemented:
+
+- Tool: `GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY`.
+- Capability: `aegis-composio-github-workflow-readonly`.
+- Action: `list-workflow-runs`.
+- Scope: `github:workflow:read`.
+- Resource: exact repository `github:repository:{owner}/{repo}`.
+- Optional branch filter is validated; pagination is fixed to page 1 and ten results.
+- Output verifies repository identity and branch, restricts URLs to the exact repository, and excludes commit messages, logs, artifacts and arbitrary free-form content.
+- The session allowlist now contains exactly three read-only GitHub tools: repository metadata, pull-request metadata and workflow-run summaries. No write operations, workflow dispatch, job-log download, MCP, shell or multi-execute.
+- Owner reconnect is required to provision the updated three-tool session; older one- and two-tool sessions continue to serve the actions they already contain and fail closed for missing tools.
+- Added client, adapter, capability manifest, endpoint and security tests. The complete Node/D1/Forge workflow and Cloudflare Pages preview passed on commit `98e9402e0be2315d237ab5a638e7a133ca5a27a0`.
+
+**Next CI-monitoring extension:** a separately governed read-only workflow-job summary action, bound to one exact workflow run. Job logs, reruns, dispatch and cancellation remain disabled.
