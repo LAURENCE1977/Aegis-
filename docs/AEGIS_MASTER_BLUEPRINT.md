@@ -359,3 +359,8 @@ Project Spaces provide owner-scoped durable project context and an append-only t
 ## Sentinel invocation gate — source integration
 
 The Sentinel mediation primitive is being ported onto the clean Project Spaces branch as `functions/lib/sentinel.mjs`, with focused tests. Its intended sequence is trusted policy-context loading, exact-manifest policy evaluation, redacted audit, atomic consumption of any one-time human approval, then adapter invocation. It is deliberately not exposed through a public API or agent runtime yet. A complete execution boundary still requires persistent grants and connections, encrypted secret resolution, concrete durable audit, payload digest derivation, isolated adapters and egress enforcement. Source integration is not deployment; no D1 migration or production resource is enabled by this step.
+
+
+## MCP Forge Catalogue — clean-main implementation slice
+
+The metadata-only MCP Forge catalogue is being integrated on a clean branch from current `main`. It validates bounded candidate records, pinned source revisions, licence-review metadata, transport/runtime/auth declarations, explicit egress hosts and per-action effect/risk/scope/approval policy. It exposes defensive-copy list/get/search operations only; it cannot connect, install, approve or execute a server. Source URLs reject IP literals and local/internal hostnames, and the module performs no remote fetch. The ingestion/admission pipeline, persistent storage, advisory scanning, sandbox conformance and Sentinel-connected execution remain separate milestones.
