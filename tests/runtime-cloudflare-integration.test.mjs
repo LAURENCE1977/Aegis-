@@ -113,7 +113,9 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     for (const migration of migrations) {
       const sql = await readFile(new URL('../migrations/runtime/' + migration, import.meta.url), 'utf8');
       // D1 does not permit SQLite PRAGMA statements; Cloudflare manages FK enforcement.
-      for (const statement of splitSqlStatements(sql)) {\n        await db.prepare(statement).run();\n      }
+      for (const statement of splitSqlStatements(sql)) {
+        await db.prepare(statement).run();
+      }
     }
     const schema = await db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
