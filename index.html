@@ -339,6 +339,21 @@
       margin-top: 15px; padding-top: 13px; border-top: 1px solid rgba(160,180,210,.12);
       color: #8298ad; font-size: .68rem; line-height: 1.55;
     }
+    .companion-profile-controls {
+      width: 100%; max-width: 320px; margin-top: 16px; padding-top: 14px;
+      border-top: 1px solid rgba(160,180,210,.12); display: grid; gap: 8px;
+    }
+    .companion-profile-controls label { color: var(--muted-strong); font-size: .72rem; font-weight: 650; }
+    .companion-profile-controls select, .companion-profile-controls input {
+      width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 10px;
+      padding: 10px 11px; color: var(--text); background: rgba(5,10,18,.72);
+    }
+    .companion-profile-create { display: flex; gap: 8px; }
+    .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
+    .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    @media (max-width: 520px) {
+      .companion-profile-controls { max-width: 100%; text-align: left; }
+    }
     #chatSection { display: grid; grid-template-columns: minmax(220px, .76fr) minmax(0, 1.24fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 13px; }
     #chatSection .project-context { grid-column: 2; grid-row: 1; margin: 0; }
     #chatSection .chat-box { grid-column: 2; grid-row: 2; min-height: 330px; max-height: none; margin: 0; }
@@ -661,6 +676,18 @@
           <h2 id="companionTitle">Here with you.</h2>
           <p>One AEGIS, shared across your devices. Talk things through, make plans, explore ideas, or simply take things at your own pace.</p>
           <p class="companion-status" id="companionStatus" aria-live="polite">Companion presentation layer · interactive avatar runtime is in development.</p>
+          <div class="companion-profile-controls" aria-label="Companion profile controls">
+            <label for="companionProfileSelect">Your companion</label>
+            <select id="companionProfileSelect">
+              <option value="aegis" data-companion-profile="aegis">Official AEGIS</option>
+            </select>
+            <label for="customCompanionName">Create a custom companion</label>
+            <div class="companion-profile-create">
+              <input id="customCompanionName" type="text" maxlength="48" autocomplete="off" placeholder="Give your companion a name" />
+              <button id="createCompanionProfile" type="button">Create</button>
+            </div>
+            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Custom profiles stay in this browser session only. Secure account saving is not connected yet.</p>
+          </div>
         </div>
       </section>
         </div>
@@ -1376,6 +1403,62 @@
         await loadMemories();
       } catch (error) { memoryStatus.textContent = error.message; }
       finally { saveMemoryBtn.disabled = false; }
+    });
+
+    // Profile controls alter presentation only. They do not create identities,
+    // permissions, memory stores or Sentinel policy. Until owner-scoped persistence
+    // is implemented, custom profiles intentionally live only in this page session.
+    const companionProfileSelect = document.getElementById('companionProfileSelect');
+    const customCompanionName = document.getElementById('customCompanionName');
+    const createCompanionProfile = document.getElementById('createCompanionProfile');
+    const companionProfileStatus = document.getElementById('companionProfileStatus');
+    const companionTitle = document.getElementById('companionTitle');
+    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'AEGIS' }];
+    const customIdPattern = /^custom-[a-z0-9-]+$/;
+
+    companionProfileSelect.addEventListener('change', () => {
+      const selected = companionProfiles.find(profile => profile.id === companionProfileSelect.value);
+      if (!selected) {
+        companionProfileSelect.value = 'aegis';
+        companionProfileStatus.textContent = 'Unknown profile. Returned to official AEGIS.';
+        return;
+      }
+      companionTitle.textContent = selected.kind === 'official' ? 'Here with you.' : 'Meet ' + selected.displayName + '.';
+      companionProfileStatus.textContent = selected.kind === 'official'
+        ? 'Official AEGIS presentation · one shared AEGIS intelligence and security system.'
+        : selected.displayName + ' is a custom presentation profile · session only, with no separate permissions or memory.';
+    });
+
+    createCompanionProfile.addEventListener('click', () => {
+      const displayName = customCompanionName.value.trim();
+      if (displayName.length < 2 || displayName.length > 48 || /[\\u0000-\\u001f\\u007f]/.test(displayName)) {
+        companionProfileStatus.textContent = 'Choose a name between 2 and 48 characters.';
+        customCompanionName.focus();
+        return;
+      }
+      const slug = displayName.toLowerCase().normalize('NFKD')
+        .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/g, '');
+      const profileId = 'custom-' + (slug || 'companion');
+      if (!customIdPattern.test(profileId) || profileId === 'custom-aegis') {
+        companionProfileStatus.textContent = 'That name cannot be used. Try another.';
+        return;
+      }
+      if (companionProfiles.some(profile => profile.id === profileId)) {
+        companionProfileStatus.textContent = 'A companion with that name already exists in this session.';
+        return;
+      }
+      const profile = { id: profileId, kind: 'custom', displayName };
+      companionProfiles.push(profile);
+      const option = document.createElement('option');
+      option.value = profile.id;
+      option.dataset.companionProfile = profile.id;
+      option.textContent = profile.displayName;
+      companionProfileSelect.appendChild(option);
+      companionProfileSelect.value = profile.id;
+      companionProfileSelect.dispatchEvent(new Event('change'));
+      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account saving is not connected yet.';
+      customCompanionName.value = '';
     });
 
     function showPanel(panel) {
