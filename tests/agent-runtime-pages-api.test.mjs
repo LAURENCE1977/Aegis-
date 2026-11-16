@@ -106,6 +106,79 @@ test('agent run submission forwards only the approved objective and specialist f
   });
 });
 
+test('agent run submission derives Project Space context server-side for the selected project', async () => {
+  let captured;
+  let builderCall;
+  const projectContext = {
+    brief: { schemaVersion: '1.0', workspace: { id: 'project-a' } },
+    digest: 'sha256:' + 'a'.repeat(64),
+  };
+  const db = { prepare() {} };
+  const proxy = async (args) => {
+    captured = args;
+    return new Response(JSON.stringify({ run: { id: 'run-project-1' } }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  const builder = async (database, projectId) => {
+    builderCall = { database, projectId };
+    return projectContext;
+  };
+  const handlers = createAgentRunsHandlers(proxy, builder);
+  const response = await handlers.onRequestPost({
+    request: await request('/api/agent-runs', {
+      method: 'POST', origin: 'https://aegis.example',
+      body: {
+        objective: 'Review the selected project',
+        specialists: ['researcher', 'reviewer'],
+        projectId: 'project-a',
+      },
+    }),
+    env: { ...env, AEGIS_DB: db },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(builderCall, { database: db, projectId: 'project-a' });
+  assert.deepEqual(captured.body, {
+    objective: 'Review the selected project',
+    specialists: ['researcher', 'reviewer'],
+    projectContext,
+  });
+});
+
+test('agent run submission rejects client-supplied context and fails closed for unavailable projects', async () => {
+  let calls = 0;
+  const proxy = async () => { calls += 1; return new Response('{}'); };
+  const handlers = createAgentRunsHandlers(proxy, async () => null);
+  const suppliedContext = await handlers.onRequestPost({
+    request: await request('/api/agent-runs', {
+      method: 'POST', origin: 'https://aegis.example',
+      body: { objective: 'Review', projectContext: { brief: {}, digest: 'sha256:' + '0'.repeat(64) } },
+    }),
+    env,
+  });
+  assert.equal(suppliedContext.status, 400);
+
+  const missingDatabase = await handlers.onRequestPost({
+    request: await request('/api/agent-runs', {
+      method: 'POST', origin: 'https://aegis.example',
+      body: { objective: 'Review', projectId: 'project-a' },
+    }),
+    env,
+  });
+  assert.equal(missingDatabase.status, 503);
+
+  const unavailableProject = await handlers.onRequestPost({
+    request: await request('/api/agent-runs', {
+      method: 'POST', origin: 'https://aegis.example',
+      body: { objective: 'Review', projectId: 'project-a' },
+    }),
+    env: { ...env, AEGIS_DB: { prepare() {} } },
+  });
+  assert.equal(unavailableProject.status, 404);
+  assert.equal(calls, 0);
+});
+
 test('detail and event routes validate run IDs and event cursors before proxying', async () => {
   let calls = 0;
   const proxy = async () => { calls += 1; return new Response('{}'); };
