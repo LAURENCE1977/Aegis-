@@ -242,3 +242,129 @@ test('AG-UI marks a response stopped by the output safety cap as cancelled, not 
   assert.equal(events.at(-1).outcome,'cancelled');
   assert.equal(cancelled,true);
 });
+class AgentToolMemoryD1 {
+  constructor(grantRow) {
+    this.grantRow = grantRow;
+    this.auditRows = [];
+  }
+  prepare(sql) {
+    const db = this;
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async first() {
+        if (sql.includes('FROM capability_grants')) return db.grantRow ? { ...db.grantRow } : null;
+        if (sql.includes('INSERT INTO capability_invocation_limits')) return { request_count: 1 };
+        return null;
+      },
+      async all() { return { results: [] }; },
+      async run() {
+        if (sql.includes('INSERT INTO capability_invocation_audit')) db.auditRows.push(this.values);
+        return { meta: { changes: 1 } };
+      },
+    };
+  }
+}
+
+function moduleListGrant() {
+  const now = Date.now();
+  return {
+    id: 'agent-grant-1',
+    principal_id: 'owner',
+    capability_id: 'aegis-module-catalogue',
+    capability_version: '0.1.0',
+    resource_id: 'aegis:modules',
+    scopes_json: JSON.stringify(['aegis:module-catalogue:read']),
+    status: 'active',
+    created_by: 'owner',
+    created_at: new Date(now - 1000).toISOString(),
+    expires_at: new Date(now + 60_000).toISOString(),
+    revoked_at: null,
+  };
+}
+
+function qwenToolDelta(delta) {
+  return 'data: ' + JSON.stringify({ choices: [{ delta }] }) + '\\n\\n';
+}
+
+test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes the audited result', async () => {
+  const db = new AgentToolMemoryD1(moduleListGrant());
+  const calls = [];
+  const response = await onRequestPost({
+    request: await request(input({
+      messages: [{ id: 'user-1', role: 'user', content: 'List my AEGIS modules.' }],
+    })),
+    env: {
+      ...envBase,
+      AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      const payload = JSON.parse(options.body);
+      calls.push(payload);
+      if (calls.length === 1) {
+        return new Response(modelSseStream([
+          qwenToolDelta({ tool_calls: [{
+            index: 0, id: 'call_123', type: 'function',
+            function: { name: 'aegis_list_modules', arguments: '{' },
+          }] }),
+          qwenToolDelta({ tool_calls: [{
+            index: 0, function: { arguments: '}' },
+          }] }),
+          'data: [DONE]\\n\\n',
+        ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      }
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'I checked AEGIS and found the module catalogue.' }),
+        'data: [DONE]\\n\\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split('\\n\\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.deepEqual(events.filter(event => event.type === 'TEXT_MESSAGE_CONTENT').map(event => event.delta), [
+    'I checked AEGIS and found the module catalogue.',
+  ]);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].tools.map(tool => tool.function.name), [
+    'aegis_list_modules',
+    'aegis_discover_public_github_repository',
+  ]);
+  assert.equal(calls[0].tool_choice, 'auto');
+  assert.equal(calls[1].tools, undefined);
+  assert.deepEqual(calls[1].messages.slice(-2).map(message => message.role), ['assistant', 'tool']);
+  assert.match(calls[1].messages.at(-1).content, /"ok":true/);
+  assert.equal(db.auditRows.length, 3);
+});
+
+test('AG-UI never offers or executes tools unless the owner explicitly enables supported Qwen plus D1', async () => {
+  const db = new AgentToolMemoryD1(moduleListGrant());
+  let captured;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      captured = JSON.parse(options.body);
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'Tools are not enabled.' }),
+        'data: [DONE]\\n\\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(captured.tools, undefined);
+  assert.equal(db.auditRows.length, 0);
+});
