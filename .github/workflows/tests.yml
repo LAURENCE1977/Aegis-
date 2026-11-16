@@ -37,6 +37,8 @@ jobs:
         run: wrangler d1 migrations apply aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1
       - name: Smoke-test all capability tables and constraints
         run: wrangler d1 execute aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1 --file scripts/capability-d1-smoke.sql
+      - name: Verify atomic per-action rate-limit reservation
+        run: wrangler d1 execute aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1 --file scripts/capability-d1-rate-limit.sql
       - name: Verify active-grant uniqueness and append-only audit triggers
         shell: bash
         run: |
