@@ -111,6 +111,14 @@ test('agent workforce shows persisted authorisation and prevents duplicate appro
   assert.match(html, /run\.executionAuthorized === true/);
 });
 
+test('Agent Workforce can bind a run to an owner-selected Project Space memory context', () => {
+  assert.match(html, /id="agentRunProjectId"/);
+  assert.match(html, /agentRunProjectSelect/);
+  assert.match(html, /projectId:\s*agentRunProjectSelect\.value\s*\|\|\s*undefined/);
+  assert.match(html, /for \(const select of \[chatProjectSelect, memoryProjectSelect, agentRunProjectSelect\]\)/);
+  assert.match(html, /server-derived Project Space context/i);
+});
+
 test('Agent Workforce prepares a separate exact-resource grant before owner approval', () => {
   assert.match(html, /id="agentRunPrepareGrantBtn"/);
   assert.match(html, /agentRunPrepareGrantBtn\.addEventListener\('click'/);
