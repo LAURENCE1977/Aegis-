@@ -85,3 +85,10 @@ test('conversation view is a focused workspace separate from the companion home'
   assert.ok(home >= 0 && chat > home, 'home dashboard must precede the focused conversation view');
   assert.match(html, /\.home-dashboard[\s\S]*?@media\s*\(max-width:\s*820px\)/);
 });
+
+
+test('opening the Home dashboard does not move keyboard focus into the hidden conversation composer', () => {
+  const showApp = html.match(/function showApp\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.match(showApp, /showPanel\('home'\)/);
+  assert.doesNotMatch(showApp, /userInput\.focus\(\)/);
+});
