@@ -1,4 +1,5 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -112,10 +113,15 @@ function parseAgentRun(row) {
   try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
   let specialists = [];
   try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
+  let projectContext = null;
+  try { projectContext = row.context_json ? JSON.parse(row.context_json) : null; } catch { projectContext = null; }
   return {
     id: row.id,
     objective: row.objective,
     specialists,
+    projectId: row.project_id || null,
+    hasProjectContext: Boolean(row.context_json),
+    contextDigest: projectContext?.digest || null,
     status: row.cancelled_at ? 'cancelled' : row.status,
     attempts: row.attempts,
     createdAt: row.created_at,
@@ -219,6 +225,19 @@ async function submitAgentRun(request, env) {
   try { submission = validateAgentRunSubmission(input); } catch (error) {
     return json({ error: error.message }, 400);
   }
+  if (submission.projectContext) {
+    try {
+      const expectedDigest = await digestProjectBrief(submission.projectContext.brief);
+      if (expectedDigest !== submission.projectContext.digest) {
+        return json({ error: 'Project context digest does not match its contents.' }, 400);
+      }
+    } catch {
+      return json({ error: 'Project context could not be verified.' }, 400);
+    }
+  }
+  const projectId = submission.projectContext?.brief.workspace.id || null;
+  const contextDigest = submission.projectContext?.digest || null;
+  const contextJson = submission.projectContext ? JSON.stringify(submission.projectContext) : null;
   const idempotencyKey = request.headers.get('Idempotency-Key');
   if (idempotencyKey && !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
     return json({ error: 'Idempotency-Key must be 8–128 safe characters.' }, 400);
@@ -227,8 +246,8 @@ async function submitAgentRun(request, env) {
   const now = new Date().toISOString();
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
-    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now),
+      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at, project_id, context_json) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
+    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now, projectId, contextJson),
     env.DB.prepare(
       "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'created', '{}', ? FROM agent_runs WHERE id = ? ON CONFLICT(event_id) DO NOTHING"
     ).bind(crypto.randomUUID(), now, id),
@@ -237,8 +256,11 @@ async function submitAgentRun(request, env) {
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run could not be persisted.' }, 500);
+  let storedContextDigest = null;
+  try { storedContextDigest = row.context_json ? JSON.parse(row.context_json).digest : null; } catch { storedContextDigest = 'invalid'; }
   if (row.objective !== submission.objective ||
-      row.specialists_json !== JSON.stringify(submission.specialists)) {
+      row.specialists_json !== JSON.stringify(submission.specialists) ||
+      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest) {
     return json({ error: 'Idempotency-Key was already used for a different agent run request.' }, 409);
   }
   if (row.status === 'pending_dispatch') {
@@ -505,7 +527,15 @@ async function processAgentRun(message, env) {
   await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
-    const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
+    const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
+    if (projectContext && await digestProjectBrief(projectContext.brief) !== projectContext.digest) {
+      throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
+    }
+    const plan = createAgentPlan({
+      objective: row.objective,
+      specialists,
+      ...(projectContext ? { projectContext } : {}),
+    }, { runId, createdAt: row.created_at });
     const planJson = JSON.stringify(plan);
     const completedAt = new Date().toISOString();
     const statements = [env.DB.prepare(
