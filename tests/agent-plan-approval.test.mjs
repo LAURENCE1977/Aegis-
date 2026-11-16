@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAgentPlanApprovalBinding } from '../workers/runtime/agent-plan-approval.mjs';
+import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
 
 const plan = {
   runId: '00000000-0000-4000-8000-000000000001',
@@ -15,7 +16,7 @@ test('builds an approval binding for the exact immutable plan digest', async () 
   const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
   assert.equal(binding.principalId, 'owner');
   assert.equal(binding.capabilityId, 'aegis-agent-run');
-  assert.equal(binding.capabilityVersion, '1.0.0');
+  assert.equal(binding.capabilityVersion, '0.1.0');
   assert.equal(binding.actionId, 'approve-execution');
   assert.equal(binding.resourceId, 'agent-run:' + plan.runId);
   assert.match(binding.inputDigest, /^sha256:[a-f0-9]{64}$/);
@@ -48,4 +49,19 @@ test('rejects plans that are not strictly plan-only or contain proposed tools', 
 test('rejects invalid plan identifiers and owner principals', async () => {
   await assert.rejects(() => buildAgentPlanApprovalBinding({ ...plan, runId: '../other' }, 'owner'), /run/i);
   await assert.rejects(() => buildAgentPlanApprovalBinding(plan, ''), /principal/i);
+});
+
+
+test('agent plan approval binding exactly matches the registered critical capability contract', async () => {
+  const manifest = getCapabilityManifest('aegis-agent-run');
+  assert.ok(manifest);
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  assert.equal(binding.capabilityId, manifest.id);
+  assert.equal(binding.capabilityVersion, manifest.version);
+  const action = manifest.actions.find((entry) => entry.id === binding.actionId);
+  assert.ok(action);
+  assert.equal(action.effect, 'execute');
+  assert.equal(action.risk, 'critical');
+  assert.equal(action.approval, 'human-always');
+  assert.deepEqual(action.requiredScopes, ['aegis:agent-run:execute']);
 });
