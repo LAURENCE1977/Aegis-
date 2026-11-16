@@ -221,6 +221,36 @@
           </div>
         </div>
         <pre id="composioOutput" class="forge-preview" hidden></pre>
+        <div id="agentRunSection">
+          <h3>Agent workforce · plan-only</h3>
+          <p class="memory-help">Create and inspect durable specialist plans. This stage does not execute specialist work, call models or invoke tools. Execution remains disabled until the separate Sentinel approval and worker-execution stages are implemented.</p>
+          <form class="memory-form" id="agentRunForm">
+            <label for="agentRunObjective">Objective</label>
+            <textarea id="agentRunObjective" rows="4" maxlength="2000" placeholder="Describe the work you want the AEGIS team to plan…" required></textarea>
+            <p class="memory-help">Choose one or more specialists.</p>
+            <div class="input-area">
+              <label><input id="agentSpecialistResearcher" type="checkbox" checked /> Researcher</label>
+              <label><input id="agentSpecialistPlanner" type="checkbox" /> Planner</label>
+              <label><input id="agentSpecialistEngineer" type="checkbox" checked /> Engineer</label>
+              <label><input id="agentSpecialistSecurity" type="checkbox" /> Security</label>
+              <label><input id="agentSpecialistReviewer" type="checkbox" checked /> Reviewer</label>
+            </div>
+            <button id="agentRunSubmitBtn" type="submit">Create agent plan</button>
+          </form>
+          <div class="memory-actions">
+            <button id="agentRunRefreshBtn" class="secondary" type="button">Refresh run history</button>
+            <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent runtime status has not been checked.</p>
+          </div>
+          <div id="agentRunList" aria-live="polite"></div>
+          <div id="agentRunDetail" hidden>
+            <h4>Selected run</h4>
+            <p class="status" id="agentRunDetailStatus" role="status" aria-live="polite"></p>
+            <button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button>
+            <h4>Append-only event timeline</h4>
+            <ul id="agentRunEvents" class="memory-history" aria-live="polite"></ul>
+            <button id="agentRunLoadOlderEventsBtn" class="secondary" type="button" hidden disabled>Load older events</button>
+          </div>
+        </div>
         <p class="memory-help">Revoking AEGIS access removes its session and vault reference. It does not revoke the upstream GitHub OAuth grant in Composio; disconnect that separately if required.</p>
         <h3>Sentinel read-only test</h3>
         <p class="memory-help">This manual test invokes only the local module catalogue. It requires an active exact-resource grant and records the invocation in Sentinel's audit trail.</p>
@@ -302,6 +332,26 @@
     const composioPrepareWorkflowJobsGrantBtn = document.getElementById('composioPrepareWorkflowJobsGrantBtn');
     const composioReadWorkflowJobsBtn = document.getElementById('composioReadWorkflowJobsBtn');
     const composioReadButtons = [composioReadMetadataBtn, composioReadPullRequestBtn, composioReadWorkflowRunsBtn, composioReadWorkflowJobsBtn];
+    const agentRunForm = document.getElementById('agentRunForm');
+    const agentRunObjective = document.getElementById('agentRunObjective');
+    const agentRunSubmitBtn = document.getElementById('agentRunSubmitBtn');
+    const agentRunRefreshBtn = document.getElementById('agentRunRefreshBtn');
+    const agentRunStatus = document.getElementById('agentRunStatus');
+    const agentRunList = document.getElementById('agentRunList');
+    const agentRunDetail = document.getElementById('agentRunDetail');
+    const agentRunDetailStatus = document.getElementById('agentRunDetailStatus');
+    const agentRunEvents = document.getElementById('agentRunEvents');
+    const agentRunCancelBtn = document.getElementById('agentRunCancelBtn');
+    const agentRunLoadOlderEventsBtn = document.getElementById('agentRunLoadOlderEventsBtn');
+    const agentSpecialistInputs = [
+      ['researcher', document.getElementById('agentSpecialistResearcher')],
+      ['planner', document.getElementById('agentSpecialistPlanner')],
+      ['engineer', document.getElementById('agentSpecialistEngineer')],
+      ['security', document.getElementById('agentSpecialistSecurity')],
+      ['reviewer', document.getElementById('agentSpecialistReviewer')],
+    ];
+    let selectedAgentRunId = null;
+    let agentRunEventCursor = null;
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
     const grantForm = document.getElementById('grantForm');
@@ -804,12 +854,159 @@
         populateGrantCapabilities();
         await loadGrantManager();
         await loadComposioStatus();
+        await loadAgentRuns();
         securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
           (capabilityData.total || 0) + ' capability manifest(s) · registry inventory';
       } catch (error) {
         securityStatus.textContent = error.message;
       }
     }
+
+    function isAgentRunId(value) {
+      return typeof value === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    }
+
+    function renderAgentRunEvents(events, append = false) {
+      if (!append) agentRunEvents.replaceChildren();
+      (events || []).forEach(event => {
+        const item = document.createElement('li');
+        const detail = event.detail && typeof event.detail === 'object'
+          ? JSON.stringify(event.detail)
+          : '{}';
+        item.textContent = (event.type || 'event') + ' · ' +
+          (event.createdAt || 'unknown time') + ' · ' + detail;
+        agentRunEvents.append(item);
+      });
+      if (!agentRunEvents.children.length) agentRunEvents.textContent = 'No lifecycle events recorded.';
+      agentRunLoadOlderEventsBtn.hidden = !agentRunEventCursor;
+      agentRunLoadOlderEventsBtn.disabled = !agentRunEventCursor;
+    }
+
+    async function loadAgentRunEvents(agentRunId, append = false) {
+      if (!isAgentRunId(agentRunId)) return;
+      const query = new URLSearchParams({ limit: '20' });
+      if (append && agentRunEventCursor) {
+        query.set('before', agentRunEventCursor.before);
+        query.set('beforeId', agentRunEventCursor.beforeId);
+      }
+      const data = await controlApi(
+        '/api/agent-runs/' + encodeURIComponent(agentRunId) + '/events?' + query.toString(),
+      );
+      agentRunEventCursor = data.nextCursor || null;
+      renderAgentRunEvents(data.events || [], append);
+    }
+
+    async function loadAgentRun(agentRunId) {
+      if (!isAgentRunId(agentRunId)) return;
+      selectedAgentRunId = agentRunId;
+      agentRunEventCursor = null;
+      agentRunDetail.hidden = false;
+      agentRunDetailStatus.textContent = 'Loading run and event history…';
+      agentRunEvents.replaceChildren();
+      agentRunCancelBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/agent-runs/' + encodeURIComponent(agentRunId));
+        const run = data.run;
+        if (!run || run.id !== agentRunId) throw new Error('Agent runtime returned an invalid run record.');
+        agentRunDetailStatus.textContent = run.status + ' · ' + run.objective +
+          ' · attempts: ' + run.attempts + (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '');
+        agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
+        await loadAgentRunEvents(agentRunId);
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+      }
+    }
+
+    async function loadAgentRuns() {
+      agentRunStatus.textContent = 'Loading recent agent runs…';
+      agentRunList.replaceChildren();
+      try {
+        const data = await controlApi('/api/agent-runs?limit=20');
+        const runs = Array.isArray(data.runs) ? data.runs : [];
+        runs.forEach(run => {
+          if (!isAgentRunId(run.id)) return;
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const title = document.createElement('h4');
+          title.textContent = run.objective || 'Agent run';
+          const state = document.createElement('p');
+          state.textContent = run.status + ' · ' + (run.createdAt || 'unknown time') +
+            ' · attempts: ' + (Number.isFinite(run.attempts) ? run.attempts : 0);
+          const open = document.createElement('button');
+          open.type = 'button';
+          open.className = 'secondary';
+          open.textContent = 'Inspect run';
+          open.addEventListener('click', () => loadAgentRun(run.id));
+          card.append(title, state, open);
+          agentRunList.append(card);
+        });
+        if (!agentRunList.children.length) agentRunList.textContent = 'No agent runs yet.';
+        agentRunStatus.textContent = runs.length + ' recent run(s) · plan-only execution';
+      } catch (error) {
+        agentRunStatus.textContent = error.message;
+        if (/not configured/i.test(error.message)) {
+          agentRunList.textContent = 'The owner-only runtime proxy is ready, but AEGIS_RUNTIME_URL and AEGIS_JOB_TOKEN must be configured server-side before agent runs can be used.';
+        }
+      }
+    }
+
+    async function submitAgentRun(event) {
+      event.preventDefault();
+      const objective = agentRunObjective.value.trim();
+      const specialists = agentSpecialistInputs
+        .filter(([, input]) => input.checked)
+        .map(([role]) => role);
+      if (!objective || objective.length > 2000 || specialists.length < 1 || specialists.length > 5) {
+        agentRunStatus.textContent = 'Enter an objective and select between one and five specialists.';
+        return;
+      }
+      agentRunSubmitBtn.disabled = true;
+      agentRunStatus.textContent = 'Persisting the agent run and queueing its plan…';
+      try {
+        const data = await controlApi('/api/agent-runs', {
+          method: 'POST',
+          body: JSON.stringify({ objective, specialists }),
+        });
+        if (!data.run || !isAgentRunId(data.run.id)) throw new Error('Agent runtime returned an invalid submission.');
+        agentRunStatus.textContent = 'Run created · ' + data.run.id + ' · ' + data.run.status;
+        await loadAgentRuns();
+        await loadAgentRun(data.run.id);
+      } catch (error) {
+        agentRunStatus.textContent = error.message;
+      } finally {
+        agentRunSubmitBtn.disabled = false;
+      }
+    }
+
+    async function cancelAgentRun() {
+      if (!isAgentRunId(selectedAgentRunId) ||
+          !window.confirm('Cancel this agent run? Its current plan and audit history will be retained.')) return;
+      agentRunCancelBtn.disabled = true;
+      agentRunDetailStatus.textContent = 'Cancelling agent run…';
+      try {
+        await controlApi('/api/agent-runs/' + encodeURIComponent(selectedAgentRunId) + '/cancel', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        await loadAgentRuns();
+        await loadAgentRun(selectedAgentRunId);
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+        agentRunCancelBtn.disabled = false;
+      }
+    }
+
+    agentRunForm.addEventListener('submit', submitAgentRun);
+    agentRunRefreshBtn.addEventListener('click', loadAgentRuns);
+    agentRunCancelBtn.addEventListener('click', cancelAgentRun);
+    agentRunLoadOlderEventsBtn.addEventListener('click', async () => {
+      if (!selectedAgentRunId || !agentRunEventCursor) return;
+      agentRunLoadOlderEventsBtn.disabled = true;
+      try { await loadAgentRunEvents(selectedAgentRunId, true); }
+      catch (error) { agentRunDetailStatus.textContent = error.message; }
+      finally { agentRunLoadOlderEventsBtn.disabled = !agentRunEventCursor; }
+    });
 
     function populateGrantCapabilities() {
       grantCapabilitySelect.replaceChildren();
