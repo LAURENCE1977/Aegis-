@@ -123,6 +123,7 @@ test('owner decision endpoint records only explicit approve or deny decisions', 
   assert.equal(decision.id, 'approval-1');
   assert.equal(decision.decision, 'approved');
   assert.equal(decision.decidedBy, 'owner');
+  assert.equal(decision.principalId, 'owner');
 });
 
 test('owner decision endpoint rejects an approval belonging to another principal or capability', async () => {
