@@ -31,9 +31,9 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('UPDATE capability_grants')) {
-          const [revokedAt, id] = v;
+          const [revokedAt, id, principal] = v;
           const row = db.rows.get(id);
-          if (!row || row.status !== 'active') return { meta: { changes: 0 } };
+          if (!row || row.principal_id !== principal || row.status !== 'active') return { meta: { changes: 0 } };
           row.status = 'revoked'; row.revoked_at = revokedAt;
           return { meta: { changes: 1 } };
         }
@@ -112,12 +112,12 @@ test('loads only an exact active, unexpired grant for the requested resource', a
 test('revokes a grant and makes it unavailable to Sentinel loaders', async () => {
   const db = new MemoryD1();
   const grant = await createCapabilityGrant(db, valid, Date.parse('2026-11-15T00:00:00Z'));
-  assert.equal(await revokeCapabilityGrant(db, grant.id, Date.parse('2026-11-16T00:00:00Z')), true);
+  assert.equal(await revokeCapabilityGrant(db, grant.id, 'owner', Date.parse('2026-11-16T00:00:00Z')), true);
   assert.equal(await loadCapabilityGrant(db, {
     principalId: valid.principalId, capabilityId: valid.capabilityId,
     capabilityVersion: valid.capabilityVersion, resourceId: valid.resourceId,
   }, Date.parse('2026-11-17T00:00:00Z')), null);
-  assert.equal(await revokeCapabilityGrant(db, grant.id), false);
+  assert.equal(await revokeCapabilityGrant(db, grant.id, 'owner'), false);
 });
 
 
@@ -143,7 +143,7 @@ test('an owner can reissue a grant after revocation without reviving the old gra
   const db=new MemoryD1();
   const now=Date.parse('2026-11-15T00:00:00Z');
   const original=await createCapabilityGrant(db,valid,now);
-  assert.equal(await revokeCapabilityGrant(db,original.id,now+1000),true);
+  assert.equal(await revokeCapabilityGrant(db,original.id,'owner',now+1000),true);
   const renewed=await createCapabilityGrant(db,{
     ...valid,
     expiresAt:'2027-02-01T00:00:00.000Z',
@@ -166,4 +166,17 @@ test('requires a trusted owner actor and strict input fields', async () => {
   await assert.rejects(() => createCapabilityGrant(new MemoryD1(), {
     ...valid, admin: true,
   }), /field/i);
+});
+test('a principal cannot revoke another owner\'s capability grant', async () => {
+  const db = new MemoryD1();
+  const now = Date.parse('2026-11-15T00:00:00Z');
+  const grant = await createCapabilityGrant(db, valid, now);
+  assert.equal(await revokeCapabilityGrant(db, grant.id, 'other-owner', now + 1000), false);
+  assert.equal(await loadCapabilityGrant(db, {
+    principalId: valid.principalId,
+    capabilityId: valid.capabilityId,
+    capabilityVersion: valid.capabilityVersion,
+    resourceId: valid.resourceId,
+  }, now + 2000).then(Boolean), true);
+  assert.equal(await revokeCapabilityGrant(db, grant.id, 'owner', now + 3000), true);
 });
