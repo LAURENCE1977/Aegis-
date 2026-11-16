@@ -43,14 +43,22 @@ function validContext(context) {
 }
 
 function validatePlan(plan) {
-  if (!plan || typeof plan !== 'object' || Array.isArray(plan) ||
-      !exactKeys(plan, Object.hasOwn(plan, 'context') ? [...PLAN_KEYS, 'context'] : PLAN_KEYS) ||
-      typeof plan.runId !== 'string' || !RUN_ID_PATTERN.test(plan.runId) ||
-      typeof plan.objective !== 'string' || !plan.objective.trim() || plan.objective.length > 2000 ||
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
+    throw new TypeError('Agent plan must be an object.');
+  }
+  if (typeof plan.runId !== 'string' || !RUN_ID_PATTERN.test(plan.runId)) {
+    throw new TypeError('Invalid agent run identifier.');
+  }
+  if (plan.execution !== 'plan-only' || plan.requiresHumanApprovalBeforeExecution !== true) {
+    throw new TypeError('Only human-gated plan-only runs can request approval.');
+  }
+  if (typeof plan.objective !== 'string' || !plan.objective.trim() || plan.objective.length > 2000 ||
       typeof plan.createdAt !== 'string' || !Number.isFinite(Date.parse(plan.createdAt)) ||
-      new Date(plan.createdAt).toISOString() !== plan.createdAt ||
-      plan.execution !== 'plan-only' || plan.requiresHumanApprovalBeforeExecution !== true) {
-    throw new TypeError('Agent plan has an invalid or unexpected structure.');
+      new Date(plan.createdAt).toISOString() !== plan.createdAt) {
+    throw new TypeError('Agent run objective or creation timestamp is invalid.');
+  }
+  if (!exactKeys(plan, Object.hasOwn(plan, 'context') ? [...PLAN_KEYS, 'context'] : PLAN_KEYS)) {
+    throw new TypeError('Agent plan has unexpected or missing fields.');
   }
   if (Object.hasOwn(plan, 'context') && !validContext(plan.context)) {
     throw new TypeError('Agent plan context is invalid.');
@@ -60,12 +68,21 @@ function validatePlan(plan) {
   }
   const specialists = new Set();
   for (const [index, step] of plan.steps.entries()) {
-    if (!exactKeys(step, STEP_KEYS) ||
-        step.id !== plan.runId + ':' + String(index + 1) ||
-        !AGENT_SPECIALISTS.includes(step.specialist) || specialists.has(step.specialist) ||
-        step.status !== 'planned' || !Array.isArray(step.tools) || step.tools.length !== 0 ||
-        step.output !== null) {
-      throw new TypeError('Agent plan step structure or specialist is invalid.');
+    if (!step || typeof step !== 'object' || Array.isArray(step)) {
+      throw new TypeError('Agent plan step must be an object.');
+    }
+    if (!exactKeys(step, STEP_KEYS)) {
+      throw new TypeError('Agent plan step has unexpected or missing fields.');
+    }
+    if (step.id !== plan.runId + ':' + String(index + 1) ||
+        !AGENT_SPECIALISTS.includes(step.specialist) || specialists.has(step.specialist)) {
+      throw new TypeError('Agent plan step identifier or specialist is invalid.');
+    }
+    if (step.status !== 'planned' || !Array.isArray(step.tools) || step.tools.length !== 0) {
+      throw new TypeError('Agent plan steps must be planned and contain no tools.');
+    }
+    if (step.output !== null) {
+      throw new TypeError('Agent plan steps cannot contain pre-populated output.');
     }
     specialists.add(step.specialist);
   }
