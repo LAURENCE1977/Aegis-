@@ -312,3 +312,24 @@ test('cancellation racing with an active plan claim fences the worker result', a
   assert.equal(saved.cancelled_at !== null, true);
   assert.equal(saved.plan_json, undefined);
 });
+
+
+test('cancellation racing the initial queue send prevents the outbox from marking the run queued', async () => {
+  const { env, DB, sent } = makeEnv();
+  env.JOBS.send = async (message) => {
+    sent.push(message);
+    const cancelled = await handleRuntimeFetch(new Request(
+      'https://runtime.example/v1/agent-runs/' + message.agentRunId + '/cancel',
+      { method: 'POST', headers: { Authorization: 'Bearer ' + token } },
+    ), env);
+    assert.equal(cancelled.status, 200);
+  };
+  const response = await handleRuntimeFetch(postRun({ objective: 'Cancel during initial dispatch' }), env);
+  assert.equal(response.status, 202);
+  const { run } = await response.json();
+  assert.equal(run.status, 'cancelled');
+  assert.ok(run.cancelledAt);
+  assert.equal(sent.length, 1);
+  assert.equal(DB.runs.get(run.id).status, 'pending_dispatch');
+  assert.ok(DB.runs.get(run.id).cancelled_at);
+});
