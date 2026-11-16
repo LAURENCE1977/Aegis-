@@ -52,7 +52,7 @@ class MemoryD1 {
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
         }
-        if (sql.includes("SET status = 'queued'")) {
+        if (sql.includes("SET status = 'queued'") && !sql.includes("JOB_EXECUTION_RETRY")) {
           const row = db.jobs.get(v[1]);
           if (row && row.status === 'pending_dispatch') { row.status = 'queued'; row.updated_at = v[0]; return { meta: { changes: 1 } }; }
           return { meta: { changes: 0 } };
@@ -61,6 +61,14 @@ class MemoryD1 {
           const row = db.jobs.get(v[2]);
           if (row && ['queued', 'pending_dispatch'].includes(row.status)) {
             row.status = 'running'; row.attempts += 1; row.lease_until = v[0]; row.updated_at = v[1];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
+        if (sql.includes("SET status = 'queued'") && sql.includes("JOB_EXECUTION_RETRY")) {
+          const row = db.jobs.get(v[1]);
+          if (row && row.status === 'running' && row.attempts === v[2]) {
+            row.status = 'queued'; row.error_code = 'JOB_EXECUTION_RETRY'; row.lease_until = null; row.updated_at = v[0];
             return { meta: { changes: 1 } };
           }
           return { meta: { changes: 0 } };
@@ -161,4 +169,51 @@ test('queue consumer executes only the persisted health-check job and acknowledg
   assert.equal(JSON.parse(saved.result_json).ok, true);
   assert.equal(acked, true);
   assert.equal(retried, false);
+});
+
+
+test('a failed queue dispatch remains durable and the scheduled outbox sweep recovers it', async () => {
+  const { env, DB } = makeEnv();
+  let calls = 0;
+  env.JOBS.send = async (message) => {
+    calls += 1;
+    if (calls === 1) throw new Error('temporary queue outage');
+    env.sent?.push(message);
+  };
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  assert.equal(response.status, 202);
+  assert.equal(job.status, 'pending_dispatch');
+  assert.equal(DB.jobs.get(job.id).status, 'pending_dispatch');
+
+  let scheduledPromise;
+  await runtime.scheduled({}, env, { waitUntil(promise) { scheduledPromise = promise; } });
+  await scheduledPromise;
+  assert.equal(calls, 2);
+  assert.equal(DB.jobs.get(job.id).status, 'queued');
+  assert.ok(DB.events.some((event) => event.event_type === 'queued'));
+});
+
+test('a transient task failure is returned to queued with a delayed retry', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  const retryOptions = [];
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { jobId: job.id },
+      ack() { acked = true; },
+      retry(options) { retryOptions.push(options); },
+    }],
+  }, { ...env, JOBS: undefined });
+
+  const saved = DB.jobs.get(job.id);
+  assert.equal(saved.status, 'queued');
+  assert.equal(saved.attempts, 1);
+  assert.equal(saved.error_code, 'JOB_EXECUTION_RETRY');
+  assert.deepEqual(retryOptions, [{ delaySeconds: 10 }]);
+  assert.equal(acked, false);
+  assert.ok(DB.events.some((event) => event.event_type === 'retry_scheduled'));
 });
