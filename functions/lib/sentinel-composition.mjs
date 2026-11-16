@@ -78,6 +78,12 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
         resourceId: context.resourceId,
         scopes: Object.freeze([...(context.scopes || [])]),
         connectionId: context.connectionId ?? null,
+        grantId: context.grantId ?? null,
+        approvalId: context.approvalId ?? null,
+        taskId: context.taskId ?? null,
+        sessionId: context.sessionId ?? null,
+        parentSessionId: context.parentSessionId ?? null,
+        workerId: context.workerId ?? null,
         inputDigest: context.inputDigest,
       });
       return handler(input, safeContext);
