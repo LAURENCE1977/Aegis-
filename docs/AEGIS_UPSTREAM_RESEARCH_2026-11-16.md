@@ -159,3 +159,41 @@ A targeted GitHub search was performed on 16 November 2026 after the user asked 
 ### Evidence limits
 
 Repository metadata, default branches, README files and root licence files were retrieved from GitHub on 16 November 2026. The isair/jarvis custom licence text was decoded and inspected. This is a focused repository-level screen, not a complete dependency, security, sandbox, supply-chain or legal audit. Star counts and push times are point-in-time GitHub metadata and will change.
+
+
+## 12. Additional workspace, agent-fleet and local-first candidates
+
+A further candidate batch was supplied on 16 November 2026. Several descriptions overlap with the protocol, provider, sandbox, voice, CRDT and rendering research already recorded above and in `docs/AEGIS_UNIVERSAL_DEVICE_AND_3D_EXPERIENCE.md`. The following exact repositories were independently resolved and their README/root licence inspected.
+
+| Repository | Verified evidence | AEGIS decision |
+|---|---|---|
+| https://github.com/CopilotKit/OpenBot | MIT. Self-hostable AI-coworker workspace; connects agents over AG-UI, tools over MCP, model providers and isolated browser/file computers; includes approvals, permissions and audit surfaces. README describes desktop installers for macOS/Windows and early-access web/mobile/chat channels. | **High-priority architecture and UX reference.** Study its AG-UI workspace, computer-per-agent model, credential vault, approvals and audit UX. Do not adopt its policy as AEGIS authority: Sentinel remains canonical. Its full stack has deployment dependencies (including Docker/Kubernetes paths and model/provider configuration); do not make those mandatory for AEGIS. Its business offering and early-access platform claims are not evidence that every platform feature is generally available. |
+| https://github.com/Mintplex-Labs/anything-llm | MIT. Local-first all-in-one document/chat/agent workspace; supports local and hosted model providers, document pipelines, vector stores, agent flows, MCP, memories and scheduled tasks. | **High-priority feature reference, not a replacement runtime.** Study document ingestion, source citations, workspace boundaries, model routing and local model integration. Reuse only selected patterns after commit-pinned review. AEGIS must retain its own provenance-backed memory, owner scopes, Sentinel permissions and audit. Local models avoid per-call provider fees but still consume device resources; optional hosted providers can cost money. |
+| https://github.com/boadij/pi-herdsman | Apache-2.0. Pre-1.0 orchestration layer for Pi and herdr, with background/nested agents, branch-based Leads, Manager/Chief supervision, explicit delegation boundaries and usage visibility. README reports active development and some federation limitations. | **Development-fleet reference only.** Study bounded parallel work, ownership, branch isolation and supervision for AEGIS engineering. Not a user-facing agent runtime and not a default production dependency. Requires the Pi/herdr ecosystem and model access; those must not become AEGIS prerequisites. |
+
+### Existing research already covers much of the new list
+
+The following are already recorded in earlier sections of this register or the universal-device/3D architecture document; they should be benchmarked rather than added as duplicate dependencies:
+
+- MCP TypeScript SDK, Cloudflare Agents SDK, AG-UI 1.0 and A2A.
+- LiteLLM, Vercel AI SDK and WebLLM; RAGFlow and OpenFGA.
+- Guardrails, Zod/Pydantic, Extism, QuickJS WASM, Tree-sitter and licence scanning.
+- Pipecat and LiveKit voice pipelines; Automerge and Yjs CRDT sync.
+- Babylon.js and Three.js renderer candidates, WebGL2/WebGPU fallback, WebXR, glTF/VRM and platform-native 3D adapters.
+
+### Repository identities still unresolved
+
+The supplied message used generic `https://github.com` root URLs rather than owner/repository paths. Descriptions alone do not uniquely identify the following projects, so no exact source, licence or maintenance status is claimed yet:
+
+- PewDiePie-associated self-hosted AI workspace; single-file multi-model red-team chat; Slack AI teammate; natural-language zero-code AutoAgent.
+- Scoped long-term memory project; WASM PostgreSQL/pgvector browser-edge build.
+- Remaining speech/STT/TTS/VAD/full-duplex voice projects and the specific 82M TTS model.
+- Specific talking-avatar, facial-kinematics, audio-driven animation and lip-sync repositories beyond the already identified examples.
+- Lightweight WebGL/WebGPU engine, CAD/3D processing and AI 3D reconstruction projects.
+- Financial research workspace, self-hosted CRM and project-management platform.
+
+These are retained as **research leads, not approved dependencies**. To complete an exact audit, the original repository URLs (for example, `https://github.com/owner/repository`) are required. Do not guess repository identities from marketing descriptions.
+
+### Selection rule
+
+AEGIS should prefer a small number of interoperable, well-maintained components over a stack of overlapping platforms. A project advances from reference to prototype only after checking the exact upstream commit, licence and third-party notices, dependency/supply-chain exposure, supported platforms, resource footprint, data egress, operational cost and whether its capability can be implemented as a replaceable adapter. No project in this batch was imported into production code, and no paid provider was activated.
