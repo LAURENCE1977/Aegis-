@@ -180,7 +180,7 @@
         <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
         <div id="grantList" aria-live="polite"></div>
         <h3>Composio · GitHub (read-only)</h3>
-        <p class="memory-help">Connect one GitHub account through Composio. AEGIS keeps the Composio key server-side and the session reference in its encrypted vault. Repository reads still require an exact-resource Sentinel grant.</p>
+        <p class="memory-help">Connect one GitHub account through Composio. AEGIS keeps the Composio key server-side and the session reference in its encrypted vault. Repository, pull-request and workflow reads each require their own exact-resource Sentinel grant. New sessions expose four fixed read-only GitHub tools; reconnect to refresh an older session.</p>
         <div class="input-area">
           <button id="composioConnectBtn" type="button">Connect GitHub</button>
           <button id="composioRefreshBtn" class="secondary" type="button">Refresh status</button>
@@ -197,6 +197,29 @@
             <button id="composioReadMetadataBtn" type="submit" disabled>Read metadata through Sentinel</button>
           </div>
         </form>
+        <div class="memory-form" id="composioAdvancedReadControls">
+          <h4>Pull request metadata</h4>
+          <label for="composioPullNumber">Pull request number</label>
+          <input id="composioPullNumber" type="number" min="1" step="1" placeholder="e.g. 101" />
+          <div class="input-area">
+            <button id="composioPreparePullRequestGrantBtn" class="secondary" type="button">Prepare exact PR grant</button>
+            <button id="composioReadPullRequestBtn" type="button">Read pull request</button>
+          </div>
+          <h4>GitHub Actions workflow runs</h4>
+          <label for="composioWorkflowBranch">Branch filter (optional)</label>
+          <input id="composioWorkflowBranch" maxlength="128" placeholder="e.g. feature/composio-audit-lineage-verified" />
+          <div class="input-area">
+            <button id="composioPrepareWorkflowGrantBtn" class="secondary" type="button">Prepare repository workflow grant</button>
+            <button id="composioReadWorkflowRunsBtn" type="button">Read workflow runs</button>
+          </div>
+          <h4>Workflow job and step summaries</h4>
+          <label for="composioWorkflowRunId">Workflow run ID</label>
+          <input id="composioWorkflowRunId" type="number" min="1" step="1" placeholder="e.g. 123456789" />
+          <div class="input-area">
+            <button id="composioPrepareWorkflowJobsGrantBtn" class="secondary" type="button">Prepare exact workflow-run grant</button>
+            <button id="composioReadWorkflowJobsBtn" type="button">Read jobs and steps</button>
+          </div>
+        </div>
         <pre id="composioOutput" class="forge-preview" hidden></pre>
         <p class="memory-help">Revoking AEGIS access removes its session and vault reference. It does not revoke the upstream GitHub OAuth grant in Composio; disconnect that separately if required.</p>
         <h3>Sentinel read-only test</h3>
@@ -269,6 +292,15 @@
     const composioPrepareGrantBtn = document.getElementById('composioPrepareGrantBtn');
     const composioReadMetadataBtn = document.getElementById('composioReadMetadataBtn');
     const composioOutput = document.getElementById('composioOutput');
+    const composioPullNumber = document.getElementById('composioPullNumber');
+    const composioPreparePullRequestGrantBtn = document.getElementById('composioPreparePullRequestGrantBtn');
+    const composioReadPullRequestBtn = document.getElementById('composioReadPullRequestBtn');
+    const composioWorkflowBranch = document.getElementById('composioWorkflowBranch');
+    const composioPrepareWorkflowGrantBtn = document.getElementById('composioPrepareWorkflowGrantBtn');
+    const composioReadWorkflowRunsBtn = document.getElementById('composioReadWorkflowRunsBtn');
+    const composioWorkflowRunId = document.getElementById('composioWorkflowRunId');
+    const composioPrepareWorkflowJobsGrantBtn = document.getElementById('composioPrepareWorkflowJobsGrantBtn');
+    const composioReadWorkflowJobsBtn = document.getElementById('composioReadWorkflowJobsBtn');
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
     const grantForm = document.getElementById('grantForm');
@@ -910,6 +942,38 @@
       }
     });
 
+    function prepareExactComposioGrant(capabilityId, actionId, resourceId, label) {
+      grantCapabilitySelect.value = capabilityId;
+      populateGrantActions();
+      [...grantActionSelect.options].forEach(option => {
+        option.selected = option.value === actionId;
+      });
+      grantResourceId.value = resourceId;
+      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      expiry.setMinutes(expiry.getMinutes() - expiry.getTimezoneOffset());
+      grantExpiresAt.value = expiry.toISOString().slice(0, 16);
+      grantStatus.textContent = 'Review the exact ' + label + ' grant below, then select Create exact grant.';
+      grantForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function invokeComposioRead(endpoint, body, description, grantResource) {
+      composioOutput.hidden = true;
+      composioStatus.textContent = 'Checking exact grant and reading ' + description + ' through Sentinel…';
+      try {
+        const result = await controlApi(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        composioOutput.textContent = JSON.stringify(result.output, null, 2);
+        composioOutput.hidden = false;
+        composioStatus.textContent = 'Success · exact read audited · invocation ' + result.invocationId;
+      } catch (error) {
+        composioStatus.textContent = error.message + ' Prepare an exact grant for ' + grantResource + ' and try again.';
+      } finally {
+        await loadComposioStatus();
+      }
+    }
+
     composioPrepareGrantBtn.addEventListener('click', () => {
       const owner = composioOwner.value.trim();
       const repo = composioRepo.value.trim();
@@ -917,17 +981,51 @@
         composioStatus.textContent = 'Enter a GitHub owner and repository first.';
         return;
       }
-      grantCapabilitySelect.value = 'aegis-composio-github-readonly';
-      populateGrantActions();
-      [...grantActionSelect.options].forEach(option => {
-        option.selected = option.value === 'get-repository';
-      });
-      grantResourceId.value = 'github:repository:' + owner + '/' + repo;
-      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      expiry.setMinutes(expiry.getMinutes() - expiry.getTimezoneOffset());
-      grantExpiresAt.value = expiry.toISOString().slice(0, 16);
-      grantStatus.textContent = 'Review the exact GitHub repository grant below, then select Create exact grant.';
-      grantForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      prepareExactComposioGrant(
+        'aegis-composio-github-readonly', 'get-repository',
+        'github:repository:' + owner + '/' + repo, 'GitHub repository',
+      );
+    });
+
+    composioPreparePullRequestGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const pullNumber = Number(composioPullNumber.value);
+      if (!owner || !repo || !Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and pull request number first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-pull-request-readonly', 'get-pull-request',
+        'github:pull-request:' + owner + '/' + repo + '/' + pullNumber, 'GitHub pull request',
+      );
+    });
+
+    composioPrepareWorkflowGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-workflow-readonly', 'list-workflow-runs',
+        'github:repository:' + owner + '/' + repo, 'GitHub workflow',
+      );
+    });
+
+    composioPrepareWorkflowJobsGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const runId = Number(composioWorkflowRunId.value);
+      if (!owner || !repo || !Number.isSafeInteger(runId) || runId < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and workflow run ID first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-workflow-jobs-readonly', 'list-workflow-jobs',
+        'github:workflow-run:' + owner + '/' + repo + '/' + runId, 'GitHub workflow run',
+      );
     });
 
     composioLookupForm.addEventListener('submit', async event => {
@@ -935,22 +1033,65 @@
       const owner = composioOwner.value.trim();
       const repo = composioRepo.value.trim();
       composioReadMetadataBtn.disabled = true;
-      composioOutput.hidden = true;
-      composioStatus.textContent = 'Checking exact grant and reading repository metadata through Sentinel…';
-      try {
-        const result = await controlApi('/api/sentinel/composio-github-repository', {
-          method: 'POST',
-          body: JSON.stringify({ owner, repo }),
-        });
-        composioOutput.textContent = JSON.stringify(result.output, null, 2);
-        composioOutput.hidden = false;
-        composioStatus.textContent = 'Success · exact repository read audited · invocation ' + result.invocationId;
-      } catch (error) {
-        composioStatus.textContent = error.message +
-          ' Prepare an exact grant for github:repository:' + owner + '/' + repo + ' and try again.';
-      } finally {
-        await loadComposioStatus();
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-repository', { owner, repo },
+        'repository metadata', 'github:repository:' + owner + '/' + repo,
+      );
+      composioReadMetadataBtn.disabled = false;
+    });
+
+    composioReadPullRequestBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const pullNumber = Number(composioPullNumber.value);
+      if (!owner || !repo || !Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and pull request number first.';
+        return;
       }
+      composioReadPullRequestBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-pull-request', { owner, repo, pullNumber },
+        'pull request metadata', 'github:pull-request:' + owner + '/' + repo + '/' + pullNumber,
+      );
+      composioReadPullRequestBtn.disabled = false;
+    });
+
+    composioReadWorkflowRunsBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const branch = composioWorkflowBranch.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      if (branch && (branch.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch) ||
+          branch.includes('..') || branch.includes('//'))) {
+        composioStatus.textContent = 'Enter a valid branch filter or leave it blank.';
+        return;
+      }
+      composioReadWorkflowRunsBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-workflows',
+        { owner, repo, ...(branch ? { branch } : {}) },
+        'workflow runs', 'github:repository:' + owner + '/' + repo,
+      );
+      composioReadWorkflowRunsBtn.disabled = false;
+    });
+
+    composioReadWorkflowJobsBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const runId = Number(composioWorkflowRunId.value);
+      if (!owner || !repo || !Number.isSafeInteger(runId) || runId < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and workflow run ID first.';
+        return;
+      }
+      composioReadWorkflowJobsBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-workflow-jobs', { owner, repo, runId },
+        'workflow job summaries', 'github:workflow-run:' + owner + '/' + repo + '/' + runId,
+      );
+      composioReadWorkflowJobsBtn.disabled = false;
     });
 
     invokeModuleCatalogueBtn.addEventListener('click', async () => {
