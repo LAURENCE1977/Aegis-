@@ -8,7 +8,7 @@ import {
   createApprovalRequest,
   listPendingApprovals,
   decideApprovalRequest,
-  loadApproval,
+  loadApprovedApprovalById,
   consumeApproval,
 } from './capability-approvals.mjs';
 import { buildAgentPlanApprovalBinding } from '../../workers/runtime/agent-plan-approval.mjs';
@@ -132,7 +132,7 @@ export function createAgentRunApprovalDecisionHandlers({
 
 export function createAgentRunApprovalAuthorizationHandlers({
   proxy = proxyAgentRuntime,
-  loadRequest = loadApproval,
+  loadRequest = loadApprovedApprovalById,
   consumeRequest = consumeApproval,
 } = {}) {
   return {
@@ -150,22 +150,61 @@ export function createAgentRunApprovalAuthorizationHandlers({
 
       const approvalId = params.id;
       try {
-        const runMatch = /^agent-run:([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
-        // Resolve the run identifier only from the stored approval resource binding.
-        const candidate = await loadRequest(env.AEGIS_DB, {
-          id: approvalId,
+        const approval = await loadRequest(env.AEGIS_DB, approvalId, {
           principalId: OWNER_ID,
           capabilityId: 'aegis-agent-run',
-          capabilityVersion: '0.1.0',
-          actionId: 'approve-execution',
-          resourceId: 'agent-run:' + '00000000-0000-4000-8000-000000000000',
-          inputDigest: 'sha256:' + '0'.repeat(64),
         });
-        void candidate;
+        if (!approval || approval.id !== approvalId || approval.status !== 'approved' ||
+            approval.decidedBy !== OWNER_ID) {
+          return jsonResponse({ error: 'An active owner-approved execution request is required.' }, 409);
+        }
+        const match = /^agent-run:([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(approval.resourceId || '');
+        if (!match) return jsonResponse({ error: 'Approval resource binding is invalid.' }, 409);
+        const runId = match[1];
+        const loaded = await loadPlannedRun(proxy, env, runId);
+        if (loaded.response) return loaded.response;
+        const binding = await buildAgentPlanApprovalBinding(loaded.run.plan, OWNER_ID);
+        const fields = ['principalId', 'capabilityId', 'capabilityVersion', 'actionId',
+          'resourceId', 'operationSummary', 'inputDigest'];
+        if (fields.some((field) => approval[field] !== binding[field]) ||
+            (approval.connectionId ?? null) !== null ||
+            approval.requestedBy !== OWNER_ID) {
+          return jsonResponse({ error: 'Approval no longer matches the persisted plan.' }, 409);
+        }
+        const consumed = await consumeRequest(env.AEGIS_DB, {
+          id: approvalId,
+          ...binding,
+        });
+        if (!consumed || consumed.status !== 'consumed' || consumed.id !== approvalId) {
+          return jsonResponse({ error: 'Approval was already consumed or is no longer valid.' }, 409);
+        }
+
+        const upstream = await proxy({
+          env,
+          method: 'POST',
+          path: '/v1/agent-runs/' + runId + '/authorize',
+          body: {
+            approvalId,
+            capabilityId: binding.capabilityId,
+            capabilityVersion: binding.capabilityVersion,
+            actionId: binding.actionId,
+            inputDigest: binding.inputDigest,
+          },
+        });
+        if (!upstream.ok) {
+          return jsonResponse({
+            error: 'The approval was consumed, but runtime authorisation was not confirmed. Inspect the run before requesting a new approval.',
+            approvalConsumed: true,
+          }, 502);
+        }
+        let result;
+        try { result = await upstream.json(); } catch {
+          return jsonResponse({ error: 'Runtime authorisation response was invalid.', approvalConsumed: true }, 502);
+        }
+        return jsonResponse({ approval: consumed, authorization: result, executionStarted: false });
       } catch {
-        // The exact plan binding is loaded below from the approval record itself.
+        return jsonResponse({ error: 'Approval authorisation could not be completed.' }, 503);
       }
-      return jsonResponse({ error: 'Approval authorisation could not be completed.' }, 503);
     },
   };
 }
