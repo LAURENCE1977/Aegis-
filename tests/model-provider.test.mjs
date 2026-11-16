@@ -160,3 +160,65 @@ test('Qwen tool calling is restricted to the model with verified tool-call suppo
     fetchImpl: async () => { throw new Error('must not fetch'); },
   }), /tool calling is not enabled for this qwen model/i);
 });
+
+test('Anthropic provider uses the fixed Messages API with server-side bearer auth and a separate system prompt', async () => {
+  const stream = new ReadableStream({ start(controller) { controller.close(); } });
+  let capturedUrl;
+  let capturedOptions;
+  const result = await createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
+      AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
+    },
+    messages: [
+      { role: 'system', content: 'You are AEGIS.' },
+      { role: 'user', content: 'Hello Claude.' },
+    ],
+    fetchImpl: async (url, options) => {
+      capturedUrl = url;
+      capturedOptions = options;
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(result, stream);
+  assert.equal(capturedUrl, 'https://api.anthropic.com/v1/messages');
+  assert.equal(capturedOptions.method, 'POST');
+  assert.equal(capturedOptions.redirect, 'error');
+  assert.equal(capturedOptions.headers.Authorization, 'Bearer test-anthropic-api-key-long-enough');
+  assert.equal(capturedOptions.headers['anthropic-version'], '2023-06-01');
+  const body = JSON.parse(capturedOptions.body);
+  assert.equal(body.model, 'claude-opus-5-5');
+  assert.equal(body.max_tokens, 1024);
+  assert.equal(body.stream, true);
+  assert.equal(body.system, 'You are AEGIS.');
+  assert.deepEqual(body.messages, [{ role: 'user', content: 'Hello Claude.' }]);
+  assert.equal(body.tools, undefined);
+});
+
+test('Anthropic provider fails closed without server-side key or explicit model configuration', async () => {
+  const base = { AEGIS_MODEL_PROVIDER: 'anthropic' };
+  await assert.rejects(() => createModelStream({
+    env: base,
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /Anthropic API key is not configured/i);
+  await assert.rejects(() => createModelStream({
+    env: { ...base, ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough' },
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /Anthropic model is not configured/i);
+});
+
+test('Anthropic provider rejects tool calls until its own Sentinel adapter is implemented', async () => {
+  await assert.rejects(() => createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
+      AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
+    },
+    messages: [{ role: 'user', content: 'hello' }],
+    tools: serverTools,
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /Anthropic tool calling is not enabled/i);
+});

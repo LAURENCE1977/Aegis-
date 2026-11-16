@@ -197,11 +197,25 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               if (data.trim() === "[DONE]") { finished = true; return; }
               let payload;
               try { payload = JSON.parse(data); } catch { return; }
-              const delta = typeof payload.response === "string"
-                ? payload.response
-                : typeof payload.choices?.[0]?.delta?.content === "string"
-                  ? payload.choices[0].delta.content
-                  : "";
+              if (payload.type === "error") {
+                throw agentStreamError(
+                  "PROVIDER_STREAM_ERROR",
+                  "The AI provider reported an error during streaming.",
+                );
+              }
+              if (payload.type === "message_stop") {
+                finished = true;
+                return;
+              }
+              const delta = payload.type === "content_block_delta" &&
+                  payload.delta?.type === "text_delta" &&
+                  typeof payload.delta.text === "string"
+                ? payload.delta.text
+                : typeof payload.response === "string"
+                  ? payload.response
+                  : typeof payload.choices?.[0]?.delta?.content === "string"
+                    ? payload.choices[0].delta.content
+                    : "";
               if (delta) {
                 const boundedDelta = delta.slice(0, Math.max(0, MAX_OUTPUT - outputLength));
                 if (boundedDelta) {

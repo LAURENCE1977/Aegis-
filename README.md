@@ -118,3 +118,8 @@ Forge can persist inspected public repositories as owner-reviewed candidates pin
 ## AG-UI and guarded model tools
 
 AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers AI is the default; optional Qwen function calling is disabled unless explicitly enabled with owner-configured runtime settings. The only tools are a local read-only module catalogue and bounded public GitHub repository metadata, both mediated by Sentinel. See [docs/AEGIS_AGENT_TOOLS.md](docs/AEGIS_AGENT_TOOLS.md).
+
+
+## Anthropic provider adapter
+
+The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.

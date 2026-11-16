@@ -391,3 +391,36 @@ test('AG-UI cancels provider streams that exceed the total byte budget', async (
   assert.equal(events.at(-1).type, 'RUN_ERROR');
   assert.equal(events.at(-1).code, 'PROVIDER_STREAM_TOO_LARGE');
 });
+
+test('AG-UI forwards Anthropic Messages content_block_delta text as normal assistant deltas', async () => {
+  const anthropicFrames = [
+    'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_123","type":"message","role":"assistant","content":[]}}\n\n',
+    'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}\n\n',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello from Claude."}}\n\n',
+    'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n',
+    'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n',
+    'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+  ];
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
+      AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
+    },
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://api.anthropic.com/v1/messages');
+      assert.equal(options.headers.Authorization, 'Bearer test-anthropic-api-key-long-enough');
+      return new Response(modelSseStream(anthropicFrames), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
+    },
+  });
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split('\n\n')
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
+  assert.equal(events.at(-1).type, 'RUN_FINISHED');
+});

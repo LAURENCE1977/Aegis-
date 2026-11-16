@@ -105,6 +105,72 @@ function resolveQwenEndpoint(env) {
   };
 }
 
+function resolveAnthropicConfig(env) {
+  const key = env.ANTHROPIC_API_KEY;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
+      /[\r\n\u0000]/.test(key)) {
+    throw new Error('Anthropic API key is not configured.');
+  }
+  const model = env.AEGIS_ANTHROPIC_MODEL;
+  if (typeof model !== 'string' || !model.trim() || model.length > 120 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
+    throw new Error('Anthropic model is not configured.');
+  }
+  return { key, model };
+}
+
+function toAnthropicMessages(messages) {
+  if (messages.some(message => message.role === 'tool' || message.tool_calls !== undefined)) {
+    throw new Error('Anthropic tool calling is not enabled.');
+  }
+  const system = messages
+    .filter(message => message.role === 'system')
+    .map(message => message.content)
+    .join('\n\n');
+  const conversation = messages
+    .filter(message => message.role !== 'system')
+    .map(message => ({ role: message.role, content: message.content }));
+  if (!conversation.length) throw new TypeError('Anthropic requires at least one conversation message.');
+  return { ...(system ? { system } : {}), messages: conversation };
+}
+
+async function createAnthropicStream({ env, messages, tools, fetchImpl }) {
+  if (tools.length) throw new Error('Anthropic tool calling is not enabled.');
+  const { key, model } = resolveAnthropicConfig(env);
+  const input = toAnthropicMessages(messages);
+  let response;
+  try {
+    response = await fetchImpl('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        stream: true,
+        ...input,
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new Error('Anthropic provider request failed.');
+  }
+  if (!response || !response.ok || !response.body ||
+      typeof response.body.getReader !== 'function') {
+    throw new Error('Anthropic provider request failed.');
+  }
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/event-stream')) {
+    throw new Error('Anthropic provider returned an unsupported response type.');
+  }
+  return response.body;
+}
+
 export async function createModelStream({ env, messages, tools, fetchImpl = fetch }) {
   if (!env || typeof env !== 'object') throw new TypeError('Model environment is required');
   validateMessages(messages);
@@ -125,6 +191,10 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
       throw new Error('Workers AI did not return a readable stream.');
     }
     return stream;
+  }
+
+  if (provider === 'anthropic') {
+    return createAnthropicStream({ env, messages, tools: safeTools, fetchImpl });
   }
 
   if (provider !== 'alibaba-qwen') {
