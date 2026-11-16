@@ -906,6 +906,7 @@
             : 'Setup exists, but GitHub authorisation is not complete. Revoke and reconnect if you abandoned the authorisation step.';
       } catch (error) {
         composioConnectBtn.disabled = /not configured|server secret|storage/i.test(error.message);
+        composioReadButtons.forEach(button => { button.disabled = true; });
         composioStatus.textContent = error.message;
       }
     }
@@ -1038,7 +1039,6 @@
         '/api/sentinel/composio-github-repository', { owner, repo },
         'repository metadata', 'github:repository:' + owner + '/' + repo,
       );
-      composioReadMetadataBtn.disabled = false;
     });
 
     composioReadPullRequestBtn.addEventListener('click', async () => {
@@ -1054,7 +1054,6 @@
         '/api/sentinel/composio-github-pull-request', { owner, repo, pullNumber },
         'pull request metadata', 'github:pull-request:' + owner + '/' + repo + '/' + pullNumber,
       );
-      composioReadPullRequestBtn.disabled = false;
     });
 
     composioReadWorkflowRunsBtn.addEventListener('click', async () => {
@@ -1076,7 +1075,6 @@
         { owner, repo, ...(branch ? { branch } : {}) },
         'workflow runs', 'github:repository:' + owner + '/' + repo,
       );
-      composioReadWorkflowRunsBtn.disabled = false;
     });
 
     composioReadWorkflowJobsBtn.addEventListener('click', async () => {
@@ -1092,7 +1090,6 @@
         '/api/sentinel/composio-github-workflow-jobs', { owner, repo, runId },
         'workflow job summaries', 'github:workflow-run:' + owner + '/' + repo + '/' + runId,
       );
-      composioReadWorkflowJobsBtn.disabled = false;
     });
 
     invokeModuleCatalogueBtn.addEventListener('click', async () => {
