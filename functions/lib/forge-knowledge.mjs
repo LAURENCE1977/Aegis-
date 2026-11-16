@@ -174,6 +174,7 @@ export async function listForgeKnowledgeEvents(db, ownerId, id, limit = 50) {
       !Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw new TypeError('Invalid knowledge event query');
   }
+  if (!(await getForgeKnowledgeRecord(db, ownerId, id))) return null;
   const rows = await db.prepare(
     'SELECT * FROM forge_knowledge_events WHERE record_id = ? AND owner_id = ? ORDER BY occurred_at DESC, id DESC LIMIT ?'
   ).bind(id, ownerId, limit).all();
