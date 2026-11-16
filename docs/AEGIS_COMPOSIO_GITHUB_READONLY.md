@@ -29,13 +29,17 @@ Pull request metadata uses:
 - Resource: `github:pull-request:{owner}/{repo}/{pullNumber}`
 - Grant scope: `github:pull-request:read`
 
-Both actions require the authenticated owner, the exact active Composio connection, its encrypted Vault-backed session reference, an exact-resource grant, the session's exact approved tool allowlist, rate-limit reservation and a recorded Sentinel audit lifecycle. The agent cannot select a provider, tool slug, account, endpoint or arbitrary arguments.
+Every action requires the authenticated owner, the exact active Composio connection, its encrypted Vault-backed session reference, an exact-resource grant, the session's approved tool allowlist, rate-limit reservation and a recorded Sentinel audit lifecycle. The agent cannot select a provider, tool slug, account, endpoint or arbitrary arguments.
 
 The pull-request normalizer returns only bounded metadata: PR number, title, state, draft/merged flags, GitHub URL, base/head refs and SHAs, and change counts. It deliberately omits PR body text, comments, review text and other untrusted free-form content.
 
 The workflow-run normalizer returns at most ten records, verifies each record's repository and optional branch, and constrains run URLs to the exact GitHub repository. It returns status/conclusion, commit SHA, branch, run number/attempt and timestamps; it deliberately omits commit messages, logs, artifacts and other untrusted free-form content. The Composio client fixes pagination to page 1 and ten records.
 
 The workflow-job normalizer returns at most twenty jobs for one exact run ID, verifies each job belongs to that run, constrains job URLs to the exact run, and returns only job status/conclusion and at most one hundred bounded step name/number/status/conclusion records per job. It omits runner names, logs, artifacts and arbitrary provider fields. The client fixes the latest attempt, page 1 and twenty jobs.
+
+## Security Centre controls
+
+The owner-facing Security Centre exposes explicit controls to prepare the exact grant and invoke each read-only action: repository metadata, pull-request metadata, workflow-run summaries and workflow-job/step summaries. Grant preparation only fills the grant form; it does not create a grant. The owner must review and submit the grant separately. Reads are disabled until the connection status is active, and each invocation passes through Sentinel.
 
 ## Existing connection compatibility
 
