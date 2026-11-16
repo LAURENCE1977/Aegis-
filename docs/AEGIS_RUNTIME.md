@@ -201,7 +201,7 @@ The Pages app now exposes owner-authenticated proxy routes for the separate runt
 - `GET /api/agent-runs/:id/ag-ui` — owner-only, bounded AG-UI 1.0 SSE replay for terminal runs.
 - `POST /api/agent-runs/:id/cancel` — cancel an eligible run.
 
-The Security Centre contains an Agent Workforce console for creating, inspecting, refreshing and cancelling plan-only runs. It clearly labels the current stage: no specialist model calls, tool execution or external actions occur.
+The Security Centre contains an Agent Workforce console for creating, inspecting, refreshing and cancelling plan-only runs, and requesting owner approval for a completed plan. The Approval inbox uses the capability-scoped Sentinel decision route for these requests. Approval records a decision only: no specialist model calls, tool execution or external actions occur.
 
 Configure these as **server-side Pages environment variables** only after the runtime Worker is deployed:
 
@@ -248,7 +248,7 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 - No permissive CORS is enabled.
 - Request bodies are capped at 8 KiB.
 - Only the health-check task is accepted; payload fields are rejected.
-- Job cancellation is implemented for agent runs only. General job cancellation, approval workflow, user-supplied code, arbitrary connectors, model calls or specialist execution are not implemented.
+- Job cancellation and the plan-only owner approval record/decision flow are implemented for agent runs. The approval-to-execution handoff, general job cancellation, user-supplied code, arbitrary connectors, model calls and specialist execution are not implemented.
 - D1 and Queue resource creation/deployment need explicit review and a cost/limit check before use.
 - Queue delivery is at-least-once. Idempotent state transitions, leases and attempt fencing reduce duplicate execution risks; new task handlers must themselves be idempotent.
 
