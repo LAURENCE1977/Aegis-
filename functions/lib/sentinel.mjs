@@ -43,7 +43,7 @@ export async function runSentinelInvocation(request, dependencies = {}) {
     return { allowed: false, reasonCode: 'INVALID_INVOCATION' };
   }
 
-  const required = ['loadGrant', 'loadConnection', 'loadApproval', 'recordAudit', 'execute'];
+  const required = ['loadGrant', 'loadConnection', 'loadApproval', 'reserveRateLimit', 'recordAudit', 'execute'];
   if (required.some((name) => typeof dependencies[name] !== 'function') ||
       typeof dependencies.registryLookup !== 'function') {
     return { allowed: false, reasonCode: 'POLICY_CONTEXT_UNAVAILABLE' };
@@ -96,6 +96,19 @@ export async function runSentinelInvocation(request, dependencies = {}) {
 
   if (!decision.allowed) {
     return recordDenied(request, dependencies, decision.reasonCode, now);
+  }
+
+  try {
+    const reserved = await dependencies.reserveRateLimit({
+      principalId: request.principalId,
+      capabilityId: request.manifest.id,
+      actionId: request.actionId,
+      requestsPerMinute: request.manifest.limits.requestsPerMinute,
+      now,
+    });
+    if (!reserved) return recordDenied(request, dependencies, 'RATE_LIMITED', now);
+  } catch {
+    return recordDenied(request, dependencies, 'RATE_LIMIT_STORE_UNAVAILABLE', now);
   }
 
   try {
