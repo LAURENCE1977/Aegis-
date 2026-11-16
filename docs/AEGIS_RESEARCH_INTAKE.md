@@ -50,3 +50,50 @@ Initial archive check (16 Nov 2026): archive lists issues through 13 Nov 2026. T
 - TLDR archive/RSS: https://tldr.tech/ai/archives and https://tldr.tech/api/rss/ai
 
 Last updated: 16 November 2026. Research statuses are preliminary until source-level inspection is recorded.
+
+
+## Source-level inspection updates
+
+Inspected selected repository files on 16 November 2026; this is a targeted review, not a full security or dependency audit.
+
+### agent-browser
+- README confirms a Rust CLI daemon per browser session, Chrome DevTools Protocol control, persistent sessions, multiple browser engines/providers, accessibility-tree snapshots and element refs.
+- The inspected MCP implementation exposes a broad stdio surface: navigation, click/type/fill, upload/download, screenshots/PDF, cookies/storage/network, eval, auth/session state and more. It is a powerful computer-use capability, not a safe read-only browser fetcher.
+- package.json requires Node >=22 and Apache-2.0; native CLI is Rust. This is not a Cloudflare Worker dependency.
+- Decision: adapt its command/snapshot model or use it as an isolated worker after capability-by-capability allowlisting. Never expose its full MCP catalogue directly to agents. Block or separately gate eval, cookies, storage, auth, upload, download, external CDP attachment, network interception and arbitrary URL navigation. Require browser sandboxing, domain allowlists, credential vault injection, download quarantine, SSRF/private-network denial, approvals for external side effects, ephemeral profiles and auditable cleanup. Compare against Playwright and Browser Use before choosing.
+
+### Elephant-Goldfish Model
+- Confirmed Apache-2.0.
+- AGENTS.md explicitly disallows autonomous PR creation and demands human review/accountability; AI_POLICY.md says contributors must understand and verify changes. AEGIS will respect this if contributing upstream.
+- Its architecture separates a context-holding design drafter from independent fresh-context reviewers, with brainstorm, draft, resolve, review, review-loop, bootstrap and drift-report skills.
+- Decision: high-value AEGIS-native engineering workflow pattern. Rebuild orchestration and review records under AEGIS task IDs, with independent reviewer context, source citations, finding severity, deduplication, disagreement tracking and human acceptance. Reviewer output is not approval and does not replace TDD/CI/Sentinel. Verify exact runtime skill/resource manifests before copying prompt assets.
+
+### ORACLE-org/ORACLE
+- Confirmed MIT.
+- The repository separates model selection/verification from scheduling. The router binds an entire multi-request program to one model, then feeds delayed verifier outcomes into selector learning. DISC keeps per-backend reservation ledgers and FIFO admission gates, with optional live capacity sources.
+- Architecture is Python >=3.10 with NumPy/PyYAML; FastAPI is optional. It expects backends such as vLLM/SGLang and can accept reported task outcomes or configured verifiers.
+- Decision: extract algorithms and evaluation methodology, not deploy as AEGIS's second runtime. Build native TypeScript equivalents behind AEGIS provider/task interfaces: program-level model affinity, evidence-backed outcomes, model utility/cost/latency estimates, backend capacity snapshots and admission. Never let user/agent-reported success directly train routing without independent verification and audit. Its in-memory reservation ledger is not a durable distributed lease system; AEGIS needs D1/Queue/DO coordination, leases, expiry and idempotent release.
+
+### rederive
+- Confirmed MIT.
+- README describes a Socratic codebase-learning skill: background repository mapping, import and commit-history exploration, 5–10 design problems, local .rederive notes, and a no-telemetry claim.
+- Decision: adapt as an optional AEGIS explain-by-derivation mode, not the default engineering mode. The normal build must still inspect source, answer directly, implement and test. Use Socratic prompts only when teaching/knowledge transfer is the goal.
+
+### TrnRT
+- Confirmed Apache-2.0, Python >=3.13, AWS Trainium2/Neuron stack and privileged Docker requirements.
+- Its security documentation warns the API has no authentication and the default router binds all interfaces unless configured otherwise. Known-issues documentation discloses approximate sparse-attention selections and possible output differences; benchmarks were measured on an earlier build than current source.
+- Decision: not a near-term AEGIS inference provider. No claims of cheap/free tokens: the documented path needs a trn2.48xlarge, separate compile host, hundreds of GB of model/cache storage and AWS spend. If revisited, isolate behind a private authenticated gateway, bind loopback, pin model revisions, validate outputs and repeat benchmarks on the exact release.
+
+### Coolify
+- Confirmed Apache-2.0 from composer.json; PHP/Laravel application with Docker/server orchestration and SSH-managed resources.
+- README supports deployment from Git, Docker/Compose, databases and services, previews, rollbacks, domains, TLS, health checks, logs, secrets and API/CLI/MCP.
+- Decision: optional self-hosted deployment/control-plane candidate, not a replacement for AEGIS's Cloudflare-first architecture today. It requires real servers and operational maintenance. Any later connector must be narrow, owner-only, exact-resource, Sentinel-gated and read-only initially. Never execute its one-line installer or provision infrastructure without approval.
+
+### OpenProject
+- Confirmed GPL-3.0 from its repository and documentation. Main stack is Ruby/Rails with PostgreSQL and extensive project-management workflows.
+- Decision: API interoperability/reference only unless a deliberate GPLv3 compliance decision is made. Do not transplant code into AEGIS's independently licensed core. Compare work-package, workflow, Gantt and portfolio data concepts with AEGIS's own task/worker model before adding a connector.
+
+### Remaining unresolved
+- Kiri: three plausible but materially different projects surfaced: kiri.build (local AI workspace), Yeshwanthyk/kiri (keyboard-first local agent control plane), and david-d25/kiri (Telegram autonomous agent). Need exact intended URL before source review or adoption.
+- Hex Brain: no authoritative repository identity established. Do not substitute open-brain or another memory project based on a name guess.
+- Oracle: ORACLE-org/ORACLE is source-reviewed and appears the strongest match for adaptive agent model routing. Namesakes such as oracle/locus and steipete/oracle remain separate and should not be conflated.
