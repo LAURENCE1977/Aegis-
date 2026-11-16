@@ -791,3 +791,12 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - CI run 43789320560 on commit 161e69899a045a83635110efe50b0f89870727f0 passed **353 tests, 0 failures** under Node.js 22.
 - No D1 database has been provisioned/migrated and no live grant or production deployment has been created. This route is not yet operational until the clean capability stack and migration chain are reviewed and deployed deliberately.
 - Details: `docs/AEGIS_CAPABILITY_GRANT_MANAGEMENT.md`.
+
+## First Sentinel-mediated invocation path
+
+- Added owner-authenticated `POST /api/sentinel/invoke`, restricted to `aegis-module-catalogue:list` on exact resource `aegis:modules` with empty input.
+- Requires a same-origin owner session, configured D1 and an exact active grant. The route computes the input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root.
+- The route exposes no user-selectable adapter, provider, URL, MCP server, shell command, browser action, write or delete operation.
+- The Security Centre now has an explicit manual button to invoke this one read-only action and display its audited invocation ID/output.
+- The endpoint remains unavailable in the preview until authentication secrets and the D1 binding/migrations are deliberately configured. No secrets, D1 resources or deployments were changed.
+- Details: `docs/AEGIS_SENTINEL_COMPOSITION.md`.
