@@ -59,3 +59,33 @@ test('Composio read-only controls only prepare grants on explicit clicks', () =>
   assert.match(html, /composioPrepareWorkflowJobsGrantBtn\.addEventListener\('click'/);
   assert.doesNotMatch(html, /loadComposioStatus\(\)[\s\S]{0,500}createGrant/);
 });
+
+
+test('Security Centre exposes an owner-proxied plan-only agent run console and event timeline', () => {
+  for (const id of [
+    'agentRunSection', 'agentRunForm', 'agentRunObjective', 'agentRunSubmitBtn',
+    'agentRunRefreshBtn', 'agentRunStatus', 'agentRunList', 'agentRunDetail',
+    'agentRunEvents', 'agentRunCancelBtn', 'agentRunLoadOlderEventsBtn',
+    'agentSpecialistResearcher', 'agentSpecialistPlanner', 'agentSpecialistEngineer',
+    'agentSpecialistSecurity', 'agentSpecialistReviewer',
+  ]) assert.match(html, new RegExp('id="' + id + '"'));
+  assert.match(html, /controlApi\('\/api\/agent-runs'/);
+  assert.match(html, /controlApi\('\/api\/agent-runs\/' \+ encodeURIComponent\(agentRunId\)/);
+  assert.match(html, /\/events/);
+  assert.match(html, /\/cancel/);
+  assert.match(html, /plan-only/i);
+  assert.match(html, /does not execute specialist work/i);
+  assert.match(html, /agentRunCancelBtn\.addEventListener\('click'/);
+  assert.match(html, /agentRunForm\.addEventListener\('submit'/);
+});
+
+test('Agent run console renders provider data with textContent and never auto-submits or auto-cancels', () => {
+  const start = html.indexOf('id="agentRunSection"');
+  const end = html.indexOf('</section>', start);
+  assert.ok(start >= 0 && end > start);
+  const section = html.slice(start, end);
+  assert.match(section, /agentRunList\.replaceChildren\(\)/);
+  assert.match(section, /textContent\s*=/);
+  assert.doesNotMatch(section, /innerHTML\s*=/);
+  assert.doesNotMatch(section, /fetch\('\/api\/agent-runs',\s*\{\s*method:\s*'POST'/);
+});
