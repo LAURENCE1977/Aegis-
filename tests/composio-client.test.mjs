@@ -358,3 +358,53 @@ test('rejects a cross-origin or non-HTTPS Composio callback before network acces
   }), /callback URL/i);
   assert.equal(calls, 0);
 });
+
+
+test('executes only the fixed read-only pull request metadata tool', async () => {
+  let captured;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async (url, options) => {
+      captured = { url: requestUrl(url), options, body: JSON.parse(options.body) };
+      return jsonResponse({
+        data: { number: 101, title: 'AEGIS build', state: 'open', draft: true, merged: false },
+        error: null,
+        log_id: 'log_pr_101',
+      });
+    },
+  });
+
+  const result = await client.executeGitHubGetPullRequest({
+    sessionId,
+    owner: 'LAURENCE1977',
+    repo: 'Aegis-',
+    pullNumber: 101,
+    connectedAccountId: 'ca_abc123xyz',
+  });
+
+  assert.deepEqual(result, {
+    data: { number: 101, title: 'AEGIS build', state: 'open', draft: true, merged: false },
+    logId: 'log_pr_101',
+  });
+  assert.equal(captured.url, `https://backend.composio.dev/api/v3.1/tool_router/session/${sessionId}/execute`);
+  assert.deepEqual(captured.body, {
+    tool_slug: 'GITHUB_GET_A_PULL_REQUEST',
+    arguments: { owner: 'LAURENCE1977', repo: 'Aegis-', pull_number: 101 },
+    account: 'ca_abc123xyz',
+  });
+});
+
+test('rejects invalid pull request identifiers before any network access', async () => {
+  let calls = 0;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async () => { calls += 1; return jsonResponse({ data: {} }); },
+  });
+  await assert.rejects(client.executeGitHubGetPullRequest({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', pullNumber: 0,
+  }), /pull request/i);
+  await assert.rejects(client.executeGitHubGetPullRequest({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', pullNumber: 1.5,
+  }), /pull request/i);
+  assert.equal(calls, 0);
+});
