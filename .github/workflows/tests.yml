@@ -87,6 +87,10 @@ jobs:
             exit 1
           fi
 
+      - name: Verify runtime D1 and Queue integration in Miniflare
+        env:
+          AEGIS_RUNTIME_INTEGRATION: '1'
+        run: node --test tests/runtime-cloudflare-integration.test.mjs
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
       - name: Verify Forge licence gates, immutable source identity and append-only review events
