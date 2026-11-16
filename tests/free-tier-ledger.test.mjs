@@ -92,3 +92,8 @@ test('rejects blank, oversized and control-character text fields', () => {
     assert.throws(() => validateFreeTierRecord({ ...record, ...patch }));
   }
 });
+
+test('candidate offers are never treated as current verified free tiers', () => {
+  assert.equal(isFreeTierRecordCurrent({ ...record, status: 'candidate' }, Date.parse('2026-11-20T00:00:00.000Z')), false);
+  assert.equal(isFreeTierRecordCurrent({ ...record, status: 'expired' }, Date.parse('2026-11-20T00:00:00.000Z')), false);
+});
