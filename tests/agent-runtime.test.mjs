@@ -530,3 +530,52 @@ test('agent run event timeline rejects malformed cursors and duplicate query par
     assert.equal(response.status, 400, query);
   }
 });
+
+test('runtime authorisation requires an exact one-time approval binding and never queues work', async () => {
+  const { env, DB, sent } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({ objective: 'Review the runtime' }), env);
+  const { run } = await response.json();
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{ body: { agentRunId: run.id }, ack() {}, retry() { assert.fail('unexpected retry'); } }] }, env);
+  const saved = DB.runs.get(run.id);
+  const plan = JSON.parse(saved.plan_json);
+  const { digestCanonicalInput } = await import('../functions/lib/canonical-input.mjs');
+  const inputDigest = await digestCanonicalInput(plan);
+  const authorize = (body) => handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + run.id + '/authorize',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+  ), env);
+  const binding = {
+    approvalId: 'approval-once-001',
+    capabilityId: 'aegis-agent-run',
+    capabilityVersion: '0.1.0',
+    actionId: 'approve-execution',
+    inputDigest,
+  };
+  const approved = await authorize(binding);
+  assert.equal(approved.status, 200);
+  const result = await approved.json();
+  assert.equal(result.run.id, run.id);
+  assert.equal(result.run.executionAuthorized, true);
+  assert.equal(saved.authorization_approval_id, binding.approvalId);
+  assert.equal(sent.length, 1, 'authorisation must not enqueue or execute work');
+
+  const replay = await authorize(binding);
+  assert.equal(replay.status, 200, 'same approval retry is idempotent');
+  const changedApproval = await authorize({ ...binding, approvalId: 'approval-replay-002' });
+  assert.equal(changedApproval.status, 409, 'a second approval cannot re-authorise the same run');
+  const changedDigest = await authorize({ ...binding, inputDigest: 'sha256:' + '0'.repeat(64) });
+  assert.equal(changedDigest.status, 409, 'a different plan digest cannot be authorised');
+  assert.equal(sent.length, 1);
+});
+
+test('runtime authorisation rejects missing credentials, non-planned runs and malformed claims', async () => {
+  const { env } = makeEnv();
+  const request = new Request('https://runtime.example/v1/agent-runs/00000000-0000-4000-8000-000000000001/authorize', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+  });
+  assert.equal((await handleRuntimeFetch(request, env)).status, 401);
+  const bad = await handleRuntimeFetch(new Request(request.url, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{"approvalId":"x"}',
+  }), env);
+  assert.equal(bad.status, 400);
+});
