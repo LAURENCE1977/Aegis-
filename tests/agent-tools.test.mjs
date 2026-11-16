@@ -61,7 +61,7 @@ const githubResponse = () => new Response(JSON.stringify({
   license: { spdx_id: 'MIT', name: 'MIT License' },
 }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
-test('agent tools are server-defined and expose only the two approved read-only actions', () => {
+test('agent tools are server-defined and expose only the approved read-only actions', () => {
   const tools = getAgentToolDefinitions();
   assert.deepEqual(tools.map(tool => tool.function.name), [
     'aegis_list_modules',
@@ -190,7 +190,7 @@ test('workflow run agent tool requires an exact repository grant before contacti
     },
   });
   assert.equal(result.ok, false);
-  assert.equal(result.reasonCode, 'NO_ACTIVE_GRANT');
+  assert.equal(result.reasonCode, 'GRANT_REQUIRED');
   assert.equal(providerCalls, 0);
   assert.equal(db.auditRows.length, 1);
 });
