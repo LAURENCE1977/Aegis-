@@ -660,6 +660,9 @@ test('runtime authorisation requires an exact one-time approval binding and neve
   const cancelledRun = (await cancelled.json()).run;
   assert.equal(cancelledRun.status, 'cancelled');
   assert.equal(cancelledRun.executionAuthorized, true);
+  assert.ok([...DB.steps.values()].every((step) => step.status === 'cancelled'));
+  assert.equal(DB.stepEvents.filter((event) =>
+    event.agent_run_id === run.id && event.event_type === 'cancelled').length, 3);
 });
 
 test('runtime authorisation rejects missing credentials, non-planned runs and malformed claims', async () => {
