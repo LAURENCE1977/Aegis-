@@ -10,10 +10,15 @@ const EVENT_TYPES = new Set([
   'invocation_failed',
   'invocation_succeeded',
 ]);
-const INPUT_KEYS = new Set([
+const REQUIRED_INPUT_KEYS = new Set([
   'invocationId', 'type', 'principalId', 'capabilityId', 'capabilityVersion',
   'actionId', 'resourceId', 'inputDigest', 'reasonCode', 'occurredAt',
 ]);
+const OPTIONAL_INPUT_KEYS = new Set([
+  'grantId', 'connectionId', 'approvalId', 'taskId', 'sessionId',
+  'parentSessionId', 'workerId', 'adapterReceiptId',
+]);
+const ALL_INPUT_KEYS = new Set([...REQUIRED_INPUT_KEYS, ...OPTIONAL_INPUT_KEYS]);
 
 function requiredId(value, label) {
   if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
@@ -21,28 +26,33 @@ function requiredId(value, label) {
   }
 }
 
-function mapAudit(row) {
+function optionalId(value, label) {
+  if (value !== null && value !== undefined &&
+      (typeof value !== 'string' || !ID_PATTERN.test(value))) {
+    throw new TypeError('Invalid audit ' + label);
+  }
+}
+
+function normalizeEvent(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event) ||
+      Object.keys(event).some((key) => !ALL_INPUT_KEYS.has(key)) ||
+      [...REQUIRED_INPUT_KEYS].some((key) => !Object.prototype.hasOwnProperty.call(event, key))) {
+    throw new TypeError('Invalid audit event fields');
+  }
   return {
-    id: row.id,
-    invocationId: row.invocation_id,
-    type: row.event_type,
-    principalId: row.principal_id,
-    capabilityId: row.capability_id,
-    capabilityVersion: row.capability_version,
-    actionId: row.action_id,
-    resourceId: row.resource_id,
-    inputDigest: row.input_digest,
-    reasonCode: row.reason_code,
-    occurredAt: row.occurred_at,
+    ...event,
+    grantId: event.grantId ?? null,
+    connectionId: event.connectionId ?? null,
+    approvalId: event.approvalId ?? null,
+    taskId: event.taskId ?? null,
+    sessionId: event.sessionId ?? null,
+    parentSessionId: event.parentSessionId ?? null,
+    workerId: event.workerId ?? null,
+    adapterReceiptId: event.adapterReceiptId ?? null,
   };
 }
 
 function validateEvent(event) {
-  if (!event || typeof event !== 'object' || Array.isArray(event) ||
-      Object.keys(event).some(key => !INPUT_KEYS.has(key)) ||
-      Object.keys(event).length !== INPUT_KEYS.size) {
-    throw new TypeError('Invalid audit event fields');
-  }
   requiredId(event.invocationId, 'invocation identifier');
   requiredId(event.principalId, 'principal');
   requiredId(event.capabilityId, 'capability identifier');
@@ -64,36 +74,81 @@ function validateEvent(event) {
       new Date(timestamp).toISOString() !== event.occurredAt) {
     throw new TypeError('Invalid audit timestamp');
   }
+  optionalId(event.grantId, 'grant identifier');
+  optionalId(event.connectionId, 'connection identifier');
+  optionalId(event.approvalId, 'approval identifier');
+  optionalId(event.taskId, 'task identifier');
+  optionalId(event.sessionId, 'session identifier');
+  optionalId(event.parentSessionId, 'parent session identifier');
+  optionalId(event.workerId, 'worker identifier');
+  optionalId(event.adapterReceiptId, 'adapter receipt identifier');
+}
+
+function mapAudit(row) {
+  return {
+    id: row.id,
+    invocationId: row.invocation_id,
+    type: row.event_type,
+    principalId: row.principal_id,
+    capabilityId: row.capability_id,
+    capabilityVersion: row.capability_version,
+    actionId: row.action_id,
+    resourceId: row.resource_id,
+    inputDigest: row.input_digest,
+    reasonCode: row.reason_code,
+    occurredAt: row.occurred_at,
+    grantId: row.grant_id ?? null,
+    connectionId: row.connection_id ?? null,
+    approvalId: row.approval_id ?? null,
+    taskId: row.task_id ?? null,
+    sessionId: row.session_id ?? null,
+    parentSessionId: row.parent_session_id ?? null,
+    workerId: row.worker_id ?? null,
+    adapterReceiptId: row.adapter_receipt_id ?? null,
+  };
 }
 
 export async function recordCapabilityAudit(db, event) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Audit database is required');
-  validateEvent(event);
+  const normalized = normalizeEvent(event);
+  validateEvent(normalized);
   const id = crypto.randomUUID();
   const result = await db.prepare(`
     INSERT INTO capability_invocation_audit (
       id, invocation_id, event_type, principal_id, capability_id,
       capability_version, action_id, resource_id, input_digest,
-      reason_code, occurred_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      reason_code, occurred_at, grant_id, connection_id, approval_id,
+      task_id, session_id, parent_session_id, worker_id, adapter_receipt_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id, event.invocationId, event.type, event.principalId, event.capabilityId,
-    event.capabilityVersion, event.actionId, event.resourceId, event.inputDigest,
-    event.reasonCode, event.occurredAt,
+    id, normalized.invocationId, normalized.type, normalized.principalId,
+    normalized.capabilityId, normalized.capabilityVersion, normalized.actionId,
+    normalized.resourceId, normalized.inputDigest, normalized.reasonCode,
+    normalized.occurredAt, normalized.grantId, normalized.connectionId,
+    normalized.approvalId, normalized.taskId, normalized.sessionId,
+    normalized.parentSessionId, normalized.workerId, normalized.adapterReceiptId,
   ).run();
   if (result?.meta?.changes === 0) throw new Error('Audit event could not be persisted');
   return {
     id,
-    invocationId: event.invocationId,
-    type: event.type,
-    principalId: event.principalId,
-    capabilityId: event.capabilityId,
-    capabilityVersion: event.capabilityVersion,
-    actionId: event.actionId,
-    resourceId: event.resourceId,
-    inputDigest: event.inputDigest,
-    reasonCode: event.reasonCode,
-    occurredAt: event.occurredAt,
+    invocationId: normalized.invocationId,
+    type: normalized.type,
+    principalId: normalized.principalId,
+    capabilityId: normalized.capabilityId,
+    capabilityVersion: normalized.capabilityVersion,
+    actionId: normalized.actionId,
+    resourceId: normalized.resourceId,
+    inputDigest: normalized.inputDigest,
+    reasonCode: normalized.reasonCode,
+    occurredAt: normalized.occurredAt,
+    grantId: normalized.grantId,
+    connectionId: normalized.connectionId,
+    approvalId: normalized.approvalId,
+    taskId: normalized.taskId,
+    sessionId: normalized.sessionId,
+    parentSessionId: normalized.parentSessionId,
+    workerId: normalized.workerId,
+    adapterReceiptId: normalized.adapterReceiptId,
   };
 }
 
