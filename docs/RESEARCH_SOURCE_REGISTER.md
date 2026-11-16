@@ -572,3 +572,8 @@ These are three distinct source tracks, not interchangeable products.
 ## Project Spaces and agent-workspace architecture decision
 
 AEGIS implements a native owner-scoped Project Spaces layer with append-only typed activity events, inspired by agent-workspace patterns. The implementation is independently built; no external workspace runtime is embedded. Preserve the boundaries: AEGIS owns canonical jobs, permissions, approvals, secrets and audit; Project Spaces own project context and timeline. Any future browser, terminal, file or device capability must pass Sentinel, least-privilege policy and human approval for consequential actions.
+
+
+## MCP Forge implementation decision
+
+Build an AEGIS-owned metadata catalogue rather than importing a third-party MCP marketplace or executing directory entries directly. Each server remains an untrusted candidate until source provenance, exact licence, maintenance, dependencies, transport, auth, egress, action effects and approval requirements are reviewed. The initial catalogue is metadata-only and has no connect/install/execute surface. No external MCP server has been installed or connected by this implementation.
