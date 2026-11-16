@@ -265,6 +265,34 @@ const CAPABILITY_MANIFESTS = [
     licence: { identifier: 'first-party', review: 'not-applicable' },
     status: 'approved',
   },
+
+  {
+    id: 'aegis-composio-github-workflow-readonly',
+    version: '0.1.0',
+    name: 'Composio GitHub workflow run metadata',
+    description: 'Read at most ten workflow run summaries for one exact repository and optional branch.',
+    provider: { id: 'composio', kind: 'external' },
+    interface: { kind: 'internal', method: 'POST', path: '/api/sentinel/composio-github-workflows' },
+    actions: [{
+      id: 'list-workflow-runs',
+      capability: 'github.workflow-read',
+      effect: 'read',
+      risk: 'medium',
+      approval: 'none',
+      requiredScopes: ['github:workflow:read'],
+    }],
+    data: {
+      classification: 'confidential',
+      reads: ['GitHub Actions workflow run status, conclusion, branch, commit SHA and run URL'],
+      writes: [],
+    },
+    network: { egressHosts: ['backend.composio.dev'] },
+    auth: { mode: 'secret-reference', secretRef: 'secret://connections/composio-github-readonly' },
+    limits: { requestsPerMinute: 20, timeoutMs: 8000, maxRequestBytes: 2048 },
+    provenance: { sourceUrl: SOURCE_URL, revision: SOURCE_REVISION },
+    licence: { identifier: 'first-party', review: 'not-applicable' },
+    status: 'approved',
+  },
 ];
 
 for (const manifest of CAPABILITY_MANIFESTS) validateCapabilityManifest(manifest);
