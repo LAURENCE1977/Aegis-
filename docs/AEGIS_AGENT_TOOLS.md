@@ -14,11 +14,12 @@ The default Workers AI text-only model receives no tool definitions. Other Qwen 
 
 ## Server-owned tool registry
 
-The AG-UI endpoint never accepts frontend-supplied function definitions. It continues to reject non-empty `tools` arrays from the browser. When enabled, the server supplies exactly three function schemas:
+The AG-UI endpoint never accepts frontend-supplied function definitions. It continues to reject non-empty `tools` arrays from the browser. When enabled, the server supplies exactly four function schemas:
 
 1. `aegis_list_modules` — local read-only AEGIS module catalogue.
 2. `aegis_discover_public_github_repository` — bounded public GitHub repository metadata.
 3. `aegis_read_github_workflow_runs` — at most ten GitHub Actions workflow-run summaries for one exact repository and optional branch, through the fixed Composio adapter.
+4. `aegis_read_github_workflow_jobs` — at most twenty job summaries and bounded step summaries for one exact workflow run, through the fixed Composio adapter.
 
 ## Execution sequence
 
@@ -40,11 +41,12 @@ The assistant then streams its final response through AG-UI 1.0.
 - The default Workers AI path is text-only.
 - Only one tool round is allowed per run.
 - GitHub discovery requires the exact `github:public:{owner}/{repository}` grant and the 30-per-minute D1 rate limit.
-- Composio workflow reads require the separate `aegis-composio-github-workflow-readonly` capability, `github:workflow:read` scope, exact `github:repository:{owner}/{repo}` resource grant and active Composio connection. The Composio session must contain the fixed workflow-run reader. Only bounded run metadata is returned; no logs, artifacts, reruns, dispatch or cancellation.
+- Composio workflow-run reads require the separate `aegis-composio-github-workflow-readonly` capability, `github:workflow:read` scope and exact `github:repository:{owner}/{repo}` resource grant.
+- Composio workflow-job reads require `aegis-composio-github-workflow-jobs-readonly`, `github:workflow-jobs:read` and exact `github:workflow-run:{owner}/{repo}/{runId}` resource grant. Both require the active Composio connection and the matching fixed tool in the session. Job output is bounded to job status/conclusion and step name/number/status/conclusion; logs, artifacts, reruns, dispatch and cancellation remain unavailable.
 - No private GitHub access, source execution, shell, browser automation, MCP, writes or deletes are included.
 
 ## Verification and deployment
 
-Tests cover the three-tool registry, Qwen opt-in/model allowlist, strict argument parsing, exact grant/rate-limit/audit execution, Composio workflow denial without an exact grant, streamed tool-call deltas, one-call limit and no-tools follow-up. CI also applies migrations 0001–0006 to local D1 and checks the real SQL constraints.
+Tests cover the four-tool registry, Qwen opt-in/model allowlist, strict argument parsing, exact grant/rate-limit/audit execution, Composio workflow-run and workflow-job denial without exact grants, streamed tool-call deltas, one-call limit and no-tools follow-up. CI also applies migrations 0001–0006 to local D1 and checks the real SQL constraints.
 
 The feature remains inactive until the owner explicitly configures the flag, supported Qwen credentials and D1 binding. No credentials or production settings were changed.
