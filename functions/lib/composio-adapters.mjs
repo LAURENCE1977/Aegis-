@@ -56,9 +56,11 @@ function validatePullRequestInput(input) {
 
 function safePullRequestResult(data, owner, repo, pullNumber) {
   const baseRepository = data?.base?.repo?.full_name;
+  if (typeof baseRepository !== 'string' ||
+      baseRepository.toLowerCase() !== (owner + '/' + repo).toLowerCase()) {
+    throw new Error('Composio returned pull request metadata outside the exact requested repository');
+  }
   if (!data || typeof data !== 'object' || Array.isArray(data) ||
-      typeof baseRepository !== 'string' ||
-      baseRepository.toLowerCase() !== (owner + '/' + repo).toLowerCase() ||
       data.number !== pullNumber || typeof data.title !== 'string' || !data.title.trim() ||
       data.title.length > 500 || !['open', 'closed'].includes(data.state) ||
       typeof data.draft !== 'boolean' || typeof data.merged !== 'boolean') {
