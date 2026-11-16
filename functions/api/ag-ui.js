@@ -21,6 +21,8 @@ const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
 const MAX_TOOL_RESULT = 4000;
+const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
+const MAX_PROVIDER_STREAM_BYTES = 256 * 1024;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -183,6 +185,9 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
             };
 
             const processFrame = (frame) => {
+              if (frame.length > MAX_PROVIDER_FRAME_BYTES) {
+                throw agentStreamError("PROVIDER_FRAME_TOO_LARGE", "The AI provider sent an oversized frame.");
+              }
               const data = frame.split(/\r?\n/)
                 .filter(line => line.startsWith("data:"))
                 .map(line => line.slice(5).trimStart())
@@ -197,8 +202,11 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
                   ? payload.choices[0].delta.content
                   : "";
               if (delta) {
-                messageText += delta;
-                emitText(delta);
+                const boundedDelta = delta.slice(0, Math.max(0, MAX_OUTPUT - outputLength));
+                if (boundedDelta) {
+                  messageText += boundedDelta;
+                  emitText(boundedDelta);
+                }
               }
               accumulateToolCalls(payload.choices?.[0]?.delta?.tool_calls);
             };
@@ -208,19 +216,33 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
                 const match = /\r?\n\r?\n/.exec(buffer);
                 if (!match) break;
                 const index = match.index;
+                if (index > MAX_PROVIDER_FRAME_BYTES) {
+                  throw agentStreamError("PROVIDER_FRAME_TOO_LARGE", "The AI provider sent an oversized frame.");
+                }
                 processFrame(buffer.slice(0, index));
                 buffer = buffer.slice(index + match[0].length);
                 if (finished) break;
               }
               if (flush && buffer.trim()) {
+                if (buffer.length > MAX_PROVIDER_FRAME_BYTES) {
+                  throw agentStreamError("PROVIDER_FRAME_TOO_LARGE", "The AI provider sent an oversized frame.");
+                }
                 processFrame(buffer);
                 buffer = "";
+              }
+              if (buffer.length > MAX_PROVIDER_FRAME_BYTES) {
+                throw agentStreamError("PROVIDER_FRAME_TOO_LARGE", "The AI provider sent an oversized frame.");
               }
             };
 
             while (!finished) {
               const { done, value } = await reader.read();
               if (done) break;
+              providerBytes += value.byteLength;
+              if (providerBytes > MAX_PROVIDER_STREAM_BYTES) {
+                await reader.cancel("AEGIS provider stream size limit reached");
+                throw agentStreamError("PROVIDER_STREAM_TOO_LARGE", "The AI provider response exceeded its size limit.");
+              }
               buffer += decoder.decode(value, { stream: true });
               drainFrames();
               if (outputLength >= MAX_OUTPUT) {
@@ -299,6 +321,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
           )));
           controller.close();
         } catch (error) {
+          try { await reader?.cancel(error); } catch {}
           try {
             emitError(
               typeof error?.code === "string" ? error.code : "AGENT_STREAM_FAILED",
