@@ -724,3 +724,10 @@ The runtime remains source-only and is not deployed or provisioned. Agent runs s
 Added owner-authenticated `GET /v1/agent-runs/{id}/events` with a 1–50 event page size, newest-first keyset pagination on `created_at DESC, event_id DESC`, exact parent-run existence checks, strict cursor/query validation and bounded JSON detail parsing. Malformed or oversized event detail is redacted to an empty object rather than returned raw. Migration `0005_agent_run_event_listing.sql` adds the per-run cursor index; CI verifies the index and append-only event triggers in isolated D1. The event timeline remains read-only and cannot alter or delete audit records.
 
 Latest verified implementation commit: `5c36daa16378af68b3cee2357d92844983f08c14`. CI: 509 tests passed, 0 failed; capability, runtime and Forge D1 migration/smoke checks passed; Cloudflare Pages preview succeeded.
+
+
+## Upstream research register — 16 November 2026
+
+A repository-by-repository and protocol-by-protocol research review is recorded in [AEGIS_UPSTREAM_RESEARCH_2026-11-16.md](AEGIS_UPSTREAM_RESEARCH_2026-11-16.md). It resolves the supplied Doory, Astryx, THX-02/FormTriage, LLM-from-scratch, Awesome LLM Apps, AI Engineering Hub, Project Ideas and Resources, and PewPie references; records licence constraints and architecture decisions; and maps MCP v2, AG-UI 1.0, Cloudflare Agents, A2A, guardrails, Tree-sitter, provider routing, WebLLM, Extism/QuickJS, voice frameworks, CRDTs and OpenFGA into the AEGIS roadmap.
+
+**Decision:** AEGIS keeps its own TypeScript Worker/D1/Queue/Sentinel control plane. External projects remain replaceable adapters or research references. No third-party model, memory store, authorization engine, orchestration runtime or paid API is activated by this research. The unresolved “Tailored repo” needs its exact GitHub URL before it can be audited.
