@@ -287,12 +287,18 @@ References:
 
 ## Verification
 
-CI workflow: `node --test tests/*.test.mjs` on Node.js 22.
+CI workflow: `node --test tests/*.test.mjs` on Node.js 22, followed by isolated D1 migration/constraint checks and a Miniflare Worker + D1 + Queue integration test.
 
-At commit `4d2e2a57c3d870f0e57403ee4034a6b48227bc60`, GitHub Actions runs [43871611614](https://github.com/LAURENCE1977/Aegis-/actions/runs/43871611614) and [43871601533](https://github.com/LAURENCE1977/Aegis-/actions/runs/43871601533) both completed successfully: **527 tests passed, 0 failed**. Composio independently confirmed both workflow runs and their successful jobs. The same checks applied capability, runtime and Forge migrations to isolated local D1 and passed rate-limit, active-grant uniqueness, append-only audit, durable agent-run cancellation/event and Forge licence/source-integrity verification.
+At commit `e74c5f41b2ffb7879c545ced832aaebfbff59490`, GitHub Actions run [43907037911](https://github.com/LAURENCE1977/Aegis-/actions/runs/43907037911) completed successfully:
 
-The suite includes the owner-authenticated agent-run Pages proxy, fixed-path/bounded server-side runtime proxy, plan-only submission controls, event timeline pagination, safe text-only rendering and the owner-only AG-UI 1.0 terminal replay adapter. AG-UI replay tests cover protocol lifecycle framing, chronological event ordering across pages, cancelled/failed outcomes, active-run refusal, authentication, query validation and exclusion of private event details. The event timeline tests cover bounded pages, newest-first ordering, timestamp ties, stable cursor continuation and malformed/duplicate query rejection. The migration adds the composite index `(agent_run_id, created_at DESC, event_id DESC)`.
+- **556 Node.js tests: 555 passed, 0 failed, 1 skipped.** The skipped test is the dedicated integration test, which runs separately with its required emulator flag.
+- **Miniflare integration: 1 passed, 0 failed.** It loads the actual runtime Worker module, applies the runtime D1 migrations to an isolated local D1 database, submits an authenticated agent run through the Worker HTTP endpoint, delivers the message through a local Queue consumer, and verifies the persisted plan, attempt count, ordered audit timeline and idempotent replay.
+- Capability D1 migrations, table/constraint smoke tests, atomic rate-limit reservation, active-grant uniqueness and append-only audit checks passed.
+- Runtime D1 migrations, durable cancellation and append-only event checks passed.
+- Forge migrations, licence gates, immutable source identity and append-only review-event checks passed.
 
-The Cloudflare Pages preview also deployed successfully for this commit. That preview is the app/site preview only: it does **not** deploy the separate runtime Worker, provision production D1/Queue resources or run a live queue integration test. Production runtime deployment remains gated on explicit configuration, free-tier review and a separate deployment decision.
+The integration test uses the Cloudflare workerd/Miniflare emulator, not a live Cloudflare account. It proves the Worker/D1/Queue code path in an isolated local runtime; it does **not** prove production resource provisioning, live Cloudflare queue delivery, Cron scheduling, free-tier headroom or a production deployment.
 
-The suite is source/isolated-D1 evidence, not proof of live Cloudflare Worker + Queue behavior. The current agent workforce UI remains explicitly **plan-only**; no specialist model execution or tool execution is enabled. AG-UI currently provides bounded replay for terminal run history, not live worker streaming or resumption.
+The runtime integration regression also verifies that the initial `created` event is written atomically with the agent-run row. An idempotency-key replay returns the original run and does not append a second creation event.
+
+The Cloudflare Pages preview remains separate from the dedicated runtime Worker. No production D1 database or Queue has been provisioned, no runtime Worker has been deployed, and no production `AEGIS_JOB_TOKEN` has been configured. Production activation remains gated on account usage review, explicit approval of any resource creation and encrypted secret configuration.
