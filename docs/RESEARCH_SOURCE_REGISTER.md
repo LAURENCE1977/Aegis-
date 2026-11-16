@@ -577,3 +577,61 @@ AEGIS implements a native owner-scoped Project Spaces layer with append-only typ
 ## MCP Forge implementation decision
 
 Build an AEGIS-owned metadata catalogue rather than importing a third-party MCP marketplace or executing directory entries directly. Each server remains an untrusted candidate until source provenance, exact licence, maintenance, dependencies, transport, auth, egress, action effects and approval requirements are reviewed. The initial catalogue is metadata-only and has no connect/install/execute surface. No external MCP server has been installed or connected by this implementation.
+
+
+## Owner repository sweep — 16 November 2026
+
+This is a read-only review of repositories visible under the AEGIS owner's GitHub account. It is not an installation or integration claim. Repository contents remain untrusted until individually pinned, licensed, reviewed and tested.
+
+### Auto Browser — strongest browser-control reference
+
+- Source: https://github.com/LAURENCE1977/auto-browser
+- Declared licence: MIT in the repository's `LICENSE`; retain the copyright and licence notice if any code is ever reused.
+- Relevant design: MCP-native Playwright browser controller, reusable authenticated sessions, operator takeover, explicit approvals, audit events, PII handling, signed Witness receipts, local-first deployment and provider-neutral OpenAI-compatible model adapters.
+- AEGIS decision: high-value architecture reference for a future isolated Browser capability. Reuse the concepts and contracts first; do not embed its controller or expose browser access through the current AG-UI tool loop.
+- Security qualification: its own published execution audit documents prior controls that reported success while effects did not occur, including screenshot redaction; its security policy also records a prior raw-CDP allowlist issue and unauthenticated Codespaces overlay. The maintainers state these findings were fixed in later releases. Before any reuse, pin a current commit, review the fixes and advisories, and independently test actual pixels, auth, approvals, network boundaries and audit receipts. Never rely on a green unit test or success flag alone.
+- Candidate outcome: `adapt` architecture only; defer implementation until AEGIS has a separately isolated browser worker, strict destination/egress policy, session isolation, human takeover and Sentinel-backed approval.
+
+### OpenClaw — personal assistant and gateway architecture reference
+
+- Source: https://github.com/LAURENCE1977/openclaw
+- Declared licence: MIT; inspect `THIRD_PARTY_NOTICES.md` and individual dependency licences before any code reuse.
+- Relevant design: a trusted gateway separated from model/agent harnesses, replaceable hosted/local providers, channel adapters, memory and device companions.
+- AEGIS decision: useful architecture reference for cross-device voice/channel adapters and provider swapping. Preserve AEGIS's existing FastAPI/Cloudflare/Project Space/Sentinel boundaries; do not import a second gateway, scheduler, memory authority or tool permission system.
+- Security qualification: the upstream README explicitly warns that host tools run with host privileges unless sandboxing is configured. Study its security and sandboxing guidance, but require AEGIS-owned policy and isolated execution.
+- Candidate outcome: `adapt` architectural patterns; no wholesale runtime replacement.
+
+### G0DM0D3 — multi-model and local-provider UX reference
+
+- Source: https://github.com/LAURENCE1977/G0DM0D3
+- Declared licence: AGPL-3.0.
+- Relevant design: OpenRouter/Venice/local OpenAI-compatible model selection, multi-model race/evaluation, local-only mode, export/import and provider configuration UX.
+- AEGIS decision: study feature behaviour and UX patterns only. Do not copy or link AGPL-covered code into the AEGIS codebase without an explicit licensing decision and compliance plan. A separately hosted AGPL service would still require a deliberate network-copyleft and source-distribution review.
+- Security qualification: the repository README states provider keys and chat history are held in browser storage, which is not a secure secret vault; optional telemetry can send raw prompts to an auxiliary classifier unless No-Log/Local-only is enabled. AEGIS must keep keys server-side and avoid that storage/telemetry model.
+- Candidate outcome: `adapt` product concepts only; retain AEGIS's server-side vault and provider registry.
+
+### 3D Website Builder — optional visual site-generation reference
+
+- Source: https://github.com/LAURENCE1977/3D-Website-Builder
+- Repository contains a React/Vite/Three.js portfolio builder with editor/preview and JSON export.
+- No repository README or licence file was found in the inspected root. The package manifest identifies a starter-style private project and older dependency versions.
+- AEGIS decision: potentially useful for an optional 3D portfolio/site template, not for the core website-generation pipeline. Hold all code reuse until the owner confirms the licence and the project is build/test verified. Do not add its React/Three.js dependency stack to the core PWA just for this optional feature.
+- Candidate outcome: `hold` pending licence, build and accessibility/performance review.
+
+### Charlie Automates Skills — workflow-pattern reference
+
+- Source: https://github.com/LAURENCE1977/charlieautomatesskills
+- README declares MIT and lists Claude Code skills including spec-driven planning, codebase mapping, resume-task, debugging, MCP research and integration testing; a separate root `LICENSE` file was not found in this review.
+- AEGIS decision: selectively adapt the workflow ideas into provider-neutral AEGIS-native procedures and test templates. Verify the licence and each skill's provenance before copying any prompt or file. Claude Code slash-command packaging is not itself an AEGIS runtime dependency.
+- Candidate outcome: `adapt` workflow patterns only, pending licence confirmation.
+
+### Other owner repositories
+
+- `storie-audio-lab-3` is currently empty.
+- `storie-audio-lab-store-checker` currently exposes only a root `index.html` in the inspected tree; no package manifest or README was found.
+- `storied-gecko-09ca7c` currently exposes a root `index.html` and a GitHub Actions folder; no README or package manifest was found.
+- These three repositories have no confirmed AEGIS core contribution at this time; recheck if their contents change.
+
+### Ongoing intake rule
+
+At each substantive AEGIS build stage, refresh the owner's repository inventory and open pull requests, inspect relevant new commits/branches, compare candidate file revisions against current `main`, and check licence/security/maintenance before proposing reuse. Prefer small AEGIS-native adaptations over importing whole runtimes. Keep a candidate pinned to an immutable commit/tree SHA and record the evidence and decision. Never merge a stale stacked PR just because its old CI was green; rerun against current `main` and inspect actual effect-level behaviour.
