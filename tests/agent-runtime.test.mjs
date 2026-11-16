@@ -124,7 +124,7 @@ test('queue consumer creates a plan-only result and never invokes tools', async 
   }), env);
   const { run } = await response.json();
   let acked = false;
-  await runtime.queue({ messages: [{ body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); } }] }, env);
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{ body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); } }] }, env);
   const saved = DB.runs.get(run.id);
   const plan = JSON.parse(saved.plan_json);
   assert.equal(saved.status, 'planned');
