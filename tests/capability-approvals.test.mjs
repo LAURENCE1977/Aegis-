@@ -14,7 +14,13 @@ class MemoryD1 {
     const db = this;
     return {
       values: [],
-      bind(...values) { this.values = values; return this; },
+      bind(...values) {
+        this.values = values;
+        if (sql.includes('INSERT INTO capability_approvals') || sql.includes('UPDATE capability_approvals')) {
+          assert.equal((sql.match(/\\?/g) || []).length, values.length, 'SQL placeholders must match bound values');
+        }
+        return this;
+      },
       async run() {
         const v = this.values;
         if (sql.includes('INSERT INTO capability_approvals')) {
