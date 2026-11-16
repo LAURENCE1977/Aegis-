@@ -80,6 +80,14 @@ export function validateCandidateRecord(record) {
 
 export function validateKnowledgeRecord(record) {
   if (!isRecord(record)) throw new TypeError('Knowledge record must be an object');
+  const allowedKeys = new Set([
+    'id', 'ownerId', 'title', 'domain', 'knowledgeType', 'summary', 'evidenceLevel',
+    'status', 'sources', 'limitations', 'applicableCapabilities', 'reviewNote',
+    'reviewerId', 'version', 'createdAt', 'updatedAt', 'reviewedAt', 'acceptedAt', 'supersededAt',
+  ]);
+  if (Object.keys(record).some((key) => !allowedKeys.has(key))) {
+    throw new TypeError('Unexpected knowledge record field');
+  }
   requireSlug(record.id, 'knowledge identifier');
   requireText(record.title, 'knowledge title', 200);
   requireSlug(record.domain, 'knowledge domain');
@@ -92,7 +100,10 @@ export function validateKnowledgeRecord(record) {
     throw new TypeError('At least one attributable knowledge source is required');
   }
   for (const source of record.sources) {
-    if (!isRecord(source)) throw new TypeError('Invalid knowledge source');
+    if (!isRecord(source) ||
+        Object.keys(source).some((key) => !['url', 'title', 'attribution'].includes(key))) {
+      throw new TypeError('Invalid knowledge source');
+    }
     requireHttpsUrl(source.url, 'knowledge source URL');
     requireText(source.title, 'knowledge source title', 300);
     requireText(source.attribution, 'knowledge source attribution', 300);
