@@ -59,6 +59,10 @@ function deriveScopes({ providerId, capabilityId, actionIds, expiresAt, secret }
   if (typeof secret !== 'string' || !secret.trim() || new TextEncoder().encode(secret).byteLength > 16 * 1024) {
     throw new TypeError('The provider credential must be non-empty and no larger than 16 KiB.');
   }
+  if (providerId === 'github' &&
+      !/^(?:github_pat_|ghp_|gho_|ghu_)[A-Za-z0-9_]{20,200}$/.test(secret)) {
+    throw new TypeError('Provide a supported GitHub access token format.');
+  }
   return { scopes: uniqueScopes, manifest };
 }
 

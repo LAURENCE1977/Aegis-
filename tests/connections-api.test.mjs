@@ -116,7 +116,7 @@ async function makeRequest(method, body, { authenticated = true, origin = 'https
   });
 }
 
-function connectionInput(secret = 'github-oauth-access-token-test') {
+function connectionInput(secret = 'github_pat_' + 'a'.repeat(40)) {
   return {
     providerId: 'github',
     capabilityId: 'aegis-github-private-metadata',
@@ -169,7 +169,7 @@ test('connections API refuses to store credentials when the vault keyring is mis
 
 test('connections API encrypts the token, returns safe metadata and lists no secret references', async () => {
   const db = new MemoryD1();
-  const secret = 'github-oauth-access-token-test';
+  const secret = 'github_pat_' + 'b'.repeat(40);
   const response = await onRequestPost({
     request: await makeRequest('POST', connectionInput(secret)),
     env: { ...keyringEnv, AEGIS_DB: db },
