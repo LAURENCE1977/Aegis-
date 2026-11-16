@@ -141,7 +141,9 @@ test('Sentinel invokes only the granted read-only module adapter and records the
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.reasonCode, 'SUCCESS');
+  assert.match(body.invocationId, /^[0-9a-f-]{36}$/i);
   assert.ok(body.output.modules.some(module => module.id === 'forge'));
   assert.equal(db.auditRows.length, 3);
+  assert.ok(db.auditRows.every(row => row[1] === body.invocationId));
   assert.equal(JSON.stringify(body).includes('inputDigest'), false);
 });
