@@ -352,7 +352,7 @@ test('cancellation racing the initial queue send prevents the outbox from markin
 test('owner can list recent agent runs with a bounded page and stable next cursor', async () => {
   const { env, DB } = makeEnv();
   for (const [id, createdAt] of [
-    ['00000000-0000-4000-8000-000000000003', '2026-11-16T12:03:00.000Z'],
+    ['00000000-0000-4000-8000-000000000003', '2026-11-16T12:02:00.000Z'],
     ['00000000-0000-4000-8000-000000000002', '2026-11-16T12:02:00.000Z'],
     ['00000000-0000-4000-8000-000000000001', '2026-11-16T12:01:00.000Z'],
   ]) {
@@ -376,6 +376,15 @@ test('owner can list recent agent runs with a bounded page and stable next curso
     before: '2026-11-16T12:02:00.000Z',
     beforeId: '00000000-0000-4000-8000-000000000002',
   });
+  const next = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs?limit=2&before=2026-11-16T12%3A02%3A00.000Z&beforeId=00000000-0000-4000-8000-000000000002',
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  const nextBody = await next.json();
+  assert.deepEqual(nextBody.runs.map((run) => run.id), [
+    '00000000-0000-4000-8000-000000000001',
+  ]);
+  assert.equal(nextBody.nextCursor, null);
 });
 
 
