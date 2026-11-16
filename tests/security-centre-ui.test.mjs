@@ -115,7 +115,7 @@ test('Agent Workforce can bind a run to an owner-selected Project Space memory c
   assert.match(html, /id="agentRunProjectId"/);
   assert.match(html, /agentRunProjectSelect/);
   assert.match(html, /projectId:\s*agentRunProjectSelect\.value\s*\|\|\s*undefined/);
-  assert.match(html, /for \(const select of \[chatProjectSelect, memoryProjectSelect, agentRunProjectSelect\]\)/);
+  assert.match(html, /const projectSelects = \[chatProjectSelect, memoryProjectSelect, agentRunProjectSelect\]/);
   assert.match(html, /bounded brief made from accepted, non-restricted project memories/i);
 });
 
