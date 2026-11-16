@@ -2053,8 +2053,8 @@
           }),
         });
         forgeKnowledgeForm.reset();
-        forgeKnowledgeStatus.textContent = 'Draft saved; not accepted or used by agents.';
         await loadForgeKnowledge();
+        forgeKnowledgeStatus.textContent = 'Draft saved; not accepted or used by agents.';
       } catch (error) {
         forgeKnowledgeStatus.textContent = error.message;
       } finally {
