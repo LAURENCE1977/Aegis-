@@ -1,6 +1,7 @@
 import { getCapabilityManifest } from './capability-registry.mjs';
 import { parseGitHubRepositoryUrl } from './github-discovery.mjs';
 import { createBuiltinAdapterRegistry } from './sentinel-adapters.mjs';
+import { createComposioAdapterRegistry } from './composio-adapters.mjs';
 import { createSentinelDependencies } from './sentinel-composition.mjs';
 import { runSentinelInvocation } from './sentinel.mjs';
 import { digestCanonicalInput } from './canonical-input.mjs';
@@ -40,6 +41,23 @@ const TOOL_DEFINITIONS = Object.freeze([
           }),
         }),
         required: Object.freeze(['sourceUrl']),
+        additionalProperties: false,
+      }),
+    }),
+  }),
+  Object.freeze({
+    type: 'function',
+    function: Object.freeze({
+      name: 'aegis_read_github_workflow_runs',
+      description: 'Read at most ten GitHub Actions workflow run summaries for one exact repository and optional branch. Requires a separate exact-resource Sentinel grant and an active Composio GitHub connection. Read-only; no logs, artifacts or workflow execution.',
+      parameters: Object.freeze({
+        type: 'object',
+        properties: Object.freeze({
+          owner: Object.freeze({ type: 'string', maxLength: 39 }),
+          repo: Object.freeze({ type: 'string', maxLength: 100 }),
+          branch: Object.freeze({ type: 'string', maxLength: 128 }),
+        }),
+        required: Object.freeze(['owner', 'repo']),
         additionalProperties: false,
       }),
     }),
@@ -100,6 +118,27 @@ function parseArguments(name, argumentsText) {
       return null;
     }
   }
+  if (name === 'aegis_read_github_workflow_runs') {
+    if (Object.keys(value).some(key => !['owner', 'repo', 'branch'].includes(key)) ||
+        typeof value.owner !== 'string' ||
+        !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(value.owner) ||
+        typeof value.repo !== 'string' || !/^[A-Za-z0-9_.-]{1,100}$/.test(value.repo) ||
+        (value.branch !== undefined &&
+          (typeof value.branch !== 'string' || value.branch.length > 128 ||
+           !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value.branch) ||
+           value.branch.includes('..') || value.branch.includes('//')))) return null;
+    return {
+      capabilityId: 'aegis-composio-github-workflow-readonly',
+      actionId: 'list-workflow-runs',
+      resourceId: 'github:repository:' + value.owner + '/' + value.repo,
+      input: {
+        owner: value.owner,
+        repo: value.repo,
+        ...(value.branch === undefined ? {} : { branch: value.branch }),
+      },
+    };
+  }
+
   return undefined;
 }
 
@@ -112,6 +151,7 @@ export async function executeAgentToolCall({
   name,
   argumentsText,
   db,
+  env = {},
   principalId = 'owner',
   fetchImpl = fetch,
   now = Date.now(),
@@ -148,7 +188,12 @@ export async function executeAgentToolCall({
     }, createSentinelDependencies({
       db,
       clock: () => now,
-      adapters: createBuiltinAdapterRegistry({ fetchImpl }),
+      adapters: {
+        ...createBuiltinAdapterRegistry({ fetchImpl }),
+        ...(parsed.capabilityId === 'aegis-composio-github-workflow-readonly'
+          ? createComposioAdapterRegistry({ db, env, fetchImpl })
+          : {}),
+      },
     }));
 
     if (!result.allowed || result.reasonCode !== 'SUCCESS') {
