@@ -37,7 +37,7 @@ This is not yet wired to a public route or a deployed Worker. The current capabi
 
 ## Required next steps before enabling execution
 
-1. Validate migrations 0001–0005 in an isolated, disposable D1 database and add migration/integration coverage.
+1. Validate migrations 0001–0006 in an isolated, disposable D1 database and add migration/integration coverage.
 2. Add owner-authenticated grant and connection lifecycle operations. Browser input must never supply the owner identity, scopes beyond an approved allowlist, vault references or secret values.
 3. Implement one narrowly scoped, read-only first-party adapter with bounded input/output and fixed host allowlisting.
 4. Add outbound network controls: no redirects to unapproved hosts, private/link-local/loopback addresses or DNS rebinding; enforce request size, timeout, rate and response-size limits.
@@ -57,3 +57,8 @@ Do not expose this action until an atomic per-principal/action rate limiter and 
 ## First owner-facing invocation route
 
 `POST /api/sentinel/invoke` exposes exactly one action: `aegis-module-catalogue:list` on resource `aegis:modules` with empty input. It requires a valid owner session, same-origin request, configured AEGIS D1 and an exact active grant. The route derives the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root. It returns output only after the success audit is recorded. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. This is a source-level restricted route, not a general tool endpoint; no external or consequential action is exposed.
+
+
+## Atomic invocation rate limits
+
+`reserveCapabilityInvocation` is a mandatory Sentinel dependency. It reserves one request in a D1 UTC-minute bucket keyed by principal, capability and action using a conditional UPSERT; concurrent Workers cannot claim the final slot through a read-then-write race. The limit comes from the trusted manifest's `requestsPerMinute`. A full bucket is denied with `RATE_LIMITED` (HTTP 429); D1 failure is denied with `RATE_LIMIT_STORE_UNAVAILABLE` (HTTP 503). Reservation occurs after policy checks and before pre-execution audit, approval consumption or adapter dispatch. Failed reservation never calls the adapter. Old buckets are pruned after 24 hours. CI applies migrations 0001–0006 locally and smoke-tests the two-request ceiling.

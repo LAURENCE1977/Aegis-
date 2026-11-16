@@ -4,7 +4,6 @@ import { getCapabilityManifest } from '../../lib/capability-registry.mjs';
 import { runSentinelInvocation } from '../../lib/sentinel.mjs';
 import { createSentinelDependencies } from '../../lib/sentinel-composition.mjs';
 import { createBuiltinAdapterRegistry } from '../../lib/sentinel-adapters.mjs';
-import { digestCanonicalInput } from '../../lib/canonical-input.mjs';
 
 const OWNER_ID = 'owner';
 const CAPABILITY_ID = 'aegis-module-catalogue';
@@ -12,6 +11,11 @@ const ACTION_ID = 'list';
 const RESOURCE_ID = 'aegis:modules';
 const MAX_BODY_BYTES = 4096;
 
+async function digestInput(input) {
+  const bytes = new TextEncoder().encode(JSON.stringify(input));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return 'sha256:' + [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 function exactKeys(value, allowed) {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -66,7 +70,7 @@ export async function onRequestPost({ request, env }) {
       manifest,
       actionId: ACTION_ID,
       resourceId: RESOURCE_ID,
-      inputDigest: await digestCanonicalInput(body.input),
+      inputDigest: await digestInput(body.input),
       input: body.input,
       now,
     }, createSentinelDependencies({
@@ -75,11 +79,12 @@ export async function onRequestPost({ request, env }) {
     }));
 
     if (!result.allowed) {
-      const unavailable = ['POLICY_CONTEXT_UNAVAILABLE', 'AUDIT_UNAVAILABLE'].includes(result.reasonCode);
+      const unavailable = ['POLICY_CONTEXT_UNAVAILABLE', 'AUDIT_UNAVAILABLE', 'RATE_LIMIT_STORE_UNAVAILABLE'].includes(result.reasonCode);
+      const rateLimited = result.reasonCode === 'RATE_LIMITED';
       return jsonResponse({
         error: unavailable ? 'Sentinel policy or audit storage is unavailable.' : 'Capability invocation denied.',
         reasonCode: result.reasonCode,
-      }, unavailable ? 503 : 403);
+      }, rateLimited ? 429 : unavailable ? 503 : 403);
     }
     if (result.reasonCode !== 'SUCCESS') {
       return jsonResponse({ error: 'The read-only adapter could not complete the request.', reasonCode: result.reasonCode }, 502);

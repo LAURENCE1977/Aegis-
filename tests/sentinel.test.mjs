@@ -19,7 +19,7 @@ const grant = {
 
 function harness(overrides = {}) {
   const events = [];
-  const calls = { execute: 0, consume: 0 };
+  const calls = { execute: 0, consume: 0, reserve: 0 };
   return {
     events,
     calls,
@@ -28,6 +28,7 @@ function harness(overrides = {}) {
       loadGrant: async () => grant,
       loadConnection: async () => null,
       loadApproval: async () => null,
+      reserveRateLimit: async () => { calls.reserve += 1; return true; },
       consumeApproval: async () => { calls.consume += 1; return null; },
       recordAudit: async (event) => { events.push(event); },
       execute: async (input, context) => {
@@ -203,4 +204,22 @@ test('does not consume an approval when the audit store is unavailable', async (
   assert.equal(result.reasonCode, 'AUDIT_UNAVAILABLE');
   assert.equal(h.calls.consume, 0);
   assert.equal(h.calls.execute, 0);
+});
+test('denies a rate-limited invocation before pre-execution audit or adapter dispatch', async () => {
+  const h = harness({ reserveRateLimit: async () => false });
+  const result = await runSentinelInvocation(request, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'RATE_LIMITED');
+  assert.equal(h.calls.execute, 0);
+  assert.deepEqual(h.events.map(event => event.type), ['invocation_denied']);
+  assert.equal(h.events[0].reasonCode, 'RATE_LIMITED');
+});
+
+test('fails closed when the atomic rate-limit store is unavailable', async () => {
+  const h = harness({ reserveRateLimit: async () => { throw new Error('D1 unavailable'); } });
+  const result = await runSentinelInvocation(request, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
+  assert.equal(h.calls.execute, 0);
+  assert.equal(h.events[0].reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
 });

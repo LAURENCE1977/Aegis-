@@ -27,6 +27,7 @@ function harness(overrides = {}) {
       loadGrant: async () => grant,
       loadConnection: async () => null,
       loadApproval: async () => null,
+      reserveRateLimit: async () => true,
       recordAudit: async (event) => { events.push(event); },
       consumeApproval: async () => null,
       execute: async (input, context) => {
