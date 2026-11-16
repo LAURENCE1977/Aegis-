@@ -7,3 +7,10 @@ ALTER TABLE agent_runs ADD COLUMN context_json TEXT
 CREATE INDEX IF NOT EXISTS idx_agent_runs_project_created
   ON agent_runs (project_id, created_at DESC, id DESC)
   WHERE project_id IS NOT NULL;
+
+CREATE TRIGGER IF NOT EXISTS agent_run_project_context_immutable
+BEFORE UPDATE OF project_id, context_json ON agent_runs
+WHEN OLD.project_id IS NOT NEW.project_id OR OLD.context_json IS NOT NEW.context_json
+BEGIN
+  SELECT RAISE(ABORT, 'agent run project context is immutable');
+END;
