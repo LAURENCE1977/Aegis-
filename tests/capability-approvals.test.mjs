@@ -17,7 +17,7 @@ class MemoryD1 {
       bind(...values) {
         this.values = values;
         if (sql.includes('INSERT INTO capability_approvals') || sql.includes('UPDATE capability_approvals')) {
-          assert.equal((sql.match(/\\?/g) || []).length, values.length, 'SQL placeholders must match bound values');
+          assert.equal((sql.match(/\?/g) || []).length, values.length, 'SQL placeholders must match bound values');
         }
         return this;
       },
