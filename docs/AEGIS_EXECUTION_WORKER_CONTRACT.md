@@ -143,6 +143,8 @@ Every invocation records:
 
 The worker signs an effect receipt with a per-worker Ed25519 identity. AEGIS verifies the signature and records the receipt digest in its append-only audit. For stronger tamper evidence, the audit head is anchored outside the worker host. A local hash chain alone is not described as tamper-proof.
 
+**Current implementation status:** the Sentinel audit schema now has optional `grant_id`, `connection_id`, `approval_id`, `task_id`, `session_id`, `parent_session_id`, `worker_id` and `adapter_receipt_id` columns. The AG-UI tool path maps its validated `runId` to `task_id`, `threadId` to `session_id`, and identifies the logical executor as `aegis-ag-ui`. These IDs are correlation fields only; they do not authorise an operation. Parent lineage is not yet populated, and approval records are not yet bound to task/session lineage. A trusted server-side session registry and lineage-bound approval workflow are still required before multi-agent delegation.
+
 ## 10. Failure behavior
 
 Fail closed when:
