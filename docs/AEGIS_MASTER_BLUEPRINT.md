@@ -731,3 +731,18 @@ Latest verified implementation commit: `5c36daa16378af68b3cee2357d92844983f08c14
 A repository-by-repository and protocol-by-protocol research review is recorded in [AEGIS_UPSTREAM_RESEARCH_2026-11-16.md](AEGIS_UPSTREAM_RESEARCH_2026-11-16.md). It resolves the supplied Doory, Astryx, THX-02/FormTriage, LLM-from-scratch, Awesome LLM Apps, AI Engineering Hub, Project Ideas and Resources, and PewPie references; records licence constraints and architecture decisions; and maps MCP v2, AG-UI 1.0, Cloudflare Agents, A2A, guardrails, Tree-sitter, provider routing, WebLLM, Extism/QuickJS, voice frameworks, CRDTs and OpenFGA into the AEGIS roadmap.
 
 **Decision:** AEGIS keeps its own TypeScript Worker/D1/Queue/Sentinel control plane. External projects remain replaceable adapters or research references. No third-party model, memory store, authorization engine, orchestration runtime or paid API is activated by this research. The unresolved “Tailored repo” needs its exact GitHub URL before it can be audited.
+
+## Live build reconciliation — 16 November 2026, 13:24 UTC
+
+This section supersedes earlier time-stamped branch/PR/CI snapshots above where they differ. It records the latest live checks, not a production readiness claim.
+
+- Canonical integration remains PR #101, branch `feature/composio-audit-lineage-verified`; PR #100 remains superseded. PR #101 is open, draft, unmerged and mergeable. Keep it as the sole integration candidate.
+- Latest branch commit verified: `4a1de5baf24a5d13bcc14ea6f7513fd856b6fd89` (`ci: pin tests to Ubuntu 24.04 runner`). The change only pins the existing Node.js/local-D1 workflow runner from `ubuntu-latest` to `ubuntu-24.04`; workflow steps and security controls were otherwise unchanged.
+- GitHub Actions completed successfully for both Node.js/local-D1 workflow runs on this commit. Cloudflare Pages preview also deployed successfully:
+  - https://899cdf4e.aegis-6yk.pages.dev
+  - https://feature-composio-audit-linea.aegis-6yk.pages.dev
+- The CI result is source-level plus isolated local-D1 verification. It is not a live Cloudflare runtime Worker, D1 or Queue integration test. The Pages preview is not the separate AEGIS runtime Worker.
+- Live Cloudflare account inspection confirmed the Pages project `aegis` has a production `MEMORY` KV binding and Workers AI binding, but no D1 databases and no Queues are provisioned in the account. Preview environment variables are empty; production environment variables were empty at inspection. Do not infer that Composio credentials, Vault keyring or runtime secrets are configured.
+- Production remains on `main` commit `160402bceeb4e4e036344982a1dddd083954addc`; no production deployment or configuration was changed by this CI fix.
+- Live Composio OAuth and provider execution remain unverified. The next meaningful gate is owner-controlled preview configuration and an exact-resource, read-only GitHub connection test. Required configuration includes the owner-authentication settings, D1 binding/migrations, `COMPOSIO_API_KEY`, `AEGIS_VAULT_KEYRING` and `AEGIS_VAULT_ACTIVE_KEY_VERSION`, all server-side only.
+- Do not provision D1/Queues, create or rotate secrets, enable billing, activate paid providers, deploy the runtime Worker or merge PR #101 without the appropriate explicit owner approval. Keep the build in preview and continue source-level work that does not cross those gates.
