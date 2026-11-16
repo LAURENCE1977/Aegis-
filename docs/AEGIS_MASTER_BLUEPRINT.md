@@ -374,3 +374,10 @@ The native Free-Tier Ledger validates provider allowance records against officia
 ## Governed capability persistence and intelligence foundation
 
 The current-main capability stack adds exact-resource grants, principal/provider connection metadata, AES-256-GCM credential storage with versioned keyring support, append-only invocation audit, and a validated provider/model catalogue with conservative token estimation and context fitting. These are persistence and planning primitives only: no provider credentials or vault keyring have been configured, no migrations applied to production D1, no provider connections established, and no adapter execution enabled. All real actions remain gated by Sentinel and exact-operation approval.
+
+
+## Sentinel D1 composition — trusted adapter boundary
+
+A server-side `createSentinelDependencies` factory now composes the persistent D1 grant, connection, approval, atomic-consumption and append-only audit stores with a fixed adapter allowlist. Adapter registration is pinned to exact approved capability/action pairs from the canonical registry. Dispatch never derives a network destination from manifest metadata, request fields or agent-provided names. The adapter receives a minimal frozen context without vault references or arbitrary endpoints. The first built-in adapter is a local read-only module catalogue that accepts no input and performs no network, filesystem, process or secret access.
+
+The composition root verifies the canonical SHA-256 digest against the exact input again before dispatch and passes a canonical, deeply frozen payload to the adapter. It is still a library-only composition; no public route, production D1 database, migration application or Worker deployment is enabled. Arbitrary HTTP, MCP, browser, shell, write and delete adapters remain disabled.
