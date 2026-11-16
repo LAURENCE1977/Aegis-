@@ -128,7 +128,7 @@ export async function loadApproval(db, {
   requiredId(capabilityId, 'capability identifier');
   requiredId(capabilityVersion, 'capability version');
   requiredId(actionId, 'action identifier');
-  requiredId(resourceId, 'resource identifier');
+  if (typeof resourceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(resourceId) || resourceId.includes('..')) {\n    throw new TypeError('Invalid approval resource identifier');\n  }
   if (typeof inputDigest !== 'string' || !DIGEST_PATTERN.test(inputDigest)) {
     throw new TypeError('Invalid approval input digest');
   }
