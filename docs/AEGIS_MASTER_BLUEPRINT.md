@@ -406,3 +406,8 @@ The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-
 ## Bounded GitHub public-discovery adapter
 
 A second fixed Sentinel adapter, `aegis-github-public-discovery:discover`, reads public repository metadata only. Its destination is pinned to `api.github.com`, redirects are rejected, request timeouts are bounded, and streamed response bodies are capped at 64 KiB. It accepts exactly one canonical GitHub repository URL and does not read repository files, execute code, access private repositories or derive destinations from user-supplied endpoints. The adapter is registered in the server-side adapter map but is not exposed through a Sentinel route. Before exposure, add an atomic per-principal/action rate limiter and verify exact-resource grants for the target repository. Existing Forge source inspection remains a separate read-only research route.
+
+
+## First restricted Sentinel invocation route
+
+A source-level owner-authenticated `POST /api/sentinel/invoke` route exposes exactly one action: `aegis-module-catalogue:list` on `aegis:modules` with empty input. It requires same-origin owner session, configured AEGIS D1 and an exact active grant. The route computes the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root with only the fixed local adapter registry. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. Outcome-audit failure suppresses adapter output. This is not yet deployed or operational; D1 binding provisioning and owner-approved deployment remain gated. No general HTTP, MCP, shell, browser, write or delete capability is exposed.
