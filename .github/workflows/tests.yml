@@ -55,6 +55,24 @@ jobs:
             exit 1
           fi
 
+      - name: Apply runtime migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1
+      - name: Verify durable agent-run cancellation and append-only events
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --file scripts/runtime-d1-smoke.sql
+          output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT status, cancelled_at FROM agent_runs WHERE id = '550e8400-e29b-41d4-a716-446655440000'")
+          echo "$output"
+          grep -q "2026-11-16T00:01:00.000Z" <<< "$output"
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_run_events SET event_type = 'tampered' WHERE event_id = 'cancelled:550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected append-only agent-run event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM agent_run_events WHERE event_id = 'cancelled:550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected append-only agent-run event trigger to reject deletion."
+            exit 1
+          fi
+
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
       - name: Verify Forge licence gates, immutable source identity and append-only review events
