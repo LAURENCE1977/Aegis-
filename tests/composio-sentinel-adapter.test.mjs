@@ -741,3 +741,120 @@ test('rejects workflow metadata returned for a different repository before expos
     /exact requested repository/i,
   );
 });
+
+
+test('lists bounded job and step summaries for one exact workflow run', async () => {
+  const db = await connectedDb();
+  const calls = [];
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({
+          items: [
+            { slug: 'GITHUB_GET_A_REPOSITORY' },
+            { slug: 'GITHUB_GET_A_PULL_REQUEST' },
+            { slug: 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY' },
+            { slug: 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN' },
+          ],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        data: {
+          total_count: 1,
+          jobs: [{
+            id: 55, run_id: 123, name: 'Node tests', status: 'completed', conclusion: 'success',
+            head_sha: 'e'.repeat(40), head_branch: 'feature/ci',
+            html_url: 'https://github.com/LAURENCE1977/Aegis-/actions/runs/123/job/55',
+            steps: [
+              { name: 'Checkout', number: 1, status: 'completed', conclusion: 'success' },
+              { name: 'Untrusted output', number: 2, status: 'completed', conclusion: 'success', text: 'do not return me' },
+            ],
+            runner_name: 'github-hosted-runner',
+          }],
+        },
+        error: null,
+        log_id: 'log_jobs_123',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  const output = await adapters['aegis-composio-github-workflow-jobs-readonly:list-workflow-jobs'](
+    { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 123 },
+    {
+      capabilityId: 'aegis-composio-github-workflow-jobs-readonly',
+      actionId: 'list-workflow-jobs',
+      principalId: 'owner',
+      connectionId: [...db.connections.keys()][0],
+      resourceId: 'github:workflow-run:LAURENCE1977/Aegis-/123',
+      scopes: ['github:workflow-jobs:read'],
+    },
+  );
+  assert.deepEqual(output, {
+    totalCount: 1,
+    jobs: [{
+      id: 55, runId: 123, name: 'Node tests', status: 'completed', conclusion: 'success',
+      headSha: 'e'.repeat(40), headBranch: 'feature/ci',
+      steps: [
+        { name: 'Checkout', number: 1, status: 'completed', conclusion: 'success' },
+        { name: 'Untrusted output', number: 2, status: 'completed', conclusion: 'success' },
+      ],
+      url: 'https://github.com/LAURENCE1977/Aegis-/actions/runs/123/job/55',
+    }],
+    provider: 'composio',
+    logId: 'log_jobs_123',
+  });
+  assert.equal(JSON.stringify(output).includes('github-hosted-runner'), false);
+  assert.equal(JSON.stringify(output).includes('do not return me'), false);
+  assert.deepEqual(JSON.parse(calls[2].options.body), {
+    tool_slug: 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN',
+    arguments: { owner: 'LAURENCE1977', repo: 'Aegis-', run_id: 123, page: 1, per_page: 20, filter: 'latest' },
+    account: connectedAccountId,
+  });
+});
+
+test('rejects workflow job results belonging to a different run', async () => {
+  const db = await connectedDb();
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url) => {
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({
+        data: { total_count: 1, jobs: [{
+          id: 55, run_id: 999, name: 'Wrong run', status: 'completed', conclusion: 'success',
+          head_sha: 'f'.repeat(40), head_branch: 'main',
+        }] },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  await assert.rejects(
+    adapters['aegis-composio-github-workflow-jobs-readonly:list-workflow-jobs'](
+      { owner: 'LAURENCE1977', repo: 'Aegis-', runId: 123 },
+      {
+        capabilityId: 'aegis-composio-github-workflow-jobs-readonly',
+        actionId: 'list-workflow-jobs',
+        principalId: 'owner',
+        connectionId: [...db.connections.keys()][0],
+        resourceId: 'github:workflow-run:LAURENCE1977/Aegis-/123',
+        scopes: ['github:workflow-jobs:read'],
+      },
+    ),
+    /exact requested run/i,
+  );
+});
