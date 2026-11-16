@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 const enabled = process.env.AEGIS_RUNTIME_INTEGRATION === '1';
 const token = 'aegis-miniflare-integration-token-at-least-32-characters';
+const migrations = [
+  '0001_jobs.sql',
+  '0002_agent_runs.sql',
+  '0003_agent_run_cancellation.sql',
+  '0004_agent_run_listing.sql',
+  '0005_agent_run_event_listing.sql',
+  '0006_agent_run_execution_authorization.sql',
+];
 
 async function eventually(assertion, timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
@@ -25,7 +34,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     scriptPath: new URL('../workers/runtime/index.mjs', import.meta.url).pathname,
     modules: true,
     compatibilityDate: '2026-08-06',
-    d1Persist: new URL('../.wrangler/test-runtime-d1/v3/d1', import.meta.url).pathname,
+
     bindings: {
       AEGIS_JOB_TOKEN: token,
       AGENT_RUNS_ENABLED: 'true',
@@ -54,6 +63,11 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
 
   try {
     const db = await mf.getD1Database('DB');
+    for (const migration of migrations) {
+      const sql = await readFile(new URL('../migrations/runtime/' + migration, import.meta.url), 'utf8');
+      // D1 does not permit SQLite PRAGMA statements; Cloudflare manages FK enforcement.
+      await db.exec(sql.replace(/^\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*;\\s*/gim, ''));
+    }
     const schema = await db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
     ).all();
