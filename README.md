@@ -134,3 +134,8 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 AEGIS is being designed around one shared intelligence core and an adaptive companion experience across desktop, mobile, tablet, browser, XR and feasible console/TV pathways. The interface will assess supported capabilities with privacy-preserving feature detection and select an appropriate experience tier—from accessible text/voice to lightweight and advanced 3D or optional immersive XR. Advanced graphics will never be required for essential AEGIS use.
 
 See [Universal Device and 3D Companion Architecture](docs/AEGIS_UNIVERSAL_DEVICE_AND_3D_EXPERIENCE.md) for the proposed architecture, minimum support contract, privacy boundaries, platform strategy, performance tiers and implementation sequence. This is a planned architecture, not a claim that every platform is already supported.
+
+
+## Capability roadmap and upstream adoption
+
+See [AEGIS Capability Roadmap](docs/AEGIS_CAPABILITY_ROADMAP.md) for the build/adapt/connect/reject decisions, delivery gates, acceptance criteria, upstream selection scorecard and honest progress-tracking rules. The roadmap is a plan, not a claim that future capabilities are already implemented.
