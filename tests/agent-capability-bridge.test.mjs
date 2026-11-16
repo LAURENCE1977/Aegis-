@@ -135,3 +135,24 @@ test('rejects oversized and non-JSON input before Sentinel or adapter execution'
   assert.equal(invalid.reasonCode, 'INPUT_NOT_JSON_SAFE');
   assert.equal(h.calls.execute, 0);
 });
+
+test('passes a deeply frozen canonical input to the trusted adapter', async () => {
+  let received;
+  const h = harness({
+    execute: async (input, context) => {
+      received = input;
+      return { frozen: Object.isFrozen(input) && Object.isFrozen(input.nested) };
+    },
+  });
+  const result = await runAgentCapabilityRequest({
+    capabilityId: manifest.id,
+    actionId: 'discover',
+    resourceId,
+    input: { nested: { value: 'safe' } },
+  }, { principalId }, h.dependencies);
+  assert.equal(result.allowed, true);
+  assert.equal(received.nested.value, 'safe');
+  assert.equal(Object.isFrozen(received), true);
+  assert.equal(Object.isFrozen(received.nested), true);
+  assert.equal(result.output.frozen, true);
+});
