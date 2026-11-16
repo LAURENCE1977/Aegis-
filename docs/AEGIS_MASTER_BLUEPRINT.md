@@ -426,3 +426,8 @@ Migration `0006_invocation_limits.sql` adds an atomic per-principal, capability 
 ## AG-UI model gateway and bounded Sentinel tool loop
 
 The AG-UI 1.0 endpoint supports authenticated streaming chat through the default Workers AI text-only route. An optional Qwen OpenAI-compatible provider can expose exactly two server-defined read-only tools only when the owner explicitly enables `AEGIS_AGENT_TOOLS_ENABLED=true`, selects the tested `qwen3.8-flash` model, configures its runtime API key/workspace/region and provides AEGIS D1. The tool loop permits one tool call and one no-tools follow-up only. Tool arguments are strict, resource IDs are derived server-side, and execution passes through exact grants, atomic rate limits, Sentinel audit and the fixed adapter registry. Provider frames are capped at 16 KiB, total provider bytes at 256 KiB and user-visible output at 12,000 characters. No private GitHub access, source-file reading, shell, browser, MCP, writes or deletes are enabled. No provider secrets or runtime flags are set by this code change.
+
+
+## Anthropic provider adapter
+
+The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
