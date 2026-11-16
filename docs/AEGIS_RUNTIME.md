@@ -198,11 +198,11 @@ Migrations:
 - `migrations/runtime/0005_agent_run_event_listing.sql` — per-run event timeline cursor index.
 - `migrations/runtime/0006_agent_run_execution_authorization.sql` — one-time approval ID, exact grant ID and authorisation timestamp, with a unique approval-consumption index.
 - `migrations/runtime/0007_agent_run_steps.sql` — durable ordered agent-run steps, checkpoint/result slots, append-only step events and lease/status indexes.
-- `migrations/runtime/0008_agent_run_project_context.sql` — owner Project Space ID, bounded context snapshot JSON and project/time index.
+- `migrations/runtime/0008_agent_run_project_context.sql` — owner Project Space ID, stable context digest, bounded snapshot JSON, immutable-context trigger and project/time index.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
-- `agent_runs` stores bounded objectives, approved specialist-role selections, plan output, attempt/lease state, cancellation marker, selected Project Space ID and the verified context snapshot.
+- `agent_runs` stores bounded objectives, approved specialist-role selections, plan output, attempt/lease state, cancellation marker, selected Project Space ID, stable context digest and verified immutable context snapshot.
 - `agent_run_events` stores append-only agent-run lifecycle events, including one-time execution-authorisation records.
 - `agent_run_steps` stores each deterministic plan step and its checkpoint/result state; `agent_run_step_events` stores append-only per-step lifecycle records.
 - `agent_runs.authorization_approval_id`, `authorization_grant_id` and `execution_authorized_at` record the consumed owner approval, exact resource grant and authorisation time; the unique partial index prevents one approval being attached to multiple runs.
