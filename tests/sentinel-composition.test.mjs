@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSentinelDependencies } from '../functions/lib/sentinel-composition.mjs';
 import { createBuiltinAdapterRegistry } from '../functions/lib/sentinel-adapters.mjs';
+import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
+import { runSentinelInvocation } from '../functions/lib/sentinel.mjs';
 
 const manifest = {
   id: 'aegis-github-public-discovery',
@@ -117,4 +119,60 @@ test('composes the built-in module catalogue through the trusted Sentinel adapte
   });
   assert.equal(result.total, result.modules.length);
   assert.ok(result.modules.some((module) => module.id === 'forge'));
+});
+test('runs the read-only module catalogue end-to-end through real policy and D1 store adapters', async () => {
+  const now = Date.parse('2026-11-16T02:00:00Z');
+  const manifest = getCapabilityManifest('aegis-module-catalogue');
+  const auditRows = [];
+  const grantRow = {
+    id: 'grant-1',
+    principal_id: 'owner',
+    capability_id: manifest.id,
+    capability_version: manifest.version,
+    resource_id: 'aegis:modules',
+    scopes_json: JSON.stringify(['aegis:module-catalogue:read']),
+    status: 'active',
+    created_by: 'owner',
+    created_at: new Date(now - 1000).toISOString(),
+    expires_at: new Date(now + 60_000).toISOString(),
+    revoked_at: null,
+  };
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...values) {
+          return {
+            first: async () => sql.includes('FROM capability_grants') ? grantRow : null,
+            all: async () => ({ results: [] }),
+            run: async () => {
+              if (sql.includes('INSERT INTO capability_invocation_audit')) {
+                auditRows.push(values);
+              }
+              return { meta: { changes: 1 } };
+            },
+          };
+        },
+      };
+    },
+  };
+  const dependencies = createSentinelDependencies({
+    db,
+    clock: () => now,
+    adapters: createBuiltinAdapterRegistry(),
+  });
+  const result = await runSentinelInvocation({
+    invocationId: 'module-list-1',
+    principalId: 'owner',
+    manifest,
+    actionId: 'list',
+    resourceId: 'aegis:modules',
+    inputDigest: 'sha256:' + 'b'.repeat(64),
+    input: {},
+    now,
+  }, dependencies);
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'SUCCESS');
+  assert.ok(result.output.modules.some((module) => module.id === 'forge'));
+  assert.equal(auditRows.length, 3);
 });
