@@ -369,3 +369,8 @@ The metadata-only MCP Forge catalogue is being integrated on a clean branch from
 ## Free-Tier Ledger — verified-offer boundary
 
 The native Free-Tier Ledger validates provider allowance records against official pricing/terms URLs, explicit quota periods, card requirements, commercial-use status, overage behavior and verification timestamps. A record is considered current only when its status is `verified` and its verification age remains within the configured window; candidate and expired records are never treated as confirmed free capacity. The ledger is descriptive only: it does not create accounts, provision services, activate paid usage or store provider credentials.
+
+
+## Governed capability persistence and intelligence foundation
+
+The current-main capability stack adds exact-resource grants, principal/provider connection metadata, AES-256-GCM credential storage with versioned keyring support, append-only invocation audit, and a validated provider/model catalogue with conservative token estimation and context fitting. These are persistence and planning primitives only: no provider credentials or vault keyring have been configured, no migrations applied to production D1, no provider connections established, and no adapter execution enabled. All real actions remain gated by Sentinel and exact-operation approval.
