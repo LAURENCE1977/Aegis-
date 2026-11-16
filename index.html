@@ -57,6 +57,29 @@
     button:disabled { opacity: 0.5; }
     .logout { position: absolute; right: 0; top: 0; padding: .45rem .7rem; font-size: .8rem; }
     .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
+    .security-panel {
+      margin-top: 1rem; padding: 1rem; background: var(--card);
+      border: 1px solid var(--border); border-radius: 1rem;
+    }
+    .security-panel summary { cursor: pointer; color: var(--accent); font-weight: 650; }
+    .security-panel p { color: var(--muted); line-height: 1.5; margin-top: .75rem; font-size: .88rem; }
+    .security-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+    .security-actions button { flex: 1 1 190px; padding: .75rem 1rem; font-size: .9rem; }
+    .security-actions .secondary { background: transparent; border: 1px solid var(--border); }
+    .security-list { display: grid; gap: .5rem; margin-top: .75rem; }
+    .security-item {
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      padding: .75rem; border: 1px solid var(--border); border-radius: .75rem;
+    }
+    .security-item-main { min-width: 0; overflow-wrap: anywhere; }
+    .security-item-title { font-size: .9rem; font-weight: 600; }
+    .security-item-meta { margin-top: .25rem; color: var(--muted); font-size: .78rem; line-height: 1.4; }
+    .security-item button { flex: 0 0 auto; padding: .5rem .7rem; font-size: .78rem; background: transparent; border: 1px solid var(--border); }
+    .security-output {
+      margin-top: .75rem; padding: .75rem; border: 1px solid var(--border);
+      border-radius: .75rem; background: rgba(0,0,0,.25); color: var(--text);
+      white-space: pre-wrap; overflow-wrap: anywhere; max-height: 18rem; overflow: auto; font-size: .78rem;
+    }
     @media (max-width: 420px) {
       .logout { position: static; margin-top: .75rem; }
       .input-area button { padding-inline: 1rem; }
@@ -88,6 +111,18 @@
         <button id="sendBtn" type="button">Send</button>
       </div>
       <p class="status" id="status">Ready</p>
+      <details class="security-panel" id="securityPanel">
+        <summary>Security Centre · permissions and audit</summary>
+        <p>AEGIS exposes one restricted local read-only capability through Sentinel. A grant is time-limited permission, not approval for external actions.</p>
+        <p id="capabilitySummary" class="security-item-meta">Loading registered capabilities…</p>
+        <div class="security-actions">
+          <button id="createModuleGrantBtn" type="button" class="secondary">Grant catalogue access · 24 hours</button>
+          <button id="invokeModuleCatalogueBtn" type="button">Run through Sentinel</button>
+        </div>
+        <p class="status" id="securityStatus" role="status" aria-live="polite">Checking grant storage…</p>
+        <div class="security-list" id="grantList" aria-live="polite"></div>
+        <pre class="security-output" id="sentinelOutput" hidden></pre>
+      </details>
     </main>
   </div>
 
@@ -103,6 +138,12 @@
     const loginStatus = document.getElementById('loginStatus');
     const appPanel = document.getElementById('appPanel');
     const logoutBtn = document.getElementById('logoutBtn');
+    const capabilitySummary = document.getElementById('capabilitySummary');
+    const createModuleGrantBtn = document.getElementById('createModuleGrantBtn');
+    const invokeModuleCatalogueBtn = document.getElementById('invokeModuleCatalogueBtn');
+    const securityStatus = document.getElementById('securityStatus');
+    const grantList = document.getElementById('grantList');
+    const sentinelOutput = document.getElementById('sentinelOutput');
 
     const STORE_KEY = 'aegis_chat_v1';
     const MAX_SENT = 10;
@@ -162,6 +203,7 @@
       addMessage('Hello! How can I help you today?');
       history.forEach(m => addMessage(m.content, m.role));
       userInput.focus();
+      loadSecurityCentre();
     }
 
     async function checkSession() {
@@ -267,6 +309,140 @@
       return false;
     }
 
+    async function securityCall(path, method = 'GET', body) {
+      const options = { method, cache: 'no-store' };
+      if (body !== undefined) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, options);
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+      return data;
+    }
+
+    function renderGrantList(grants) {
+      grantList.replaceChildren();
+      if (!Array.isArray(grants) || grants.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'security-item-meta';
+        empty.textContent = 'No capability grants are currently recorded.';
+        grantList.appendChild(empty);
+        return;
+      }
+      for (const grant of grants) {
+        const item = document.createElement('div');
+        item.className = 'security-item';
+        const main = document.createElement('div');
+        main.className = 'security-item-main';
+        const title = document.createElement('div');
+        title.className = 'security-item-title';
+        title.textContent = grant.capabilityId + ' · ' + grant.resourceId;
+        const meta = document.createElement('div');
+        meta.className = 'security-item-meta';
+        meta.textContent = grant.status + ' · expires ' + grant.expiresAt +
+          ' · scopes: ' + (Array.isArray(grant.scopes) ? grant.scopes.join(', ') : 'not listed');
+        main.append(title, meta);
+        item.appendChild(main);
+        if (grant.status === 'active') {
+          const revoke = document.createElement('button');
+          revoke.type = 'button';
+          revoke.textContent = 'Revoke';
+          revoke.addEventListener('click', () => revokeCapabilityGrant(grant.id, revoke));
+          item.appendChild(revoke);
+        }
+        grantList.appendChild(item);
+      }
+    }
+
+    async function loadSecurityCentre() {
+      securityStatus.textContent = 'Loading capability registry and grant history…';
+      capabilitySummary.textContent = 'Loading registered capabilities…';
+      try {
+        const data = await securityCall('/api/capabilities');
+        const manifests = Array.isArray(data.capabilities) ? data.capabilities : [];
+        const catalogue = manifests.find(item => item && item.id === 'aegis-module-catalogue');
+        capabilitySummary.textContent = catalogue
+          ? catalogue.name + ' · v' + catalogue.version + ' · ' + catalogue.status +
+            ' · action: list · risk: read-only'
+          : 'The local module catalogue capability is not registered.';
+      } catch (err) {
+        capabilitySummary.textContent = 'Capability registry unavailable: ' + err.message;
+      }
+      try {
+        const data = await securityCall('/api/grants');
+        renderGrantList(data.grants || []);
+        securityStatus.textContent = 'Grant history loaded. No permissions are created automatically.';
+      } catch (err) {
+        renderGrantList([]);
+        securityStatus.textContent = 'Grant storage unavailable: ' + err.message +
+          ' Apply the AEGIS capability D1 migrations before using Sentinel.';
+      }
+    }
+
+    async function createModuleGrant() {
+      createModuleGrantBtn.disabled = true;
+      securityStatus.textContent = 'Creating a 24-hour exact-resource grant…';
+      try {
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        await securityCall('/api/grants', 'POST', {
+          capabilityId: 'aegis-module-catalogue',
+          actionIds: ['list'],
+          resourceId: 'aegis:modules',
+          expiresAt,
+        });
+        await loadSecurityCentre();
+        securityStatus.textContent = 'Read-only module catalogue grant created for 24 hours.';
+      } catch (err) {
+        securityStatus.textContent = 'Grant not created: ' + err.message;
+      } finally {
+        createModuleGrantBtn.disabled = false;
+      }
+    }
+
+    async function revokeCapabilityGrant(id, button) {
+      button.disabled = true;
+      securityStatus.textContent = 'Revoking grant…';
+      try {
+        await securityCall('/api/grants', 'DELETE', { id });
+        await loadSecurityCentre();
+        securityStatus.textContent = 'Grant revoked. Future Sentinel checks will reject it.';
+      } catch (err) {
+        securityStatus.textContent = 'Grant could not be revoked: ' + err.message;
+        button.disabled = false;
+      }
+    }
+
+    async function invokeModuleCatalogue() {
+      invokeModuleCatalogueBtn.disabled = true;
+      sentinelOutput.hidden = true;
+      securityStatus.textContent = 'Checking exact grant and running the local read-only action…';
+      try {
+        const data = await securityCall('/api/sentinel/invoke', 'POST', {
+          capabilityId: 'aegis-module-catalogue',
+          actionId: 'list',
+          resourceId: 'aegis:modules',
+          input: {},
+        });
+        sentinelOutput.textContent = JSON.stringify({
+          invocationId: data.invocationId,
+          auditRecorded: data.auditRecorded,
+          output: data.output,
+        }, null, 2);
+        sentinelOutput.hidden = false;
+        securityStatus.textContent = 'Sentinel invocation succeeded and was audited: ' + data.invocationId;
+      } catch (err) {
+        securityStatus.textContent = 'Invocation denied or unavailable: ' + err.message;
+      } finally {
+        invokeModuleCatalogueBtn.disabled = false;
+      }
+    }
+
     async function sendMessage() {
       const text = userInput.value.trim();
       if (!text || busy) return;
@@ -316,6 +492,9 @@
     userInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
     });
+
+    createModuleGrantBtn.addEventListener('click', createModuleGrant);
+    invokeModuleCatalogueBtn.addEventListener('click', invokeModuleCatalogue);
 
     checkSession();
   </script>
