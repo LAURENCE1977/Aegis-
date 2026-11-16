@@ -47,6 +47,7 @@ function makeBuilder(overrides = {}) {
       ownerId === 'owner' && projectId === workspace.id ? workspace : null,
     listWorkspaceEvents: async () => [event],
     createMemoryRepository: () => ({ list: async () => [memory] }),
+    listForgeKnowledgeRecords: async () => [],
     ...overrides,
   });
 }
