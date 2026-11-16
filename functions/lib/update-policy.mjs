@@ -4,7 +4,8 @@ const CHANGE_TYPES = new Set(['security', 'feature', 'bugfix', 'compatibility', 
 
 function parseVersion(value) {
   if (typeof value !== 'string' || !VERSION_PATTERN.test(value)) return null;
-  return value.split('.').map(Number);
+  const parts = value.split('.').map(Number);
+  return parts.every(Number.isSafeInteger) ? parts : null;
 }
 
 function compareVersions(left, right) {
@@ -42,6 +43,8 @@ export function validateUpdateManifest(manifest) {
         errors.push(`Artifact ${index + 1} must have a valid HTTPS URL.`);
       }
       if (url && url.protocol !== 'https:') errors.push(`Artifact ${index + 1} must use HTTPS.`);
+      if (url && (url.username || url.password)) errors.push(`Artifact ${index + 1} must not contain URL credentials.`);
+      if (url && url.hash) errors.push(`Artifact ${index + 1} must not contain a URL fragment.`);
       if (typeof artifact?.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(artifact.sha256)) {
         errors.push(`Artifact ${index + 1} must include a valid SHA-256 digest.`);
       }
