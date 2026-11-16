@@ -205,6 +205,11 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     assert.equal(persisted.project_id, 'project-a');
     assert.equal(JSON.parse(persisted.context_json).digest, projectContext.digest);
     assert.ok(JSON.parse(persisted.plan_json));
+    await assert.rejects(
+      db.prepare('UPDATE agent_runs SET context_json = ? WHERE id = ?')
+        .bind(JSON.stringify({ ...projectContext, digest: 'sha256:' + '0'.repeat(64) }), run.id).run(),
+      /agent run project context is immutable/,
+    );
 
     const events = await db.prepare(
       'SELECT event_type FROM agent_run_events WHERE agent_run_id = ? ORDER BY rowid'
