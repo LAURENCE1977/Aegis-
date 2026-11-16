@@ -129,3 +129,10 @@ test('companion profiles are returned as isolated values and cannot mutate share
   validated.interaction.warmth = 1;
   assert.equal(source.interaction.warmth, 75);
 });
+
+test('companion presence transitions reject malformed context without throwing', () => {
+  assert.deepEqual(
+    transitionCompanionState('idle', 'LISTENING_STARTED', null),
+    { state: 'idle', allowed: false, reasonCode: 'INVALID_CONTEXT' },
+  );
+});
