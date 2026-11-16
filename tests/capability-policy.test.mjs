@@ -175,10 +175,10 @@ test('external authentication requires an active connection owned by the princip
   const grant = grantFor(manifest);
   const input = { manifest, actionId: 'discover', principalId, resourceId, inputDigest, grant, registryLookup: () => manifest };
   assert.equal(evaluateCapabilityPolicy(input).reasonCode, 'CONNECTION_REQUIRED');
-  const connection = { id: 'conn-1', status: 'active', ownerId: principalId, providerId: 'github' };
+  const connection = { id: 'conn-1', status: 'active', principalId, providerId: 'github' };
   assert.equal(evaluateCapabilityPolicy({ ...input, connection }).allowed, true);
   assert.equal(evaluateCapabilityPolicy({
-    ...input, connection: { ...connection, ownerId: 'other-user' },
+    ...input, connection: { ...connection, principalId: 'other-user' },
   }).reasonCode, 'CONNECTION_INVALID');
 });
 
@@ -219,4 +219,14 @@ test('invalid manifests fail closed without throwing', () => {
     grant: {},
   });
   assert.deepEqual(decision, { allowed: false, reasonCode: 'MANIFEST_INVALID' });
+});
+test('accepts persistent connection records using the canonical principalId field', () => {
+  const manifest = { ...readManifest(), auth: { mode: 'oauth2' }, provider: { id: 'github', kind: 'external' } };
+  const grant = grantFor(manifest);
+  const connection = { id: 'conn-2', status: 'active', principalId, providerId: 'github' };
+  const decision = evaluateCapabilityPolicy({
+    manifest, actionId: 'discover', principalId, resourceId, inputDigest,
+    grant, connection, registryLookup: () => manifest,
+  });
+  assert.deepEqual(decision, { allowed: true, reasonCode: 'ALLOW' });
 });

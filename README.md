@@ -78,3 +78,8 @@ AEGIS is being designed around one portable core and replaceable client/platform
 ## Project Spaces
 
 AEGIS includes owner-scoped Project Spaces and an append-only activity timeline as the durable project-context layer. The implementation is documented in [docs/AEGIS_PROJECT_SPACES.md](docs/AEGIS_PROJECT_SPACES.md). The API and migration are source-level foundations; production D1 provisioning and deployment remain separate gated steps.
+
+
+## Governed capability foundation
+
+The repository includes source-level capability grants, provider connection metadata, an AES-GCM secret vault, append-only invocation audit and provider/model token planning. Production D1 migrations, vault keyring provisioning, live provider connections and adapter execution remain separately gated; see the capability architecture documents.
