@@ -38,6 +38,12 @@ class AgentMemoryD1 {
         return null;
       },
       async all() {
+        if (sql.includes('FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index')) {
+          const rows = [...db.steps.values()]
+            .filter((step) => step.agent_run_id === this.values[0])
+            .sort((a, b) => a.step_index - b.step_index);
+          return { results: rows };
+        }
         if (sql.includes('FROM agent_run_events WHERE agent_run_id = ? AND (created_at < ?')) {
           const rows = db.events
             .filter((event) => event.agent_run_id === this.values[0] &&
