@@ -157,3 +157,17 @@ test('passes a deeply frozen canonical input to the trusted adapter', async () =
   assert.equal(Object.isFrozen(received.nested), true);
   assert.equal(result.output.frozen, true);
 });
+
+test('requires the atomic rate-limit dependency before invoking Sentinel', async () => {
+  const h = harness();
+  delete h.dependencies.reserveRateLimit;
+  const result = await runAgentCapabilityRequest({
+    capabilityId: manifest.id,
+    actionId: 'discover',
+    resourceId,
+    input: {},
+  }, { principalId }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'POLICY_CONTEXT_UNAVAILABLE');
+  assert.equal(h.calls.execute, 0);
+});
