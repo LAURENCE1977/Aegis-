@@ -93,6 +93,19 @@ function validateRedirectUrl(value) {
   return url.toString();
 }
 
+function validateCallbackUrl(value, allowedOrigin) {
+  if (typeof value !== 'string' || !allowedOrigin) {
+    throw new TypeError('A same-origin Composio callback URL is required');
+  }
+  let url;
+  try { url = new URL(value); } catch { throw new TypeError('Invalid Composio callback URL'); }
+  if (url.protocol !== 'https:' || url.origin !== allowedOrigin ||
+      url.username || url.password || url.port) {
+    throw new TypeError('Composio callback URL must use the AEGIS HTTPS origin');
+  }
+  return url.toString();
+}
+
 /**
  * Small server-side Composio Sessions API client.
  *
@@ -106,6 +119,7 @@ export function createComposioClient({
   fetchImpl = fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+  callbackOrigin,
 } = {}) {
   if (typeof apiKey !== 'string' || !apiKey.trim() ||
       apiKey.length > MAX_API_KEY_LENGTH || /[\r\n\u0000]/.test(apiKey)) {
@@ -117,6 +131,14 @@ export function createComposioClient({
   }
   if (!Number.isInteger(maxResponseBytes) || maxResponseBytes < 1024 || maxResponseBytes > 1024 * 1024) {
     throw new TypeError('Invalid Composio response size limit');
+  }
+  if (callbackOrigin !== undefined) {
+    let parsedOrigin;
+    try { parsedOrigin = new URL(callbackOrigin); } catch { throw new TypeError('Invalid Composio callback origin'); }
+    if (parsedOrigin.origin !== callbackOrigin || parsedOrigin.protocol !== 'https:' ||
+        parsedOrigin.username || parsedOrigin.password || parsedOrigin.port) {
+      throw new TypeError('Invalid Composio callback origin');
+    }
   }
 
   async function requestJson(path, { method = 'GET', body } = {}) {
@@ -191,11 +213,15 @@ export function createComposioClient({
       return true;
     },
 
-    async createGitHubLink({ sessionId } = {}) {
+    async createGitHubLink({ sessionId, callbackUrl } = {}) {
       requireSessionId(sessionId);
+      const body = { toolkit: 'github' };
+      if (callbackUrl !== undefined) {
+        body.callback_url = validateCallbackUrl(callbackUrl, callbackOrigin);
+      }
       const result = await requestJson(
         '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId) + '/link',
-        { method: 'POST', body: { toolkit: 'github' } },
+        { method: 'POST', body },
       );
       const redirectUrl = validateRedirectUrl(result.redirect_url);
       if (typeof result.connected_account_id !== 'string' ||
