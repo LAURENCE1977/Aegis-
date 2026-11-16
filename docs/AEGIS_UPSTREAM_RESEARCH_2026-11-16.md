@@ -20,7 +20,7 @@ Before importing code, pin an immutable upstream commit, inspect the exact files
 | AI Engineering Hub | https://github.com/patchy631/ai-engineering-hub | MIT. README describes a learning/tutorial collection with 93+ projects across LLMs, RAG and agents. | Learning and example index, not a runtime dependency. Verify each linked project's own licence and maintenance separately. |
 | Project ideas and resources | https://github.com/The-Cool-Coders/Project-Ideas-And-Resources | MIT. Tiered project descriptions, user stories, optional extensions and learning links. | Idea backlog inspiration only. Useful for future AEGIS test labs and small demos; no runtime code to adopt. |
 | Pew-pie | https://github.com/PeterBalastic/PewPie | No recognised licence; README is only 27 bytes (“Something idk lol”). | Reject/defer. No useful code or clear purpose found; do not reuse. |
-| “Tailored repo” | Not resolved to one unambiguous GitHub repository. | Broad search returned unrelated matches. | Needs exact URL or owner/repo; do not guess. |
+| Tailored | Likely match: https://github.com/jaedmunt/Tailored_Swift | MIT. Python repository of phonetically balanced voice-cloning scripts, recording instructions and basic Praat-based phoneme/audio-analysis tools; last substantive push shown as 19 November 2024. | **Voice-data preparation reference only.** Useful to study phoneme coverage and recording workflow; it does not provide a voice-cloning model or eliminate third-party voice-provider costs. Treat as a likely name match, not confirmed until the user says this is the repo. |
 
 ### Doory: useful patterns, licence restriction
 
@@ -94,7 +94,7 @@ Neither option should expose arbitrary shell commands or direct D1/Vault access 
 | https://github.com/pipecat-ai/pipecat | BSD-2-Clause; Python real-time voice/multimodal pipelines, multiple transports and provider adapters, interruption/turn handling. | Strong voice-worker reference; optional isolated Python service, not the Cloudflare core. |
 | https://github.com/livekit/agents | Apache-2.0; Node.js and Python realtime voice-agent framework with STT, LLM, TTS, turn detection and telephony integrations. | Compare against Pipecat for a future voice feature. Pick one runtime per voice workflow after latency, cost, privacy and deployment tests; do not run both by default. |
 
-Voice providers and telephony may incur usage charges and transmit audio to third parties. AEGIS needs explicit user consent, provider/region disclosure, retention controls, recording controls and a clear mute/interrupt/cancel path before enabling voice.
+Tailored Swift is a possible recording-script reference for a future voice-profile workflow, but its age and limited scope mean it is not a production voice stack. Voice providers and telephony may incur usage charges and transmit audio to third parties. AEGIS needs explicit user consent, provider/region disclosure, retention controls, recording controls and a clear mute/interrupt/cancel path before enabling voice.
 
 ## 7. Local-first collaboration and durable knowledge
 
@@ -124,7 +124,7 @@ https://github.com/openfga/openfga is Apache-2.0 and provides relationship-based
 
 ## 10. Unresolved repository names
 
-- “Tailored repo”: exact owner/repository is ambiguous. Needs the GitHub URL.
+- “Tailored repo” most likely means jaedmunt/Tailored_Swift (MIT voice-cloning recording scripts), but this identification is not confirmed.
 - “THX-02” resolves to a model used by FormTriage, not a standalone AEGIS repo. Its model/provider terms still need review.
 - “Pew-pie” resolves to PeterBalastic/PewPie, a tiny repository with no licence and no substantive code; rejected.
 - “Project ideas and resources” resolves to The-Cool-Coders/Project-Ideas-And-Resources. ML Road is a separate MIT learning roadmap and is retained only as an additional optional reference.
