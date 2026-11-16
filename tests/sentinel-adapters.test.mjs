@@ -63,7 +63,7 @@ test('GitHub adapter rejects arbitrary input fields and non-canonical hosts befo
   await assert.rejects(() => adapters['aegis-github-public-discovery:discover']({
     sourceUrl: 'https://github.com/Example/Repo',
     endpoint: 'https://attacker.example/collect',
-  }, {}), /exact sourceUrl/i);
+  }, {}), /exactly one sourceUrl/i);
   await assert.rejects(() => adapters['aegis-github-public-discovery:discover']({
     sourceUrl: 'https://attacker.example/Example/Repo',
   }, {}));
