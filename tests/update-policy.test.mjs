@@ -68,3 +68,21 @@ test('does not auto-apply downgrades or updates outside the patch line', () => {
   assert.equal(canAutoApplyUpdate({ ...validManifest, version: '1.2.2' }, '1.2.3'), false);
   assert.equal(canAutoApplyUpdate({ ...validManifest, version: '1.3.0' }, '1.2.3'), false);
 });
+
+
+test('rejects version components outside the safe integer range', () => {
+  const manifest = structuredClone(validManifest);
+  manifest.version = '9007199254740992.0.0';
+  assert.equal(validateUpdateManifest(manifest).valid, false);
+  assert.equal(canAutoApplyUpdate({ ...validManifest, version: '1.2.4' }, '9007199254740992.0.0'), false);
+});
+
+test('rejects HTTPS artifact URLs containing credentials or fragments', () => {
+  const credentials = structuredClone(validManifest);
+  credentials.artifacts[0].url = 'https://user:password@updates.example.org/aegis.tar.gz';
+  assert.equal(validateUpdateManifest(credentials).valid, false);
+
+  const fragment = structuredClone(validManifest);
+  fragment.artifacts[0].url = 'https://updates.example.org/aegis.tar.gz#unsigned-variant';
+  assert.equal(validateUpdateManifest(fragment).valid, false);
+});
