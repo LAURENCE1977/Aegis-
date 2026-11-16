@@ -1,6 +1,6 @@
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const PROVIDER_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
-const SECRET_REF_PATTERN = /^vault:\/\/[A-Za-z0-9][A-Za-z0-9._/-]{2,120}$/;
+const SECRET_REF_PATTERN = /^vault:\/\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SCOPE_PATTERN = /^[a-z][a-z0-9-]{0,40}:[a-z][a-z0-9-]{0,50}(?::[a-z0-9._-]{1,80})?$/;
 const MAX_CONNECTION_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 

@@ -97,7 +97,7 @@ test('creates owner-attributed connection metadata without storing credential va
   const db = new MemoryD1();
   const record = await createConnection(db, input(), Date.now());
   assert.equal(record.status, 'active');
-  assert.equal(record.secretRef, 'vault://connections/github-owner-1');
+  assert.equal(record.secretRef, 'vault://connections/550e8400-e29b-41d4-a716-446655440000');
   assert.deepEqual(record.scopes, input().scopes);
   assert.equal(record.createdBy, 'owner');
 });
