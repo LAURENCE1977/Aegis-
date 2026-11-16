@@ -5,6 +5,12 @@ import { storeVaultSecret } from '../functions/lib/secret-vault.mjs';
 import { getCapabilityManifest, validateCapabilityManifest } from '../functions/lib/capability-registry.mjs';
 import { createComposioAdapterRegistry } from '../functions/lib/composio-adapters.mjs';
 import { runSentinelInvocation } from '../functions/lib/sentinel.mjs';
+import { createSessionToken, sessionCookie } from '../functions/lib/auth.mjs';
+import {
+  onRequestGet as getComposioConnection,
+  onRequestPost as createComposioConnection,
+  onRequestDelete as revokeComposioConnection,
+} from '../functions/api/connections/composio.js';
 
 class MemoryD1 {
   constructor() {
@@ -30,6 +36,29 @@ class MemoryD1 {
         }
         if (sql.includes('UPDATE capability_connections') && sql.includes('expires_at <= ?')) {
           return { meta: { changes: 0 } };
+        }
+        if (sql.includes('UPDATE capability_connections') && sql.includes("SET status = 'revoked'")) {
+          const [revokedAt, id, principal] = v;
+          const row = db.connections.get(id);
+          if (!row || row.principal_id !== principal || row.status !== 'active') {
+            return { meta: { changes: 0 } };
+          }
+          row.status = 'revoked';
+          row.revoked_at = revokedAt;
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('UPDATE capability_secrets') && sql.includes("status = 'revoked'")) {
+          const [updatedAt, revokedAt, id, principal, provider] = v;
+          const row = db.secrets.get(id);
+          if (!row || row.principal_id !== principal || row.provider_id !== provider || row.status !== 'active') {
+            return { meta: { changes: 0 } };
+          }
+          row.status = 'revoked';
+          row.iv_b64 = null;
+          row.ciphertext_b64 = null;
+          row.updated_at = updatedAt;
+          row.revoked_at = revokedAt;
+          return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO capability_connections')) {
           const [id, principal, provider, secretRef, scopes, createdBy, createdAt, expiresAt] = v;
@@ -363,4 +392,78 @@ test('Sentinel denies a missing exact-resource grant before the Composio adapter
   assert.equal(result.reasonCode, 'GRANT_REQUIRED');
   assert.equal(providerCalls, 0);
   assert.deepEqual(audit.map((event) => event.type), ['invocation_denied']);
+});
+
+
+test('owner-only Composio setup stores session material in the vault and supports status and local revocation', async () => {
+  const db = new MemoryD1();
+  const env = {
+    ...vaultEnv,
+    AEGIS_DB: db,
+    AEGIS_PASSWORD: 'test-password-at-least-12',
+    AEGIS_SESSION_SECRET: 's'.repeat(64),
+  };
+  const token = await createSessionToken(env.AEGIS_SESSION_SECRET);
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    if (String(url).endsWith('/api/v3.1/tool_router/session')) {
+      return new Response(JSON.stringify({ session_id: sessionId }), {
+        status: 201, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (String(url).endsWith('/link')) {
+      return new Response(JSON.stringify({
+        redirect_url: 'https://app.composio.dev/link/lt_abc123',
+        connected_account_id: connectedAccountId,
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (String(url).includes('/toolkits?toolkits=github')) {
+      return new Response(JSON.stringify({
+        items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (options.method === 'DELETE') return new Response(null, { status: 204 });
+    throw new Error('Unexpected Composio request');
+  };
+
+  const request = (method, body) => new Request('https://aegis.example/api/connections/composio', {
+    method,
+    headers: {
+      Cookie: sessionCookie(token),
+      Origin: 'https://aegis.example',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+
+  try {
+    const created = await createComposioConnection({ request: request('POST', {}), env });
+    assert.equal(created.status, 201);
+    const createdBody = await created.json();
+    assert.equal(createdBody.redirectUrl, 'https://app.composio.dev/link/lt_abc123');
+    assert.equal(createdBody.connection.providerId, 'composio');
+    assert.equal('secretRef' in createdBody.connection, false);
+    assert.equal(JSON.stringify(createdBody).includes(env.COMPOSIO_API_KEY), false);
+    assert.equal(JSON.stringify(createdBody).includes(sessionId), false);
+    assert.equal(db.secrets.size, 1);
+    assert.ok([...db.secrets.values()][0].ciphertext_b64);
+
+    const status = await getComposioConnection({ request: request('GET'), env });
+    assert.equal(status.status, 200);
+    const statusBody = await status.json();
+    assert.equal(statusBody.configured, true);
+    assert.equal(statusBody.connected, true);
+
+    const revoked = await revokeComposioConnection({ request: request('DELETE'), env });
+    assert.equal(revoked.status, 200);
+    const revokedBody = await revoked.json();
+    assert.equal(revokedBody.revoked, true);
+    assert.equal([...db.connections.values()][0].status, 'revoked');
+    assert.equal([...db.secrets.values()][0].ciphertext_b64, null);
+    assert.ok(calls.some((call) => call.options.method === 'DELETE'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
