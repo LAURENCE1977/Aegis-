@@ -212,6 +212,7 @@ function denied(state, reasonCode) {
 export function transitionCompanionState(state, event, context = {}) {
   if (!STATES.has(state)) return denied(state, 'INVALID_STATE');
   if (!EVENTS.has(event)) return denied(state, 'UNKNOWN_EVENT');
+  if (!isRecord(context)) return denied(state, 'INVALID_CONTEXT');
   const next = TRANSITIONS[state][event];
   if (!next) return denied(state, 'INVALID_TRANSITION');
   if (event === 'LISTENING_STARTED') {
