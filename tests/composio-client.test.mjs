@@ -296,3 +296,21 @@ test('treats pending or mismatched Composio accounts as not connected', async ()
     connectedAccountId: 'ca_abc123xyz',
   }), false);
 });
+
+test('deletes a validated Composio session without exposing provider response data', async () => {
+  let captured;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async (url, options) => {
+      captured = { url: requestUrl(url), options };
+      return new Response(null, { status: 204 });
+    },
+  });
+  assert.equal(await client.deleteSession({ sessionId }), true);
+  assert.equal(
+    captured.url,
+    `https://backend.composio.dev/api/v3.1/tool_router/session/${sessionId}`,
+  );
+  assert.equal(captured.options.method, 'DELETE');
+  assert.equal(captured.options.redirect, 'error');
+});
