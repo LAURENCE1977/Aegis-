@@ -108,7 +108,7 @@ function resolveQwenEndpoint(env) {
 function resolveAnthropicConfig(env) {
   const key = env.ANTHROPIC_API_KEY;
   if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
-      /[\\r\\n\\u0000]/.test(key)) {
+      /[\r\n\u0000]/.test(key)) {
     throw new Error('Anthropic API key is not configured.');
   }
   const model = env.AEGIS_ANTHROPIC_MODEL;
@@ -126,7 +126,7 @@ function toAnthropicMessages(messages) {
   const system = messages
     .filter(message => message.role === 'system')
     .map(message => message.content)
-    .join('\\n\\n');
+    .join('\n\n');
   const conversation = messages
     .filter(message => message.role !== 'system')
     .map(message => ({ role: message.role, content: message.content }));
