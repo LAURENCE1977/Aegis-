@@ -23,8 +23,45 @@ function validOptionalTimestamp(value) {
 }
 
 function validProjectContext(context) {
-  if (!exactKeys(context, ['brief', 'digest']) ||
+  const hasKnowledge = Object.hasOwn(context || {}, 'knowledge') ||
+    Object.hasOwn(context || {}, 'knowledgeDigest');
+  if (!exactKeys(context, hasKnowledge
+    ? ['brief', 'digest', 'knowledge', 'knowledgeDigest']
+    : ['brief', 'digest']) ||
       typeof context.digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(context.digest)) return false;
+  if (hasKnowledge) {
+    if (!Array.isArray(context.knowledge) || context.knowledge.length > 20 ||
+        typeof context.knowledgeDigest !== 'string' ||
+        !/^sha256:[a-f0-9]{64}$/.test(context.knowledgeDigest)) return false;
+    for (const item of context.knowledge) {
+      if (!exactKeys(item, [
+        'id', 'title', 'domain', 'knowledgeType', 'summary', 'evidenceLevel',
+        'sources', 'limitations', 'applicableCapabilities', 'version', 'updatedAt', 'trust',
+      ]) || typeof item.id !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.id) ||
+          typeof item.title !== 'string' || !item.title.trim() || item.title.length > 160 ||
+          typeof item.domain !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.domain) ||
+          !['research', 'practice', 'standard', 'benchmark', 'pattern', 'technique'].includes(item.knowledgeType) ||
+          typeof item.summary !== 'string' || !item.summary.trim() || item.summary.length > 500 ||
+          !['high', 'medium'].includes(item.evidenceLevel) ||
+          !Array.isArray(item.sources) || item.sources.length !== 1 ||
+          !Array.isArray(item.limitations) || item.limitations.length > 3 ||
+          item.limitations.some((value) => typeof value !== 'string' || !value.trim() || value.length > 200) ||
+          !Array.isArray(item.applicableCapabilities) || item.applicableCapabilities.length > 6 ||
+          item.applicableCapabilities.some((value) => typeof value !== 'string' ||
+            !/^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,47}$/.test(value)) ||
+          !Number.isInteger(item.version) || item.version < 1 || !validTimestamp(item.updatedAt) ||
+          item.trust !== 'untrusted-reference') return false;
+      const source = item.sources[0];
+      if (!exactKeys(source, ['url', 'title', 'attribution']) ||
+          typeof source.url !== 'string' || source.url.length > 2048 ||
+          typeof source.title !== 'string' || !source.title.trim() || source.title.length > 120 ||
+          typeof source.attribution !== 'string' || !source.attribution.trim() || source.attribution.length > 120) return false;
+      try {
+        const url = new URL(source.url);
+        if (url.protocol !== 'https:' || !url.hostname || url.username || url.password) return false;
+      } catch { return false; }
+    }
+  }
   const brief = context.brief;
   if (!exactKeys(brief, [
     'schemaVersion', 'generatedAt', 'trustBoundary', 'workspace', 'goal',
@@ -126,6 +163,8 @@ export function createAgentPlan(submission, metadata = {}) {
     generatedAt: validated.projectContext.brief.generatedAt,
     memoryCount: validated.projectContext.brief.memories.length,
     eventCount: validated.projectContext.brief.recentEvents.length,
+    knowledgeCount: validated.projectContext.knowledge?.length || 0,
+    knowledgeDigest: validated.projectContext.knowledgeDigest || null,
     budget: validated.projectContext.brief.budget,
   } : null;
   return {
