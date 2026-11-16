@@ -166,6 +166,31 @@ export function createComposioClient({
       return { sessionId: result.session_id };
     },
 
+    async deleteSession({ sessionId } = {}) {
+      requireSessionId(sessionId);
+      let response;
+      try {
+        response = await fetchImpl(
+          API_ORIGIN + '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId),
+          {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'x-api-key': apiKey },
+            redirect: 'error',
+            signal: AbortSignal.timeout(timeoutMs),
+          },
+        );
+      } catch {
+        throw new Error('Composio session deletion failed');
+      }
+      if (!response?.ok) {
+        await response?.body?.cancel();
+        throw new Error('Composio session deletion failed (' +
+          (Number.isInteger(response?.status) ? response.status : 0) + ')');
+      }
+      await response.body?.cancel();
+      return true;
+    },
+
     async createGitHubLink({ sessionId } = {}) {
       requireSessionId(sessionId);
       const result = await requestJson(
