@@ -88,3 +88,8 @@ The repository includes source-level capability grants, provider connection meta
 ## Durable agent orchestration
 
 AEGIS has a plan-only durable specialist-run workflow on the existing runtime Worker and Queue. It stores objectives, idempotency and plans in D1; it does not run LLM agents or tools. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md). Production activation requires the D1 migration and explicit `AGENT_RUNS_ENABLED=true` configuration.
+
+
+## Forge repository inspection
+
+AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
