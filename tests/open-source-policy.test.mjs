@@ -6,7 +6,7 @@ const workflow = await readFile(new URL('../.github/workflows/tests.yml', import
 
 test('CI pins the Miniflare runtime emulator to an exact version', () => {
   assert.match(workflow, /miniflare@\d+\.\d+\.\d+/);
-  assert.doesNotMatch(workflow, /miniflare@(?:latest|\d+|\^|~)/);
+  assert.doesNotMatch(workflow, /miniflare@(?:latest|\d+(?:\s|$)|\^|~|\*)/);
 });
 
 test('CI pins Wrangler to the exact version verified by the D1 integration run', () => {
