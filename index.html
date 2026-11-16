@@ -145,6 +145,10 @@
           <input id="forgeSourceUrl" type="url" inputmode="url" placeholder="https://github.com/owner/repository" required />
           <button id="forgeInspectBtn" type="submit">Inspect repository</button>
         </form>
+        <div class="memory-actions">
+          <button id="forgeSentinelDiscoverBtn" class="secondary" type="button">Check public metadata through Sentinel</button>
+          <p class="status" id="forgeSentinelStatus" role="status" aria-live="polite">Requires an exact repository grant in Security Centre.</p>
+        </div>
         <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
         <div id="forgeFileList" aria-live="polite"></div>
         <h3>Saved source candidates</h3>
@@ -253,6 +257,8 @@
     const forgeForm = document.getElementById('forgeForm');
     const forgeSourceUrl = document.getElementById('forgeSourceUrl');
     const forgeInspectBtn = document.getElementById('forgeInspectBtn');
+    const forgeSentinelDiscoverBtn = document.getElementById('forgeSentinelDiscoverBtn');
+    const forgeSentinelStatus = document.getElementById('forgeSentinelStatus');
     const forgeStatus = document.getElementById('forgeStatus');
     const forgeFileList = document.getElementById('forgeFileList');
     const forgeCandidateList = document.getElementById('forgeCandidateList');
@@ -1055,6 +1061,32 @@
     });
 
     let forgeRepository = null;
+
+    forgeSentinelDiscoverBtn.addEventListener('click', async () => {
+      const sourceUrl = forgeSourceUrl.value.trim();
+      if (!sourceUrl) {
+        forgeSentinelStatus.textContent = 'Enter a GitHub repository URL first.';
+        return;
+      }
+      forgeSentinelDiscoverBtn.disabled = true;
+      forgeSentinelStatus.textContent = 'Checking exact grant and public metadata through Sentinel…';
+      try {
+        const result = await controlApi('/api/sentinel/github-discover', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl }),
+        });
+        const repo = result.repository;
+        forgeSentinelStatus.textContent = 'Sentinel verified ' + repo.fullName +
+          ' · ' + (repo.primaryLanguage || 'language unknown') +
+          ' · ' + (repo.licenseSpdx || 'licence unknown') +
+          ' · invocation ' + result.invocationId;
+      } catch (error) {
+        forgeSentinelStatus.textContent = error.message +
+          ' If no exact grant exists, create one for aegis-github-public-discovery / discover / github:public:OWNER/REPO in Security Centre.';
+      } finally {
+        forgeSentinelDiscoverBtn.disabled = false;
+      }
+    });
 
     forgeForm.addEventListener('submit', async event => {
       event.preventDefault();
