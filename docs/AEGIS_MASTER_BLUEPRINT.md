@@ -807,3 +807,12 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - Smoke inserts exercise approvals, grants, connections, encrypted-secret metadata and invocation audit.
 - CI confirms the unique active-grant index rejects duplicates and the append-only audit triggers reject both UPDATE and DELETE.
 - No remote or production D1 database is provisioned or modified. See PR #72.
+
+## Atomic capability invocation rate limits
+
+- Added migration 0006 and `reserveCapabilityInvocation`, using a conditional D1 UPSERT keyed by principal, capability, action and UTC minute.
+- Sentinel now requires a successful atomic reservation after policy approval and before pre-execution audit, approval consumption or adapter execution.
+- Exhausted budgets return HTTP 429; rate-limit storage failures return HTTP 503. Both fail closed and are audited where the audit store remains available.
+- CI applies migrations 0001–0006 to local D1 and executes three upserts against a limit of two, asserting the final counter remains exactly two.
+- The GitHub public-metadata adapter remains unexposed until the exact repository-resource grant route is wired.
+- Details: `docs/AEGIS_RATE_LIMITING.md`.

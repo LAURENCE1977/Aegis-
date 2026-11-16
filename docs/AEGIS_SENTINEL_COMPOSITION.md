@@ -49,7 +49,7 @@ Its current protections are:
 - Streamed response limit of 64 KiB.
 - Public repository metadata only; private repositories and source-file reads are not included.
 
-Before exposing this adapter, add an atomic per-principal/action rate limiter and verify the exact-resource grant path for `github:repo:{owner}/{repository}`. The existing Forge manual discovery route is separate from agent/tool adapter execution.
+The atomic per-principal/action rate limiter is now mandatory in Sentinel and is backed by D1 migration 0006. Before exposing this adapter, wire and test the exact-resource grant path for `github:repo:{owner}/{repository}` and add the owner-facing route. The existing Forge manual discovery route is separate from agent/tool adapter execution.
 
 ## Owner-facing routes
 
@@ -67,11 +67,12 @@ The owner-only grant API lists bounded grant history, creates grants from approv
 
 ## D1 migration verification
 
-GitHub Actions uses a separate `wrangler.d1-test.toml` and explicit `--local` commands to apply capability migrations 0001–0005 to a disposable local D1 database. CI smoke-inserts into the five capability tables and verifies:
+GitHub Actions uses a separate `wrangler.d1-test.toml` and explicit `--local` commands to apply capability migrations 0001–0006 to a disposable local D1 database. CI smoke-inserts into the five capability tables and verifies:
 
 - The active-grant unique index rejects duplicate active grants.
 - The invocation-audit UPDATE trigger rejects mutation.
 - The invocation-audit DELETE trigger rejects deletion.
+- The rate-limit bucket accepts only the configured number of atomic reservations.
 
 This is local test evidence only. No remote or production D1 database has been provisioned or migrated.
 
