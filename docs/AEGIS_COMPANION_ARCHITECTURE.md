@@ -201,6 +201,13 @@ The companion architecture is not complete until tests and user-facing checks de
 
 ## 14. Current implementation status
 
-This document records the agreed architecture and is not evidence that a human avatar, live voice, real-time perception or companion UI has been implemented. The current AEGIS branch has an existing browser/client foundation, AG-UI event work, Sentinel and a plan-only agent runtime; inspect and reuse those components where appropriate rather than duplicating them.
+The first companion foundation is now present on the active AEGIS branch:
 
-The next engineering task is to inspect the existing UI and event contracts, then implement the text-first companion shell and profile/state contracts behind the existing security model.
+- `functions/lib/companion-contracts.mjs` defines a versioned, provider-neutral companion profile contract and a pure presence-state transition function.
+- `tests/companion-contracts.test.mjs` covers official identity reservation, custom profile validation, prohibited authority fields, explicit external-voice opt-in, consent-gated listening, interruption, pause and disconnect behaviour.
+- `index.html` contains the first companion-first signed-in home layout: a responsive presentation stage alongside the existing conversation, with an accessible static avatar placeholder and clear disclosure that the interactive avatar runtime is still in development.
+- `tests/companion-first-ui.test.mjs` checks the presentation stage, responsive styling and preservation of the existing chat controls.
+
+These are source-level foundations, not a completed human companion. Profile persistence, profile switching/customisation UI, a real 2D/3D renderer, speech input/output, live perception and authenticated browser verification remain unimplemented. The current preview's sign-in page loads, but its Preview environment still needs its own `AEGIS_PASSWORD` and `AEGIS_SESSION_SECRET` encrypted secrets before the signed-in workspace can be tested.
+
+The next engineering task is to connect profile selection and presence events to the existing authenticated session without creating a second identity, memory store or permission system. Sentinel remains the sole authority for protected operations and capture consent.
