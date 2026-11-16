@@ -320,6 +320,7 @@ test('runs the private repository read only after Sentinel validates the exact g
       capabilityId: manifest.id,
       capabilityVersion: manifest.version,
       resourceId,
+      id: 'grant-composio-1',
       resourceIds: [resourceId],
       scopes: ['github:repository:read'],
       status: 'active',
@@ -341,12 +342,23 @@ test('runs the private repository read only after Sentinel validates the exact g
     resourceId,
     inputDigest: 'sha256:' + 'a'.repeat(64),
     input: { owner: 'octocat', repo: 'Hello-World' },
+    taskId: 'task-composio-1',
+    sessionId: 'session-composio-1',
+    parentSessionId: 'session-parent-1',
+    workerId: 'worker-composio-1',
     now,
   }, dependencies);
 
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, 'SUCCESS');
   assert.equal(result.output.repository.fullName, 'octocat/Hello-World');
+  assert.equal(audit[0].grantId, 'grant-composio-1');
+  assert.equal(audit[0].connectionId, connectionId);
+  assert.equal(audit[0].taskId, 'task-composio-1');
+  assert.equal(audit[0].sessionId, 'session-composio-1');
+  assert.equal(audit[0].parentSessionId, 'session-parent-1');
+  assert.equal(audit[0].workerId, 'worker-composio-1');
+  assert.equal(audit.at(-1).adapterReceiptId, 'log_123');
   assert.deepEqual(audit.map((event) => event.type), [
     'invocation_policy_allowed',
     'invocation_authorized',
