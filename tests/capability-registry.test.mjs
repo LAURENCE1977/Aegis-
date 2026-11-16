@@ -120,3 +120,15 @@ test('approved registry metadata does not itself grant capability permissions', 
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.discover'), false);
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.write'), false);
 });
+
+
+test('registers Composio pull request reads as a separate exact-resource capability', () => {
+  const pull = getCapabilityManifest('aegis-composio-github-pull-request-readonly');
+  assert.ok(pull);
+  assert.equal(validateCapabilityManifest(pull), true);
+  assert.equal(pull.actions[0].id, 'get-pull-request');
+  assert.equal(pull.actions[0].effect, 'read');
+  assert.equal(pull.actions[0].requiredScopes[0], 'github:pull-request:read');
+  assert.equal(pull.interface.path, '/api/sentinel/composio-github-pull-request');
+  assert.deepEqual(pull.data.writes, []);
+});
