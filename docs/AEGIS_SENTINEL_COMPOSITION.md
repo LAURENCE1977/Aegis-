@@ -1,43 +1,86 @@
-# AEGIS Sentinel D1 composition root
+# AEGIS Sentinel composition and execution boundaries
 
 ## Purpose
 
-`createSentinelDependencies` is the trusted server-side composition root that binds the existing persistent capability repositories to `runSentinelInvocation`. It is deliberately a library module, not an HTTP endpoint.
+`createSentinelDependencies` is the trusted server-side composition root that binds the persistent capability repositories to `runSentinelInvocation`. It is a library module; only the explicitly listed Pages Functions expose it to an authenticated owner.
 
-## Store bindings
+## Persistent stores
 
-The factory accepts one D1-compatible database binding and composes:
+The factory composes one D1-compatible binding with:
 
-- `loadCapabilityGrant` for exact principal/capability/version/resource grants.
-- `loadConnection` for exact principal/provider connections.
-- `loadApproval` for approved, unused, unexpired exact invocation approvals.
-- `consumeApproval` for atomic one-time consumption of the same approval binding.
-- `recordCapabilityAudit` for append-only, redacted invocation events.
+- Exact principal/capability/version/resource grant loading.
+- Principal/provider connection loading.
+- Exact approved, unused and unexpired approval loading.
+- Atomic one-time approval consumption.
+- Append-only, redacted invocation audit writes.
 
-A trusted clock is injected for deterministic tests. The factory fails during construction if the database, clock or adapter registry is missing or malformed.
+A trusted clock is injected for deterministic tests. Construction fails if the database, clock or adapter registry is missing or malformed.
 
 ## Adapter boundary
 
-Adapters are supplied by trusted server-side code as a fixed map keyed by `capabilityId:actionId`. The factory copies this map and rejects entries unless the key identifies an approved manifest and a declared action in the trusted capability registry.
+Adapters are supplied by trusted server-side code as a copied fixed map keyed by `capabilityId:actionId`. Registration is rejected unless the key maps to an approved capability and declared action in the trusted registry.
 
 At execution time:
+
 - Dispatch uses only the exact registered capability/action pair.
-- Manifest URLs, endpoint values, interface paths, user input and agent-provided tool names are never interpreted as destinations.
+- Manifest URLs, interface paths, request fields and agent-provided tool names are never interpreted as adapter destinations.
 - Unknown adapter keys fail closed.
-- The adapter receives a frozen, minimal context. It contains no vault secret, secret reference, arbitrary endpoint or path.
-- The factory does not resolve credentials. A future authenticated adapter must resolve a secret only after Sentinel policy approval, using the exact owner/provider connection and the vault's principal/connection binding.
+- Handlers receive a frozen minimal context with principal, capability/version, action, exact resource, granted scopes, connection ID and input digest.
+- No vault secret or secret reference is passed to adapters by the composition root.
+- No arbitrary shell, browser, MCP, HTTP, write, delete or self-modifying adapter is registered.
 
-## First built-in adapter\n\n\`createBuiltinAdapterRegistry\` currently supplies one local-only adapter: \`aegis-module-catalogue:list\`. It returns the descriptive module catalogue, rejects all non-empty input, and performs no network, filesystem, secret or process operations. The adapter is tested both directly and through the Sentinel composition root. It remains unreachable from a public invocation route until the D1 and route prerequisites below are met.\n\n## First owner-facing invocation route\n\n\`POST /api/sentinel/invoke\` exposes exactly one action: the empty-input, local read-only module catalogue. It requires a valid owner session, same-origin request, D1 binding and an exact active grant for principal \`owner\`, capability \`aegis-module-catalogue\`, action \`list\` and resource \`aegis:modules\`. The input digest is computed server-side. The route constructs the trusted composition root with only the built-in adapter registry, then calls \`runSentinelInvocation\`. It returns the audited invocation ID and safe output, never the digest or credentials. Unknown capabilities, actions, resources, endpoints, adapter names and non-empty input are rejected.\n\nThe Security Centre has a manual button for this one route. It does not auto-run or grant permissions.\n\n## Current limitations
+## Built-in adapters
 
-This is not yet wired to a public route or a deployed Worker. The current capability registry includes descriptive capabilities, but there is not yet a production adapter implementation or a live D1 database. No user or agent can invoke this composition root through the deployed site.
+### AEGIS module catalogue
 
-## Required next steps before enabling execution
+`aegis-module-catalogue:list` returns descriptive module metadata locally. It accepts only an empty object and has no network, filesystem, process or secret access. It is exposed through the restricted owner invocation route below.
 
-1. Validate migrations 0001–0005 in an isolated, disposable D1 database and add migration/integration coverage.
-2. Add owner-authenticated grant and connection lifecycle operations. Browser input must never supply the owner identity, scopes beyond an approved allowlist, vault references or secret values.
-3. Implement one narrowly scoped, read-only first-party adapter with bounded input/output and fixed host allowlisting.
-4. Add outbound network controls: no redirects to unapproved hosts, private/link-local/loopback addresses or DNS rebinding; enforce request size, timeout, rate and response-size limits.
-5. Test the full request → authentication → exact grant → policy → pre-execution audit → adapter → outcome audit path.
-6. Only then consider a non-production route and a separately reviewed deployment.
+### Public GitHub repository metadata
 
-Write, delete, arbitrary shell, arbitrary HTTP, arbitrary MCP, browser automation and self-modifying tool execution remain disabled.
+`aegis-github-public-discovery:discover` is implemented in the adapter registry but is **not yet exposed by a Sentinel route**.
+
+Its current protections are:
+
+- Exactly one `sourceUrl` input field.
+- Canonical HTTPS `github.com/{owner}/{repository}` URLs only.
+- API requests pinned to `https://api.github.com`; no user-supplied endpoint.
+- Redirects rejected.
+- Five-second request timeout.
+- Streamed response limit of 64 KiB.
+- Public repository metadata only; private repositories and source-file reads are not included.
+
+Before exposing this adapter, add an atomic per-principal/action rate limiter and verify the exact-resource grant path for `github:repo:{owner}/{repository}`. The existing Forge manual discovery route is separate from agent/tool adapter execution.
+
+## Owner-facing routes
+
+### `POST /api/sentinel/invoke`
+
+This route exposes exactly one action: the empty-input, local read-only module catalogue. It requires a valid owner session, same-origin request, configured D1 binding and an active exact grant for principal `owner`, capability `aegis-module-catalogue`, action `list`, resource `aegis:modules`.
+
+The input digest is computed server-side. The route calls `runSentinelInvocation` through the trusted composition root and returns the audited invocation ID, safe output and audit status. It cannot select another adapter, provider, URL, MCP server, shell command, browser action, write or delete operation.
+
+The Security Centre provides a manual button. It does not auto-run or create permissions.
+
+### `/api/grants`
+
+The owner-only grant API lists bounded grant history, creates grants from approved capability/action selections and revokes active grants. Principal, creator, version and scopes are derived server-side. The browser cannot submit arbitrary scopes or another principal.
+
+## D1 migration verification
+
+GitHub Actions uses a separate `wrangler.d1-test.toml` and explicit `--local` commands to apply capability migrations 0001–0005 to a disposable local D1 database. CI smoke-inserts into the five capability tables and verifies:
+
+- The active-grant unique index rejects duplicate active grants.
+- The invocation-audit UPDATE trigger rejects mutation.
+- The invocation-audit DELETE trigger rejects deletion.
+
+This is local test evidence only. No remote or production D1 database has been provisioned or migrated.
+
+## Current limitations and next steps
+
+- The preview environment has no configured authentication secrets, so the owner-only Security Centre cannot be entered there.
+- No production D1 binding, vault keyring or provider connection has been provisioned.
+- The public GitHub adapter is implemented but not reachable through a Sentinel route; rate limiting and exact-resource invocation wiring remain outstanding.
+- Connection lifecycle and encrypted-secret entry/revocation routes remain to be built and reviewed.
+- The route and adapter stack needs a non-production end-to-end deployment only after source review, local D1 checks and explicit configuration.
+
+Do not enable generic tool routing. Keep arbitrary HTTP, MCP, browser automation, shell execution, write/delete operations and self-modifying tools disabled.
