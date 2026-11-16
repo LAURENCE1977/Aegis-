@@ -160,3 +160,8 @@ The native catalogue validates pinned MCP source metadata and action-level effec
 ## Free-Tier Ledger — currentness rule
 
 Free-tier records are evidence, not entitlements. Only a recently verified record may be treated as current; candidates, unknown terms and expired records require review. Check official provider pricing and terms before use, especially billing triggers, overage and commercial-use restrictions. The ledger cannot provision or create accounts.
+
+
+## Governed capability persistence and token engine
+
+The native stack now has source-level modules for exact-resource capability grants, owner-scoped provider connection metadata, AES-GCM secret vault, append-only invocation audit and a verified provider/model registry with token/context planning. These components do not by themselves connect providers or execute tools. The next integration step is a trusted Sentinel composition root that loads current grants/connections/approvals, derives input digests server-side, records audit and resolves secrets only after authorization.
