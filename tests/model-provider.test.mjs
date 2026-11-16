@@ -69,3 +69,80 @@ test('unknown providers fail closed and provider errors are not surfaced to call
     messages:[{role:'user',content:'hello'}],fetchImpl:async()=>new Response('sensitive provider diagnostic',{status:401}),
   }),/provider request failed/i);
 });
+const serverTools = [{
+  type: 'function',
+  function: {
+    name: 'aegis_list_modules',
+    description: 'List AEGIS modules.',
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+}];
+
+test('Qwen receives only server-provided function tools and automatic tool choice', async () => {
+  let captured;
+  const stream = new ReadableStream({ start(controller) { controller.close(); } });
+  await createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+    },
+    messages: [{ role: 'user', content: 'List my modules.' }],
+    tools: serverTools,
+    fetchImpl: async (_url, options) => {
+      captured = JSON.parse(options.body);
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.deepEqual(captured.tools, serverTools);
+  assert.equal(captured.tool_choice, 'auto');
+});
+
+test('model provider rejects tool definitions from unsupported providers and malformed server tool schemas', async () => {
+  await assert.rejects(() => createModelStream({
+    env: { AI: { async run() { throw new Error('must not run'); } } },
+    messages: [{ role: 'user', content: 'List my modules.' }],
+    tools: serverTools,
+  }), /tool calling is not enabled/i);
+
+  await assert.rejects(() => createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+    },
+    messages: [{ role: 'user', content: 'List my modules.' }],
+    tools: [{ type: 'function', function: { name: 'run_shell', parameters: {} } }],
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /invalid model tool/i);
+});
+
+test('Qwen follow-up accepts one bounded assistant tool call and matching tool result', async () => {
+  const stream = new ReadableStream({ start(controller) { controller.close(); } });
+  let captured;
+  await createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+    },
+    messages: [
+      { role: 'user', content: 'List my modules.' },
+      { role: 'assistant', content: '', tool_calls: [{
+        id: 'call_123', type: 'function',
+        function: { name: 'aegis_list_modules', arguments: '{}' },
+      }] },
+      { role: 'tool', tool_call_id: 'call_123', name: 'aegis_list_modules', content: '{"ok":true}' },
+    ],
+    fetchImpl: async (_url, options) => {
+      captured = JSON.parse(options.body);
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(captured.messages[1].tool_calls[0].function.name, 'aegis_list_modules');
+  assert.equal(captured.messages[2].role, 'tool');
+});
