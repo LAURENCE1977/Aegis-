@@ -264,7 +264,7 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 - Bearer-token auth is an interim private service credential, not OAuth 2.1 or multi-user identity.
 - Origin validation is applied when a browser Origin is present; server-to-server clients may omit Origin.
 - No permissive CORS is enabled.
-- Request bodies are capped at 8 KiB.
+- Generic job submissions are capped at 8 KiB; agent-run submissions are capped at 24 KiB to carry a server-derived Project Space snapshot (the context itself is capped at 12 KiB). The owner Pages proxy applies the same per-route bounds. Runtime authorisation claims remain capped at 2 KiB while streaming.
 - Only the health-check task is accepted; payload fields are rejected.
 - Job cancellation, plan-only owner approval, exact-plan approval consumption, exact-resource grant enforcement and runtime authorisation recording are implemented for agent runs. General job cancellation, user-supplied code, arbitrary connectors, model calls and specialist execution are not implemented.
 - D1 and Queue resource creation/deployment need explicit review and a cost/limit check before use.
