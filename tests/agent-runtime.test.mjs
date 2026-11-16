@@ -891,7 +891,7 @@ test('agent runtime verifies accepted Forge knowledge digest before persistence 
   const response = await handleRuntimeFetch(postRun({
     objective: 'Use accepted engineering knowledge',
     projectContext: validContext,
-  }), env);
+  }, { 'Idempotency-Key': 'forge-context-0001' }), env);
   assert.equal(response.status, 201);
   const { run } = await response.json();
   const stored = DB.runs.get(run.id);
@@ -904,6 +904,18 @@ test('agent runtime verifies accepted Forge knowledge digest before persistence 
   const plan = JSON.parse(stored.plan_json);
   assert.equal(plan.context.knowledgeCount, 1);
   assert.equal(plan.context.knowledgeDigest, validContext.knowledgeDigest);
+
+  const changedKnowledge = [{ ...knowledge[0], summary: 'A different accepted engineering finding.' }];
+  const changedContext = {
+    ...validContext,
+    knowledge: changedKnowledge,
+    knowledgeDigest: await digestCanonicalInput(changedKnowledge),
+  };
+  const idempotencyConflict = await handleRuntimeFetch(postRun({
+    objective: 'Use accepted engineering knowledge',
+    projectContext: changedContext,
+  }, { 'Idempotency-Key': 'forge-context-0001' }), env);
+  assert.equal(idempotencyConflict.status, 409);
 
   const tampered = {
     ...validContext,
