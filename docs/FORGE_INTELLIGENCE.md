@@ -175,3 +175,8 @@ AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public G
 ## Candidate admission controls
 
 Save inspected repositories as pinned candidates, not approved dependencies. Record the exact tree SHA, provenance, licence identifier and evidence. Treat SPDX metadata as a lead only; the owner must inspect the actual licence and attest with an HTTPS evidence URL and review note before reuse/adapt/combine or approval. Never install or execute a candidate during discovery/review.
+
+
+## AG-UI streaming chat
+
+AEGIS includes an owner-authenticated AG-UI 1.0 SSE chat endpoint with bounded plain-text history, project-aware approved-memory context and a 12,000-character output cap. This slice uses Workers AI by default and an optional fixed-region Qwen adapter; Anthropic, custom OpenAI-compatible endpoints and local Ollama/LM Studio adapters are not yet enabled. No provider secrets are stored in source. See [AEGIS AG-UI](AEGIS_AG_UI.md).
