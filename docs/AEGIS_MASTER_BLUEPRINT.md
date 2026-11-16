@@ -364,3 +364,8 @@ The Sentinel mediation primitive is being ported onto the clean Project Spaces b
 ## MCP Forge Catalogue — clean-main implementation slice
 
 The metadata-only MCP Forge catalogue is being integrated on a clean branch from current `main`. It validates bounded candidate records, pinned source revisions, licence-review metadata, transport/runtime/auth declarations, explicit egress hosts and per-action effect/risk/scope/approval policy. It exposes defensive-copy list/get/search operations only; it cannot connect, install, approve or execute a server. Source URLs reject IP literals and local/internal hostnames, and the module performs no remote fetch. The ingestion/admission pipeline, persistent storage, advisory scanning, sandbox conformance and Sentinel-connected execution remain separate milestones.
+
+
+## Persistent capability, vault, audit and token foundations
+
+The next capability stack adds owner-scoped exact-resource grants, provider connection metadata, AES-256-GCM encrypted secret storage with versioned keyring support, append-only Sentinel invocation audit, a validated provider/model registry and a provider-neutral token/context planner. The modules and D1 migrations are source-level foundations. They are not yet composed into a deployed API or live adapter runtime. The vault keyring must be provisioned only as server-side secrets; no plaintext credential belongs in browser code, agent context or audit. The four migrations follow the existing approval migration as `0002`–`0005`. No production D1 migration or secret-key provisioning has occurred.
