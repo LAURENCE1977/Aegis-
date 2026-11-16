@@ -2,6 +2,7 @@ const API_ORIGIN = 'https://backend.composio.dev';
 const SESSION_ID_PATTERN = /^trs_[A-Za-z0-9_-]{6,128}$/;
 const ACCOUNT_ID_PATTERN = /^ca_[A-Za-z0-9_-]{6,128}$/;
 const TOOL_SLUG = 'GITHUB_GET_A_REPOSITORY';
+const PULL_REQUEST_TOOL_SLUG = 'GITHUB_GET_A_PULL_REQUEST';
 const MAX_API_KEY_LENGTH = 4096;
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024;
@@ -176,12 +177,12 @@ export function createComposioClient({
         body: {
           user_id: userId,
           toolkits: { enable: ['github'] },
-          tools: { github: { enable: [TOOL_SLUG] } },
+          tools: { github: { enable: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG] } },
           manage_connections: { enable: false },
           workbench: { enable: false },
           search: { enable: false },
           execute: { enable_multi_execute: false },
-          preload: { tools: [TOOL_SLUG] },
+          preload: { tools: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG] },
         },
       });
       requireSessionId(result.session_id);
@@ -272,6 +273,42 @@ export function createComposioClient({
         throw new Error('Composio returned duplicate tool definitions');
       }
       return slugs;
+    },
+
+
+    async executeGitHubGetPullRequest({
+      sessionId, owner, repo, pullNumber, connectedAccountId,
+    } = {}) {
+      requireSessionId(sessionId);
+      validateRepositoryPart(owner, 'owner', /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/);
+      validateRepositoryPart(repo, 'repository name', /^[A-Za-z0-9_.-]{1,100}$/);
+      if (!Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+        throw new TypeError('Invalid GitHub pull request number');
+      }
+      if (connectedAccountId !== undefined &&
+          (typeof connectedAccountId !== 'string' || !ACCOUNT_ID_PATTERN.test(connectedAccountId))) {
+        throw new TypeError('Invalid Composio connected-account ID');
+      }
+      const result = await requestJson(
+        '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId) + '/execute',
+        {
+          method: 'POST',
+          body: {
+            tool_slug: PULL_REQUEST_TOOL_SLUG,
+            arguments: { owner, repo, pull_number: pullNumber },
+            ...(connectedAccountId === undefined ? {} : { account: connectedAccountId }),
+          },
+        },
+      );
+      if (result.error !== undefined && result.error !== null && result.error !== '') {
+        throw new Error('Composio GitHub pull request lookup failed');
+      }
+      if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) {
+        throw new Error('Composio returned an invalid pull request result');
+      }
+      const logId = typeof result.log_id === 'string' &&
+        /^[A-Za-z0-9_-]{1,128}$/.test(result.log_id) ? result.log_id : null;
+      return { data: result.data, logId };
     },
 
     async executeGitHubGetRepository({ sessionId, owner, repo, connectedAccountId } = {}) {
