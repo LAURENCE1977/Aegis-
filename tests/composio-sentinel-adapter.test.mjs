@@ -265,7 +265,7 @@ test('rejects unexpected tool exposure, extra input fields and missing server se
   await assert.rejects(extras['aegis-composio-github-readonly:get-repository'](
     { owner: 'octocat', repo: 'Hello-World', command: 'delete' },
     { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
-  ), /input/i);
+  ), /exactly owner and repo/i);
 
   const noSecret = createComposioAdapterRegistry({
     db,
