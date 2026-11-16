@@ -89,3 +89,13 @@ test('Agent run console renders provider data with textContent and never auto-su
   assert.doesNotMatch(section, /innerHTML\s*=/);
   assert.doesNotMatch(section, /fetch\('\/api\/agent-runs',\s*\{\s*method:\s*'POST'/);
 });
+
+test('planned agent runs expose an explicit human approval request and use the scoped Sentinel decision route', () => {
+  assert.match(html, /id="agentRunRequestApprovalBtn"/);
+  assert.match(html, /agentRunRequestApprovalBtn\.addEventListener\('click'/);
+  assert.match(html, /controlApi\('\/api\/sentinel\/agent-run-approval'/);
+  assert.match(html, /approval\.capabilityId\s*===\s*'aegis-agent-run'/);
+  assert.match(html, /\/api\/sentinel\/agent-run-approval\/['"]?\s*\+\s*encodeURIComponent\(approval\.id\)/);
+  assert.match(html, /method:\s*'PATCH'/);
+  assert.match(html, /Request execution approval/);
+});
