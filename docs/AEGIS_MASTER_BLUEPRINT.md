@@ -668,3 +668,19 @@ A fourth fixed read-only GitHub tool is now implemented:
 The fixed Composio GitHub session now includes four read-only tools: repository metadata, one pull request, bounded workflow-run summaries and bounded latest-attempt workflow-job/step summaries. Workflow jobs are bound to the exact owner/repository/run ID, have a separate Sentinel capability and grant scope, and return an allowlisted summary rather than logs, artifacts, runner details or arbitrary provider fields. Job URLs must be canonical HTTPS github.com paths for the exact run and job; query strings and fragments are rejected. The complete contract is in [docs/AEGIS_COMPOSIO_GITHUB_READONLY.md](AEGIS_COMPOSIO_GITHUB_READONLY.md).
 
 The job-list client method is covered by fixed-tool request tests; adapter tests cover exact-run matching and output minimization; endpoint tests cover authentication, origin and exact input validation. The workflow job capability remains read-only. Do not add workflow log downloads, artifact downloads, reruns, dispatch, cancellation or other Actions write operations without separate risk analysis, approval design and a dedicated Sentinel action.
+
+
+### Security Centre Composio controls — 16 November 2026
+
+The owner-facing Security Centre now exposes the four approved Composio GitHub read-only actions:
+
+- Repository metadata.
+- Exact pull-request metadata.
+- Bounded workflow-run summaries.
+- Exact workflow-run job and step summaries.
+
+The UI has explicit buttons to prepare each exact grant and separate buttons to invoke the read. Preparing a grant only fills the owner grant form; it never creates a grant. The owner must review and submit the grant separately. All reads use the fixed server routes and Sentinel. Read controls are disabled until the Composio connection is active, and connection errors disable them again.
+
+The session is pinned to four fixed read-only GitHub tool slugs. Existing sessions may need owner reconnect to refresh the tool allowlist. Logs, artifacts, dispatch, rerun, cancellation, writes, MCP, shell and arbitrary tool selection remain disabled.
+
+Verification: the full Node/D1/Forge workflow passed for the code/UI commit `1a996add06fe4eebb74a7b0b7b811ec503afc448`; Cloudflare Pages preview deployed successfully. Documentation changes followed in commits `585f6c491c30873898172be2f389a3a67951749c` and `199395832ebddad685aa4c6b5e7419928e22eb95`.
