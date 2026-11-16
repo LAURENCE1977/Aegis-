@@ -535,6 +535,9 @@
       .home-launch-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
     }
     @media (max-width: 820px) {
+      #appPanel:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+      #appPanel > .toolbar { grid-column: 1; }
+      #appPanel > section { grid-column: 1; }
       .home-hero { grid-template-columns: minmax(0,1fr); }
       .home-welcome-card { min-height: 390px; }
       .home-hero .companion-stage { min-height: 370px; }
