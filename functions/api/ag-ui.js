@@ -3,6 +3,11 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import {
+  executeAgentToolCall,
+  getAgentToolDefinitions,
+  isAgentToolingEnabled,
+} from "../lib/agent-tools.mjs";
+import {
   createTextRunStartEvents,
   createTextRunContentEvent,
   createTextRunFinishEvents,
@@ -15,6 +20,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
+const MAX_TOOL_RESULT = 4000;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -71,11 +77,14 @@ export async function onRequestPost(context) {
     return json({ error: "Invalid AG-UI thread or run identifier." }, 400);
   }
 
+  const toolsEnabled = isAgentToolingEnabled(env);
+  const tools = toolsEnabled ? getAgentToolDefinitions() : undefined;
+  let promptMessages;
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
-    const promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    modelStream = await createModelStream({ env, messages: promptMessages, fetchImpl });
+    promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
+    modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
         (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
@@ -102,22 +111,27 @@ export async function onRequestPost(context) {
     threadId: input.threadId,
     runId: input.runId,
     startEvents,
+    toolContext: toolsEnabled ? {
+      env,
+      db: env.AEGIS_DB,
+      fetchImpl,
+      promptMessages,
+      allowedToolNames: tools.map(tool => tool.function.name),
+    } : null,
   });
 }
 
-function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents }) {
+function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents, toolContext }) {
   const encoder = new TextEncoder();
   let reader;
   const body = new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(encodeAgUiSse(startEvents)));
-      reader = modelStream.getReader();
       (async () => {
-        const decoder = new TextDecoder();
-        let buffer = "";
+        let activeStream = modelStream;
         let outputLength = 0;
-        let finished = false;
         let cancelled = false;
+        let toolRound = 0;
 
         const emitText = (delta) => {
           if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
@@ -129,65 +143,171 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
           ])));
         };
 
-        const processFrame = (frame) => {
-          const data = frame.split(/\r?\n/)
-            .filter(line => line.startsWith("data:"))
-            .map(line => line.slice(5).trimStart())
-            .join("\n");
-          if (!data) return;
-          if (data.trim() === "[DONE]") { finished = true; return; }
-          let payload;
-          try { payload = JSON.parse(data); } catch { return; }
-          const delta = typeof payload.response === "string"
-            ? payload.response
-            : typeof payload.choices?.[0]?.delta?.content === "string"
-              ? payload.choices[0].delta.content
-              : "";
-          emitText(delta);
-        };
-
-        const drainFrames = (flush = false) => {
-          while (true) {
-            const match = /\r?\n\r?\n/.exec(buffer);
-            if (!match) break;
-            const index = match.index;
-            processFrame(buffer.slice(0, index));
-            buffer = buffer.slice(index + match[0].length);
-            if (finished) break;
-          }
-          if (flush && buffer.trim()) {
-            processFrame(buffer);
-            buffer = "";
-          }
+        const emitError = (code, message) => {
+          controller.enqueue(encoder.encode(encodeAgUiSse([
+            createTextRunErrorEvent({ message, code }),
+          ])));
         };
 
         try {
-          while (!finished) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            drainFrames();
-            if (outputLength >= MAX_OUTPUT) {
-              cancelled = true;
-              await reader.cancel("AEGIS response size limit reached");
+          while (activeStream) {
+            reader = activeStream.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let finished = false;
+            let messageText = "";
+            const toolCalls = new Map();
+
+            const accumulateToolCalls = (deltas) => {
+              if (!Array.isArray(deltas)) return;
+              for (const delta of deltas) {
+                if (!delta || typeof delta !== "object") continue;
+                const index = Number.isInteger(delta.index) ? delta.index : 0;
+                if (index < 0 || index > 3) throw agentStreamError("INVALID_TOOL_CALL", "The AI returned an invalid tool call.");
+                const current = toolCalls.get(index) || {
+                  id: "",
+                  type: "function",
+                  function: { name: "", arguments: "" },
+                };
+                if (typeof delta.id === "string") current.id = delta.id;
+                if (typeof delta.type === "string") current.type = delta.type;
+                if (typeof delta.function?.name === "string") current.function.name += delta.function.name;
+                if (typeof delta.function?.arguments === "string") {
+                  current.function.arguments += delta.function.arguments;
+                }
+                if (current.function.name.length > 64 || current.function.arguments.length > 4096) {
+                  throw agentStreamError("INVALID_TOOL_CALL", "The AI tool call exceeded its size limit.");
+                }
+                toolCalls.set(index, current);
+              }
+            };
+
+            const processFrame = (frame) => {
+              const data = frame.split(/\r?\n/)
+                .filter(line => line.startsWith("data:"))
+                .map(line => line.slice(5).trimStart())
+                .join("\n");
+              if (!data) return;
+              if (data.trim() === "[DONE]") { finished = true; return; }
+              let payload;
+              try { payload = JSON.parse(data); } catch { return; }
+              const delta = typeof payload.response === "string"
+                ? payload.response
+                : typeof payload.choices?.[0]?.delta?.content === "string"
+                  ? payload.choices[0].delta.content
+                  : "";
+              if (delta) {
+                messageText += delta;
+                emitText(delta);
+              }
+              accumulateToolCalls(payload.choices?.[0]?.delta?.tool_calls);
+            };
+
+            const drainFrames = (flush = false) => {
+              while (true) {
+                const match = /\r?\n\r?\n/.exec(buffer);
+                if (!match) break;
+                const index = match.index;
+                processFrame(buffer.slice(0, index));
+                buffer = buffer.slice(index + match[0].length);
+                if (finished) break;
+              }
+              if (flush && buffer.trim()) {
+                processFrame(buffer);
+                buffer = "";
+              }
+            };
+
+            while (!finished) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              drainFrames();
+              if (outputLength >= MAX_OUTPUT) {
+                cancelled = true;
+                await reader.cancel("AEGIS response size limit reached");
+                break;
+              }
+            }
+            buffer += decoder.decode();
+            drainFrames(true);
+            try { reader.releaseLock(); } catch {}
+
+            if (cancelled) {
+              activeStream = null;
               break;
             }
+
+            const calls = [...toolCalls.values()];
+            if (!calls.length) {
+              activeStream = null;
+              break;
+            }
+            if (!toolContext) {
+              throw agentStreamError("TOOLS_NOT_ENABLED", "Tool calls are not enabled for this AEGIS run.");
+            }
+            if (toolRound >= 1) {
+              throw agentStreamError("TOOL_RECURSION_NOT_ALLOWED", "AEGIS allows one permissioned tool call per run.");
+            }
+            if (calls.length !== 1) {
+              throw agentStreamError("TOOL_CALL_LIMIT", "AEGIS allows one permissioned tool call per run.");
+            }
+
+            const call = calls[0];
+            if (call.type !== "function" ||
+                typeof call.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(call.id) ||
+                !toolContext.allowedToolNames.includes(call.function.name)) {
+              throw agentStreamError("TOOL_NOT_ALLOWED", "The requested tool is not in the server-owned AEGIS tool registry.");
+            }
+
+            const toolResult = await executeAgentToolCall({
+              name: call.function.name,
+              argumentsText: call.function.arguments,
+              db: toolContext.db,
+              principalId: "owner",
+              fetchImpl: toolContext.fetchImpl,
+            });
+            const toolContent = boundedToolResult(toolResult);
+            const assistantToolCall = {
+              role: "assistant",
+              content: messageText,
+              tool_calls: [{
+                id: call.id,
+                type: "function",
+                function: {
+                  name: call.function.name,
+                  arguments: call.function.arguments,
+                },
+              }],
+            };
+            const toolMessage = {
+              role: "tool",
+              tool_call_id: call.id,
+              name: call.function.name,
+              content: toolContent,
+            };
+            activeStream = await createModelStream({
+              env: toolContext.env,
+              messages: [...toolContext.promptMessages, assistantToolCall, toolMessage],
+              fetchImpl: toolContext.fetchImpl,
+            });
+            toolRound += 1;
           }
-          buffer += decoder.decode();
-          drainFrames(true);
+
           controller.enqueue(encoder.encode(encodeAgUiSse(
-            createTextRunFinishEvents({ threadId, runId, outcome: cancelled ? 'cancelled' : undefined }),
+            createTextRunFinishEvents({ threadId, runId, outcome: cancelled ? "cancelled" : undefined }),
           )));
           controller.close();
-        } catch {
+        } catch (error) {
           try {
-            controller.enqueue(encoder.encode(encodeAgUiSse([
-              createTextRunErrorEvent({ message: "The AI stream ended unexpectedly." }),
-            ])));
+            emitError(
+              typeof error?.code === "string" ? error.code : "AGENT_STREAM_FAILED",
+              typeof error?.publicMessage === "string" ? error.publicMessage : "The AI stream ended unexpectedly.",
+            );
             controller.close();
           } catch {}
         } finally {
-          try { reader.releaseLock(); } catch {}
+          try { reader?.releaseLock(); } catch {}
         }
       })();
     },
@@ -203,6 +323,37 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+function agentStreamError(code, publicMessage) {
+  const error = new Error(publicMessage);
+  error.code = code;
+  error.publicMessage = publicMessage;
+  return error;
+}
+
+function boundedToolResult(result) {
+  const serialized = JSON.stringify(result);
+  if (serialized.length <= MAX_TOOL_RESULT) return serialized;
+  const compact = {
+    ok: result?.ok === true,
+    reasonCode: result?.reasonCode || "TOOL_RESULT_TOO_LARGE",
+    invocationId: result?.invocationId,
+  };
+  if (Array.isArray(result?.output?.modules)) {
+    compact.output = {
+      total: result.output.total,
+      modules: result.output.modules.slice(0, 8).map(module => ({
+        id: module.id,
+        name: module.name,
+        status: module.status,
+      })),
+    };
+  }
+  const compactJson = JSON.stringify(compact);
+  return compactJson.length <= MAX_TOOL_RESULT
+    ? compactJson
+    : JSON.stringify({ ok: false, reasonCode: "TOOL_RESULT_TOO_LARGE" });
 }
 
 function validateRunInput(input) {
