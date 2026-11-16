@@ -19,6 +19,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Pure validators for Forge source-candidate and engineering-knowledge records
 - Read-only public GitHub repository discovery behind session authentication and same-origin protection
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
+- First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 
 ## Security setup
 
@@ -61,7 +62,7 @@ Run the full test suite with Node.js 22:
 node --test tests/*.test.mjs
 ```
 
-The current prototype does not yet contain the full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine or production Forge sandbox. These remain separate, testable capabilities on the roadmap.
+The first durable runtime slice is now implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
 
 ## Project blueprint and AI handover
 
