@@ -58,3 +58,10 @@ test('rejects invalid plan metadata', () => {
   const input = validateAgentRunSubmission({ objective: 'Review code' });
   assert.throws(() => createAgentPlan(input, { runId: '', createdAt: 'not-a-date' }));
 });
+
+test('plan creation revalidates stored specialist data instead of trusting D1 rows', () => {
+  const metadata = { runId: 'run-unsafe', createdAt: '2026-11-16T00:00:00.000Z' };
+  assert.throws(() => createAgentPlan({ objective: 'Review', specialists: ['shell'] }, metadata));
+  assert.throws(() => createAgentPlan({ objective: 'Review', specialists: ['reviewer', 'reviewer'] }, metadata));
+  assert.throws(() => createAgentPlan({ objective: 'Review', specialists: ['reviewer'], tools: ['shell.exec'] }, metadata));
+});
