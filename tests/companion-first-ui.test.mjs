@@ -57,3 +57,31 @@ test('mobile welcome layout hides decorative captions that can collide with the 
 test('public login status text does not expose deployment secret names', () => {
   assert.doesNotMatch(html, /Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET/);
 });
+
+
+test('the signed-in experience opens on a dedicated companion-led home dashboard', () => {
+  assert.match(html, /id="homeTab"[^>]*>Home<\/button>/);
+  assert.match(html, /<section[^>]+id="homeSection"/);
+  assert.match(html, /id="homeWelcomeTitle"/);
+  assert.match(html, /id="companionStage"/);
+  assert.match(html, /showPanel\('home'\)/);
+  assert.match(html, /homeSection\.hidden = panel !== 'home'/);
+});
+
+test('home dashboard quick actions navigate to real AEGIS work areas', () => {
+  for (const target of ['chat', 'projects', 'memory', 'approvals', 'forge', 'security']) {
+    assert.match(html, new RegExp('data-panel-target="' + target + '"'));
+  }
+  assert.match(html, /data-panel-target/);
+  assert.match(html, /querySelectorAll\('\[data-panel-target\]'\)/);
+});
+
+test('conversation view is a focused workspace separate from the companion home', () => {
+  assert.match(html, /<section id="chatSection">/);
+  assert.match(html, /id="chatBox"/);
+  assert.match(html, /id="userInput"/);
+  const home = html.indexOf('id="homeSection"');
+  const chat = html.indexOf('id="chatSection"');
+  assert.ok(home >= 0 && chat > home, 'home dashboard must precede the focused conversation view');
+  assert.match(html, /\.home-dashboard[\s\S]*?@media\s*\(max-width:\s*820px\)/);
+});
