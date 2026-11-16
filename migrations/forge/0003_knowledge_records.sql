@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS forge_knowledge_events (
 CREATE INDEX IF NOT EXISTS idx_forge_knowledge_events_owner_record_time
   ON forge_knowledge_events (owner_id, record_id, occurred_at DESC, id DESC);
 
+CREATE TRIGGER IF NOT EXISTS trg_forge_knowledge_initial_draft
+BEFORE INSERT ON forge_knowledge_records
+WHEN NEW.status <> 'draft' OR NEW.version <> 1 OR NEW.review_note IS NOT NULL
+  OR NEW.reviewer_id IS NOT NULL OR NEW.reviewed_at IS NOT NULL
+  OR NEW.accepted_at IS NOT NULL OR NEW.superseded_at IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'AEGIS Forge knowledge must start as an unreviewed draft');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_forge_knowledge_created
 AFTER INSERT ON forge_knowledge_records
 BEGIN
