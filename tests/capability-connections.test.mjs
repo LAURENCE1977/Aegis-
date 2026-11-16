@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createConnection,
   loadConnection,
+  loadConnectionById,
   listConnections,
   revokeConnection,
 } from '../functions/lib/capability-connections.mjs';
@@ -173,4 +174,12 @@ test('accepts only UUID vault references that the encrypted vault resolver can r
   })), /secret reference/i);
   const record = await createConnection(db, input(), Date.now());
   assert.match(record.secretRef, /^vault:\/\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+});
+test('loads the full connection by exact owner and ID only for trusted revocation workflows', async () => {
+  const db = new MemoryD1();
+  const created = await createConnection(db, input(), Date.now());
+  const loaded = await loadConnectionById(db, { id: created.id, principalId: 'owner-1' }, Date.now());
+  assert.equal(loaded.id, created.id);
+  assert.equal(loaded.secretRef, created.secretRef);
+  assert.equal(await loadConnectionById(db, { id: created.id, principalId: 'owner-2' }, Date.now()), null);
 });
