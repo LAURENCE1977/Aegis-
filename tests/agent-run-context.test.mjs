@@ -52,10 +52,18 @@ function makeBuilder(overrides = {}) {
 }
 
 test('builds a bounded owner-scoped Project Space context with stable content digest', async () => {
-  const builder = makeBuilder();
+  let memoryOptions;
+  const builder = makeBuilder({
+    createMemoryRepository: () => ({
+      list: async (options) => { memoryOptions = options; return [memory]; },
+    }),
+  });
   const db = { prepare() {} };
-  const first = await builder(db, 'project-a', Date.parse('2026-11-16T12:00:00.000Z'));
-  const second = await builder(db, 'project-a', Date.parse('2026-11-16T12:05:00.000Z'));
+  const firstNow = Date.parse('2026-11-16T12:00:00.000Z');
+  const secondNow = Date.parse('2026-11-16T12:05:00.000Z');
+  const first = await builder(db, 'project-a', firstNow);
+  assert.equal(memoryOptions.now, firstNow);
+  const second = await builder(db, 'project-a', secondNow);
 
   assert.equal(first.brief.workspace.id, 'project-a');
   assert.equal(first.brief.memories[0].id, 'memory-a');
