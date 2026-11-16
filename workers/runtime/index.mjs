@@ -201,6 +201,55 @@ async function cancelAgentRun(env, id) {
   return json({ run: parseAgentRun(current), cancelled: true });
 }
 
+
+async function listAgentRuns(request, env) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(['limit', 'before', 'beforeId']);
+  for (const key of params.keys()) {
+    if (!allowed.has(key) || params.getAll(key).length !== 1) {
+      return json({ error: 'Invalid agent run list query.' }, 400);
+    }
+  }
+
+  const limitText = params.get('limit') ?? '20';
+  if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText)) {
+    return json({ error: 'Agent run list limit must be between 1 and 50.' }, 400);
+  }
+  const limit = Number(limitText);
+  const before = params.get('before');
+  const beforeId = params.get('beforeId');
+  if ((before === null) !== (beforeId === null)) {
+    return json({ error: 'Both before and beforeId are required for cursor pagination.' }, 400);
+  }
+  if (before !== null) {
+    const time = Date.parse(before);
+    if (!Number.isFinite(time) || new Date(time).toISOString() !== before || !isJobId(beforeId)) {
+      return json({ error: 'Invalid agent run list cursor.' }, 400);
+    }
+  }
+
+  const result = before === null
+    ? await env.DB.prepare(
+      'SELECT * FROM agent_runs ORDER BY created_at DESC, id DESC LIMIT ?'
+    ).bind(limit + 1).all()
+    : await env.DB.prepare(
+      'SELECT * FROM agent_runs WHERE created_at < ? OR (created_at = ? AND id < ?) ORDER BY created_at DESC, id DESC LIMIT ?'
+    ).bind(before, before, beforeId, limit + 1).all();
+
+  const rows = result.results || [];
+  const hasMore = rows.length > limit;
+  const visible = rows.slice(0, limit);
+  const last = visible[visible.length - 1];
+  return json({
+    runs: visible.map(parseAgentRun),
+    nextCursor: hasMore && last
+      ? { before: last.created_at, beforeId: last.id }
+      : null,
+  });
+}
+
 async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
@@ -376,6 +425,7 @@ export async function handleRuntimeFetch(request, env) {
     const id = url.pathname.slice('/v1/agent-runs/'.length, -'/cancel'.length);
     return cancelAgentRun(env, id);
   }
+  if (request.method === 'GET' && url.pathname === '/v1/agent-runs') return listAgentRuns(request, env);
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
