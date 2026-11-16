@@ -613,3 +613,27 @@ test('runtime authorisation rejects missing credentials, non-planned runs and ma
   }), env);
   assert.equal(bad.status, 400);
 });
+
+
+test('runtime authorisation rejects oversized bodies even when Content-Length is absent', async () => {
+  const { env } = makeEnv();
+  const runId = '00000000-0000-4000-8000-000000000099';
+  const oversized = JSON.stringify({
+    approvalId: 'approval-once-001',
+    capabilityId: 'aegis-agent-run',
+    capabilityVersion: '0.1.0',
+    actionId: 'approve-execution',
+    inputDigest: 'sha256:' + 'a'.repeat(64),
+    grantId: 'grant-owner-agent-run-001',
+    padding: 'x'.repeat(4096),
+  });
+  const request = new Request('https://runtime.example/v1/agent-runs/' + runId + '/authorize', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: oversized,
+  });
+  assert.equal(request.headers.get('Content-Length'), null);
+  const response = await handleRuntimeFetch(request, env);
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: 'Request body is too large.' });
+});
