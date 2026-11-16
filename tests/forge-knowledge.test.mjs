@@ -40,7 +40,12 @@ class KnowledgeD1 {
           };
         }
         if (sql.includes('FROM forge_knowledge_records')) {
-          const [ownerId, status, , domain, , knowledgeType, , query, , , , limit] = this.values;
+          const ownerId = this.values[0];
+          const status = this.values[1];
+          const domain = this.values[3];
+          const knowledgeType = this.values[5];
+          const query = this.values[7];
+          const limit = this.values[12];
           return {
             results: [...db.records.values()]
               .filter(row => row.owner_id === ownerId)
@@ -83,8 +88,9 @@ class KnowledgeD1 {
         }
         if (sql.includes('UPDATE forge_knowledge_records')) {
           const [
-            status, reviewNote, reviewerId, updatedAt, reviewedAt,
-            acceptedAt, supersededAt, id, ownerId, expectedUpdatedAt, oldStatus,
+            status, reviewNote, reviewerId, updatedAt,
+            _reviewedStatus, reviewedAt, _acceptedStatus, acceptedAt,
+            _supersededStatus, supersededAt, id, ownerId, expectedUpdatedAt, oldStatus,
           ] = v;
           const row = db.records.get(id);
           if (!row || row.owner_id !== ownerId || row.updated_at !== expectedUpdatedAt ||
