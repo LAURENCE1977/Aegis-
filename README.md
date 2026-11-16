@@ -113,3 +113,8 @@ Forge can persist inspected public repositories as owner-reviewed candidates pin
 ## First owner-facing invocation route
 
 `POST /api/sentinel/invoke` exposes exactly one action: `aegis-module-catalogue:list` on resource `aegis:modules` with empty input. It requires a valid owner session, same-origin request, configured AEGIS D1 and an exact active grant. The route derives the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root. It returns output only after the success audit is recorded. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. This is a source-level restricted route, not a general tool endpoint; no external or consequential action is exposed.
+
+
+## AG-UI and guarded model tools
+
+AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers AI is the default; optional Qwen function calling is disabled unless explicitly enabled with owner-configured runtime settings. The only tools are a local read-only module catalogue and bounded public GitHub repository metadata, both mediated by Sentinel. See [docs/AEGIS_AGENT_TOOLS.md](docs/AEGIS_AGENT_TOOLS.md).
