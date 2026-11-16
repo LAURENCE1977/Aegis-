@@ -445,6 +445,7 @@
       .welcome-auth { grid-column: 1; width: min(100%, 520px); justify-self: center; }
     }
     @media (max-width: 520px) {
+      .art-caption { display: none; }
       .welcome-shell { padding: 20px 17px; gap: 16px; }
       .welcome-eyebrow { font-size: .57rem; letter-spacing: .11em; }
       .welcome-story h2 { font-size: clamp(2.45rem, 12vw, 3.4rem); }
@@ -958,7 +959,7 @@
         const res = await fetch('/api/login', { cache: 'no-store' });
         const data = await res.json();
         if (res.status === 503) {
-          showLogin('Security setup is not finished. Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET in your Cloudflare Pages secrets.');
+          showLogin('Sign-in is temporarily unavailable. Please contact the AEGIS administrator.');
           loginBtn.disabled = true;
           return;
         }
