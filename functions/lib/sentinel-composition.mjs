@@ -22,6 +22,13 @@ function buildAdapterMap(adapters) {
     if (!ADAPTER_KEY_PATTERN.test(key) || typeof handler !== 'function') {
       throw new TypeError('Invalid fixed adapter registry entry');
     }
+    const separator = key.lastIndexOf(':');
+    const manifest = getCapabilityManifest(key.slice(0, separator));
+    const actionId = key.slice(separator + 1);
+    if (!manifest || manifest.status !== 'approved' ||
+        !manifest.actions.some((action) => action.id === actionId)) {
+      throw new TypeError('Adapter must target an approved, registered capability action');
+    }
     registry.set(key, handler);
   }
   return registry;
@@ -56,7 +63,7 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
     loadApproval: (binding) => loadApproval(db, binding, currentTime()),
     consumeApproval: (binding) => consumeApproval(db, { ...binding, now: currentTime() }),
     recordAudit: (event) => recordCapabilityAudit(db, event),
-    execute: (input, context) => {
+    execute: async (input, context) => {
       const key = context?.capabilityId + ':' + context?.actionId;
       const handler = adapterRegistry.get(key);
       if (!handler) throw new Error('Capability adapter is not registered');
