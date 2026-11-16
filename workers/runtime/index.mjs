@@ -194,9 +194,14 @@ async function submitAgentRun(request, env) {
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  await env.DB.prepare(
-    "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
-  ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
+    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'created', '{}', ? FROM agent_runs WHERE id = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(crypto.randomUUID(), now, id),
+  ]);
   const row = idempotencyKey
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
