@@ -19,14 +19,14 @@ const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(b
 
 export async function onRequestGet({ request, env }) {
   if (!authConfigAvailable(env)) {
-    return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
+    return json({ error: "Sign-in is temporarily unavailable. Please contact the AEGIS administrator." }, 503);
   }
   return json({ authenticated: await isAuthorized(request, env) });
 }
 
 export async function onRequestPost({ request, env }) {
   if (!authConfigAvailable(env)) {
-    return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
+    return json({ error: "Sign-in is temporarily unavailable. Please contact the AEGIS administrator." }, 503);
   }
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
 
