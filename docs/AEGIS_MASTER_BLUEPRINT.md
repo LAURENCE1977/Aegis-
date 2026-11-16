@@ -769,3 +769,16 @@ This section supersedes earlier time-stamped branch/PR/CI snapshots above where 
 - Production remains on `main` commit `160402bceeb4e4e036344982a1dddd083954addc`; no production deployment or configuration was changed by this CI fix.
 - Live Composio OAuth and provider execution remain unverified. The next meaningful gate is owner-controlled preview configuration and an exact-resource, read-only GitHub connection test. Required configuration includes the owner-authentication settings, D1 binding/migrations, `COMPOSIO_API_KEY`, `AEGIS_VAULT_KEYRING` and `AEGIS_VAULT_ACTIVE_KEY_VERSION`, all server-side only.
 - Do not provision D1/Queues, create or rotate secrets, enable billing, activate paid providers, deploy the runtime Worker or merge PR #101 without the appropriate explicit owner approval. Keep the build in preview and continue source-level work that does not cross those gates.
+
+
+## 14. Update & Maintenance System
+
+The long-term product must support phone-like software and security updates after initial release. See [AEGIS Update & Maintenance System](AEGIS_UPDATE_SYSTEM.md).
+
+**Implemented policy foundation (not a working updater yet):**
+- `functions/lib/update-policy.mjs` validates versioned release manifests, HTTPS artifact locations, SHA-256 digest shape, typed release notes, channels and explicit migration/security/permission flags.
+- It classifies security, permission and database-migration changes as high risk.
+- Automatic application is eligible only for valid stable patch releases within the current major/minor line, above the installed version, with the minimum supported version satisfied and no high-risk flags.
+- Unit tests specify these rules in `tests/update-policy.test.mjs`.
+
+**Still required before calling this operational:** signed release metadata and trusted-key management, update discovery, artifact download and digest/signature verification, isolated staging, compatibility checks, Sentinel approval and append-only update audit, safe activation, health checks and tested rollback. No unattended updater or live update service is claimed.
