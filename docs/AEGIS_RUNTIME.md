@@ -150,9 +150,20 @@ Content-Type: application/json
 { "decision": "approved" }
 ```
 
-These Pages routes require the normal AEGIS owner session and the `AEGIS_DB` capability database binding. The server fetches the persisted plan itself; clients cannot submit a digest, capability, resource, scope or operation summary. The approval binds the complete canonical plan digest, exact run ID, registered critical capability/action and owner principal, and expires after 15 minutes. Decisions are atomically restricted to the owner and the `aegis-agent-run` capability.
+The owner can then consume that exact approved record and ask the runtime to persist a one-time authorisation:
 
-**Important:** creating or approving this record does not start a specialist or execute a tool. It is an approval record for a future Sentinel-mediated execution path. That path remains unimplemented and fail-closed.
+```http
+POST /api/sentinel/agent-run-approval/<approvalId>/authorize
+Content-Type: application/json
+
+{}
+```
+
+These Pages routes require the normal AEGIS owner session and the `AEGIS_DB` capability database binding. The server fetches the persisted plan itself; clients cannot submit a digest, capability, resource, scope or operation summary. The approval binds the complete canonical plan digest, exact run ID, registered critical capability/action and owner principal, and expires after 15 minutes. Decisions are atomically restricted to the owner and the `aegis-agent-run` capability. Sentinel reloads the approved record by exact ID, fetches the plan again, recomputes the binding, and atomically consumes the approval before calling the private runtime route. If the runtime call fails after consumption, the record remains consumed; inspect the run before requesting a fresh approval.
+
+The runtime independently recomputes the canonical digest from its persisted plan and verifies the registered capability/action/version. It records one approval ID per run using a unique database index and an atomic conditional update, then appends a deterministic `execution_authorized` event. Replaying the same approval is idempotent; a different approval or changed plan is rejected. This transition does not enqueue a queue message, claim a worker, invoke a model, or execute a tool. `executionAuthorized` is exposed as a status fact only.
+
+**Important:** this is the completed human-approval-to-runtime-authorisation record handoff, not specialist execution. The actual specialist worker, exact resource-grant enforcement at invocation, and tool execution remain unimplemented and fail-closed.
 
 The owner-only Pages route also provides a bounded AG-UI 1.0 terminal replay:
 
@@ -183,11 +194,13 @@ Migrations:
 - `migrations/runtime/0003_agent_run_cancellation.sql` — cancellation marker and pending-dispatch index.
 - `migrations/runtime/0004_agent_run_listing.sql` — stable creation-time/ID index for keyset pagination.
 - `migrations/runtime/0005_agent_run_event_listing.sql` — per-run event timeline cursor index.
+- `migrations/runtime/0006_agent_run_execution_authorization.sql` — one-time approval ID and authorisation timestamp, with a unique approval-consumption index.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
 - `agent_runs` stores bounded objectives, approved specialist-role selections, plan output, attempt/lease state and the cancellation marker.
-- `agent_run_events` stores append-only agent-run lifecycle events.
+- `agent_run_events` stores append-only agent-run lifecycle events, including one-time execution-authorisation records.
+- `agent_runs.authorization_approval_id` and `execution_authorized_at` record the consumed owner approval; the unique partial index prevents one approval being attached to multiple runs.
 - Foreign keys and indexes support job lookup, pending dispatch and lease recovery.
 
 ## Pages owner proxy and Agent Workforce console
@@ -248,7 +261,7 @@ Cloudflare documents D1 creation and migration commands and Queue consumer/dead-
 - No permissive CORS is enabled.
 - Request bodies are capped at 8 KiB.
 - Only the health-check task is accepted; payload fields are rejected.
-- Job cancellation and the plan-only owner approval record/decision flow are implemented for agent runs. The approval-to-execution handoff, general job cancellation, user-supplied code, arbitrary connectors, model calls and specialist execution are not implemented.
+- Job cancellation, plan-only owner approval, exact-plan approval consumption and runtime authorisation recording are implemented for agent runs. General job cancellation, user-supplied code, arbitrary connectors, model calls, specialist execution and invocation-time resource grants are not implemented.
 - D1 and Queue resource creation/deployment need explicit review and a cost/limit check before use.
 - Queue delivery is at-least-once. Idempotent state transitions, leases and attempt fencing reduce duplicate execution risks; new task handlers must themselves be idempotent.
 
