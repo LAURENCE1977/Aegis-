@@ -17,6 +17,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - AEGIS Forge capability declarations for universal source discovery, inspection, comparison, evaluation, planning and benchmarking
 - AEGIS Engineering Intelligence capability boundary for attributed, evidence-rated knowledge
 - Pure validators for Forge source-candidate and engineering-knowledge records
+- Owner-only persisted Knowledge Library with evidence sources, limitations, draft/review/accept/supersede lifecycle and append-only history
 - Read-only public GitHub repository discovery behind session authentication and same-origin protection
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
@@ -39,7 +40,7 @@ If the login screen says security setup is unfinished, configure both secrets be
 
 Forge is being developed as a universal, safe transformation engine for repositories, MCP servers, APIs, SDKs, packages, frameworks and authorised application interfaces. Its first live adapter performs read-only public GitHub repository metadata discovery at authenticated `POST /api/forge/discover`.
 
-Candidate and knowledge records preserve source versions, licence review, attribution, evidence and limitations. Unknown licences are a hold, not permission to reuse. Retrieved source material is untrusted data: discovery does not execute repository code or grant tool permissions.
+Candidate records preserve source versions and licence review. The Knowledge Library stores attributable findings, evidence levels, limitations and capability tags. New records start as drafts; only owner-reviewed high/medium evidence can be accepted, and accepted content is immutable with append-only review history. Unknown licences are a hold, not permission to reuse. Retrieved source material is untrusted data: discovery does not execute repository code or grant tool permissions.
 
 See [docs/FORGE_INTELLIGENCE.md](docs/FORGE_INTELLIGENCE.md).
 
@@ -63,7 +64,7 @@ Run the full test suite with Node.js 22:
 node --test tests/*.test.mjs
 ```
 
-The first durable runtime slice is now implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). The full autonomous task runner, model/provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap.
+The first durable runtime slice is now implemented in source under `workers/runtime/` and `migrations/runtime/`, with a single allowlisted health-check task. It is not yet deployed: D1/Queue resources and an encrypted Worker secret must be configured first. See [docs/AEGIS_RUNTIME.md](docs/AEGIS_RUNTIME.md). Durable specialist execution, retrieval of accepted Knowledge Library records into agent context, the general MCP/API connector manager, voice engine and production Forge sandbox remain on the roadmap. The Knowledge Library currently has owner-only search/intake/review APIs and a Forge UI; it is not yet automatically injected into agent plans.
 
 ## Project blueprint and AI handover
 
@@ -108,6 +109,10 @@ The owner-only `GET /api/workspaces/:id/brief` endpoint creates a bounded, read-
 ## Forge candidate review
 
 Forge can persist inspected public repositories as owner-reviewed candidates pinned to a Git tree SHA. Candidates begin unassessed and licence-review-required; owner attestation and evidence are required before reuse/adaptation or approval. D1 triggers enforce the licence gate and append-only history. No repository is installed or executed.
+
+## Forge Knowledge Library
+
+The Forge panel includes a searchable owner-only Knowledge Library. New records preserve source URLs and attribution, evidence level, limitations and applicable capability tags. Records start as drafts; owner review is explicit, low/experimental evidence cannot be accepted, reviewed content is immutable, and create/review/accept/supersede history is append-only. Search defaults to accepted records only. The library is not yet automatically injected into Agent Workforce plans; that integration remains gated on the next retrieval stage. See [Forge intelligence](docs/FORGE_INTELLIGENCE.md) and [AEGIS Forge](docs/AEGIS_FORGE.md).
 
 
 ## First owner-facing invocation route
