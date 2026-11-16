@@ -1,4 +1,5 @@
 import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
+import { getCapabilityManifest } from '../../functions/lib/capability-registry.mjs';
 
 const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -33,12 +34,21 @@ export async function buildAgentPlanApprovalBinding(plan, principalId, now = Dat
     throw new TypeError('Agent plan safety guarantees are not satisfied.');
   }
 
+  const manifest = getCapabilityManifest('aegis-agent-run');
+  const action = manifest?.actions?.find((entry) => entry.id === 'approve-execution');
+  if (!manifest || manifest.status !== 'approved' || !action ||
+      action.effect !== 'execute' || action.risk !== 'critical' ||
+      action.approval !== 'human-always' ||
+      !action.requiredScopes.includes('aegis:agent-run:execute')) {
+    throw new Error('Registered agent execution capability is unavailable or unsafe.');
+  }
+
   const inputDigest = await digestCanonicalInput(plan);
   return {
     principalId,
-    capabilityId: 'aegis-agent-run',
-    capabilityVersion: '1.0.0',
-    actionId: 'approve-execution',
+    capabilityId: manifest.id,
+    capabilityVersion: manifest.version,
+    actionId: action.id,
     resourceId: 'agent-run:' + plan.runId,
     operationSummary: 'Approve future execution of agent run ' + plan.runId,
     connectionId: null,
