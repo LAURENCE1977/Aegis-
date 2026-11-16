@@ -1,0 +1,175 @@
+const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct';
+const QWEN_REGIONS = new Set([
+  'ap-southeast-1',
+  'us-east-1',
+  'cn-beijing',
+  'cn-hongkong',
+  'eu-central-1',
+  'ap-northeast-1',
+]);
+const MAX_MESSAGES = 14;
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_OUTPUT_TOKENS = 1024;
+
+function validateMessages(messages) {
+  if (!Array.isArray(messages) || messages.length < 1 || messages.length > MAX_MESSAGES) {
+    throw new TypeError('Invalid model message list');
+  }
+  for (const message of messages) {
+    if (!message || typeof message !== 'object' || Array.isArray(message) ||
+        typeof message.content !== 'string' || message.content.length > MAX_MESSAGE_CHARS) {
+      throw new TypeError('Invalid model message');
+    }
+    if (message.role === 'tool') {
+      if (Object.keys(message).some(key => !['role', 'content', 'tool_call_id', 'name'].includes(key)) ||
+          typeof message.tool_call_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(message.tool_call_id) ||
+          typeof message.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(message.name) ||
+          !message.content.trim()) {
+        throw new TypeError('Invalid model tool result message');
+      }
+      continue;
+    }
+    if (!['system', 'user', 'assistant'].includes(message.role)) {
+      throw new TypeError('Invalid model message role');
+    }
+    if (message.role === 'assistant' && message.tool_calls !== undefined) {
+      if (Object.keys(message).some(key => !['role', 'content', 'tool_calls'].includes(key)) ||
+          !Array.isArray(message.tool_calls) || message.tool_calls.length !== 1) {
+        throw new TypeError('Invalid assistant tool-call message');
+      }
+      const call = message.tool_calls[0];
+      if (!call || typeof call !== 'object' || Array.isArray(call) ||
+          Object.keys(call).some(key => !['id', 'type', 'function'].includes(key)) ||
+          typeof call.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(call.id) ||
+          call.type !== 'function' || !call.function || typeof call.function !== 'object' ||
+          Object.keys(call.function).some(key => !['name', 'arguments'].includes(key)) ||
+          typeof call.function.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(call.function.name) ||
+          typeof call.function.arguments !== 'string' || call.function.arguments.length > 4096) {
+        throw new TypeError('Invalid assistant tool-call payload');
+      }
+      continue;
+    }
+    if (Object.keys(message).some(key => !['role', 'content'].includes(key)) || !message.content.trim()) {
+      throw new TypeError('Invalid model message');
+    }
+  }
+}
+
+function validateTools(tools) {
+  if (tools === undefined) return [];
+  if (!Array.isArray(tools) || tools.length < 1 || tools.length > 4) {
+    throw new TypeError('Invalid model tool list');
+  }
+  for (const tool of tools) {
+    if (!tool || typeof tool !== 'object' || Array.isArray(tool) ||
+        Object.keys(tool).some(key => !['type', 'function'].includes(key)) ||
+        tool.type !== 'function' || !tool.function || typeof tool.function !== 'object' ||
+        Object.keys(tool.function).some(key => !['name', 'description', 'parameters'].includes(key)) ||
+        typeof tool.function.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(tool.function.name) ||
+        typeof tool.function.description !== 'string' || tool.function.description.length > 512 ||
+        !tool.function.parameters || typeof tool.function.parameters !== 'object' ||
+        tool.function.parameters.type !== 'object' ||
+        tool.function.parameters.additionalProperties !== false ||
+        !tool.function.parameters.properties || typeof tool.function.parameters.properties !== 'object') {
+      throw new TypeError('Invalid model tool definition');
+    }
+  }
+  return JSON.parse(JSON.stringify(tools));
+}
+
+function resolveQwenEndpoint(env) {
+  const workspace = env.AEGIS_QWEN_WORKSPACE_ID;
+  const region = env.AEGIS_QWEN_REGION;
+  if (typeof workspace !== 'string' || workspace.length < 3 || workspace.length > 100 ||
+      !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(workspace)) {
+    throw new Error('Qwen workspace is not configured correctly.');
+  }
+  if (typeof region !== 'string' || !QWEN_REGIONS.has(region)) {
+    throw new Error('Qwen region is not configured correctly.');
+  }
+  const key = env.AEGIS_QWEN_API_KEY;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
+      /[\r\n\u0000]/.test(key)) {
+    throw new Error('Qwen API key is not configured.');
+  }
+  const model = env.AEGIS_QWEN_MODEL || 'qwen3.8-flash';
+  if (typeof model !== 'string' || model.length > 120 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
+    throw new TypeError('Invalid Qwen model identifier');
+  }
+  return {
+    endpoint: 'https://' + workspace + '.' + region +
+      '.maas.aliyuncs.com/compatible-mode/v1/chat/completions',
+    key,
+    model,
+  };
+}
+
+export async function createModelStream({ env, messages, tools, fetchImpl = fetch }) {
+  if (!env || typeof env !== 'object') throw new TypeError('Model environment is required');
+  validateMessages(messages);
+  const safeTools = validateTools(tools);
+  const provider = env.AEGIS_MODEL_PROVIDER || 'workers-ai';
+
+  if (provider === 'workers-ai') {
+    if (safeTools.length) throw new Error('Tool calling is not enabled for this Workers AI model.');
+    if (!env.AI || typeof env.AI.run !== 'function') {
+      throw new Error('Workers AI is not configured.');
+    }
+    const stream = await env.AI.run(WORKERS_AI_MODEL, {
+      messages,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      stream: true,
+    });
+    if (!stream || typeof stream.getReader !== 'function') {
+      throw new Error('Workers AI did not return a readable stream.');
+    }
+    return stream;
+  }
+
+  if (provider !== 'alibaba-qwen') {
+    throw new Error('Unsupported AEGIS model provider.');
+  }
+
+  const { endpoint, key, model } = resolveQwenEndpoint(env);
+  if (safeTools.length && model !== 'qwen3.8-flash') {
+    throw new Error('Tool calling is not enabled for this Qwen model.');
+  }
+  let response;
+  try {
+    response = await fetchImpl(endpoint, {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        stream: true,
+        ...(safeTools.length ? { tools: safeTools, tool_choice: 'auto' } : {}),
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new Error('Qwen provider request failed.');
+  }
+  if (!response || !response.ok || !response.body ||
+      typeof response.body.getReader !== 'function') {
+    throw new Error('Qwen provider request failed.');
+  }
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/event-stream')) {
+    throw new Error('Qwen provider returned an unsupported response type.');
+  }
+  return response.body;
+}
+
+export const MODEL_PROVIDER_LIMITS = Object.freeze({
+  maxMessages: MAX_MESSAGES,
+  maxMessageChars: MAX_MESSAGE_CHARS,
+  maxOutputTokens: MAX_OUTPUT_TOKENS,
+});
