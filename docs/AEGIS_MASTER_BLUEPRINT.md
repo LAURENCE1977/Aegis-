@@ -763,3 +763,15 @@ The clean memory/Forge stack in PR #39 now has a cleanly ported capability persi
 ## Sentinel approval loader
 
 PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired approval matching the exact principal, capability/version, action, resource and input digest. Sentinel must still compare the persisted connection ID with the live connection and atomically consume the approval immediately before execution. The loader is not an authorization decision or public API. See `docs/AEGIS_SENTINEL_APPROVAL_LOADER.md`.
+
+## Sentinel D1 composition root — 16 November 2026
+
+- Added `functions/lib/sentinel-composition.mjs` as the trusted server-side composition root for the persistent capability stores.
+- Wires exact grant, connection and approval lookups, atomic approval consumption, and append-only invocation audit to one injected D1 binding.
+- Adapter registration is a copied, fixed allowlist keyed by exact `capabilityId:actionId`. Startup rejects keys that do not map to an approved capability and an action in the trusted registry.
+- Adapter dispatch never derives destinations from manifest URLs, interface paths, request fields or user-provided tool names. The adapter receives a frozen, minimal context containing the principal, exact capability/action/resource, scopes, connection ID and input digest; no vault secret or secret reference is passed.
+- The D1 binding, trusted clock and adapter handlers are injected by server-side code. No public route is wired to this composition root yet.
+- CI run 43788852555 on commit 4dbe23c656f4842d48a045ace07c301461ece558 passed **340 tests, 0 failures** under Node.js 22. The first composition test run exposed a synchronous adapter-dispatch error; dispatch was changed to reject asynchronously and the final suite passed.
+- This is a library-level composition milestone, not a live integration. No D1 binding was provisioned, migrations applied, vault keyring configured, external adapter registered, provider call made or deployment initiated.
+- Before enabling a route: add owner-authenticated grant/connection lifecycle endpoints, validate the D1 migration chain in an isolated database, implement an allowlisted read-only adapter, enforce egress/redirect/private-address protections, and test the full request-to-audit lifecycle. Keep arbitrary HTTP/MCP/browser execution disabled.
+- Details: `docs/AEGIS_SENTINEL_COMPOSITION.md`.
