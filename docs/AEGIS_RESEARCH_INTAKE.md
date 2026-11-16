@@ -163,3 +163,79 @@ This section records the next batch of projects supplied by the owner. Repositor
 5. God's Eye View and MiroFish — inspect data-source provenance, privacy boundaries, simulation assumptions and licence obligations.
 
 **Evidence boundary:** GitHub metadata and selected README/root licence files were checked for the named repositories. This is not a full security audit, dependency audit, reproducible benchmark or production test. No percentage or implementation-completion credit is claimed for this research entry.
+
+
+---
+
+## REA batch — Hindsight, Nango and OpenViking (16 November 2026)
+
+### Source-level REA: Hindsight
+
+**Canonical source:** https://github.com/vectorize-io/hindsight  
+**Pinned inspected revision:** `b92ceb180e349a456d2b5454575067b6ff0f6306` (16 November 2026)  
+**Root licence:** MIT; the inspected package manifests also declare MIT.  
+**Inspection depth:** focused source-level review, not a complete security/dependency audit. Inspected root README, root licence and security policy, workspace/package manifests, public memory-engine interface, request context and data models, retrieval/fusion modules, retain fact storage and byte-budget code, retraction logic, and representative recall budget/temporal tests.
+
+#### Architecture and mechanisms observed
+
+- Hindsight exposes three core operations: **retain**, **recall** and **reflect**. Its public interface separates these operations from HTTP/MCP transports and storage implementations.
+- Memory records are represented as individual units with a bank scope, source document, context, embedding, fact type, event/occurrence/mention timestamps, entity relationships and links. The inspected model distinguishes facts about the world, agent experience and observations.
+- Recall is a multi-arm pipeline: semantic retrieval, BM25 keyword retrieval, graph retrieval and temporal retrieval. The arms can be disabled independently. A caller-supplied temporal window is used verbatim and avoids a second model/date-analysis step.
+- `search/fusion.py` contains per-source result caps, Reciprocal Rank Fusion (RRF), and interleaving fusion. Interleaving protects each retrieval arm's top results from being crowded out by a large result set from another arm.
+- `retain/memory_budget.py` uses estimated in-flight bytes rather than only item counts to apply backpressure. It includes explicit handling for oversized single items and producer/consumer wait coordination.
+- `reflect/retractions.py` detects when a stored synthesis cites memory IDs that no longer exist. It distinguishes partial loss of grounding from a wholly unresolvable set of IDs and avoids automatically deleting a synthesis when every citation may simply have been remapped.
+- The public request context carries tenant identity and cooperative cancellation; the interface exposes token budgets, temporal filters, fact-type filters and optional trace details.
+- The project has extensive specialised code and tests. This is evidence of engineering maturity, not evidence that its full footprint is appropriate for AEGIS.
+
+#### Resource and deployment fit
+
+The root project is a large Python monorepo. The inspected `hindsight-api-slim` package still depends on PostgreSQL/asyncpg, pgvector, SQLAlchemy/Alembic, FastAPI, multiple provider SDKs, telemetry, document parsing and object-storage libraries. Optional local-ML extras include PyTorch, Transformers and Sentence Transformers; the embedded profile uses pg0. The `hindsight-embed` README says first use starts a local daemon and downloads dependencies/loads ML models, which can take 1–3 minutes.
+
+This is a poor direct fit for AEGIS's Cloudflare Pages/Workers + D1 architecture and ordinary Chromebook/iPhone/iPad targets. It would add a separate Python service, a substantial database/vector stack, a large dependency surface and model inference requirements. Local inference options exist, but do not make the entire stack lightweight or guarantee zero hardware cost. Hosted Hindsight Cloud is not an acceptable mandatory dependency.
+
+#### Comparison with existing AEGIS memory
+
+AEGIS already has an AEGIS-native memory substrate with exact owner/personal-or-project scoping, provenance, confidence, sensitivity, expiry, accepted/candidate/superseded/retracted states, append-only lifecycle events and BM25-style lexical ranking. Hindsight therefore does not justify replacing AEGIS memory or introducing a second memory database.
+
+Potential native adaptations, subject to a separate design and tests:
+1. Add explicit event-time fields where needed, distinguishing when something happened from when AEGIS learned or recorded it.
+2. Consider bounded multi-arm recall: retain AEGIS lexical search, add semantic or temporal arms only when available, then use a small RRF/interleave fusion step. No mandatory embedding model.
+3. Preserve per-arm result caps and a strict shared context/token budget so one retrieval method cannot dominate the prompt.
+4. Add evidence-linked invalidation checks so accepted summaries or derived memories can be re-reviewed when their supporting memories are retracted or superseded.
+5. Borrow byte-budget/backpressure principles for any future ingestion pipeline; do not import Hindsight's Python worker implementation.
+
+#### REA score (provisional, evidence-rated)
+
+| Dimension | Score / 5 | Weighted points | Rationale |
+|---|---:|---:|---|
+| Demonstrable capability value | 5 | 20/20 | Strong memory, temporal, graph and retrieval techniques |
+| AEGIS architecture fit | 3 | 9/15 | Concepts fit; service/runtime architecture does not |
+| Security, privacy and controllability | 3 | 9/15 | Tenant context, cancellation and scoped banks observed; no full security audit |
+| Runtime footprint and hardware fit | 1 | 3/15 | Python service, PostgreSQL/pgvector and substantial optional local ML |
+| Complexity/dependency reduction | 1 | 2/10 | Wholesale adoption would add substantial infrastructure |
+| Maintenance, tests and upstream health | 5 | 10/10 | Active upstream and extensive test tree observed |
+| Cost/free viability | 3 | 6/10 | MIT and local options, but full local operation has meaningful compute/storage costs |
+| Portability and replaceability | 2 | 2/5 | Python/Postgres-oriented implementation; concepts are portable |
+| **Total** |  | **61/100** | **Below the adoption threshold** |
+
+**Disposition: reference only + selective AEGIS-native rebuild. Do not install, fork or make Hindsight a runtime dependency.** The MIT licence permits reuse subject to preserving notices, but the recommendation is to implement the selected concepts independently within AEGIS contracts. Confidence: medium for architecture/footprint assessment; low-to-medium for security because this was not a complete audit. No upstream code was executed or copied.
+
+### Nango — preliminary triage only
+
+**Canonical source:** https://github.com/NangoHQ/nango  
+**Inspected revision family:** default branch `master`; current commit was not pinned for a full REA.  
+**Root licence:** Elastic License 2.0 (ELv2), confirmed from the actual `LICENSE` file. It restricts offering the software as a hosted/managed service to third parties and contains additional licence-key and notice conditions. The README describes a limited free self-hosted tier and paid Cloud/BYOC feature sets.
+
+**Verdict:** not suitable as an AEGIS core dependency. Its OAuth lifecycle, token refresh, connection records, provider proxy and integration-function patterns are worth studying against AEGIS's existing Composio/Sentinel/Vault boundaries. AEGIS must retain its own credential custody, grants, approval, audit and provider-neutral contracts. Do not adopt the platform or copy code under ELv2 without a specific legal/use-case review. This is not yet a full source-level REA.
+
+### OpenViking — preliminary triage only
+
+**Canonical source:** https://github.com/volcengine/OpenViking  
+**Pinned revision:** not yet recorded for a full REA.  
+**Root licence:** AGPL-3.0 for the main project; the README identifies separate Apache-2.0 licensing for `crates/ov_cli` and examples, with third-party components retaining their own licences.
+
+**Mechanisms worth investigating:** filesystem-like context URIs, hierarchical resources/memories/skills, directory-scoped retrieval, L0 abstract → L1 overview → L2 detail loading, inspectable context trees, and session-to-memory processing. These patterns could help AEGIS reduce unnecessary context loading and make memory inspectable.
+
+**Verdict:** architecture reference only pending a full source, dependency and licence review. Do not adopt the AGPL core into the MIT AEGIS codebase without a documented compatibility/distribution review. Its Python/Rust and vector/context-database stack must also be compared against the existing AEGIS-native D1 memory model before any implementation decision. This is not yet a full source-level REA.
+
+**Batch boundary:** Hindsight received a focused source-level REA; Nango and OpenViking received preliminary triage only. No repositories were installed, executed, forked or integrated. No AEGIS feature-completion credit is claimed for this research.
