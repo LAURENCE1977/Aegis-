@@ -702,3 +702,18 @@ A fourth server-owned agent tool, `aegis_read_github_workflow_jobs`, is now regi
 The separate capability `aegis-composio-github-workflow-jobs-readonly` and `github:workflow-jobs:read` scope are mandatory. The model cannot select a tool slug, connection, account, session, endpoint, resource or permission. Results are limited to twenty jobs and bounded step name/number/status/conclusion summaries; provider runner details, logs, artifacts, reruns, dispatch and cancellation are excluded.
 
 The agent tool registry now has four fixed schemas, matching the provider adapter's maximum tool count. Tests verify invalid run IDs and extra fields are rejected, no-grant calls are audited and denied before Composio network execution, and AG-UI routes the tool correctly. Node.js tests, local D1 capability/rate-limit/audit checks, Forge licence/source-integrity checks and Cloudflare Pages preview passed on code commit `df7b3459fb9cb47c1257541caa2a0c32c29ee738`.
+
+
+## Agent runtime lifecycle and history controls — 16 November 2026
+
+The separate Cloudflare runtime now has owner-authenticated agent-run history and cancellation primitives:
+
+- `GET /v1/agent-runs` returns a bounded page (1–50, default 20) using stable keyset pagination on `created_at DESC, id DESC`; the cursor is validated and timestamp ties do not skip or duplicate records.
+- `GET /v1/agent-runs/{id}` reads one durable run.
+- `POST /v1/agent-runs/{id}/cancel` records an idempotent cancellation marker and one append-only lifecycle event.
+- Cancellation is fenced against initial outbox dispatch, cron recovery, queue claim, plan persistence, retry and dead-letter handling. A delivery racing with cancellation is acknowledged without generating a plan.
+- The existing constrained database status enum is preserved; the API derives terminal `cancelled` status from `cancelled_at`. This avoids a risky table rebuild and keeps the event foreign key stable.
+- Runtime migrations `0003_agent_run_cancellation.sql` and `0004_agent_run_listing.sql` add the cancellation marker and history index.
+- CI now applies all runtime migrations to an isolated local D1 database and verifies the cancellation marker, history index and append-only agent-run event triggers.
+
+The runtime remains source-only and is not deployed or provisioned. Agent runs still produce a plan only; no specialist model execution, shell, browser or external side effect is enabled. The latest implementation commit `25044908e05ef892ae37544cfc4d93dab3d49a20` passed the full suite (507 tests, 0 failures), runtime D1 migration checks, Forge/capability D1 checks and Cloudflare Pages preview.
