@@ -4,6 +4,7 @@ import { createConnection } from '../functions/lib/capability-connections.mjs';
 import { storeVaultSecret } from '../functions/lib/secret-vault.mjs';
 import { getCapabilityManifest, validateCapabilityManifest } from '../functions/lib/capability-registry.mjs';
 import { createComposioAdapterRegistry } from '../functions/lib/composio-adapters.mjs';
+import { runSentinelInvocation } from '../functions/lib/sentinel.mjs';
 
 class MemoryD1 {
   constructor() {
@@ -246,4 +247,120 @@ test('rejects unexpected tool exposure, extra input fields and missing server se
     { owner: 'octocat', repo: 'Hello-World' },
     { capabilityId: 'aegis-composio-github-readonly', actionId: 'get-repository', principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World', scopes: ['github:repository:read'] },
   ), /API key/i);
+});
+
+
+test('runs the private repository read only after Sentinel validates the exact grant and connection', async () => {
+  const db = await connectedDb();
+  const connectionId = [...db.connections.keys()][0];
+  const resourceId = 'github:repository:octocat/Hello-World';
+  const now = Date.parse('2026-11-16T10:00:00.000Z');
+  const manifest = getCapabilityManifest('aegis-composio-github-readonly');
+  const audit = [];
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url) => {
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'GITHUB_GET_A_REPOSITORY' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({
+        data: repositoryData(), error: null, log_id: 'log_123',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  const handler = adapters['aegis-composio-github-readonly:get-repository'];
+  const connection = {
+    id: connectionId,
+    principalId: 'owner',
+    providerId: 'composio',
+    status: 'active',
+    scopes: ['composio:github:repository:read'],
+  };
+  const dependencies = {
+    loadGrant: async () => ({
+      id: 'grant-composio-1',
+      principalId: 'owner',
+      capabilityId: manifest.id,
+      capabilityVersion: manifest.version,
+      resourceId,
+      resourceIds: [resourceId],
+      scopes: ['github:repository:read'],
+      status: 'active',
+      expiresAt: new Date(now + 60_000).toISOString(),
+    }),
+    loadConnection: async () => connection,
+    loadApproval: async () => null,
+    reserveRateLimit: async () => true,
+    recordAudit: async (event) => { audit.push(event); },
+    registryLookup: getCapabilityManifest,
+    execute: handler,
+  };
+
+  const result = await runSentinelInvocation({
+    invocationId: 'composio-read-1',
+    principalId: 'owner',
+    manifest,
+    actionId: 'get-repository',
+    resourceId,
+    inputDigest: 'sha256:' + 'a'.repeat(64),
+    input: { owner: 'octocat', repo: 'Hello-World' },
+    now,
+  }, dependencies);
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'SUCCESS');
+  assert.equal(result.output.repository.fullName, 'octocat/Hello-World');
+  assert.deepEqual(audit.map((event) => event.type), [
+    'invocation_policy_allowed',
+    'invocation_authorized',
+    'invocation_succeeded',
+  ]);
+  assert.ok(audit.every((event) => !('input' in event) && !('secret' in event)));
+});
+
+test('Sentinel denies a missing exact-resource grant before the Composio adapter is called', async () => {
+  const db = await connectedDb();
+  const connectionId = [...db.connections.keys()][0];
+  const manifest = getCapabilityManifest('aegis-composio-github-readonly');
+  const audit = [];
+  let providerCalls = 0;
+  const handler = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async () => { providerCalls += 1; throw new Error('must not fetch'); },
+  })['aegis-composio-github-readonly:get-repository'];
+  const result = await runSentinelInvocation({
+    invocationId: 'composio-read-denied',
+    principalId: 'owner',
+    manifest,
+    actionId: 'get-repository',
+    resourceId: 'github:repository:octocat/Hello-World',
+    inputDigest: 'sha256:' + 'b'.repeat(64),
+    input: { owner: 'octocat', repo: 'Hello-World' },
+    now: Date.parse('2026-11-16T10:00:00.000Z'),
+  }, {
+    loadGrant: async () => null,
+    loadConnection: async () => ({
+      id: connectionId, principalId: 'owner', providerId: 'composio',
+      status: 'active', scopes: ['composio:github:repository:read'],
+    }),
+    loadApproval: async () => null,
+    reserveRateLimit: async () => true,
+    recordAudit: async (event) => { audit.push(event); },
+    registryLookup: getCapabilityManifest,
+    execute: handler,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'GRANT_REQUIRED');
+  assert.equal(providerCalls, 0);
+  assert.deepEqual(audit.map((event) => event.type), ['invocation_denied']);
 });
