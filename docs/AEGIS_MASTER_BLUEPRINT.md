@@ -396,3 +396,8 @@ AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public G
 ## Owner-controlled capability grants
 
 The owner-only `/api/grants` route provides bounded grant history, exact-resource grant creation and revocation. The server derives principal, actor, capability version and scopes from the approved registry; browser-supplied principals/scopes are rejected. A grant is not an approval and cannot bypass Sentinel's human approval gate. See [AEGIS capability grant management](AEGIS_CAPABILITY_GRANT_MANAGEMENT.md).
+
+
+## First restricted Sentinel invocation route
+
+A source-level owner-authenticated `POST /api/sentinel/invoke` route exposes exactly one action: `aegis-module-catalogue:list` on `aegis:modules` with empty input. It requires same-origin owner session, configured AEGIS D1 and an exact active grant. The route computes the canonical input digest server-side and calls `runSentinelInvocation` through the trusted D1 composition root with only the fixed local adapter registry. Unknown capabilities, actions, resources, adapter names, endpoints and non-empty inputs are rejected. Outcome-audit failure suppresses the adapter output. This is not yet deployed or operational; D1 migration verification and binding provisioning remain gated. No general HTTP, MCP, shell, browser, write or delete capability is exposed.
