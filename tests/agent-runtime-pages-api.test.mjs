@@ -197,7 +197,8 @@ test('AG-UI replay is owner-only, bounded, and emits a valid terminal 1.0 SSE st
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /^text\/event-stream/);
   assert.equal(response.headers.get('Cache-Control'), 'no-store, no-transform');
-  const frames = (await response.text()).trim().split('\n\n');
+  const sseBody = await response.text();
+  const frames = sseBody.trim().split('\n\n');
   const events = frames.map((frame) => {
     assert.ok(frame.startsWith('data: '));
     return JSON.parse(frame.slice(6));
@@ -212,7 +213,7 @@ test('AG-UI replay is owner-only, bounded, and emits a valid terminal 1.0 SSE st
   ));
   assert.equal(events[3].type, 'RUN_FINISHED');
   assert.deepEqual(events[3].outcome, { type: 'success' });
-  assert.doesNotMatch(await response.clone().text().catch(() => ''), /privatePrompt|privateToken/);
+  assert.doesNotMatch(sseBody, /privatePrompt|privateToken/);
   assert.equal(calls.length, 3);
 });
 
