@@ -421,6 +421,6 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   assert.equal(response.status, 200);
   const events = (await response.text()).trim().split('\n\n')
     .map(frame => JSON.parse(frame.slice(6)));
-  assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'));
+  assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
