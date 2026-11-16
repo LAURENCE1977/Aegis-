@@ -147,9 +147,12 @@ test('loads the exact owner connection and vault session only after the Sentinel
   const output = await adapters['aegis-composio-github-readonly:get-repository'](
     { owner: 'octocat', repo: 'Hello-World' },
     {
+      capabilityId: 'aegis-composio-github-readonly',
+      actionId: 'get-repository',
       principalId: 'owner',
       connectionId: [...db.connections.keys()][0],
       resourceId: 'github:repository:octocat/Hello-World',
+      scopes: ['github:repository:read'],
     },
   );
 
@@ -193,11 +196,11 @@ test('rejects a mismatched connection ID and an ungranted resource before any pr
   const handler = adapters['aegis-composio-github-readonly:get-repository'];
   await assert.rejects(handler(
     { owner: 'octocat', repo: 'Hello-World' },
-    { principalId: 'owner', connectionId: 'another-connection', resourceId: 'github:repository:octocat/Hello-World' },
+    { capabilityId: 'aegis-composio-github-readonly', actionId: 'get-repository', principalId: 'owner', connectionId: 'another-connection', resourceId: 'github:repository:octocat/Hello-World', scopes: ['github:repository:read'] },
   ), /connection/i);
   await assert.rejects(handler(
     { owner: 'octocat', repo: 'Hello-World' },
-    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Other-Repo' },
+    { capabilityId: 'aegis-composio-github-readonly', actionId: 'get-repository', principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Other-Repo', scopes: ['github:repository:read'] },
   ), /resource/i);
   assert.equal(calls, 0);
 });
@@ -216,7 +219,7 @@ test('rejects unexpected tool exposure, extra input fields and missing server se
   });
   await assert.rejects(tools['aegis-composio-github-readonly:get-repository'](
     { owner: 'octocat', repo: 'Hello-World' },
-    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
+    { capabilityId: 'aegis-composio-github-readonly', actionId: 'get-repository', principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World', scopes: ['github:repository:read'] },
   ), /tool allowlist/i);
 
   const extras = createComposioAdapterRegistry({
