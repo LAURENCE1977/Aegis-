@@ -113,6 +113,47 @@ export async function listPendingApprovals(db, limit = 50) {
   return (result?.results || []).map(mapApproval);
 }
 
+/**
+ * Loads one approved, unconsumed approval for an exact invocation binding.
+ * The caller must still compare the returned connectionId with the live
+ * connection and atomically consume this record immediately before execution.
+ */
+export async function loadApproval(db, {
+  principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest,
+} = {}, now = Date.now()) {
+  if (!db || typeof db.prepare !== 'function') {
+    throw new TypeError('Approval database is required');
+  }
+  requiredId(principalId, 'principal');
+  requiredId(capabilityId, 'capability identifier');
+  requiredId(capabilityVersion, 'capability version');
+  requiredId(actionId, 'action identifier');
+  requiredId(resourceId, 'resource identifier');
+  if (typeof inputDigest !== 'string' || !DIGEST_PATTERN.test(inputDigest)) {
+    throw new TypeError('Invalid approval input digest');
+  }
+  if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
+
+  const row = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE principal_id = ?
+      AND capability_id = ?
+      AND capability_version = ?
+      AND action_id = ?
+      AND resource_id = ?
+      AND input_digest = ?
+      AND status = 'approved'
+      AND consumed_at IS NULL
+      AND expires_at > ?
+    ORDER BY decided_at DESC, requested_at DESC
+    LIMIT 1
+  `).bind(
+    principalId, capabilityId, capabilityVersion, actionId,
+    resourceId, inputDigest, new Date(now).toISOString(),
+  ).first();
+  return mapApproval(row);
+}
+
 export async function decideApprovalRequest(db, {
   id, decision, decidedBy, now = Date.now(),
 } = {}) {
