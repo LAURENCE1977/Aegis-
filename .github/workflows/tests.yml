@@ -34,7 +34,7 @@ jobs:
       - name: Run Node.js and Cloudflare runtime integration tests
         run: node --test tests/*.test.mjs
       - name: Install Wrangler for local D1 verification
-        run: npm install --global wrangler@4
+        run: npm install --global wrangler@4.163.0
       - name: Apply capability migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1
       - name: Smoke-test all capability tables and constraints
