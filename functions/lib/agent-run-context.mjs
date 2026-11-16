@@ -2,11 +2,48 @@ import { getWorkspace, listWorkspaceEvents } from './project-spaces.mjs';
 import { createMemoryRepository } from './memory-substrate.mjs';
 import { buildProjectBrief } from './project-brief.mjs';
 import { digestProjectBrief } from './project-context-digest.mjs';
+import { digestCanonicalInput } from './canonical-input.mjs';
+import { listForgeKnowledgeRecords } from './forge-knowledge.mjs';
 
 const OWNER_ID = 'owner';
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_CONTEXT_CHARS = 6000;
-const MAX_CONTEXT_BYTES = 11 * 1024;
+const MAX_BRIEF_BYTES = 8 * 1024;
+const MAX_KNOWLEDGE_BYTES = 4 * 1024;
+const MAX_CONTEXT_BYTES = 12 * 1024 - 128;
+
+function buildAcceptedKnowledgeContext(records) {
+  const eligible = (Array.isArray(records) ? records : []).filter((record) =>
+    record && record.ownerId === OWNER_ID && record.status === 'accepted' &&
+    ['high', 'medium'].includes(record.evidenceLevel) &&
+    Array.isArray(record.sources) && record.sources.length > 0
+  );
+  const selected = [];
+  for (const record of eligible.slice(0, 20)) {
+    const candidate = {
+      id: record.id,
+      title: record.title.slice(0, 160),
+      domain: record.domain,
+      knowledgeType: record.knowledgeType,
+      summary: record.summary.slice(0, 500),
+      evidenceLevel: record.evidenceLevel,
+      sources: record.sources.slice(0, 1).map((source) => ({
+        url: source.url,
+        title: source.title.slice(0, 120),
+        attribution: source.attribution.slice(0, 120),
+      })),
+      limitations: record.limitations.slice(0, 3).map((item) => item.slice(0, 200)),
+      applicableCapabilities: record.applicableCapabilities.slice(0, 6),
+      version: record.version,
+      updatedAt: record.updatedAt,
+      trust: 'untrusted-reference',
+    };
+    const next = [...selected, candidate];
+    if (new TextEncoder().encode(JSON.stringify(next)).byteLength > MAX_KNOWLEDGE_BYTES) break;
+    selected.push(candidate);
+  }
+  return selected;
+}
 
 export function createAgentRunProjectContextBuilder({
   getWorkspace: getWorkspaceImpl = getWorkspace,
@@ -14,6 +51,7 @@ export function createAgentRunProjectContextBuilder({
   createMemoryRepository: createMemoryRepositoryImpl = createMemoryRepository,
   buildProjectBrief: buildProjectBriefImpl = buildProjectBrief,
   digestProjectBrief: digestProjectBriefImpl = digestProjectBrief,
+  listForgeKnowledgeRecords: listForgeKnowledgeRecordsImpl = listForgeKnowledgeRecords,
 } = {}) {
   return async function buildAgentRunProjectContext(db, projectId, now = Date.now()) {
     if (!db || typeof db.prepare !== 'function') {
@@ -27,7 +65,7 @@ export function createAgentRunProjectContextBuilder({
     const workspace = await getWorkspaceImpl(db, OWNER_ID, projectId);
     if (!workspace || workspace.id !== projectId || workspace.ownerId !== OWNER_ID || workspace.status !== 'active') return null;
 
-    const [events, memories] = await Promise.all([
+    const [events, memories, knowledgeRecords] = await Promise.all([
       listWorkspaceEventsImpl(db, OWNER_ID, projectId, 100),
       createMemoryRepositoryImpl(db).list({
         ownerId: OWNER_ID,
@@ -35,19 +73,22 @@ export function createAgentRunProjectContextBuilder({
         limit: 50,
         now,
       }),
+      listForgeKnowledgeRecordsImpl(db, OWNER_ID, { status: 'accepted', limit: 20 }),
     ]);
     if (!events) return null;
 
     let maxChars = MAX_CONTEXT_CHARS;
     let brief = buildProjectBriefImpl({ workspace, events, memories, maxChars, now });
-    while (new TextEncoder().encode(JSON.stringify(brief)).byteLength > MAX_CONTEXT_BYTES &&
+    while (new TextEncoder().encode(JSON.stringify(brief)).byteLength > MAX_BRIEF_BYTES &&
         maxChars > 1000) {
       maxChars = Math.max(1000, Math.floor(maxChars * 0.75));
       brief = buildProjectBriefImpl({ workspace, events, memories, maxChars, now });
     }
     const digest = await digestProjectBriefImpl(brief);
-    const context = { brief, digest };
-    if (new TextEncoder().encode(JSON.stringify(context)).byteLength > MAX_CONTEXT_BYTES + 128) {
+    const knowledge = buildAcceptedKnowledgeContext(knowledgeRecords);
+    const knowledgeDigest = await digestCanonicalInput(knowledge);
+    const context = { brief, digest, knowledge, knowledgeDigest };
+    if (new TextEncoder().encode(JSON.stringify(context)).byteLength > MAX_CONTEXT_BYTES) {
       throw new RangeError('Project Space context exceeds the byte budget');
     }
     return context;
