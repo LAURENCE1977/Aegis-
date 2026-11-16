@@ -61,6 +61,23 @@ const TOOL_DEFINITIONS = Object.freeze([
         additionalProperties: false,
       }),
     }),
+  Object.freeze({
+    type: 'function',
+    function: Object.freeze({
+      name: 'aegis_read_github_workflow_jobs',
+      description: 'Read at most twenty GitHub Actions job summaries and bounded step summaries for one exact workflow run. Requires a separate exact-run Sentinel grant and active Composio GitHub connection. Read-only; no logs, artifacts or workflow controls.',
+      parameters: Object.freeze({
+        type: 'object',
+        properties: Object.freeze({
+          owner: Object.freeze({ type: 'string', maxLength: 39 }),
+          repo: Object.freeze({ type: 'string', maxLength: 100 }),
+          runId: Object.freeze({ type: 'integer', minimum: 1 }),
+        }),
+        required: Object.freeze(['owner', 'repo', 'runId']),
+        additionalProperties: false,
+      }),
+    }),
+  }),
   }),
 ]);
 
@@ -136,6 +153,21 @@ function parseArguments(name, argumentsText) {
         repo: value.repo,
         ...(value.branch === undefined ? {} : { branch: value.branch }),
       },
+    };
+  }
+
+  if (name === 'aegis_read_github_workflow_jobs') {
+    if (Object.keys(value).length !== 3 ||
+        Object.keys(value).some(key => !['owner', 'repo', 'runId'].includes(key)) ||
+        typeof value.owner !== 'string' ||
+        !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(value.owner) ||
+        typeof value.repo !== 'string' || !/^[A-Za-z0-9_.-]{1,100}$/.test(value.repo) ||
+        !Number.isSafeInteger(value.runId) || value.runId < 1) return null;
+    return {
+      capabilityId: 'aegis-composio-github-workflow-jobs-readonly',
+      actionId: 'list-workflow-jobs',
+      resourceId: 'github:workflow-run:' + value.owner + '/' + value.repo + '/' + value.runId,
+      input: { owner: value.owner, repo: value.repo, runId: value.runId },
     };
   }
 
