@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createCapabilityGrant,
   loadCapabilityGrant,
+  listCapabilityGrants,
   revokeCapabilityGrant,
 } from '../functions/lib/capability-grants.mjs';
 import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
@@ -179,4 +180,18 @@ test('a principal cannot revoke another owner\'s capability grant', async () => 
     resourceId: valid.resourceId,
   }, now + 2000).then(Boolean), true);
   assert.equal(await revokeCapabilityGrant(db, grant.id, 'owner', now + 3000), true);
+});
+test('lists only the requested principal grants with bounded newest-first history', async () => {
+  const db = new MemoryD1();
+  const now = Date.parse('2026-11-15T00:00:00Z');
+  const first = await createCapabilityGrant(db, valid, now);
+  await revokeCapabilityGrant(db, first.id, 'owner', now + 1000);
+  const second = await createCapabilityGrant(db, {
+    ...valid,
+    expiresAt: '2027-02-01T00:00:00.000Z',
+  }, now + 2000);
+  const listed = await listCapabilityGrants(db, 'owner', 10);
+  assert.deepEqual(listed.map(item => item.id), [second.id, first.id]);
+  assert.equal(await listCapabilityGrants(db, 'another-owner', 10).then(items => items.length), 0);
+  await assert.rejects(() => listCapabilityGrants(db, 'owner', 101), /limit/i);
 });
