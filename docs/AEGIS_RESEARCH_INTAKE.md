@@ -239,3 +239,20 @@ Potential native adaptations, subject to a separate design and tests:
 **Verdict:** architecture reference only pending a full source, dependency and licence review. Do not adopt the AGPL core into the MIT AEGIS codebase without a documented compatibility/distribution review. Its Python/Rust and vector/context-database stack must also be compared against the existing AEGIS-native D1 memory model before any implementation decision. This is not yet a full source-level REA.
 
 **Batch boundary:** Hindsight received a focused source-level REA; Nango and OpenViking received preliminary triage only. No repositories were installed, executed, forked or integrated. No AEGIS feature-completion credit is claimed for this research.
+
+
+---
+
+## AEGIS Security Suite — architecture decision (16 November 2026)
+
+**Decision:** establish a first-class, modular Security Suite. The architecture and threat model are in [AEGIS_SECURITY_SUITE.md](AEGIS_SECURITY_SUITE.md), with the canonical pillar recorded in [AEGIS_MASTER_BLUEPRINT.md](AEGIS_MASTER_BLUEPRINT.md).
+
+The suite separates privacy/exit VPN from private device-mesh networking; uses established protocols and OS VPN APIs rather than custom cryptography; and treats VPN as one network-privacy control, not malware protection or anonymity. Device posture, account/session security, threat detection, secure development, recovery and Security Centre visibility are equally important.
+
+**Initial REA queue (not yet source-audited for this decision):**
+- Network: WireGuard; compare self-hosted mesh/control-plane candidates such as Headscale and NetBird with commercial/managed options only as optional adapters. Evaluate exit-node support separately from private mesh connectivity.
+- Endpoint: osquery and Lynis as focused candidates; Wazuh only if its resource and maintenance footprint is justified.
+- Application/security testing: CodeQL, OWASP ZAP, curated Nuclei, secret scanning and Sigma rules, each behind explicit scope and safety controls.
+- VPN platform fit: verify current iOS/iPadOS, ChromeOS, Android and desktop OS APIs, kill-switch/always-on support, DNS behaviour, key storage and recovery before implementation.
+
+**Boundary:** this is an architecture decision and research queue, not a completed REA or implementation. No tool was installed or executed; no VPN provider or paid service was activated; no production configuration changed. Every candidate must be pinned and assessed under the mandatory REA standard before adoption. Feature-completion percentage is unchanged.
