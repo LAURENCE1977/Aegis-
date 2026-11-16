@@ -98,6 +98,22 @@ class AgentMemoryD1 {
           row.cancelled_at = v[0]; row.lease_until = null; row.updated_at = v[1];
           return { meta: { changes: 1 } };
         }
+        if (sql.includes("UPDATE agent_run_steps SET status = 'cancelled'")) {
+          const [updatedAt, runId, parentId, cancelledAt] = v;
+          const parent = db.runs.get(parentId);
+          if (!parent || parent.cancelled_at !== cancelledAt) return { meta: { changes: 0 } };
+          let changes = 0;
+          for (const step of db.steps.values()) {
+            if (step.agent_run_id === runId &&
+                ['planned', 'pending_dispatch', 'queued', 'running'].includes(step.status)) {
+              step.status = 'cancelled';
+              step.lease_until = null;
+              step.updated_at = updatedAt;
+              changes += 1;
+            }
+          }
+          return { meta: { changes } };
+        }
         if (sql.includes('INSERT INTO agent_run_steps')) {
           const [stepId, stepIndex, specialist, stepJson, createdAt, updatedAt, runId, attempt, planJson] = v;
           const run = db.runs.get(runId);
@@ -111,6 +127,23 @@ class AgentMemoryD1 {
             created_at: createdAt, updated_at: updatedAt,
           });
           return { meta: { changes: 1 } };
+        }
+        if (sql.includes('INSERT INTO agent_run_step_events') && sql.includes("SELECT 'cancelled:' || id")) {
+          const [createdAt, runId, parentId, cancelledAt] = v;
+          const parent = db.runs.get(parentId);
+          if (!parent || parent.cancelled_at !== cancelledAt) return { meta: { changes: 0 } };
+          let changes = 0;
+          for (const step of db.steps.values()) {
+            if (step.agent_run_id !== runId || step.status !== 'cancelled') continue;
+            const eventId = 'cancelled:' + step.id;
+            if (db.stepEvents.some((event) => event.event_id === eventId)) continue;
+            db.stepEvents.push({
+              event_id: eventId, agent_run_step_id: step.id, agent_run_id: runId,
+              event_type: 'cancelled', detail_json: '{}', created_at: createdAt,
+            });
+            changes += 1;
+          }
+          return { meta: { changes } };
         }
         if (sql.includes('INSERT INTO agent_run_step_events')) {
           const [eventId, detailJson, createdAt, stepId, runId] = v;
