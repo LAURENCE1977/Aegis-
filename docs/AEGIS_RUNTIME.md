@@ -126,6 +126,17 @@ Authorization: Bearer <token>
 
 Cancellation is idempotent. The API returns the run with status `cancelled`; a worker or queue delivery that races with cancellation cannot persist a plan or schedule a retry. Failed runs return `409` because they are already terminal.
 
+The owner-only Pages route also provides a bounded AG-UI 1.0 terminal replay:
+
+```http
+GET /api/agent-runs/<uuid>/ag-ui
+Accept: text/event-stream
+```
+
+It is available only after a run reaches `planned`, `cancelled` or `failed`; active runs return `409`. It pages through at most 200 append-only lifecycle events, orders them oldest-first, and emits one AG-UI JSON event per SSE data frame. AEGIS currently has no separate conversation-thread record, so a plan-only run uses its run ID as both `threadId` and `runId`. Stored lifecycle entries are represented as `CUSTOM` events named `aegis.agent_run.lifecycle`, carrying only the event ID and event type—not the raw event detail, objective, plan, credentials or prompts. The stream closes with `RUN_FINISHED` (success/cancelled) or `RUN_ERROR`.
+
+This is a terminal-history replay adapter, not a live subscription or stream-resumption implementation. It deliberately does not fabricate assistant messages, tool calls, reasoning or subagent execution. Live AG-UI streaming can be added when the worker-execution stage exists.
+
 ### Health
 
 ```http
@@ -159,6 +170,7 @@ The Pages app now exposes owner-authenticated proxy routes for the separate runt
 - `POST /api/agent-runs` — submit a bounded objective and optional specialist list.
 - `GET /api/agent-runs/:id` — inspect a run and its plan.
 - `GET /api/agent-runs/:id/events` — read the append-only event timeline.
+- `GET /api/agent-runs/:id/ag-ui` — owner-only, bounded AG-UI 1.0 SSE replay for terminal runs.
 - `POST /api/agent-runs/:id/cancel` — cancel an eligible run.
 
 The Security Centre contains an Agent Workforce console for creating, inspecting, refreshing and cancelling plan-only runs. It clearly labels the current stage: no specialist model calls, tool execution or external actions occur.
