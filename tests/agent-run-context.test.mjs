@@ -122,3 +122,46 @@ test('rejects malformed Project Space identifiers before database access', async
   const builder = makeBuilder();
   await assert.rejects(() => builder({ prepare() {} }, '../private'));
 });
+
+
+test('attaches only owner-accepted Forge knowledge as bounded untrusted project context', async () => {
+  const accepted = {
+    id: 'knowledge-runtime-pattern',
+    ownerId: 'owner',
+    title: 'Durable runtime pattern',
+    domain: 'runtime',
+    knowledgeType: 'pattern',
+    summary: 'Persist intent and immutable provenance before dispatching background work.',
+    evidenceLevel: 'high',
+    status: 'accepted',
+    sources: [{
+      url: 'https://example.org/runtime-pattern',
+      title: 'Runtime design notes',
+      attribution: 'AEGIS research',
+    }],
+    limitations: ['Applies to durable background tasks, not synchronous UI requests.'],
+    applicableCapabilities: ['agent.run'],
+    version: 3,
+    updatedAt: '2026-11-16T12:00:00.000Z',
+  };
+  const builder = makeBuilder({
+    listForgeKnowledgeRecords: async (_db, ownerId, options) => {
+      assert.equal(ownerId, 'owner');
+      assert.deepEqual(options, { status: 'accepted', limit: 20 });
+      return [
+        accepted,
+        { ...accepted, id: 'knowledge-draft', status: 'draft' },
+        { ...accepted, id: 'knowledge-other-owner', ownerId: 'another-owner' },
+      ];
+    },
+  });
+
+  const context = await builder({ prepare() {} }, 'project-a');
+
+  assert.deepEqual(context.knowledge.map((item) => item.id), ['knowledge-runtime-pattern']);
+  assert.equal(context.knowledge[0].trust, 'untrusted-reference');
+  assert.equal(context.knowledge[0].evidenceLevel, 'high');
+  assert.equal(context.knowledge[0].sources[0].url, accepted.sources[0].url);
+  assert.match(context.knowledgeDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(new TextEncoder().encode(JSON.stringify(context)).byteLength <= 12 * 1024);
+});
