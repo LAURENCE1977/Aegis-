@@ -126,6 +126,34 @@ Authorization: Bearer <token>
 
 Cancellation is idempotent. The API returns the run with status `cancelled`; a worker or queue delivery that races with cancellation cannot persist a plan or schedule a retry. Failed runs return `409` because they are already terminal.
 
+### Request and decide future execution approval
+
+The owner-only Pages API can create a pending approval for an existing `planned` run and list the pending agent-run approvals:
+
+```http
+POST /api/sentinel/agent-run-approval
+Content-Type: application/json
+
+{ "runId": "<uuid>" }
+```
+
+```http
+GET /api/sentinel/agent-run-approval
+```
+
+A separate same-origin owner decision records an explicit approval or denial:
+
+```http
+PATCH /api/sentinel/agent-run-approval/<approvalId>
+Content-Type: application/json
+
+{ "decision": "approved" }
+```
+
+These Pages routes require the normal AEGIS owner session and the `AEGIS_DB` capability database binding. The server fetches the persisted plan itself; clients cannot submit a digest, capability, resource, scope or operation summary. The approval binds the complete canonical plan digest, exact run ID, registered critical capability/action and owner principal, and expires after 15 minutes. Decisions are atomically restricted to the owner and the `aegis-agent-run` capability.
+
+**Important:** creating or approving this record does not start a specialist or execute a tool. It is an approval record for a future Sentinel-mediated execution path. That path remains unimplemented and fail-closed.
+
 The owner-only Pages route also provides a bounded AG-UI 1.0 terminal replay:
 
 ```http
