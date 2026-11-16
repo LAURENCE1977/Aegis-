@@ -46,7 +46,7 @@ test('creates a narrowly allowlisted GitHub session with no MCP or broad tool se
   assert.deepEqual(captured.body.search, { enable: false });
   assert.deepEqual(captured.body.execute, { enable_multi_execute: false });
   assert.deepEqual(captured.body.workbench, { enable: false });
-  assert.deepEqual(captured.body.preload, { tools: ['GITHUB_GET_A_REPOSITORY', 'GITHUB_GET_A_PULL_REQUEST', 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY'] });
+  assert.deepEqual(captured.body.preload, { tools: ['GITHUB_GET_A_REPOSITORY', 'GITHUB_GET_A_PULL_REQUEST', 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY', 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN'] });
   assert.equal(Object.hasOwn(captured.body, 'mcp'), false);
 });
 
