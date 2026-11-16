@@ -105,3 +105,8 @@ test('agent-run approval inbox explicitly consumes an approved plan through Sent
   assert.match(html, /\/api\/sentinel\/agent-run-approval\/['"]?\s*\+\s*encodeURIComponent\(approval\.id\)\s*\+\s*['"]\/authorize/);
   assert.match(html, /Plan authorised\. Specialist execution remains disabled\./);
 });
+
+test('agent workforce shows persisted authorisation and prevents duplicate approval requests', () => {
+  assert.match(html, /run\.executionAuthorized \? ' · owner approval consumed; authorisation recorded' : ''/);
+  assert.match(html, /run\.executionAuthorized === true/);
+});
