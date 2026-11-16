@@ -119,7 +119,7 @@ export async function listPendingApprovals(db, limit = 50) {
  * connection and atomically consume this record immediately before execution.
  */
 export async function loadApproval(db, {
-  principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest,
+  id = null, principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest,
 } = {}, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') {
     throw new TypeError('Approval database is required');
@@ -136,23 +136,21 @@ export async function loadApproval(db, {
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
 
-  const row = await db.prepare(`
-    SELECT * FROM capability_approvals
-    WHERE principal_id = ?
-      AND capability_id = ?
-      AND capability_version = ?
-      AND action_id = ?
-      AND resource_id = ?
-      AND input_digest = ?
-      AND status = 'approved'
-      AND consumed_at IS NULL
-      AND expires_at > ?
-    ORDER BY decided_at DESC, requested_at DESC
-    LIMIT 1
-  `).bind(
-    principalId, capabilityId, capabilityVersion, actionId,
-    resourceId, inputDigest, new Date(now).toISOString(),
-  ).first();
+  if (id !== null) requiredId(id, 'request identifier');
+  const row = id === null
+    ? await db.prepare(`
+      SELECT * FROM capability_approvals
+      WHERE principal_id = ? AND capability_id = ? AND capability_version = ?
+        AND action_id = ? AND resource_id = ? AND input_digest = ?
+        AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+      ORDER BY decided_at DESC, requested_at DESC LIMIT 1
+    `).bind(principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest, new Date(now).toISOString()).first()
+    : await db.prepare(`
+      SELECT * FROM capability_approvals
+      WHERE id = ? AND principal_id = ? AND capability_id = ? AND capability_version = ?
+        AND action_id = ? AND resource_id = ? AND input_digest = ?
+        AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+    `).bind(id, principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest, new Date(now).toISOString()).first();
   return mapApproval(row);
 }
 
