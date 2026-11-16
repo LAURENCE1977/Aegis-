@@ -321,6 +321,33 @@ const CAPABILITY_MANIFESTS = [
     licence: { identifier: 'first-party', review: 'not-applicable' },
     status: 'approved',
   },
+  {
+    id: 'aegis-agent-run',
+    version: '0.1.0',
+    name: 'AEGIS agent plan execution authorisation',
+    description: 'Authorise a single immutable agent plan for a future Sentinel-mediated execution; this capability does not execute specialists or tools itself.',
+    provider: { id: 'aegis-core', kind: 'builtin' },
+    interface: { kind: 'internal', method: 'POST', path: '/api/sentinel/agent-run-approval' },
+    actions: [{
+      id: 'approve-execution',
+      capability: 'agent-run.approve-execution',
+      effect: 'execute',
+      risk: 'critical',
+      approval: 'human-always',
+      requiredScopes: ['aegis:agent-run:execute'],
+    }],
+    data: {
+      classification: 'restricted',
+      reads: ['immutable agent plan digest and owner approval state'],
+      writes: ['agent-run execution authorisation state'],
+    },
+    network: { egressHosts: [] },
+    auth: { mode: 'session' },
+    limits: { requestsPerMinute: 5, timeoutMs: 5000, maxRequestBytes: 4096 },
+    provenance: { sourceUrl: SOURCE_URL, revision: SOURCE_REVISION },
+    licence: { identifier: 'first-party', review: 'not-applicable' },
+    status: 'approved',
+  },
 ];
 
 for (const manifest of CAPABILITY_MANIFESTS) validateCapabilityManifest(manifest);
