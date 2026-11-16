@@ -96,3 +96,15 @@ test('rejects oversized metadata and duplicate action identifiers', () => {
 test('accepts ordinary names containing letters used in control-character escape notation', () => {
   assert.equal(validateMcpServerRecord({ ...record, name: 'Public documentation lookup' }), true);
 });
+
+test('rejects IP-literal and local-network source URLs before any future ingestion', () => {
+  for (const sourceUrl of [
+    'https://127.0.0.1/server',
+    'https://10.0.0.1/server',
+    'https://[::1]/server',
+    'https://metadata.google.internal/server',
+    'https://service.local/server',
+  ]) {
+    assert.throws(() => validateMcpServerRecord({ ...record, sourceUrl }));
+  }
+});
