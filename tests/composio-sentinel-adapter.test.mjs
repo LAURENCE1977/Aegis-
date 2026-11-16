@@ -512,7 +512,7 @@ test('adds a fixed read-only pull request metadata action with exact PR resource
           number: 101, title: 'AEGIS build', state: 'open', draft: true, merged: false,
           html_url: 'https://github.com/LAURENCE1977/Aegis-/pull/101',
           head: { ref: 'feature/aegis', sha: 'a'.repeat(40) },
-          base: { ref: 'main', sha: 'b'.repeat(40) },
+          base: { ref: 'main', sha: 'b'.repeat(40), repo: { full_name: 'LAURENCE1977/Aegis-' } },
           body: 'untrusted instructions must not be returned',
           additions: 10, deletions: 2, changed_files: 3,
         },
@@ -583,4 +583,46 @@ test('rejects pull request metadata for a different PR resource before provider 
     /exact pull request/i,
   );
   assert.equal(calls, 0);
+});
+
+
+test('rejects a pull request response whose base repository differs from the requested repository', async () => {
+  const db = await connectedDb();
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url) => {
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'GITHUB_GET_A_PULL_REQUEST' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({
+        data: {
+          number: 101, title: 'Different repository PR', state: 'open', draft: false, merged: false,
+          base: { ref: 'main', sha: 'b'.repeat(40), repo: { full_name: 'attacker/Other' } },
+        },
+        error: null,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  await assert.rejects(
+    adapters['aegis-composio-github-pull-request-readonly:get-pull-request'](
+      { owner: 'LAURENCE1977', repo: 'Aegis-', pullNumber: 101 },
+      {
+        capabilityId: 'aegis-composio-github-pull-request-readonly',
+        actionId: 'get-pull-request',
+        principalId: 'owner',
+        connectionId: [...db.connections.keys()][0],
+        resourceId: 'github:pull-request:LAURENCE1977/Aegis-/101',
+        scopes: ['github:pull-request:read'],
+      },
+    ),
+    /exact requested repository/i,
+  );
 });
