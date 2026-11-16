@@ -333,3 +333,33 @@ test('cancellation racing the initial queue send prevents the outbox from markin
   assert.equal(DB.runs.get(run.id).status, 'pending_dispatch');
   assert.ok(DB.runs.get(run.id).cancelled_at);
 });
+
+
+test('owner can list recent agent runs with a bounded page and stable next cursor', async () => {
+  const { env, DB } = makeEnv();
+  for (const [id, createdAt] of [
+    ['00000000-0000-4000-8000-000000000003', '2026-11-16T12:03:00.000Z'],
+    ['00000000-0000-4000-8000-000000000002', '2026-11-16T12:02:00.000Z'],
+    ['00000000-0000-4000-8000-000000000001', '2026-11-16T12:01:00.000Z'],
+  ]) {
+    DB.runs.set(id, {
+      id, objective: 'Run ' + id.slice(-1), specialists_json: '["researcher"]',
+      status: 'queued', attempts: 0, created_at: createdAt, updated_at: createdAt,
+      cancelled_at: null,
+    });
+  }
+  const response = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs?limit=2',
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.runs.map((run) => run.id), [
+    '00000000-0000-4000-8000-000000000003',
+    '00000000-0000-4000-8000-000000000002',
+  ]);
+  assert.deepEqual(body.nextCursor, {
+    before: '2026-11-16T12:02:00.000Z',
+    beforeId: '00000000-0000-4000-8000-000000000002',
+  });
+});
