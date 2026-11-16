@@ -29,3 +29,10 @@ Allowed roles are `researcher`, `planner`, `engineer`, `security` and `reviewer`
 ## Deployment status
 
 This is source-level functionality only. The migration has not been applied to production D1, the runtime Worker has not been redeployed for this feature, and `AGENT_RUNS_ENABLED` has not been set.
+
+
+## Sentinel-gated capability bridge — server-side only
+
+`workers/runtime/agent-capability-bridge.mjs` exposes a trusted server-side bridge for future agent capability calls. It accepts only capability ID, action ID, resource ID and JSON input; principal identity and all policy dependencies come from trusted server composition code. It resolves the manifest from the canonical registry, validates the exact action, normalizes and bounds the JSON payload, computes its digest with the shared `canonical-input.mjs` helper, and deeply freezes the normalized value before Sentinel receives it. Sentinel then applies current grant/connection policy, exact approval loading and atomic consumption, and durable redacted audit.
+
+The bridge is not called by the plan-only agent Queue and is not exposed as a public route. The runtime still creates plans only. The shared digest helper and the D1 composition root independently verify the same exact payload before a fixed adapter handler can run. Any future adapter must be explicitly registered server-side and pass the Sentinel gate; agent role names and plan steps are never permissions.
