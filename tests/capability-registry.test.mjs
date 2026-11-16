@@ -168,3 +168,25 @@ test('registers workflow job summaries as a separate exact-run read-only capabil
   assert.equal(jobs.interface.path, '/api/sentinel/composio-github-workflow-jobs');
   assert.deepEqual(jobs.data.writes, []);
 });
+
+
+test('registers agent plan approval as a restricted, human-always execution capability', () => {
+  const agent = getCapabilityManifest('aegis-agent-run');
+  assert.ok(agent, 'agent plan approval capability must be registered');
+  assert.equal(validateCapabilityManifest(agent), true);
+  assert.equal(agent.provider.kind, 'builtin');
+  assert.equal(agent.interface.kind, 'internal');
+  assert.equal(agent.actions.length, 1);
+  assert.deepEqual(agent.actions[0], {
+    id: 'approve-execution',
+    capability: 'agent-run.approve-execution',
+    effect: 'execute',
+    risk: 'critical',
+    approval: 'human-always',
+    requiredScopes: ['aegis:agent-run:execute'],
+  });
+  assert.equal(agent.data.classification, 'restricted');
+  assert.deepEqual(agent.data.writes, ['agent-run execution authorisation state']);
+  assert.deepEqual(agent.network.egressHosts, []);
+  assert.equal(agent.auth.mode, 'session');
+});
