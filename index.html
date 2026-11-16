@@ -1872,7 +1872,7 @@
               for (const decision of ['approved', 'denied']) {
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.textContent = decision === 'approved' ? 'Approve' : 'Deny';
+                button.textContent = decision === 'approved' ? (approval.capabilityId === 'aegis-agent-run' ? 'Approve & authorise plan' : 'Approve') : 'Deny';
                 button.addEventListener('click', async () => {
                   button.disabled = true;
                   try {
@@ -1885,6 +1885,15 @@
                         ? { decision }
                         : { id: approval.id, decision }),
                     });
+                    if (agentRunApproval && decision === 'approved') {
+                      const result = await controlApi(
+                        '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id) + '/authorize',
+                        { method: 'POST', body: JSON.stringify({}) },
+                      );
+                      approvalStatus.textContent = result.authorization?.executionStarted === false
+                        ? 'Plan authorised. Specialist execution remains disabled.'
+                        : 'Approval decision recorded.';
+                    }
                     await loadApprovals();
                   } catch (error) {
                     approvalStatus.textContent = error.message;
