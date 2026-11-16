@@ -113,15 +113,13 @@ function parseAgentRun(row) {
   try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
   let specialists = [];
   try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
-  let projectContext = null;
-  try { projectContext = row.context_json ? JSON.parse(row.context_json) : null; } catch { projectContext = null; }
   return {
     id: row.id,
     objective: row.objective,
     specialists,
     projectId: row.project_id || null,
     hasProjectContext: Boolean(row.context_json),
-    contextDigest: projectContext?.digest || null,
+    contextDigest: row.context_digest || null,
     status: row.cancelled_at ? 'cancelled' : row.status,
     attempts: row.attempts,
     createdAt: row.created_at,
@@ -246,8 +244,8 @@ async function submitAgentRun(request, env) {
   const now = new Date().toISOString();
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at, project_id, context_json) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
-    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now, projectId, contextJson),
+      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at, project_id, context_digest, context_json) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
+    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now, projectId, contextDigest, contextJson),
     env.DB.prepare(
       "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'created', '{}', ? FROM agent_runs WHERE id = ? ON CONFLICT(event_id) DO NOTHING"
     ).bind(crypto.randomUUID(), now, id),
@@ -256,8 +254,7 @@ async function submitAgentRun(request, env) {
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run could not be persisted.' }, 500);
-  let storedContextDigest = null;
-  try { storedContextDigest = row.context_json ? JSON.parse(row.context_json).digest : null; } catch { storedContextDigest = 'invalid'; }
+  const storedContextDigest = row.context_digest || null;
   if (row.objective !== submission.objective ||
       row.specialists_json !== JSON.stringify(submission.specialists) ||
       (row.project_id || null) !== projectId || storedContextDigest !== contextDigest) {
