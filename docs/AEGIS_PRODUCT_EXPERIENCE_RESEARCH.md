@@ -69,3 +69,12 @@ The existing `AEGIS_UPSTREAM_RESEARCH_2026-11-16.md` remains the source of truth
 5. Benchmark a minimal 2D portrait/renderer, then Three.js versus Babylon.js on modest mobile hardware. Keep WebGL/WebGPU optional and Tier 0 fully functional.
 6. Review the source and licensing of the owner's 3D Website Builder before reusing any of its avatar assets or implementation.
 7. Only after secure Preview authentication is provisioned, verify the real signed-in workflow end to end. Do not ask the user to paste secrets into chat.
+
+
+## Latest mobile regression and correction
+
+The first client-side visual simulation found that a late desktop grid declaration overrode the earlier mobile breakpoint, causing the signed-in shell to retain its 218px sidebar column at 390px. This was corrected in `index.html` by explicitly collapsing the app shell to one column at the 820px breakpoint and placing the toolbar and content sections in the full-width column.
+
+A regression test now asserts the one-column shell and full-width toolbar/sections at tablet/mobile widths. GitHub Actions run 43955818365 completed successfully after the correction, including Node.js/Miniflare tests and all isolated D1/Forge safeguards. The corrected Pages preview is https://a48f74a1.aegis-6yk.pages.dev (commit `1d9741e4d4d0930d133aff6fc14c58ea36f87031`).
+
+The correction has passed CI. A final visual recheck of the corrected signed-in layout remains pending; the signed-in screen is only being previewed client-side because Preview authentication is not configured. This is not authenticated functional verification.
