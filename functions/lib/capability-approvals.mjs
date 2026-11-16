@@ -173,6 +173,7 @@ export async function decideApprovalRequest(db, {
     SET status = ?, decided_by = ?, decided_at = ?
     WHERE id = ? AND status = 'pending' AND expires_at > ?
       AND (? IS NULL OR principal_id = ?)
+      AND (? IS NULL OR capability_id = ?)
     RETURNING *
   `).bind(decision, decidedBy, decidedAt, id, decidedAt, principalId, principalId, capabilityId, capabilityId).first();
   return mapApproval(row);
