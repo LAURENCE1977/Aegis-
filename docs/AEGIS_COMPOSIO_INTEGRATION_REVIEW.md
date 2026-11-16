@@ -79,6 +79,15 @@ Composio's ChatGPT guide documents a ChatGPT integration and an MCP endpoint at 
 - Useful patterns: checkpointed state transitions, resumable work and human interrupts.
 - AEGIS decision: reference patterns only. AEGIS already owns durable jobs, queues, approvals, Project Spaces and audit. Do not introduce a parallel orchestration engine unless a measured gap cannot be solved within the existing runtime.
 
+### Browser Use
+
+- Repository: https://github.com/browser-use/browser-use
+- Root `LICENSE` declares MIT.
+- Current README describes a browser agent using a persistent Python REPL, browser-harness helpers and Chrome DevTools Protocol (CDP), with local or hosted execution.
+- Useful patterns: persistent browser task context, reusable browser helpers and model/provider flexibility.
+- Security qualification: a persistent REPL plus raw CDP is a powerful execution surface. It must not be treated as a security boundary. AEGIS would need an isolated browser worker, strict destination/egress policy, per-session browser profiles, secret isolation, action-level approval and effect-level receipts.
+- Aegis decision: reference-only and compare against the owner's existing `auto-browser` repository. Do not add a second browser controller or expose raw CDP through the current agent tool loop. Reuse only after pinning a commit and testing authentication, pixels, redirects, downloads, approvals, audit and session isolation.
+
 ## Proposed implementation sequence
 
 1. **Composio contract spike (no production writes):** prove Streamable HTTP MCP handshake, tool listing, tool invocation, session/user binding, timeout, cancellation, error handling and bounded response parsing against a disposable test toolkit/account.
@@ -107,5 +116,6 @@ Composio's ChatGPT guide documents a ChatGPT integration and an MCP endpoint at 
 - OpenHands root README and licence were inspected.
 - LiteLLM root licence and README were inspected; enterprise subdirectory is separately licensed.
 - LangGraph README was inspected; verify the exact licence file and pinned commit before copying any code.
+- Browser Use README and root MIT licence were inspected.
 - No third-party source code has been copied into AEGIS. No dependency was installed. No external account was connected by this review.
 - A connected Composio tool surface was not exposed in the current ChatGPT tool session during this review; therefore no Composio account action was executed from this conversation. The public ChatGPT connection guide was reviewed separately.
