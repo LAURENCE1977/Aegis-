@@ -165,3 +165,8 @@ Free-tier records are evidence, not entitlements. Only a recently verified recor
 ## Governed capability persistence and token engine
 
 The native stack now has source-level modules for exact-resource capability grants, owner-scoped provider connection metadata, AES-GCM secret vault, append-only invocation audit and a verified provider/model registry with token/context planning. These components do not by themselves connect providers or execute tools. The next integration step is a trusted Sentinel composition root that loads current grants/connections/approvals, derives input digests server-side, records audit and resolves secrets only after authorization.
+
+
+## Forge repository inspection
+
+AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
