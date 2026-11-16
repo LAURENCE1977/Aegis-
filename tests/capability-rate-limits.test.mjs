@@ -71,7 +71,7 @@ test('a new minute window resets the counter and old buckets are pruned', async 
   const db = new MemoryD1();
   const now = Date.parse('2026-11-16T02:00:15Z');
   await reserveCapabilityInvocation(db, { ...binding, now });
-  assert.equal(await reserveCapabilityInvocation(db, { ...binding, now: now + 60_000 }), true);
+  assert.equal(await reserveCapabilityInvocation(db, { ...binding, now: now + 24 * 60 * 60 * 1000 + 60_000 }), true);
   assert.equal(db.rows.size, 1);
   assert.equal([...db.rows.values()][0].request_count, 1);
 });
