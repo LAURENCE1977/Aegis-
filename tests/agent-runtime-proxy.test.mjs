@@ -130,3 +130,35 @@ test('normalizes upstream network failures without leaking provider details', as
   assert.equal(response.status, 502);
   assert.deepEqual(await response.json(), { error: 'Agent runtime is temporarily unavailable.' });
 });
+
+test('proxies the private authorisation route but rejects any caller-selected alternate path', async () => {
+  let captured;
+  const proxy = createAgentRuntimeProxy(async (url, options) => {
+    captured = { url: String(url), options };
+    return Response.json({ authorised: true, executionStarted: false });
+  });
+  const response = await proxy({
+    env,
+    method: 'POST',
+    path: '/v1/agent-runs/00000000-0000-4000-8000-000000000001/authorize',
+    body: {
+      approvalId: 'approval-1',
+      capabilityId: 'aegis-agent-run',
+      capabilityVersion: '0.1.0',
+      actionId: 'approve-execution',
+      inputDigest: 'sha256:' + 'a'.repeat(64),
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(captured.url, 'https://aegis-runtime.example/v1/agent-runs/00000000-0000-4000-8000-000000000001/authorize');
+  assert.equal(captured.options.method, 'POST');
+  assert.equal(captured.options.headers.get('Authorization'), 'Bearer ' + token);
+  assert.equal(captured.options.headers.get('Content-Type'), 'application/json');
+  const blocked = await proxy({
+    env,
+    method: 'POST',
+    path: '/v1/agent-runs/00000000-0000-4000-8000-000000000001/execute',
+    body: {},
+  });
+  assert.equal(blocked.status, 400);
+});
