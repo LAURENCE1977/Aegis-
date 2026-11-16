@@ -155,3 +155,8 @@ Use AEGIS Project Spaces as the durable context and activity layer for projects.
 ## MCP Forge Catalogue — native metadata layer
 
 The native catalogue validates pinned MCP source metadata and action-level effects, risk, scopes and approval policy. It is intentionally metadata-only: no source fetching, package installation, process launch, remote connection or tool execution. Source URLs reject IP literals and local/internal hostnames. Next steps are isolated source ingestion, licence/advisory review, dependency analysis, sandbox conformance and owner-controlled admission. Sentinel remains the only authority for any later invocation.
+
+
+## Governed capability persistence and intelligence routing
+
+The next native foundation adds exact-resource capability grants, owner/provider connection metadata, encrypted vault storage, append-only invocation audit and a provider/model registry with conservative token estimation and context fitting. Keep the provider registry descriptive and versioned; a model is eligible only when its provider is enabled and verification is fresh. Routing must respect context/output limits, provider quotas and estimated cost, with deterministic fallback when no route is eligible. The token estimator is a planning heuristic, not a provider tokenizer. These libraries do not themselves connect a provider or execute an agent.
