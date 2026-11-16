@@ -46,10 +46,11 @@ class MemoryD1 {
           return { ...row };
         }
         if (sql.includes('UPDATE capability_approvals') && sql.includes("status = 'pending'")) {
-          const [decision, decidedBy, decidedAt, id, now, principalId] = v;
+          const [decision, decidedBy, decidedAt, id, now, principalId, _principalIdAgain, capabilityId] = v;
           const row = db.rows.get(id);
           if (!row || row.status !== 'pending' || row.expires_at <= now ||
-              (principalId !== null && row.principal_id !== principalId)) return null;
+              (principalId !== null && row.principal_id !== principalId) ||
+              (capabilityId !== null && row.capability_id !== capabilityId)) return null;
           row.status = decision; row.decided_by = decidedBy; row.decided_at = decidedAt;
           return { ...row };
         }
@@ -245,6 +246,18 @@ test('owner-scoped decision cannot approve another principal\'s pending request'
   const result = await decideApprovalRequest(db, {
     id: pending.id, decision: 'approved', decidedBy: 'owner',
     principalId: 'owner', now: Date.now(),
+  });
+  assert.equal(result, null);
+  assert.equal(db.rows.get(pending.id).status, 'pending');
+});
+
+
+test('agent-run decision cannot approve a different capability owned by the same principal', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, request({ capabilityId: 'another-capability' }), Date.now());
+  const result = await decideApprovalRequest(db, {
+    id: pending.id, decision: 'approved', decidedBy: 'owner',
+    principalId: 'owner', capabilityId: 'aegis-agent-run', now: Date.now(),
   });
   assert.equal(result, null);
   assert.equal(db.rows.get(pending.id).status, 'pending');
