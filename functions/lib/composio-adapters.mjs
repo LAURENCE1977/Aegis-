@@ -154,7 +154,8 @@ function safeWorkflowJobsResult(data, owner, repo, runId) {
       try { parsed = new URL(url); } catch { throw new Error('Composio returned an invalid workflow job URL'); }
       const expectedPath = '/' + owner + '/' + repo + '/actions/runs/' + runId + '/job/' + job.id;
       if (parsed.protocol !== 'https:' || parsed.hostname !== 'github.com' ||
-          parsed.pathname !== expectedPath || parsed.username || parsed.password || parsed.port) {
+          parsed.pathname !== expectedPath || parsed.search || parsed.hash ||
+          parsed.username || parsed.password || parsed.port) {
         throw new Error('Composio returned a workflow job URL outside the exact run');
       }
       item.url = parsed.toString();
