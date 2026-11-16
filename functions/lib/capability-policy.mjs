@@ -53,7 +53,7 @@ function validateGrant(grant, manifest, action, principalId, resourceId, now) {
 function validateConnection(connection, manifest, principalId) {
   if (!isRecord(connection)) return 'CONNECTION_REQUIRED';
   if (connection.status !== 'active' ||
-      connection.ownerId !== principalId ||
+      connection.principalId !== principalId ||
       connection.providerId !== manifest.provider.id ||
       !validContextText(connection.id)) {
     return 'CONNECTION_INVALID';
