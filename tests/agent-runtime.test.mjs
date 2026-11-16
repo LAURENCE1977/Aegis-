@@ -17,12 +17,14 @@ class AgentMemoryD1 {
           return [...db.runs.values()].find((row) => row.idempotency_key === v[0]) || null;
         }
         if (sql.includes('UPDATE agent_runs') && sql.includes('SET authorization_approval_id = COALESCE')) {
-          const row = db.runs.get(this.values[3]);
+          const row = db.runs.get(this.values[4]);
           if (!row || row.status !== 'planned' || row.cancelled_at ||
-              (row.authorization_approval_id && row.authorization_approval_id !== this.values[4])) return null;
+              (row.authorization_approval_id && row.authorization_approval_id !== this.values[5]) ||
+              (row.authorization_grant_id && row.authorization_grant_id !== this.values[6])) return null;
           row.authorization_approval_id ||= this.values[0];
           row.execution_authorized_at ||= this.values[1];
-          row.updated_at = this.values[2];
+          row.authorization_grant_id ||= this.values[2];
+          row.updated_at = this.values[3];
           return row;
         }
         if (sql.includes('UPDATE agent_runs SET status = \'running\'')) {
@@ -559,6 +561,7 @@ test('runtime authorisation requires an exact one-time approval binding and neve
     capabilityVersion: '0.1.0',
     actionId: 'approve-execution',
     inputDigest,
+    grantId: 'grant-owner-agent-run-001',
   };
   const approved = await authorize(binding);
   assert.equal(approved.status, 200);
@@ -566,6 +569,7 @@ test('runtime authorisation requires an exact one-time approval binding and neve
   assert.equal(result.run.id, run.id);
   assert.equal(result.run.executionAuthorized, true);
   assert.equal(saved.authorization_approval_id, binding.approvalId);
+  assert.equal(saved.authorization_grant_id, binding.grantId);
   assert.equal(sent.length, 1, 'authorisation must not enqueue or execute work');
 
   const replay = await authorize(binding);
@@ -585,6 +589,7 @@ test('runtime authorisation requires an exact one-time approval binding and neve
   assert.equal(staleAcked, true);
   assert.equal(saved.status, 'planned');
   assert.equal(saved.authorization_approval_id, binding.approvalId);
+  assert.equal(saved.authorization_grant_id, binding.grantId);
   assert.equal(sent.length, 1, 'authorisation and stale delivery must not dispatch another worker');
 
   const cancelled = await handleRuntimeFetch(new Request(
