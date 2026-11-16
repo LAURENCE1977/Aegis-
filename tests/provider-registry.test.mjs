@@ -132,3 +132,17 @@ test('rejects invalid routing constraints instead of silently widening eligibili
     task: 'chat', now: '2026-11-15T19:00:00.000Z', requiredContextTokens: -1,
   }), /context/i);
 });
+
+
+test('preserves unknown provider prices as unknown instead of exposing false zero-cost values', () => {
+  const input = registry();
+  input.providers[0].models[0].inputCost = undefined;
+  input.providers[0].models[0].outputCost = undefined;
+  const [model] = listEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+  });
+  assert.equal(model.costKnown, false);
+  assert.equal(model.inputCost, undefined);
+  assert.equal(model.outputCost, undefined);
+});
