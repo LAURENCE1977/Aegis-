@@ -812,6 +812,20 @@ test('runtime authorisation rejects missing credentials, non-planned runs and ma
 });
 
 
+test('agent-run submission enforces its larger bounded context limit while streaming', async () => {
+  const { env, DB } = makeEnv();
+  const request = new Request('https://runtime.example/v1/agent-runs', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ objective: 'x'.repeat(25 * 1024) }),
+  });
+  assert.equal(request.headers.get('Content-Length'), null);
+  const response = await handleRuntimeFetch(request, env);
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: 'Request body is too large.' });
+  assert.equal(DB.runs.size, 0);
+});
+
 test('runtime authorisation rejects oversized bodies even when Content-Length is absent', async () => {
   const { env } = makeEnv();
   const runId = '00000000-0000-4000-8000-000000000099';
