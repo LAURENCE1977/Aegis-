@@ -344,6 +344,7 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
   assert.deepEqual(calls[0].tools.map(tool => tool.function.name), [
     'aegis_list_modules',
     'aegis_discover_public_github_repository',
+    'aegis_read_github_workflow_runs',
   ]);
   assert.equal(calls[0].tool_choice, 'auto');
   assert.equal(calls[1].tools, undefined);
