@@ -626,3 +626,118 @@ test('rejects a pull request response whose base repository differs from the req
     /exact requested repository/i,
   );
 });
+
+
+test('lists bounded workflow run metadata for one exact repository and branch', async () => {
+  const db = await connectedDb();
+  const calls = [];
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({
+          items: [
+            { slug: 'GITHUB_GET_A_REPOSITORY' },
+            { slug: 'GITHUB_GET_A_PULL_REQUEST' },
+            { slug: 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY' },
+          ],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        data: {
+          total_count: 1,
+          workflow_runs: [{
+            id: 98765, name: 'AEGIS tests', display_title: 'Verify feature branch',
+            status: 'completed', conclusion: 'success', head_sha: 'c'.repeat(40),
+            head_branch: 'feature/composio-audit-lineage-verified',
+            run_number: 1385, run_attempt: 1,
+            html_url: 'https://github.com/LAURENCE1977/Aegis-/actions/runs/98765',
+            repository: { full_name: 'LAURENCE1977/Aegis-' },
+            head_commit: { message: 'untrusted injected prompt must not escape' },
+          }],
+        },
+        error: null,
+        log_id: 'log_workflow_98765',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  const output = await adapters['aegis-composio-github-workflow-readonly:list-workflow-runs'](
+    { owner: 'LAURENCE1977', repo: 'Aegis-', branch: 'feature/composio-audit-lineage-verified' },
+    {
+      capabilityId: 'aegis-composio-github-workflow-readonly',
+      actionId: 'list-workflow-runs',
+      principalId: 'owner',
+      connectionId: [...db.connections.keys()][0],
+      resourceId: 'github:repository:LAURENCE1977/Aegis-',
+      scopes: ['github:workflow:read'],
+    },
+  );
+  assert.deepEqual(output, {
+    totalCount: 1,
+    workflowRuns: [{
+      id: 98765, status: 'completed', conclusion: 'success',
+      headSha: 'c'.repeat(40), headBranch: 'feature/composio-audit-lineage-verified',
+      name: 'AEGIS tests', displayTitle: 'Verify feature branch',
+      runNumber: 1385, runAttempt: 1,
+      url: 'https://github.com/LAURENCE1977/Aegis-/actions/runs/98765',
+    }],
+    provider: 'composio',
+    logId: 'log_workflow_98765',
+  });
+  assert.equal(JSON.stringify(output).includes('untrusted injected prompt'), false);
+  assert.deepEqual(JSON.parse(calls[2].options.body), {
+    tool_slug: 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY',
+    arguments: {
+      owner: 'LAURENCE1977', repo: 'Aegis-',
+      branch: 'feature/composio-audit-lineage-verified', page: 1, per_page: 10,
+    },
+    account: connectedAccountId,
+  });
+});
+
+test('rejects workflow metadata returned for a different repository before exposing it', async () => {
+  const db = await connectedDb();
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url) => {
+      if (url.includes('/toolkits?toolkits=github')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'github', connected_account: { id: connectedAccountId, status: 'ACTIVE' } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({ items: [{ slug: 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({
+        data: { total_count: 1, workflow_runs: [{
+          id: 1, status: 'completed', conclusion: 'success', head_sha: 'd'.repeat(40),
+          head_branch: 'main', repository: { full_name: 'attacker/Other' },
+        }] },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  await assert.rejects(
+    adapters['aegis-composio-github-workflow-readonly:list-workflow-runs'](
+      { owner: 'LAURENCE1977', repo: 'Aegis-' },
+      {
+        capabilityId: 'aegis-composio-github-workflow-readonly',
+        actionId: 'list-workflow-runs',
+        principalId: 'owner',
+        connectionId: [...db.connections.keys()][0],
+        resourceId: 'github:repository:LAURENCE1977/Aegis-',
+        scopes: ['github:workflow:read'],
+      },
+    ),
+    /exact requested repository/i,
+  );
+});
