@@ -17,3 +17,17 @@ WHEN OLD.project_id IS NOT NEW.project_id OR OLD.context_digest IS NOT NEW.conte
 BEGIN
   SELECT RAISE(ABORT, 'agent run project context is immutable');
 END;
+
+CREATE TRIGGER IF NOT EXISTS agent_run_project_context_consistent
+BEFORE INSERT ON agent_runs
+WHEN
+  (NEW.context_json IS NULL AND (NEW.project_id IS NOT NULL OR NEW.context_digest IS NOT NULL))
+  OR
+  (NEW.context_json IS NOT NULL AND (
+    NEW.project_id IS NULL OR NEW.context_digest IS NULL
+    OR json_extract(NEW.context_json, '$.digest') IS NOT NEW.context_digest
+    OR json_extract(NEW.context_json, '$.brief.workspace.id') IS NOT NEW.project_id
+  ))
+BEGIN
+  SELECT RAISE(ABORT, 'agent run project context binding is invalid');
+END;
