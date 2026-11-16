@@ -140,3 +140,8 @@ No second workflow engine should be deployed until a benchmark establishes a nee
 ## Capability System governance
 
 The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). Forge may discover and evaluate sources, but only reviewed AEGIS-native manifests become registry entries; registration does not enable execution or grant permission. Capability risk is assigned per action, not per provider. Central policy must validate principal, scope, resource, connection, risk, budget and approval immediately before every invocation. Keep adapter execution isolated from the control plane, secrets outside manifests and logs, and all write/external-impact operations behind explicit approval. The design was initially documentation only. The first implementation slice is now on feature branches: a read-only capability manifest registry and fail-closed policy evaluator (PR #12), D1 exact-operation approval primitives (PR #16), and an owner-only pending-approval API (PR #21). The API is not yet deployed or wired to a UI or invocation runtime; no general connector execution is enabled.
+
+
+## Project Spaces and agent collaboration
+
+Use AEGIS Project Spaces as the durable context and activity layer for projects. Keep job identity/state in the existing durable runtime and all permissions in the capability/Sentinel control plane. Agent Teams should be built as governed definitions and task assignments over these existing primitives, not as a second job engine. Workspace events are receipts/context, never proof that an external side effect occurred.
