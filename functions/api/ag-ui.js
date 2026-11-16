@@ -159,6 +159,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
             let finished = false;
             let messageText = "";
             const toolCalls = new Map();
+            let providerBytes = 0;
 
             const accumulateToolCalls = (deltas) => {
               if (!Array.isArray(deltas)) return;
