@@ -158,6 +158,11 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
       assert.deepEqual(body.run.plan.steps.map((step) => step.specialist), [
         'researcher', 'engineer', 'reviewer',
       ]);
+      assert.equal(body.run.steps.length, 3);
+      assert.deepEqual(body.run.steps.map((step) => step.specialist), [
+        'researcher', 'engineer', 'reviewer',
+      ]);
+      assert.ok(body.run.steps.every((step) => step.status === 'planned' && step.attempts === 0));
     });
 
     const persisted = await db.prepare(
