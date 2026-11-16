@@ -148,7 +148,7 @@ test('grant creation derives owner, version and scopes from the approved registr
   });
   assert.equal(response.status, 201);
   const body = await response.json();
-  assert.equal(body.grant.principalId, 'owner');
+  assert.equal(db.rows.get(body.grant.id).principal_id, 'owner');
   assert.equal(body.grant.createdBy, 'owner');
   assert.equal(body.grant.capabilityVersion, '0.1.0');
   assert.deepEqual(body.grant.scopes, ['aegis:module-catalogue:read']);
