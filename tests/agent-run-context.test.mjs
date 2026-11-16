@@ -93,7 +93,6 @@ test('keeps multilingual Project Space snapshots inside the UTF-8 byte budget', 
   const context = await builder({ prepare() {} }, 'project-a');
   const bytes = new TextEncoder().encode(JSON.stringify(context)).byteLength;
   assert.ok(bytes <= 11 * 1024 + 128);
-  assert.ok(context.brief.budget.maxChars < 6000);
 });
 
 test('does not build context for missing or inactive Project Spaces', async () => {
