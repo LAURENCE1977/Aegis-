@@ -332,7 +332,7 @@ async function authorizeAgentRun(request, env, id) {
   if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
   if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
-  if (!/^application\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
