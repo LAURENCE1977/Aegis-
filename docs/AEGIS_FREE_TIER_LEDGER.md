@@ -19,3 +19,8 @@ Records are considered current for 30 days by default. Older entries remain avai
 ## Safety boundary
 
 No provisioning or account-creation method exists. Paid overages are recorded as a risk, not authorized. The future Control Centre must default to budget ceilings and stop-before-paid-overage behavior. No resource is created from this ledger without explicit owner approval.
+
+
+## Verified-offer rule
+
+Only records with `status: verified` and a verification timestamp inside the freshness window can be reported as current. `candidate` and `expired` records remain searchable as research leads but must never be counted as confirmed free capacity. A verified record is still not a guarantee: re-check the provider's live pricing, terms, billing triggers and commercial-use restrictions before any use.
