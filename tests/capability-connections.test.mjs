@@ -86,7 +86,7 @@ class MemoryD1 {
 const input = (overrides = {}) => ({
   principalId: 'owner-1',
   providerId: 'github',
-  secretRef: 'vault://connections/github-owner-1',
+  secretRef: 'vault://connections/550e8400-e29b-41d4-a716-446655440000',
   scopes: ['github:public-metadata:read', 'github:issues:read'],
   createdBy: 'owner',
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -145,7 +145,7 @@ test('revoked and expired connections cannot be loaded', async () => {
   assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'github' }, Date.now()), null);
   const expired = await createConnection(db, input({
     providerId: 'gitlab',
-    secretRef: 'vault://connections/gitlab-owner-1',
+    secretRef: 'vault://connections/550e8400-e29b-41d4-a716-446655440002',
     expiresAt: new Date(Date.now() + 1000).toISOString(),
   }), Date.now());
   assert.ok(expired.id);
@@ -157,9 +157,20 @@ test('expired active metadata is retired before a replacement provider connectio
   const now = Date.now();
   await createConnection(db, input({ expiresAt: new Date(now + 1000).toISOString() }), now);
   const replacement = await createConnection(db, input({
-    secretRef: 'vault://connections/github-owner-1-new',
+    secretRef: 'vault://connections/550e8400-e29b-41d4-a716-446655440001',
     expiresAt: new Date(now + 60_000).toISOString(),
   }), now + 2000);
   assert.equal(replacement.status, 'active');
   assert.equal(await loadConnection(db, { principalId: 'owner-1', providerId: 'github' }, now + 2000).then(x => x.id), replacement.id);
+});
+test('accepts only UUID vault references that the encrypted vault resolver can resolve', async () => {
+  const db = new MemoryD1();
+  await assert.rejects(() => createConnection(db, input({
+    secretRef: 'vault://connections/not-a-uuid',
+  })), /secret reference/i);
+  await assert.rejects(() => createConnection(db, input({
+    secretRef: 'vault://connections/../550e8400-e29b-41d4-a716-446655440000',
+  })), /secret reference/i);
+  const record = await createConnection(db, input(), Date.now());
+  assert.match(record.secretRef, /^vault:\/\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
