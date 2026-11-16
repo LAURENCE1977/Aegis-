@@ -85,6 +85,8 @@ For every candidate, record:
 
 Decision options: reuse, adapt, rebuild, combine or reject. Unknown licence/provenance means hold, not permission. Social-media posts may surface candidate names but never count as validation; independently inspect official repos/docs. Do not bulk-import or execute untrusted source code.
 
+Every upstream candidate must follow the mandatory [AEGIS Reverse Engineering Assessment (REA) Standard](AEGIS_REVERSE_ENGINEERING_STANDARD.md). Batch triage must be labelled as triage, not full reverse engineering. The standard defines source pinning, architecture mapping, mechanism extraction, AEGIS ownership boundaries, hard gates, weighted evaluation, minimal native adaptation, TDD, benchmarking and evidence reporting.
+
 Knowledge records must retain source links, version, licence, evidence grade, applicability, caveats, conflicts, adaptation notes and refresh policy. External projects should become replaceable adapters, not hard dependencies.
 
 Candidate projects named by the user in earlier research sessions include: Agent-desktop, OpenMausBot, FreeLLMAPI, Pinchtab, Lightpanda, OWASP, Wazuh, YARA, Zeek, Suricata, Pangolin, Router Hub, OpenCode, PocketBase, Graphite, Maxun, Onyx, ComfyUI, Dyad, AgenticSeek, LatentSync, BackgroundRemover, OpenChatCut, Assistant-UI, Better-T-Stack, Jam.dev utilities, US government repositories, and other repos/tools discussed in prior chats. These are **unvetted leads**, not approved dependencies. Recover the exact earlier list from conversation/library context when available; do not imply this list is exhaustive.
