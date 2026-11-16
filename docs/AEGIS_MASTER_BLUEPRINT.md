@@ -643,3 +643,21 @@ A third fixed read-only Composio GitHub tool is now registered and implemented:
 The source register and preliminary decisions for the newly supplied repositories are maintained in [docs/AEGIS_RESEARCH_INTAKE.md](AEGIS_RESEARCH_INTAKE.md). This includes the Google Elephant-Goldfish Model, Vercel agent-browser, Runanywhere TrnRT, ORACLE-org/ORACLE, rederive, Coolify, OpenProject, unresolved Kiri/Hex Brain identities, and Oracle namesakes.
 
 TLDR AI is a standing discovery source for AI models, agents, open-source projects, developer tooling, research, infrastructure, security and industry developments. Primary archive: https://tldr.tech/ai/archives ; RSS: https://tldr.tech/api/rss/ai . Follow original sources before changing architecture or adding dependencies. Treat newsletter summaries as leads, not verified evidence. Every candidate must pass AEGIS reverse-engineering, licensing, security, cost and Sentinel review.
+
+
+### Composio GitHub workflow job and step summaries — 16 November 2026
+
+A fourth fixed read-only GitHub tool is now implemented:
+
+- Tool: `GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN`.
+- Capability: `aegis-composio-github-workflow-jobs-readonly`.
+- Action: `list-workflow-jobs`.
+- Scope: `github:workflow-jobs:read`.
+- Resource: exact workflow run `github:workflow-run:{owner}/{repo}/{runId}`.
+- Fixed to the latest attempt, page 1 and at most twenty jobs. Each job returns bounded status/conclusion and up to one hundred step name/number/status/conclusion summaries.
+- Every job must belong to the requested run; job URLs are constrained to the exact run. Runner names, logs, artifacts and arbitrary provider fields are not returned.
+- The Composio session allowlist now contains exactly four fixed read-only tools: repository metadata, pull-request metadata, workflow-run summaries and workflow-job summaries. It still excludes writes, dispatch, reruns, cancellation, log/artifact downloads, MCP, shell and multi-execute.
+- Owner reconnect is required to provision the four-tool session. Older one-, two- and three-tool sessions retain only the actions they already contain and fail closed for missing tools.
+- Added client, adapter, manifest and endpoint tests. The full Node/D1/Forge workflow passed on commit `266c8af916de70de3eb9acb98166d776f359a1d9`; Cloudflare Pages preview deployed.
+
+**Next:** update the owner-facing Composio connection/capability UI to explain the new read-only scopes and reconnect requirement, then test a real approved connection and exact-resource grants. No write-capable GitHub tools are to be added as part of this monitoring pack.
