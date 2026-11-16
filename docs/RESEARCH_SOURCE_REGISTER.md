@@ -237,3 +237,333 @@ Retrieved text, code, issue comments, prompts and tool schemas are untrusted dat
 10. Defer Blackbox integration until its API, costs, data handling and sandbox controls pass a formal connector review.
 
 Status: research register only. None of these sources is connected, installed, imported as executable code or granted permissions by this document.
+
+
+## Agency Agents — specialist-agent source
+
+Primary candidate:
+- https://github.com/msitarzewski/agency-agents
+- Repository describes itself as a library of specialist AI-agent definitions and workflows. Its published repository licence is MIT; verify the exact commit and any individual bundled assets/licences before reuse.
+- The repository contains role-oriented Markdown definitions, specialist categories and supporting workflows. These definitions are not, by themselves, a durable agent runtime, secure tool broker or permission system.
+
+Useful AEGIS applications:
+- Seed a curated catalogue of specialist roles such as software architect, frontend/backend developer, reviewer, security specialist, QA engineer, DevOps/SRE, researcher and UX designer.
+- Compare role boundaries, expected inputs, deliverables, checklists and hand-off patterns.
+- Use specialist agents behind one AEGIS orchestrator, shared run state, budgets, audit and approval policy.
+- Require independent review for security-sensitive, production-impacting or high-consequence work.
+
+AEGIS decision:
+- **High-priority knowledge/agent-definition source; selective adaptation, not wholesale installation.**
+- Convert chosen roles into AEGIS-native, versioned agent records with role, purpose, expertise, instruction set, allowed capability IDs, input/output schema, expected artefacts, evaluation tests, source commit, licence and review status.
+- Keep prompts and role definitions separate from tool permissions. An agent definition never grants a tool or secret scope.
+- Do not import the desktop installer or make AEGIS dependent on Claude Code, Cursor, Codex, Gemini CLI or any other specific agent host.
+- Start with a small set of complementary roles and evaluate them against repeatable AEGIS tasks before expanding the catalogue.
+- Preserve MIT attribution and upstream provenance; review all content for unsafe instructions, duplicated roles, prompt injection and platform-specific assumptions.
+- No Agency Agents code or definitions have been installed, copied into the runtime or granted permissions by this research entry.
+
+Source: https://github.com/msitarzewski/agency-agents
+
+
+
+## Workflow, ingestion and always-on agent candidates — 15 November 2026
+
+These candidates are architecture references or optional adapters. They are not installed, connected or granted permissions by this register.
+
+### OpenDots — CopilotKit
+
+Primary candidate: https://github.com/CopilotKit/OpenDots. MIT licence. An open-source web/mobile agent-workspace template using CopilotKit and AG-UI. It models persistent specialist "Dots", Spaces/pages, per-Dot research and memory permissions, MCP connections, human approval cards, activity receipts, browser/computer work and voice/Slack extensions.
+
+The README says conversations require CopilotKit Intelligence (hosted service, local Docker evaluation, or licensed self-hosting). The local evaluation has substantial machine requirements and a CopilotKit account. The project describes itself as an early single-owner starting point; shared editing and some integrations/group-agent features remain further work. Its security notes say it is not a security-audited autonomous agent.
+
+**AEGIS decision:** Very high-priority UX and agent-workspace reference. Study per-agent permissions, human approval, visible computer activity, persistent workspace and status presentation. Do not replace AEGIS core or copy its whole stack. Keep AEGIS identity, policy, durable jobs, memory and audit authoritative. Run computer/browser tools in a separate sandbox; require approval for writes, sends, purchases and deployments. Do not treat the starter as proof that 24/7 execution or production security is solved.
+
+### Firecrawl
+
+Primary candidate: https://github.com/firecrawl/firecrawl. Core repository is AGPL-3.0; some SDKs/UI components have separate licences. It provides web crawling, page scraping, site mapping and search/extraction workflows, with hosted and self-hosted modes. Scraping remains subject to target-site terms, robots directives, privacy rules and applicable law.
+
+**AEGIS decision:** High-priority optional ingestion adapter, not a core dependency. Define a provider-neutral web-ingestion contract for discovery, fetch, crawl, normalize, provenance and status so native retrieval, Firecrawl or another provider can be swapped. Start with bounded permitted public-page retrieval. Enforce domain policy, robots/terms checks, SSRF protections (including DNS and redirect checks), request/time/size limits, content-type validation and deduplication. Store canonical URL, retrieval time, content hash, source version, licence/terms review and extraction method. Treat page content as untrusted prompt-injection input. AGPL-3.0 is a material distribution/modified-service consideration; isolate it behind an adapter and obtain legal review before distributing or offering a modified network service.
+
+### Oxylabs Web API
+
+Primary candidate: https://github.com/oxylabs/web-api. Commercial hosted service, not an open-source engine to embed. Provides web search and scraping with rendering, proxy rotation and geo-targeting. Public pricing advertises a small free trial and paid usage tiers; actual costs depend on product, result type and volume. Its acceptable-use policy restricts accessing non-public or sensitive personal data without permission and requires lawful, policy-compliant collection.
+
+**AEGIS decision:** Defer as a paid fallback provider. Use only if ordinary web retrieval or a compliant Firecrawl setup cannot access a needed public source. Never make it a default dependency for the shoestring-budget build. Add hard spend caps, per-job budgets and usage telemetry; require explicit opt-in before paid requests. Restrict targets to permitted public information. Do not bypass access controls, collect sensitive data or evade site restrictions. Keep credentials server-side and assess data processing, retention and geographic handling before connecting.
+
+### n8n
+
+Primary candidate: https://github.com/n8n-io/n8n. Source-available under the Sustainable Use License (SUL) and separate Enterprise terms; it is not OSI-approved open source. Broad visual workflow automation with many integrations, custom nodes and AI-related features. n8n's current licensing FAQ says internal/private use is allowed in defined cases, but allowing outside customers to build/configure workflows, white-labelling or hosting n8n as a service requires a commercial licence.
+
+**AEGIS decision:** Study its workflow-builder UX and connector catalogue; do not embed or fork as the AEGIS automation engine without written licence clearance. A private, single-owner instance could be considered as an optional external automation service, but it adds a separately operated system and must not become the source of truth for AEGIS jobs or permissions. If connected, expose only allowlisted webhook/API operations, isolate credentials, require approval for consequential actions and verify licensing for the exact use case.
+
+### Activepieces
+
+Primary candidate: https://github.com/activepieces/activepieces. Community Edition repository states MIT; enterprise packages/features are commercially licensed. TypeScript integration framework ("Pieces") with workflow automation, branching/retries, versioning and integrations that can be exposed as MCP tools. The project advertises hundreds of integrations; confirm each connector's current status, permissions and licence individually.
+
+**AEGIS decision:** High-priority connector-catalogue and workflow UX reference; possible optional adapter. Evaluate individual pieces as connector candidates rather than installing the whole platform. Build AEGIS-native capability manifests with explicit scopes, read/write classification, schemas, rate limits and approval policies. A connector's presence in Activepieces must never grant it permission in AEGIS. Keep enterprise-only features separate and review connector-specific third-party licences and data handling.
+
+### Temporal
+
+Primary candidate: https://github.com/temporalio/temporal. Temporal server repository reports MIT licence. Mature durable-execution platform: workflow state survives process failures, with retryable activities and replayable workflow orchestration. It is a server platform with workers and persistence, not a small library or a Cloudflare Worker drop-in.
+
+**AEGIS decision:** Top-tier durability architecture reference and long-term candidate. Study workflow history, deterministic orchestration, activity retry, cancellation, signals, timers, versioning and recovery semantics. Do not add a Temporal cluster to the current low-cost Cloudflare setup: it introduces a separately operated server, persistence and worker fleet. Continue the minimal AEGIS D1/Queue runtime for the first health-check slice. Reassess Temporal only when multi-step jobs justify the operational footprint.
+
+### Hatchet
+
+Primary candidate: https://github.com/hatchet-dev/hatchet. Repository reports MIT licence. Orchestrates background tasks, AI agents and durable workflows across TypeScript, Python, Go and Ruby; includes retries, schedules, event/webhook triggers, concurrency controls, task routing and observability. Self-hosted operation requires a separate service and infrastructure (including Docker for the documented local path).
+
+**AEGIS decision:** High-priority comparison candidate for the next runtime stage. Compare worker model, durable sleep/event waits, retries, concurrency and operational footprint against the existing AEGIS Worker/D1/Queue implementation and Temporal. Do not run Hatchet and a full AEGIS scheduler/queue in parallel for the same jobs. If adopted, one engine owns execution state; AEGIS remains the identity, policy, approval and user-facing control plane. Run a small proof of concept only after defining resource limits, backup/restore, security boundaries and migration/exit strategy.
+
+### Trigger.dev
+
+Primary candidate: https://github.com/triggerdotdev/trigger.dev. Repository reports Apache-2.0. TypeScript-first durable background jobs and AI workflows with retries, queues, idempotency, long-running execution, schedules, observability and progress streaming. Supports managed cloud and self-hosted Docker/Kubernetes deployments. Self-hosting the full stack is operationally heavier than deploying one Cloudflare Worker; review the exact current compose/Helm footprint before estimating costs.
+
+**AEGIS decision:** High-priority developer-experience and TypeScript workflow reference; optional future runtime alternative. Study checkpointing, retries, idempotency, run traces, progress streaming and human-wait patterns. Its TypeScript orientation may fit AEGIS better than Python-first systems, but do not assume its runtime fits Cloudflare Workers or a free Chromebook-only setup. Compare with Hatchet and Temporal using the same representative AEGIS jobs before selecting any engine.
+
+### Inngest — provisional interpretation of user's "ingest"
+
+Primary candidate: https://github.com/inngest/inngest. The server/CLI licensing is described by its repository as Server Side Public License with delayed open-source publication under Apache-2.0; SDKs are Apache-2.0. Verify exact component and release terms. Durable event-driven functions combine triggers, cron schedules, retries, step state and coordination. Supports self-hosted server and hosted platform.
+
+**AEGIS decision:** Study event-driven function and developer-experience patterns; defer server adoption. Do not describe the whole server as OSI-open-source or copy server code without checking SSPL/DOSP terms. Evaluate SDK/API integration separately from server licensing. Compare it with Trigger.dev, Hatchet and the native AEGIS runtime before adding another scheduler/queue. The user's spelling "ingest" has been interpreted as Inngest; confirm if a different product was intended.
+
+### Kestra
+
+Primary candidate: https://github.com/kestra-io/kestra. Apache-2.0. Declarative YAML, event-driven orchestration for data, infrastructure, business processes and AI agents; has MCP support and Python/JavaScript SDKs. Official requirements describe a Java runtime, PostgreSQL or MySQL for OSS queue/repository, and at least 4 GiB RAM plus 2 vCPUs for a standalone server. Script tasks may require Docker-in-Docker.
+
+**AEGIS decision:** Architecture reference for declarative workflows, event triggers, versioning and data pipelines; not a current deployment candidate. Infrastructure footprint is disproportionate to the current free-tier Cloudflare-first build. Revisit only if AEGIS develops substantial multi-source ETL or scheduled data operations that cannot be handled by small isolated jobs.
+
+### Windmill
+
+Primary candidate: https://github.com/windmill-labs/windmill. Core Community Edition is AGPLv3; APIs/OpenAPI clients and some components have separate licences. Commercial licensing applies to certain embedding, managed-service and redistribution scenarios. Code-first scripts, workflows, apps and AI agents; supports many languages, Git sync, worker isolation and environment promotion.
+
+**AEGIS decision:** Study worker isolation, code-first workflow composition and review/promotion patterns; do not embed the platform. AGPL and commercial-use boundaries need careful review before any distribution or user-facing integration. Its PostgreSQL/worker deployment footprint is heavier than the initial AEGIS runtime. Do not create a second workflow control plane just to gain a visual editor.
+
+### Apache Airflow
+
+Primary candidate: https://github.com/apache/airflow. Apache-2.0. Programmatic DAG authoring, scheduling and monitoring for data pipelines. Its own README says it is best for workflows whose DAG structure is mostly static and slowly changing.
+
+**AEGIS decision:** Reference-only for future bulk data engineering/ETL, not interactive agent jobs. Airflow is designed around a scheduler, metadata database, executor and workers; it is operationally excessive for the current small event-driven runtime. Do not use it for user-facing, approval-driven agent conversations or low-latency tasks. If AEGIS later needs large scheduled data pipelines, compare it with Kestra and managed data services.
+
+### OpenOutreach
+
+Primary candidate: https://github.com/eracle/OpenOutreach. Repository reports GPL-3.0. Self-hosted B2B lead discovery/qualification and email outreach agent. It uses a licensed data provider and can send email through a connected mailbox; some operations consume paid credits.
+
+**AEGIS decision:** Not a core AEGIS capability. This is a specialised sales/outbound lead-generation workflow. Study only its modular CLI producer/consumer contract, transparent qualification rationale and spend gates if AEGIS later gains a user-requested outreach module. Never enable mailbox sending, purchase lead credits or contact third parties by default. Require explicit per-campaign approval, recipient/source provenance, opt-out/suppression checks and applicable UK GDPR/PECR compliance review. GPL-3.0 and data-provider terms require review before reuse. No outbound messaging capability is authorised by this entry.
+
+## Workflow-engine selection guidance
+
+These products overlap, but are not interchangeable:
+
+| Candidate | Best-fit problem | AEGIS position |
+|---|---|---|
+| Existing AEGIS Worker + D1 + Queue | Small, bounded jobs on Cloudflare | Keep as first runtime slice |
+| Temporal | Mature durable, multi-step execution | Benchmark/reference; future option |
+| Hatchet | Agent/background tasks, retries and concurrency | Closest runtime comparison |
+| Trigger.dev | TypeScript developer experience and long-running AI jobs | Strong alternative to benchmark |
+| Inngest | Event-driven durable functions | SDK/pattern study; server licence review |
+| Kestra | Declarative business/data workflows | Later data-orchestration option |
+| Airflow | Scheduled DAG/data engineering pipelines | Not agent runtime |
+| Activepieces / n8n / Windmill | Visual or code-first integrations and automation | Optional external automation layer; licensing matters |
+
+**Architecture rule:** AEGIS must retain one canonical job identity, state machine, policy engine, approval record and audit trail. An external workflow engine may execute work behind an adapter, but must not create a second conflicting source of truth. Do not deploy multiple overlapping engines before a benchmark proves the need.
+
+## Source-intake clarifications
+
+- "Ingest" was interpreted as Inngest.
+- "Open Outreach" was interpreted as eracle/OpenOutreach.
+- "OpenDots" was interpreted as CopilotKit/OpenDots.
+- No code, package, connector, account or service from this list has been installed or authorised.
+
+## Research intake — agent routing, API tooling, UI and model frameworks (15 November 2026)
+
+### Agent Lightning — Microsoft
+Source: https://github.com/microsoft/agent-lightning — MIT. Current v1.0 is a reinforcement-learning training framework, not a general-purpose autonomous agent runtime. It uses a model API gateway, rollout controller, trainer, VERL/vLLM and Kubernetes jobs; Python 3.12+ and a substantial GPU-oriented training stack are expected. Upstream benchmark claims have not been independently reproduced by AEGIS.
+
+**AEGIS decision:** High-value future Agent Evaluation & Learning Lab reference, not a production runtime dependency. Reverse-engineer trajectory capture, rollout IDs, reward/evaluation contracts, training-data provenance and separation of trainer/controller/gateway. First implement deterministic AEGIS trace capture and offline evaluation; consider RL only with a real benchmark, suitable GPU budget and safe reproducible dataset. No GPU training, Kubernetes or package installation now.
+
+### ToGO / ai-agno
+Source: https://github.com/togo-framework/ai-agno — MIT. This is a Go framework integration that calls an Agno agent sidecar over HTTP (POST /run); it is not the Agno agent runtime itself.
+
+**AEGIS decision:** Low priority. The sidecar adapter contract is a useful interoperability pattern, but Go + Agno is not aligned with the current Cloudflare Workers / JavaScript core. Reproduce only the provider-neutral remote-agent adapter contract if a future external agent host is approved. No code imported.
+
+### Harness Router
+Source: https://github.com/Protocol-Lattice/harness-router — MIT; Python 3.11+; upstream labels it alpha. It selects the next tool from a goal, current observation and tool descriptions, with confidence/fallback, cached decisions and optional MCTS. The host harness still supplies arguments, enforces permissions, executes the tool and processes results. Default decision provider is Jev through OpenRouter.
+
+**AEGIS decision:** High-priority design reference for a bounded tool-selection subcomponent. Build an AEGIS-native router that emits only a proposed capability/action ID, confidence and rationale; the existing AEGIS policy evaluator remains authoritative and executes after exact-operation approval. Low confidence, stale context, unknown tool, or policy mismatch must return control to the planner. Never let an LLM router grant permissions or construct executable commands. Avoid requiring OpenRouter/Jev; route through AEGIS provider adapters and budget controls. No dependency or API key configured.
+
+### Grok / xAI
+Source: https://docs.x.ai/ — commercial model/API provider, not an open-source agent framework. Treat as an optional model-provider adapter, with API usage billed separately from a ChatGPT subscription.
+
+**AEGIS decision:** Add only through the existing provider interface after recording model ID, pricing, rate limits, retention/data-use terms, region, tool-call support and failure behavior. Never hard-code a Grok-specific assumption into orchestration or store provider credentials in browser code. No xAI account, key or connection created.
+
+### Hoppscotch
+Source: https://github.com/hoppscotch/hoppscotch — MIT. Broad API-development ecosystem with HTTP request builder, environments, auth helpers, GraphQL, WebSocket, SSE, Socket.IO and MQTT; PWA support. The upstream repository is a substantial pnpm monorepo and service ecosystem.
+
+**AEGIS decision:** High-value QA/Developer Console reference, not a full application dependency. Build a compact AEGIS-native API inspector around our own routes: request method/path, safe headers/body, response status/headers/body, latency, saved non-secret examples and redacted environment variables. Default to local AEGIS endpoints and read-only tests; writes require the same approvals as any other capability. Never persist bearer tokens, cookies or secrets in saved collections. No Hoppscotch code installed.
+
+### JSON Crack
+Source: https://github.com/AykutSarac/jsoncrack.com (the older VS Code repository says it has moved into this monorepo). The core concept is interactive JSON-to-node-graph visualization. The older VS Code package points at a newer canonical repository; a current root-level licence for the moved code was not verified in this intake.
+
+**AEGIS decision:** Strong product idea for a native JSON/schema/agent-trace visualizer, especially for inspecting tool manifests, workflow graphs, memory relations and API payloads. Build our own visualizer after verifying the current app source and applicable licence; do not copy code from the archived VS Code repository. No code installed.
+
+### Cult UI
+Source: https://github.com/nolly-studio/cult-ui and documentation https://www.cult-ui.com/docs. Registry of accessible, animated React/Tailwind components distributed as copyable source through shadcn CLI. Documentation describes Tailwind CSS v4, React and motion dependencies. A similarly named repository exists; do not confuse them. The canonical registry's precise licence file should be rechecked before source reuse; a similarly named shadcn/cult-ui repository points to a different MIT source.
+
+**AEGIS decision:** UI inspiration only until the canonical registry licence is independently verified. Adapt interaction ideas (command input, agent status, approval cards, responsive panels) to the existing AEGIS stack and accessibility requirements; avoid introducing React/Tailwind v4 solely for a component. Respect reduced-motion preferences. No components copied or installed.
+
+### Open WebUI
+Source: https://github.com/open-webui/open-webui — current post-v0.6.6 licence adds a branding-protection condition and is not OSI-approved open source. The project is a feature-rich self-hosted Python/Svelte AI interface, with model-provider connections, tools, documents/RAG and local-model support. It is a substantial server application, not a Cloudflare Pages/Workers module.
+
+**AEGIS decision:** Do not fork, embed or white-label. Its licence requires the Open WebUI identity to remain visible except for stated exceptions (including deployments of 50 or fewer users); that conflicts with AEGIS being its own product identity. Study generic interaction patterns only and independently implement a native AEGIS workspace. The upstream UI/server stack is too heavy for the current free-tier target. No code installed.
+
+### LangChain.js
+Source: https://github.com/langchain-ai/langchainjs — MIT. Broad TypeScript framework for model/provider integrations, chains, tools, retrievers and agent abstractions; large and integration-rich, with transitive dependency and runtime-compatibility implications.
+
+**AEGIS decision:** High-value integration catalogue and interface reference, but do not make core orchestration dependent on LangChain. Keep AEGIS-owned canonical agent, job, policy, memory and approval schemas. Add narrow, separately versioned provider/retriever adapters only where tests demonstrate value and Cloudflare Worker compatibility. No package installed.
+
+### LlamaIndex
+Sources: https://github.com/run-llama/llama_index (Python, MIT) and https://github.com/run-llama/LlamaIndexTS (MIT, explicitly deprecated). The Python project is the maintained data/RAG framework candidate; the TypeScript repository's own README states it is deprecated and no longer maintained.
+
+**AEGIS decision:** Do not adopt LlamaIndexTS. Study the maintained Python project's document ingestion, node/chunk metadata, retrieval, citation and index abstractions for a future isolated ingestion service. AEGIS remains canonical for source provenance, permissions, retention and prompt-injection controls. Prefer a small native retrieval contract in the current JS core before considering a separate Python service. No package installed.
+
+### Hugging Face Transformers
+Source: https://github.com/huggingface/transformers — Apache-2.0 library for model definitions, training and inference across a very large model ecosystem. Python/PyTorch and model-specific hardware/dependency requirements make it unsuitable as a browser/Cloudflare Worker dependency. Individual model repositories may have their own licences and usage restrictions.
+
+**AEGIS decision:** Future model evaluation/hosting reference only. AEGIS should use remote provider adapters initially; a separate, explicitly provisioned model host may later expose a narrow OpenAI-compatible endpoint. Record model licence, weights provenance, hardware, memory, context length, quantisation and benchmark evidence per model. No local model download or inference host created.
+
+### vLLM
+Source: https://github.com/vllm-project/vllm — Apache-2.0 inference/serving engine with GPU and selected CPU/Apple Silicon hardware paths. It is a model-serving component, not an orchestration framework; production use needs compatible hardware, memory, deployment and operations.
+
+**AEGIS decision:** Future external inference-provider adapter, not a current Cloudflare/Chromebook deployment. Benchmark only if a dedicated capable host becomes available and total power/hosting costs beat managed APIs. Keep endpoint, model, authentication and budget behind the AEGIS provider interface. No installation or host provisioned.
+
+### CyberDrop-DL (possible interpretation of 'Cyberdrop-d1')
+Candidate found: https://github.com/Cyberdrop-DL/cyberdrop-dl — GPL-3.0-only Python bulk downloader for multiple third-party file hosts; Python 3.12+ and a sizeable asynchronous downloader stack. This is not Cloudflare D1 and is unrelated to the AEGIS database layer.
+
+**AEGIS decision:** Not a core AEGIS dependency. Do not add a bulk third-party-host downloader without a clearly defined, lawful user-owned media ingestion need, host terms review, provenance, malware scanning, storage limits and explicit download approval. GPL-3.0-only is incompatible with casual code copying into the proprietary AEGIS application. The user's exact intended source remains unconfirmed; this candidate is only a likely spelling correction.
+
+## Implementation priorities from this intake
+
+1. Keep the newly implemented AEGIS project-space and event timeline as the canonical project/workboard layer; do not add another project-management or job database.
+2. Add a constrained native tool-selection proposal stage inspired by Harness Router, always subordinate to AEGIS policy and approvals.
+3. Add a native API inspector and JSON/schema/trace visualizer for engineering QA.
+4. Build trace capture and evaluation before any reinforcement-learning/training infrastructure.
+5. Keep LangChain, LlamaIndex, Transformers and vLLM behind optional adapters or separate services; do not burden the Worker/PWA core with their dependencies.
+6. Treat Grok as an optional provider, not an architectural dependency.
+7. Preserve explicit licence, provenance, security and 'not installed/not connected' records. No source code or third-party service from this intake has been installed, connected or deployed.
+
+
+### OpenMuse — CopilotKit
+Source: https://github.com/CopilotKit/openmuse — MIT according to the upstream project description. OpenMuse is an alpha personal-agent application built with CopilotKit and AG-UI, with React Native clients for iOS, Android and web. Its architecture includes a server, task worker and browser worker; a persistent Chromium browser profile and optional isolated Linux workspace; browser, terminal, file and PDF workflows; visible plans, streamed agent events, delegated tasks and a takeover console. It is intended as a self-hostable template compatible with different agent harnesses, not a complete turnkey always-on hosted service. Open-ended reasoning and certain Google-account integrations require separate configuration.
+
+**AEGIS decision:** Very high-value mobile-first agent-workspace and human-supervision reference. Reverse-engineer its visible task lifecycle, streamed AG-UI event model, agent-computer takeover, persistent browser profile, task queue and mobile interaction. Implement equivalent AEGIS-native clients and adapters rather than adopting its full application stack. AEGIS remains authoritative for identity, memory, capability manifests, exact-operation approvals, job state, secrets and audit. Treat browser, terminal, files and account integrations as high-risk capabilities: isolate execution, enforce per-action scopes, redact secrets, log receipts, require approvals for external writes and destructive actions, and provide immediate stop/revoke. Verify actual container isolation and network egress before any execution; a visible terminal or browser is not itself a security boundary. No OpenMuse code, container, agent computer or connector has been installed or deployed.
+
+### Open WebUI — separate project
+Source: https://github.com/open-webui/open-webui. This is a distinct self-hosted AI chat/model interface supporting multiple model backends and tools; it is not OpenMuse. Its current post-v0.6.6 licence includes mandatory preservation of Open WebUI branding except under its stated exceptions, and the current licence page explains that this is not OSI-approved open source. Earlier contributions through v0.6.5 retain BSD-3 terms. 
+
+**AEGIS decision:** Study its model selection, chat UX, knowledge/document workflows and administration as product references. Do not adopt it as AEGIS's branded front end or remove its identity under the current licence. Build an independent AEGIS interface and provider abstraction. If running Open WebUI separately for personal experimentation, retain its branding and review its current licence and deployment security. No Open WebUI code, service or connector has been installed or deployed.
+
+
+### OpenMuse (OpenMuseAgent) — corrected identification
+Original repository: https://github.com/OpenMuseAgent/OpenMuse. Its README explicitly says the project moved to **nanoMuse** at https://github.com/nano-muse/nanoMuse; the old OpenMuse repository is an archive of versions 0.1.0–0.6.0 and is no longer maintained. The current nanoMuse repository identifies itself as a cross-device personal agent (phone, desktop, web console and relay), with a local/hostable runtime, model-provider catalogue, MCP, scheduled goals, persistent memory, credential vault and a separate Sentinel gatekeeper. It supports Android and desktop/browser interfaces, device GUI interaction and ongoing work while the app is closed. The current repository's LICENSE and package metadata identify GPL-3.0-or-later (Python >=3.11); the archived OpenMuse repo was MIT at its archived 0.6.0 release. Do not assume the archived MIT licence applies to the current nanoMuse codebase.
+
+**High-value AEGIS reference.** Reverse-engineer the architecture, not the code:
+- Sentinel as a mandatory mediation boundary between model and tool execution.
+- Risk classification, policy decisions, exact-operation approvals, deny paths and revocation.
+- Credential vault with late-bound secret resolution and redacted tool results.
+- Taint tracking for private-data reads and outbound egress.
+- Isolated shell/Python execution with scrubbed environments and explicit writable workspace boundaries.
+- Durable goal scheduling, event triggers, task budgets, activity feed and resumable work.
+- Shared UI protocol so web, terminal and phone clients render the same approval, tool and activity events.
+- Cross-device agent runtime and user-controlled device actions.
+
+**Fit and limits.** Conceptually very close to the AEGIS mission and especially useful for validating the Sentinel/Capability System and long-running personal-agent experience. However, it is a Python 3.11+ runtime with a sizeable dependency set, local process/sandbox assumptions (Linux bubblewrap in particular), device apps and its own data/runtime architecture. It is not a drop-in Cloudflare Worker or browser-only service. AEGIS must keep its own canonical job IDs/state, capability registry, exact-operation approval records, encrypted secret lifecycle, project memory and audit. Device/desktop execution should be a separately isolated adapter with explicit device consent; do not expose a shell or general computer-control capability through the Cloudflare Worker.
+
+**Licence decision.** GPL-3.0-or-later is strong copyleft. Do not copy or incorporate nanoMuse code into AEGIS's current codebase without an explicit licensing decision and review of distribution/network-service obligations. Use the architectural concepts as independent design input, preserve source attribution in this register, and build an independently implemented AEGIS-native Sentinel and durable-goal layer. The old OpenMuse archive's MIT licence applies to that archived code only; it does not make the current nanoMuse repository MIT. No nanoMuse/OpenMuse package, code, Android app, Docker image, local daemon, credentials or external connector has been installed or connected.
+
+### Open WebUI — retained as a separate candidate
+Source: https://github.com/open-webui/open-webui. This is a distinct self-hosted AI chat/workspace product, not OpenMuse/nanoMuse. It remains recorded above as a UI/model/RAG reference only. Its current branding-protection licence condition means AEGIS should not fork, embed or white-label it; independently reproduce generic workspace patterns instead. No Open WebUI code or service is installed or connected.
+
+## Locally Uncensored — local AI studio architecture reference (15 November 2026)
+
+Source: https://github.com/PurpleDoubleD/locally-uncensored — AGPL-3.0. The project is a Tauri v2 / React / TypeScript desktop AI studio combining local and optional cloud model providers, coding-agent workflows, MCP/tool use, image/video generation through ComfyUI, RAG, voice and opt-in remote phone access. The repository README currently describes Windows and Linux as supported desktop platforms, with macOS still on the roadmap; the project has also published an Android client in release notes. It is not a browser-native PWA or a drop-in Cloudflare Worker runtime. The upstream README and package metadata identify AGPL-3.0; no code or substantial text is copied here.
+
+**AEGIS decision:** High-value reverse-engineering reference for local model/provider adapters, local-vs-cloud mode separation, model/hardware preflight, project-scoped coding-agent workspaces, review-before-apply diffs, tool permission controls, MCP discovery, local media pipelines and opt-in remote-device pairing. AEGIS should independently implement portable contracts and browser-first UX, keeping its own Sentinel, capability registry, exact-operation approvals, project memory and audit authoritative. Do not embed, fork or copy AGPL code without a deliberate licence decision. Local execution requires compatible user hardware and is not automatically available on Chromebook/iOS; investigate Android/remote access separately. No app, model, code, package, backend, account or connector has been installed or connected.
+
+## Developer ecosystem intelligence sources — 15 November 2026
+
+### Awesome MCP Servers — discovery index
+Source: https://github.com/punkpeye/awesome-mcp-servers (MIT for the directory repository). The project is a large community index of MCP servers. It is a discovery catalogue, not a security certification. Each listed server has its own repository, licence, maintainer, dependency chain, hosting model, permissions and threat surface; the directory's MIT licence does not relicense those projects.
+
+**AEGIS decision:** High-priority Forge discovery input. Build a native MCP catalogue with normalized records for source URL, publisher, licence, last commit/release, supported transport, auth model, tool/resource/prompt inventory, declared read/write/destructive effects, required scopes, network destinations, secrets, platform/runtime requirements, maintenance status, advisories, test evidence and AEGIS risk decision. Fetch and inspect upstream source before recommending connection. A listing or MCP readOnlyHint is never an authorization grant. No servers installed or connected from the list.
+
+### free-for.dev — free-tier discovery
+Source: https://github.com/ripienaar/free-for-dev (README states it catalogs SaaS/PaaS/IaaS free tiers relevant to infrastructure developers; it excludes self-hosted software and expects qualifying free tiers rather than short trials). A repository LICENSE file was not found during this inspection, so do not assume the README content is reusable under an open licence.
+
+**AEGIS decision:** High-priority cost intelligence source, not a source of truth. Build a native Free-Tier Ledger with provider, service, category, allowance, duration, card requirement, commercial-use eligibility, overage behaviour, region, quotas, last verified date, official pricing/terms URL and confidence. Treat all offers as volatile; recheck official provider terms before provisioning. Add budget ceilings and stop-before-paid-overage defaults. Never create accounts, consume credits or provision resources automatically based on a directory entry.
+
+### Build Your Own X — reverse-engineering curriculum
+Source: https://github.com/codecrafters-io/build-your-own-x. The README identifies the collection as CC0/public-domain-dedicated to the extent possible. It indexes tutorials for recreating operating systems, databases, compilers, browsers, shells, web servers, LLMs, RAG and other technologies. Individual tutorials may have separate authors and terms; check each linked work independently.
+
+**AEGIS decision:** Very high-priority Forge learning and reverse-engineering reference. Use it to identify foundational concepts and build small AEGIS-native prototypes with explicit scope, threat model, tests and performance criteria. For AEGIS OS, focus on an application-level agent operating environment (scheduler, process/task isolation, capability permissions, filesystem abstraction, IPC/event bus, UI shell and recovery), not a replacement kernel or desktop OS. For model work, prefer evaluation, routing, prompt/context pipelines and small educational implementations before attempting expensive training. No tutorial code copied or installed.
+
+### Cross-source operating rule
+These directories help discover and learn; they do not approve dependencies. Every candidate must pass provenance, licence, maintenance, security, platform, cost and test review. AEGIS should extract ideas, build its own adapters and native components, and keep Sentinel as the enforcement boundary.
+
+
+## Persistent memory, local inference and computer-use agents
+
+These are three distinct source tracks, not interchangeable products.
+
+### Kytheros Strata — persistent memory architecture
+
+- Source: https://github.com/kytheros/strata
+- Reported licence: Apache-2.0; verify the pinned commit and bundled dependency licences before any code reuse.
+- Relevant ideas: SQLite/FTS5 local-first retrieval, Cloudflare Workers/D1 adapter, typed memories, provenance, hybrid retrieval and memory quality gates.
+- AEGIS decision: high-priority architecture reference. Rebuild selected concepts in the native memory substrate; keep AEGIS owner/project identity, Sentinel policy, storage schema and audit authoritative.
+- Security caveat: a caller-supplied identity header is not authentication. Any multi-tenant HTTP deployment needs a verified authentication boundary. Do not expose a raw memory service publicly.
+
+### Niko1221 Strata — optional local inference engine
+
+- Source: https://github.com/Niko1221/Strata
+- Reported licence: MIT; verify the exact release and bundled model/runtime licences independently.
+- Relevant ideas: local model serving and OpenAI/Anthropic-compatible provider interfaces.
+- AEGIS decision: optional future local-model provider adapter for capable hardware. It is not the Kytheros memory project and is not suitable as a required runtime for the current Chromebook/iPhone/iPad-first target. Do not require GPU hardware or local model downloads for the first release.
+
+### Meet Nod — computer-use architecture
+
+- Source: https://github.com/n8n-io/nod
+- Official product overview: https://blog.n8n.io/meet-nod/
+- Documentation: https://nod.n8n.io/docs/
+- Reported licence: Apache-2.0; pin and inspect exact source and third-party components before reuse.
+- Relevant ideas: isolated browser/workspace, user approval for consequential actions, credential isolation, action audit, budgets and scheduled work.
+- AEGIS decision: high-priority architecture reference, not a direct runtime dependency. Build a provider-neutral computer-use capability with a separately isolated worker, Sentinel mediation, scoped vault references, explicit approvals, redacted audit, time/cost limits and durable server-side jobs.
+- Platform caveat: a desktop-hosted agent does not itself deliver Chromebook/iOS-native operation or always-on execution when its host sleeps. AEGIS's browser-first control plane and server-side job runtime remain canonical.
+- Security boundary: never expose unrestricted browser, shell, filesystem or host-control tools to an agent. Retrieved page content and browser output are untrusted data, not instructions.
+
+### Native implementation status
+
+- PR #27: https://github.com/LAURENCE1977/Aegis-/pull/27 — open, draft, unmerged; stacked on PR #26.
+- AEGIS-native memory validation, D1 repository, authenticated APIs, owner review queue, append-only D1 lifecycle audit triggers, history endpoint, chat retrieval and mobile review UI are implemented on `feature/native-memory-substrate`.
+- Canonical ordered shared D1 migrations: `migrations/shared/0001_project_spaces.sql`, `0002_memories.sql`, `0003_memory_lifecycle_audit.sql`. Do not independently apply nested workspace/memory feature-source copies to the same database.
+- Chat retrieves only accepted, unexpired, non-restricted personal memories; owner/project scope is applied in SQL. Retrieved memory is bounded JSON reference data, never tool instructions.
+- Latest fully verified test run at commit `b02f4f5fa3d8841c6eee58246e7bdcbf35e6fe7b`: **194 passed, 0 failed**. Later frontend smoke-test and documentation commits require another CI run.
+- Cloudflare Pages preview build succeeded for the earlier verified memory UI commit. Production is unchanged.
+- D1 has not been provisioned or bound, migrations have not been applied to the user's Cloudflare account, and no memory data has been persisted in production.
+- No external source package, daemon, model, browser agent, account or credential has been installed or connected.
+
+
+## Agent UI, streaming and human-in-the-loop
+
+### CopilotKit and AG-UI
+
+- Source: https://github.com/CopilotKit/CopilotKit
+- Official site/docs: https://copilotkit.org/ and https://docs.copilotkit.ai/
+- Protocol: https://github.com/ag-ui-protocol/ag-ui
+- Reported licence: MIT for the CopilotKit repository; inspect pinned packages and dependencies before reuse.
+- Relevant ideas: chat UI, streaming agent progress, frontend tools, shared agent/application state, generative UI, human-in-the-loop pauses and an event-based Agent–User Interaction protocol.
+- AEGIS decision: high-priority architecture reference. Build a small native AG-UI-compatible transport and event adapter so the current PWA, future React/mobile clients and other agent surfaces share one backend contract. Keep AEGIS's own provider, memory, job, capability, Sentinel, approval, vault and audit systems authoritative.
+- Stack fit: CopilotKit's TypeScript runtime documents Cloudflare Workers support, but the current AEGIS frontend is static HTML/CSS/JS with no React build system or package manifest on this feature branch. Do not migrate to React or add packages just to adopt the UI. Prove a minimal native protocol endpoint first; compare a thin CopilotKit client later.
+- Security: AG-UI events and frontend tool calls are not permissions. Authenticate streams; bind run IDs to the owner; redact secrets; persist canonical job state; route every proposed action through Sentinel; bind approvals to exact action and payload digest; render only registered UI components; reject arbitrary generated HTML/JS and untrusted tool instructions.
+- AEGIS-native AG-UI 1.0 text-run primitives and authenticated `POST /api/ag-ui` are implemented; the mobile PWA chat now uses this transport. Only text chat lifecycle is supported; frontend tools/context/resume/multimodal payloads fail closed.
+- Latest head `d7a1b28582e4c174e61aeb4011498237ffa29a22` passed GitHub Actions run 43743175694: 212 passed, 0 failed.
+- No CopilotKit package, React migration, service, account or upstream code has been installed or connected.
+- Detailed architecture and implementation boundary: [AEGIS CopilotKit and AG-UI boundary](AEGIS_COPILOTKIT_AGUI.md).
