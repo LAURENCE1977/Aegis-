@@ -126,7 +126,7 @@ POST /v1/agent-runs/<uuid>/cancel
 Authorization: Bearer <token>
 ```
 
-Cancellation is idempotent. The API returns the run with status `cancelled`; a worker or queue delivery that races with cancellation cannot persist a plan or schedule a retry. Failed runs return `409` because they are already terminal.
+Cancellation is idempotent. The API returns the run with status `cancelled` and its durable step records. In the same D1 batch it fences the run, marks all non-terminal step records `cancelled`, and appends one deterministic cancellation event per step. A worker or queue delivery that races with cancellation cannot persist a plan or schedule a retry. Failed runs return `409` because they are already terminal.
 
 ### Request and decide future execution approval
 
