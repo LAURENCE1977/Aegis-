@@ -119,6 +119,9 @@ export async function onRequestPost(context) {
       fetchImpl,
       promptMessages,
       allowedToolNames: tools.map(tool => tool.function.name),
+      // AG-UI IDs are correlation context only; Sentinel grants remain authoritative.
+      taskId: input.runId,
+      sessionId: input.threadId,
     } : null,
   });
 }
