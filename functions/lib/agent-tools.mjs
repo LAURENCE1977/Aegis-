@@ -3,6 +3,7 @@ import { parseGitHubRepositoryUrl } from './github-discovery.mjs';
 import { createBuiltinAdapterRegistry } from './sentinel-adapters.mjs';
 import { createSentinelDependencies } from './sentinel-composition.mjs';
 import { runSentinelInvocation } from './sentinel.mjs';
+import { digestCanonicalInput } from './canonical-input.mjs';
 
 const QWEN_TOOL_MODEL = 'qwen3.8-flash';
 const QWEN_REGIONS = new Set([
@@ -92,7 +93,7 @@ function parseArguments(name, argumentsText) {
       return {
         capabilityId: 'aegis-github-public-discovery',
         actionId: 'discover',
-        resourceId: 'github:public:' + repository.owner + '/' + repository.repository,
+        resourceId: 'github:repo:' + repository.owner + '/' + repository.repository,
         input: { sourceUrl: repository.canonicalUrl },
       };
     } catch {
@@ -102,11 +103,6 @@ function parseArguments(name, argumentsText) {
   return undefined;
 }
 
-async function digestInput(input) {
-  const bytes = new TextEncoder().encode(JSON.stringify(input));
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-  return 'sha256:' + [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
 
 /**
  * Executes only server-defined tool names through Sentinel. The model never
@@ -138,7 +134,7 @@ export async function executeAgentToolCall({
       manifest,
       actionId: parsed.actionId,
       resourceId: parsed.resourceId,
-      inputDigest: await digestInput(parsed.input),
+      inputDigest: await digestCanonicalInput(parsed.input),
       input: parsed.input,
       now,
     }, createSentinelDependencies({
