@@ -386,3 +386,8 @@ The runtime Worker can persist bounded agent-run objectives, queue them through 
 A server-side `createSentinelDependencies` factory composes the persistent D1 grant, connection, approval, atomic-consumption and append-only audit stores with a fixed adapter allowlist. Adapter registration is pinned to exact approved capability/action pairs from the canonical registry. Dispatch never derives a network destination from manifest metadata, request fields or agent-provided names. The adapter receives a minimal frozen context without vault references or arbitrary endpoints. The first built-in adapter is a local read-only module catalogue that accepts no input and performs no network, filesystem, process or secret access.
 
 The composition root verifies the canonical SHA-256 digest against the exact input again before dispatch and passes a canonical, deeply frozen payload to the adapter. It is still a library-only composition; no public route, production D1 database, migration application or Worker deployment is enabled. Arbitrary HTTP, MCP, browser, shell, write and delete adapters remain disabled.
+
+
+## Forge repository inspection
+
+AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
