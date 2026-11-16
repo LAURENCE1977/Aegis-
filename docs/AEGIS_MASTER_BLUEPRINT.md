@@ -143,7 +143,7 @@ Forge documentation says:
 - The Pages project configuration did not list an `AEGIS_MCP_TOKEN` encrypted secret when checked; therefore the Bridge endpoint remains fail-closed until that secret is configured. Do not expose or request its value.
 
 ### AEGIS Runtime implementation snapshot — 15 November 2026
-- PR #4: https://github.com/LAURENCE1977/Aegis-/pull/4 — open, not merged.
+- PR #4: https://github.com/LAURENCE1977/Aegis-/pull/4 — **closed and merged on 16 November 2026**. Merge commit: `33820ca985b97be6152575ed6b267d0b5f8155e6`.
 - Branch: `feature/aegis-durable-job-runtime`; latest source head at the time of this update must be re-verified live.
 - Added a separate Cloudflare Worker runtime under `workers/runtime/`, D1 schema under `migrations/runtime/0001_jobs.sql`, and deployment template `workers/runtime/wrangler.toml.example`.
 - Authenticated API: `POST /v1/jobs`, `GET /v1/jobs/:id`, `GET /health`; interim bearer token `AEGIS_JOB_TOKEN`, no permissive CORS, same-origin enforcement when Origin is present, 8 KiB request limit.
@@ -153,6 +153,12 @@ Forge documentation says:
 - Runtime source is not deployed. Cloudflare account inspection found no D1 databases or Queues and only two unrelated Worker scripts (`artist-hub-preview-20261113`, `project-andromeda`). Do not confuse them with AEGIS.
 - PR #4 does not change the live Pages project. Resource provisioning and Worker deployment remain separate and require a cost/limit check plus appropriate authorisation.
 - See `docs/AEGIS_RUNTIME.md` for API, data model, deployment preparation and limitations.
+
+### AEGIS dead-letter recovery — PR #8
+- PR #8: https://github.com/LAURENCE1977/Aegis-/pull/8 — open draft, based on the former PR #4 feature branch; it has not been merged.
+- Adds a dedicated `aegis-jobs-dlq` consumer, conditional terminal failure for exhausted deliveries, idempotent audit events, and protection for active leases and terminal jobs.
+- The latest checked head `2e590313628f26c8a31646e608ff515f13b53cee` has one successful Node.js test run (`43728470853`, 87 passed) and one duplicate run cancelled; Cloudflare Pages preview succeeded. This is test/preview evidence only, not live Queue/D1 verification.
+- Because PR #4 is now merged, retarget/reconcile PR #8 with `main` before merging; inspect the resulting diff and rerun checks.
 
 ### Important branches and prior refs
 - `feature/aegis-security-forge-foundation` was the PR #1 head.
@@ -184,7 +190,7 @@ PR #4 contains the first isolated Worker source slice:
 5. Attempt fencing and optional idempotency key. Attempt IDs are captured atomically with `UPDATE ... RETURNING attempts`, preventing a stale worker from adopting a newer attempt after lease recovery.
 6. Strict allowlist containing only a no-argument health-check task.
 
-PR #4 is open and mergeable (not merged). Latest implementation commit: `97a8e4ae2403024ef88c6d17eb7049bc863cd2b0`. Latest CI run `43725405757`: **83 tests passed, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The active Pages preview is `https://ce0d2a88.aegis-6yk.pages.dev`; it does not deploy the Worker. Production Pages remains unchanged.
+PR #4 is merged into `main` at `33820ca985b97be6152575ed6b267d0b5f8155e6`. Its final Node.js CI run `43725405757` passed **83 tests, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The Cloudflare Pages preview did not deploy the separate runtime Worker; no production Worker deployment is implied by this merge.
 
 Still missing:
 - Cloudflare D1/Queue resource provisioning and deployment.
@@ -214,7 +220,7 @@ These are research-only candidates. None is connected, installed or granted perm
 ## 10. Implementation sequence
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
-2. Keep PR #4 reviewed and green; merge only with the user's appropriate production approval.
+2. Review and integrate PR #8 dead-letter recovery against the now-merged runtime, then review PR #13 capability registry. Preserve the distinction between source merge, resource provisioning and live Worker deployment.
 3. Validate runtime code against a real local D1/Queue emulator or disposable test resources; add recovery, retry, concurrency and failure-path tests.
 4. Provision one D1 database, one Queue and a separate Worker only after confirming account free-tier headroom and no billing change.
 5. Deploy the Worker with an encrypted `AEGIS_JOB_TOKEN`; verify health, submit, status, completion, idempotency, Cron recovery and DLQ behavior.
