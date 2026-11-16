@@ -37,7 +37,7 @@ This is not yet wired to a public route or a deployed Worker. The current capabi
 
 ## Required next steps before enabling execution
 
-1. Validate migrations 0001–0005 in an isolated, disposable D1 database and add migration/integration coverage.
+1. Validate migrations 0001–0006 in an isolated, disposable D1 database and add migration/integration coverage.
 2. Add owner-authenticated grant and connection lifecycle operations. Browser input must never supply the owner identity, scopes beyond an approved allowlist, vault references or secret values.
 3. Implement one narrowly scoped, read-only first-party adapter with bounded input/output and fixed host allowlisting.
 4. Add outbound network controls: no redirects to unapproved hosts, private/link-local/loopback addresses or DNS rebinding; enforce request size, timeout, rate and response-size limits.
@@ -52,3 +52,8 @@ Write, delete, arbitrary shell, arbitrary HTTP, arbitrary MCP, browser automatio
 `aegis-github-public-discovery:discover` is implemented in the fixed adapter registry but is not exposed by the owner invocation route. It accepts exactly one canonical `https://github.com/{owner}/{repository}` source URL, then calls only `https://api.github.com`. Redirects are rejected, timeouts are bounded to five seconds and response bodies are capped at 64 KiB while streaming. It returns public repository metadata only; it does not read source files, access private repositories, install packages or execute code.
 
 Do not expose this action until an atomic per-principal/action rate limiter and exact-resource grant validation for `github:repo:{owner}/{repository}` are implemented and tested. No public route currently selects this adapter.
+
+
+## Atomic invocation rate limits
+
+`reserveCapabilityInvocation` is now a mandatory Sentinel dependency. It reserves one request in a D1 UTC-minute bucket keyed by principal, capability and action using a conditional UPSERT; concurrent Workers cannot claim the final slot through a read-then-write race. The limit comes from the trusted manifest's `requestsPerMinute`. A full bucket is denied with `RATE_LIMITED` (HTTP 429); D1 failure is denied with `RATE_LIMIT_STORE_UNAVAILABLE` (HTTP 503). Reservation occurs after policy checks and before pre-execution audit, approval consumption or adapter dispatch. Failed reservation never calls the adapter. Old buckets are pruned after 24 hours.
