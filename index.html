@@ -223,7 +223,7 @@
         <pre id="composioOutput" class="forge-preview" hidden></pre>
         <div id="agentRunSection">
           <h3>Agent workforce · plan-only</h3>
-          <p class="memory-help">Create and inspect durable specialist plans. This stage does not execute specialist work, call models or invoke tools. You can request owner approval for a completed plan; approval records a decision only. Specialist execution remains disabled until the separate Sentinel-mediated worker stage is implemented.</p>
+          <p class="memory-help">Create and inspect durable specialist plans. Before approval, prepare an exact execution grant for the selected run below. Owner approval and grant are separate controls; authorisation records permission only and does not execute specialists or tools.</p>
           <form class="memory-form" id="agentRunForm">
             <label for="agentRunObjective">Objective</label>
             <textarea id="agentRunObjective" rows="4" maxlength="2000" placeholder="Describe the work you want the AEGIS team to plan…" required></textarea>
@@ -245,7 +245,7 @@
           <div id="agentRunDetail" hidden>
             <h4>Selected run</h4>
             <p class="status" id="agentRunDetailStatus" role="status" aria-live="polite"></p>
-            <div class="input-area"><button id="agentRunRequestApprovalBtn" class="secondary" type="button" disabled>Request execution approval</button><button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button></div>
+            <div class="input-area"><button id="agentRunPrepareGrantBtn" class="secondary" type="button" disabled>Prepare exact execution grant</button><button id="agentRunRequestApprovalBtn" class="secondary" type="button" disabled>Request execution approval</button><button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button></div>
             <h4>Append-only event timeline</h4>
             <ul id="agentRunEvents" class="memory-history" aria-live="polite"></ul>
             <button id="agentRunLoadOlderEventsBtn" class="secondary" type="button" hidden disabled>Load older events</button>
@@ -343,6 +343,7 @@
     const agentRunEvents = document.getElementById('agentRunEvents');
     const agentRunCancelBtn = document.getElementById('agentRunCancelBtn');
     const agentRunRequestApprovalBtn = document.getElementById('agentRunRequestApprovalBtn');
+    const agentRunPrepareGrantBtn = document.getElementById('agentRunPrepareGrantBtn');
     const agentRunLoadOlderEventsBtn = document.getElementById('agentRunLoadOlderEventsBtn');
     const agentSpecialistInputs = [
       ['researcher', document.getElementById('agentSpecialistResearcher')],
@@ -907,6 +908,7 @@
       agentRunEvents.replaceChildren();
       agentRunCancelBtn.disabled = true;
       agentRunRequestApprovalBtn.disabled = true;
+      agentRunPrepareGrantBtn.disabled = true;
       try {
         const data = await controlApi('/api/agent-runs/' + encodeURIComponent(agentRunId));
         const run = data.run;
@@ -916,6 +918,7 @@
           (run.executionAuthorized ? ' · owner approval consumed; authorisation recorded' : '');
         agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
         agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
+        agentRunPrepareGrantBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
         await loadAgentRunEvents(agentRunId);
       } catch (error) {
         agentRunDetailStatus.textContent = error.message;
@@ -1003,6 +1006,15 @@
 
     agentRunForm.addEventListener('submit', submitAgentRun);
     agentRunRefreshBtn.addEventListener('click', loadAgentRuns);
+    agentRunPrepareGrantBtn.addEventListener('click', () => {
+      if (!isAgentRunId(selectedAgentRunId) || agentRunPrepareGrantBtn.disabled) return;
+      prepareExactComposioGrant(
+        'aegis-agent-run',
+        'approve-execution',
+        'agent-run:' + selectedAgentRunId,
+        'agent run execution',
+      );
+    });
     agentRunCancelBtn.addEventListener('click', cancelAgentRun);
     agentRunRequestApprovalBtn.addEventListener('click', async () => {
       if (!isAgentRunId(selectedAgentRunId) || agentRunRequestApprovalBtn.disabled) return;
