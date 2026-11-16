@@ -1,0 +1,241 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createConnection } from '../functions/lib/capability-connections.mjs';
+import { storeVaultSecret } from '../functions/lib/secret-vault.mjs';
+import { getCapabilityManifest, validateCapabilityManifest } from '../functions/lib/capability-registry.mjs';
+import { createComposioAdapterRegistry } from '../functions/lib/composio-adapters.mjs';
+
+class MemoryD1 {
+  constructor() {
+    this.connections = new Map();
+    this.secrets = new Map();
+  }
+
+  prepare(sql) {
+    const db = this;
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        const v = this.values;
+        if (sql.includes('INSERT INTO capability_secrets')) {
+          const [id, principal, provider, keyVersion, iv, ciphertext, createdAt] = v;
+          db.secrets.set(id, {
+            secret_id: id, principal_id: principal, provider_id: provider,
+            key_version: keyVersion, iv_b64: iv, ciphertext_b64: ciphertext,
+            created_at: createdAt, updated_at: createdAt, status: 'active', revoked_at: null,
+          });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('UPDATE capability_connections') && sql.includes('expires_at <= ?')) {
+          return { meta: { changes: 0 } };
+        }
+        if (sql.includes('INSERT INTO capability_connections')) {
+          const [id, principal, provider, secretRef, scopes, createdBy, createdAt, expiresAt] = v;
+          db.connections.set(id, {
+            id, principal_id: principal, provider_id: provider, secret_ref: secretRef,
+            scopes_json: scopes, created_by: createdBy, created_at: createdAt,
+            expires_at: expiresAt, status: 'active', revoked_at: null,
+          });
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 0 } };
+      },
+      async first() {
+        const v = this.values;
+        if (sql.includes('SELECT * FROM capability_connections')) {
+          if (sql.includes('WHERE id = ?')) {
+            const row = db.connections.get(v[0]);
+            return row ? { ...row } : null;
+          }
+          const [principal, provider, now] = v;
+          const row = [...db.connections.values()].find((item) =>
+            item.principal_id === principal && item.provider_id === provider &&
+            item.status === 'active' && item.revoked_at === null &&
+            (!item.expires_at || item.expires_at > now));
+          return row ? { ...row } : null;
+        }
+        if (sql.includes('SELECT * FROM capability_secrets')) {
+          const [id, principal, provider] = v;
+          const row = db.secrets.get(id);
+          return row && row.principal_id === principal && row.provider_id === provider
+            ? { ...row } : null;
+        }
+        return null;
+      },
+    };
+  }
+}
+
+const rawKey = crypto.getRandomValues(new Uint8Array(32));
+const keyB64 = btoa(String.fromCharCode(...rawKey));
+const vaultEnv = {
+  AEGIS_VAULT_KEYRING: JSON.stringify({ v1: keyB64 }),
+  AEGIS_VAULT_ACTIVE_KEY_VERSION: 'v1',
+  COMPOSIO_API_KEY: 'server-side-test-key',
+};
+const sessionId = 'trs_1a2b3c4d5e6f';
+const connectedAccountId = 'ca_abc123xyz';
+
+async function connectedDb() {
+  const db = new MemoryD1();
+  const stored = await storeVaultSecret(db, {
+    principalId: 'owner',
+    providerId: 'composio',
+    secret: JSON.stringify({ sessionId, connectedAccountId }),
+  }, vaultEnv);
+  await createConnection(db, {
+    principalId: 'owner',
+    providerId: 'composio',
+    secretRef: stored.secretRef,
+    scopes: ['composio:github:repository:read'],
+    createdBy: 'owner',
+  });
+  return db;
+}
+
+function repositoryData() {
+  return {
+    id: 123,
+    name: 'Hello-World',
+    full_name: 'octocat/Hello-World',
+    html_url: 'https://github.com/octocat/Hello-World',
+    description: 'Example repository',
+    private: false,
+    archived: false,
+    fork: false,
+    default_branch: 'main',
+    stargazers_count: 12,
+    language: 'TypeScript',
+    license: { name: 'MIT License', spdx_id: 'MIT' },
+    ignored_secret: 'must-not-escape',
+  };
+}
+
+test('registers an approved confidential read-only Composio GitHub capability', () => {
+  const manifest = getCapabilityManifest('aegis-composio-github-readonly');
+  assert.ok(manifest);
+  assert.equal(validateCapabilityManifest(manifest), true);
+  assert.equal(manifest.provider.id, 'composio');
+  assert.equal(manifest.auth.mode, 'secret-reference');
+  assert.equal(manifest.actions[0].effect, 'read');
+  assert.equal(manifest.actions[0].approval, 'none');
+  assert.deepEqual(manifest.network.egressHosts, ['backend.composio.dev']);
+});
+
+test('loads the exact owner connection and vault session only after the Sentinel adapter is called', async () => {
+  const db = await connectedDb();
+  const calls = [];
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith('/tools?limit=100')) {
+        return new Response(JSON.stringify({
+          items: [{ slug: 'GITHUB_GET_A_REPOSITORY' }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        data: repositoryData(),
+        error: null,
+        log_id: 'log_123',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+
+  const output = await adapters['aegis-composio-github-readonly:get-repository'](
+    { owner: 'octocat', repo: 'Hello-World' },
+    {
+      principalId: 'owner',
+      connectionId: [...db.connections.keys()][0],
+      resourceId: 'github:repository:octocat/Hello-World',
+    },
+  );
+
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.url.startsWith('https://backend.composio.dev/')));
+  assert.equal(calls[1].options.headers['x-api-key'], vaultEnv.COMPOSIO_API_KEY);
+  assert.deepEqual(JSON.parse(calls[1].options.body), {
+    tool_slug: 'GITHUB_GET_A_REPOSITORY',
+    arguments: { owner: 'octocat', repo: 'Hello-World' },
+    account: connectedAccountId,
+  });
+  assert.deepEqual(output, {
+    repository: {
+      id: 123,
+      name: 'Hello-World',
+      fullName: 'octocat/Hello-World',
+      url: 'https://github.com/octocat/Hello-World',
+      description: 'Example repository',
+      private: false,
+      archived: false,
+      fork: false,
+      defaultBranch: 'main',
+      stars: 12,
+      language: 'TypeScript',
+      licence: { name: 'MIT License', spdxId: 'MIT' },
+    },
+    provider: 'composio',
+    logId: 'log_123',
+  });
+  assert.equal(JSON.stringify(output).includes('must-not-escape'), false);
+});
+
+test('rejects a mismatched connection ID and an ungranted resource before any provider request', async () => {
+  const db = await connectedDb();
+  let calls = 0;
+  const adapters = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async () => { calls += 1; throw new Error('must not fetch'); },
+  });
+  const handler = adapters['aegis-composio-github-readonly:get-repository'];
+  await assert.rejects(handler(
+    { owner: 'octocat', repo: 'Hello-World' },
+    { principalId: 'owner', connectionId: 'another-connection', resourceId: 'github:repository:octocat/Hello-World' },
+  ), /connection/i);
+  await assert.rejects(handler(
+    { owner: 'octocat', repo: 'Hello-World' },
+    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Other-Repo' },
+  ), /resource/i);
+  assert.equal(calls, 0);
+});
+
+test('rejects unexpected tool exposure, extra input fields and missing server secrets', async () => {
+  const db = await connectedDb();
+  const tools = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async () => new Response(JSON.stringify({
+      items: [
+        { slug: 'GITHUB_GET_A_REPOSITORY' },
+        { slug: 'GITHUB_CREATE_AN_ISSUE' },
+      ],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+  });
+  await assert.rejects(tools['aegis-composio-github-readonly:get-repository'](
+    { owner: 'octocat', repo: 'Hello-World' },
+    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
+  ), /tool allowlist/i);
+
+  const extras = createComposioAdapterRegistry({
+    db,
+    env: vaultEnv,
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  });
+  await assert.rejects(extras['aegis-composio-github-readonly:get-repository'](
+    { owner: 'octocat', repo: 'Hello-World', command: 'delete' },
+    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
+  ), /input/i);
+
+  const noSecret = createComposioAdapterRegistry({
+    db,
+    env: { ...vaultEnv, COMPOSIO_API_KEY: '' },
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  });
+  await assert.rejects(noSecret['aegis-composio-github-readonly:get-repository'](
+    { owner: 'octocat', repo: 'Hello-World' },
+    { principalId: 'owner', connectionId: [...db.connections.keys()][0], resourceId: 'github:repository:octocat/Hello-World' },
+  ), /API key/i);
+});
