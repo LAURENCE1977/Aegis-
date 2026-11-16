@@ -170,3 +170,8 @@ The native stack now has source-level modules for exact-resource capability gran
 ## Forge repository inspection
 
 AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
+
+
+## Candidate admission controls
+
+Save inspected repositories as pinned candidates, not approved dependencies. Record the exact tree SHA, provenance, licence identifier and evidence. Treat SPDX metadata as a lead only; the owner must inspect the actual licence and attest with an HTTPS evidence URL and review note before reuse/adapt/combine or approval. Never install or execute a candidate during discovery/review.
