@@ -18,7 +18,7 @@ import { createComposioClient } from '../../lib/composio-client.mjs';
 
 const OWNER_ID = 'owner';
 const PROVIDER_ID = 'composio';
-const CONNECTION_SCOPE = 'composio:github:repository:read';
+const CONNECTION_SCOPE = 'composio:github-repository:read';
 
 function exactKeys(value, keys) {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
