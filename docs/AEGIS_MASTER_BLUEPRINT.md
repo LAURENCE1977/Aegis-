@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 15 November 2026.  
+**Canonical project record.** Last refreshed: 16 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -431,3 +431,36 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Composio GitHub integration — feature branch verification (16 November 2026)
+
+**Status: implemented on a draft feature PR; not merged and not production-live.**
+
+- Canonical branch: `feature/composio-audit-lineage-verified`
+- Current commit: `cc809d84c73107bb74617fb4c8c830d8a9cbfa25`
+- Canonical review PR: https://github.com/LAURENCE1977/Aegis-/pull/101
+- PR #100 is the superseded earlier Composio copy; do not merge both.
+- Composio remains a replaceable connector. AEGIS owns principal identity, capability manifests, grants, Sentinel policy, encrypted secret references, invocation audit and revocation.
+
+### Implemented boundary
+
+- Owner-only `POST /api/connections/composio` starts a Composio Sessions API session with exactly the GitHub toolkit and the fixed `GITHUB_GET_A_REPOSITORY` tool, then creates a GitHub OAuth link. `GET` reports connection status; `DELETE` revokes the AEGIS connection, vault reference and Composio session. The GitHub OAuth grant may still need separate disconnection at Composio.
+- Session and connected-account references are stored through the AEGIS encrypted Vault. The Composio API key is resolved only from a server-side runtime secret. No provider token, API key, session ID or vault reference is returned to the browser or agent.
+- Owner-authenticated `POST /api/sentinel/composio-github-repository` accepts exactly `{ owner, repo }`. The server derives the resource `github:repository:<owner>/<repo>` and routes the fixed read-only `get-repository` capability through Sentinel. Callers cannot select tool slugs, accounts, URLs, adapters or arbitrary actions.
+- The adapter verifies the exact active Composio connection, exact-resource grant, session toolkit status and one-tool session allowlist before invoking the provider. Response fields are validated and bounded. It reads repository metadata only; it does not read source files, execute code or modify repositories.
+- Migration `0007_audit_execution_context.sql` preserves task, session, parent-session, worker and adapter receipt lineage in append-only invocation audit.
+- Regression coverage: `tests/composio-client.test.mjs` and `tests/composio-sentinel-adapter.test.mjs`.
+
+### Verification evidence
+
+- Node.js test suite and isolated local D1 migration verification passed on the current commit (GitHub Actions run: https://github.com/LAURENCE1977/Aegis-/actions/runs/43845542328).
+- Cloudflare Pages push preview deployed successfully for the current commit: https://f88e52c7.aegis-6yk.pages.dev
+- Workflow actions now use `actions/checkout@v7` and `actions/setup-node@v7`; the Node.js 20 deprecation warning is gone. One non-failing notice remains about the future `ubuntu-latest` image migration.
+- A browser smoke check of the preceding preview loaded the login page with HTTP 200 and no console exceptions. It displayed that `AEGIS_PASSWORD` and `AEGIS_SESSION_SECRET` are not configured. The latest preview has not yet had a separate browser smoke check.
+
+### Remaining activation gates
+
+The live Composio OAuth flow has **not** been exercised from the AEGIS preview. Before that can happen, the Cloudflare preview needs the owner authentication secrets, D1 binding and migrations, `COMPOSIO_API_KEY`, `AEGIS_VAULT_KEYRING` and `AEGIS_VAULT_ACTIVE_KEY_VERSION` configured as server-side secrets/bindings. Then the owner can connect GitHub in AEGIS and create the exact `github:repository:read` grant. Never paste these secrets into chat or commit them.
+
+The next safe milestone is to verify that full owner-controlled connection and read-only lookup flow in preview. Only after that should another Composio toolkit (for example Slack or Drive) be added as a separate fixed capability with its own scopes, tests and connection lifecycle. Do not expose arbitrary Composio tools or broad multi-tool sessions.
