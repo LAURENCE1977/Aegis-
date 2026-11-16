@@ -408,3 +408,48 @@ test('rejects invalid pull request identifiers before any network access', async
   }), /pull request/i);
   assert.equal(calls, 0);
 });
+
+
+test('executes only a bounded read-only workflow run listing for one repository and optional branch', async () => {
+  let captured;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async (url, options) => {
+      captured = { url: requestUrl(url), body: JSON.parse(options.body) };
+      return jsonResponse({
+        data: { total_count: 1, workflow_runs: [{ id: 123, name: 'AEGIS tests', status: 'completed', conclusion: 'success' }] },
+        error: null,
+        log_id: 'log_workflow_123',
+      });
+    },
+  });
+  const result = await client.executeGitHubListWorkflowRuns({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', branch: 'feature/composio-audit-lineage-verified',
+    connectedAccountId: 'ca_abc123xyz',
+  });
+  assert.deepEqual(result, {
+    data: { total_count: 1, workflow_runs: [{ id: 123, name: 'AEGIS tests', status: 'completed', conclusion: 'success' }] },
+    logId: 'log_workflow_123',
+  });
+  assert.equal(captured.url, `https://backend.composio.dev/api/v3.1/tool_router/session/${sessionId}/execute`);
+  assert.deepEqual(captured.body, {
+    tool_slug: 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY',
+    arguments: {
+      owner: 'LAURENCE1977', repo: 'Aegis-', branch: 'feature/composio-audit-lineage-verified',
+      page: 1, per_page: 10,
+    },
+    account: 'ca_abc123xyz',
+  });
+});
+
+test('rejects invalid workflow branch filters before any provider request', async () => {
+  let calls = 0;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async () => { calls += 1; return jsonResponse({ data: {} }); },
+  });
+  await assert.rejects(client.executeGitHubListWorkflowRuns({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', branch: '../main',
+  }), /branch/i);
+  assert.equal(calls, 0);
+});
