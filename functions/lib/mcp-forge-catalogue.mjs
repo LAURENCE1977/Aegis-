@@ -27,7 +27,7 @@ function requireHttpsUrl(value, label) {
   try { url = new URL(value); } catch { throw new TypeError('Invalid MCP server ' + label); }
   const hostname = url.hostname.toLowerCase();
   const ipLiteral = hostname.startsWith('[') && hostname.endsWith(']') ||
-    /^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$/.test(hostname);
+    /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
   const localHostname = hostname === 'localhost' ||
     ['.localhost', '.local', '.internal', '.lan', '.home.arpa'].some(suffix => hostname.endsWith(suffix));
   if (url.protocol !== 'https:' || !hostname || url.username || url.password ||
