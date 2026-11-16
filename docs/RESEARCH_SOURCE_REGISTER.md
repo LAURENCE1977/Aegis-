@@ -577,3 +577,8 @@ AEGIS implements a native owner-scoped Project Spaces layer with append-only typ
 ## MCP Forge implementation decision
 
 Build an AEGIS-owned metadata catalogue rather than importing a third-party MCP marketplace or executing directory entries directly. Each server remains an untrusted candidate until source provenance, exact licence, maintenance, dependencies, transport, auth, egress, action effects and approval requirements are reviewed. The initial catalogue is metadata-only and has no connect/install/execute surface. No external MCP server has been installed or connected by this implementation.
+
+
+## Free-Tier Ledger evidence rule
+
+The AEGIS Free-Tier Ledger distinguishes research candidates from verified offers. Candidate records are not current capacity; verification must be recent and supported by official provider pricing and terms. The ledger does not authorize account creation, provisioning, paid overage or provider credential storage.
