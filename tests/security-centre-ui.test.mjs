@@ -45,9 +45,9 @@ test('Composio read-only controls expose exact PR, workflow-run and workflow-job
     'composioWorkflowBranch', 'composioPrepareWorkflowGrantBtn', 'composioReadWorkflowRunsBtn',
     'composioWorkflowRunId', 'composioPrepareWorkflowJobsGrantBtn', 'composioReadWorkflowJobsBtn',
   ]) assert.match(html, new RegExp('id="' + id + '"'));
-  assert.match(html, /invokeComposioRead\('\/api\/sentinel\/composio-github-pull-request'/);
-  assert.match(html, /invokeComposioRead\('\/api\/sentinel\/composio-github-workflows'/);
-  assert.match(html, /invokeComposioRead\('\/api\/sentinel\/composio-github-workflow-jobs'/);
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-pull-request'/);
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-workflows'/);
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-workflow-jobs'/);
   assert.match(html, /github:pull-request:/);
   assert.match(html, /github:workflow-run:/);
   assert.match(html, /github:repository:/);
