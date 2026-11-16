@@ -523,3 +523,11 @@ Project metadata marks the package **Alpha**, supports Python `>=3.10,<3.14`, an
 - [ ] Sentinel-gated adapter contract and tests before any AEGIS connection is enabled.
 
 The current user devices (Chromebook, iPad and iPhone) should continue using the mobile-first AEGIS web client. Local inference should be hosted on a separately capable machine or optional service; do not assume the Chromebook can run large models locally. Local model weights reduce dependence on paid inference APIs but do not make compute, electricity, storage or hardware free.
+
+## Live pull-request reconciliation — 16 November 2026, 11:20 UTC
+
+**Canonical integration candidate: PR #101** — branch `feature/composio-audit-lineage-verified`, head `00a4683b50894e8b7ac5d0f6696887fde4f1d07c`. This branch contains the Composio read-only GitHub adapter, Sentinel audit lineage, the repository reverse-engineering policy and the focused OpenJarvis assessment. Its latest observed AEGIS tests workflow completed successfully. PR #101 remains a draft and is not merged.
+
+PR #102 (`feature/sentinel-lineage-verified`, head `1d88987fb3e8ea4d5f593c2481c0a0525debf8f6`) is a divergent duplicate of the same Composio/Sentinel implementation. GitHub compare reports the #102 head is one commit ahead and five commits behind #101; its unique change is a 16-line blueprint handover correction, not a separate feature implementation. Do not merge both PRs. Keep #101 as the sole integration candidate and close #102 as superseded after this reconciliation. The #102 workflow was still running at the time of this note; its result does not supersede the successful #101 run.
+
+No PR has been merged, no production deployment or secrets have been changed, and live Composio OAuth/provider calls remain unverified. Re-check the canonical PR head and CI immediately before any future merge.
