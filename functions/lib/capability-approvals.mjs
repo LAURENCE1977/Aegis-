@@ -181,6 +181,23 @@ export async function decideApprovalRequest(db, {
  * Atomically consumes an approved decision for one exact operation.
  * A concurrent caller or replay receives null; no read-then-write window exists.
  */
+
+export async function loadApprovedApprovalById(db, id, {
+  principalId, capabilityId, now = Date.now(),
+} = {}) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Approval database is required');
+  requiredId(id, 'request identifier');
+  requiredId(principalId, 'principal');
+  requiredId(capabilityId, 'capability identifier');
+  if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
+  const row = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE id = ? AND principal_id = ? AND capability_id = ?
+      AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+  `).bind(id, principalId, capabilityId, new Date(now).toISOString()).first();
+  return mapApproval(row);
+}
+
 export async function consumeApproval(db, {
   id, principalId, capabilityId, capabilityVersion, actionId,
   resourceId, operationSummary, connectionId = null, inputDigest, now = Date.now(),
