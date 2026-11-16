@@ -29,7 +29,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Run Node.js test suite
+      - name: Install pinned Miniflare runtime emulator
+        run: npm install --no-save --no-package-lock miniflare@4.20260730.0
+      - name: Run Node.js and Cloudflare runtime integration tests
         run: node --test tests/*.test.mjs
       - name: Install Wrangler for local D1 verification
         run: npm install --global wrangler@4
