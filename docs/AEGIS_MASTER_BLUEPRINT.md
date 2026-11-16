@@ -364,3 +364,8 @@ The Sentinel mediation primitive is being ported onto the clean Project Spaces b
 ## MCP Forge Catalogue — clean-main implementation slice
 
 The metadata-only MCP Forge catalogue is being integrated on a clean branch from current `main`. It validates bounded candidate records, pinned source revisions, licence-review metadata, transport/runtime/auth declarations, explicit egress hosts and per-action effect/risk/scope/approval policy. It exposes defensive-copy list/get/search operations only; it cannot connect, install, approve or execute a server. Source URLs reject IP literals and local/internal hostnames, and the module performs no remote fetch. The ingestion/admission pipeline, persistent storage, advisory scanning, sandbox conformance and Sentinel-connected execution remain separate milestones.
+
+
+## Free-Tier Ledger — verified-offer boundary
+
+The native Free-Tier Ledger validates provider allowance records against official pricing/terms URLs, explicit quota periods, card requirements, commercial-use status, overage behavior and verification timestamps. A record is considered current only when its status is `verified` and its verification age remains within the configured window; candidate and expired records are never treated as confirmed free capacity. The ledger is descriptive only: it does not create accounts, provision services, activate paid usage or store provider credentials.
