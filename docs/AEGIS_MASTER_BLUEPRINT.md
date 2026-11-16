@@ -379,3 +379,10 @@ The current-main capability stack adds exact-resource grants, principal/provider
 ## Durable specialist orchestration — plan-only foundation
 
 The runtime Worker can persist bounded agent-run objectives, queue them through the existing job Queue, and produce deterministic specialist plans with lease recovery and idempotency. This is not autonomous execution: no model, tool, browser, shell, MCP or external API is invoked. Agent orchestration is disabled unless `AGENT_RUNS_ENABLED=true`, and requires `migrations/runtime/0002_agent_runs.sql` before activation. The migration and Worker changes are source-only until explicitly deployed. See `docs/AEGIS_AGENT_ORCHESTRATION.md`.
+
+
+## Sentinel D1 composition — trusted adapter boundary
+
+A server-side `createSentinelDependencies` factory composes the persistent D1 grant, connection, approval, atomic-consumption and append-only audit stores with a fixed adapter allowlist. Adapter registration is pinned to exact approved capability/action pairs from the canonical registry. Dispatch never derives a network destination from manifest metadata, request fields or agent-provided names. The adapter receives a minimal frozen context without vault references or arbitrary endpoints. The first built-in adapter is a local read-only module catalogue that accepts no input and performs no network, filesystem, process or secret access.
+
+The composition root verifies the canonical SHA-256 digest against the exact input again before dispatch and passes a canonical, deeply frozen payload to the adapter. It is still a library-only composition; no public route, production D1 database, migration application or Worker deployment is enabled. Arbitrary HTTP, MCP, browser, shell, write and delete adapters remain disabled.
