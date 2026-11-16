@@ -218,6 +218,11 @@ test('supersedes accepted knowledge without deleting its history', async () => {
   assert.equal((await listForgeKnowledgeEvents(db, 'owner', draft.id)).length, 4);
 });
 
+test('returns no event history for a missing owner-scoped record', async () => {
+  const db = new KnowledgeD1();
+  assert.equal(await listForgeKnowledgeEvents(db, 'owner', 'knowledge-missing'), null);
+});
+
 test('rejects malformed knowledge sources and non-owner reads', async () => {
   const db = new KnowledgeD1();
   await assert.rejects(() => createForgeKnowledgeRecord(db, 'owner', {
