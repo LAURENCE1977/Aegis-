@@ -81,7 +81,7 @@ Adopt a progressive rendering strategy:
 - Treat Apple USDZ/RealityKit and other native spatial formats as platform-specific export/adaptation targets, not the canonical source of companion identity.
 - Separate rendering from inference: the avatar must remain responsive even when AI inference is remote or temporarily unavailable.
 
-Evaluate Three.js and Babylon.js as candidate open-source web renderers using a small device matrix and measured outcomes before choosing a long-term default. Evaluate native engines/frameworks only where they provide clear platform value and can preserve the shared asset and behaviour contracts.
+Shortlist **Babylon.js and Three.js** for a measured proof-of-concept rather than selecting an engine by popularity. Babylon.js is a particularly strong first candidate because its official specifications describe WebGL 2 and WebGPU support, native hosts and a broad scene/animation feature set; its repository is Apache-2.0. Three.js is also a serious candidate: its WebGPURenderer can fall back to WebGL 2, but its documentation currently describes that renderer as still experimental. Benchmark bundle size, mobile thermals, avatar rigging, facial animation, accessibility integration, WebXR, asset pipeline, native reuse and licence obligations on actual target devices before deciding. Evaluate native engines/frameworks only where they provide clear platform value and can preserve the shared asset and behaviour contracts.
 
 ## 6. Natural, lifelike interaction
 
@@ -220,6 +220,10 @@ This could make AEGIS feel like one companion that can move between a desk, pock
 ## 15. Research references
 
 - MDN, WebGPU API and feature detection: https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API
+- Babylon.js official engine specifications: https://www.babylonjs.com/specifications/
+- Babylon.js official WebGPU support and WebGL fallback: https://doc.babylonjs.com/setup/support/webGPU/
+- Babylon.js repository and Apache-2.0 licence: https://github.com/BabylonJS/Babylon.js
+- Three.js WebGPURenderer and WebGL 2 fallback: https://threejs.org/manual/pages/webgpurenderer
 - MDN, WebXR Device API and compatibility caveats: https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API
 - W3C, WebXR Device API specification: https://www.w3.org/TR/webxr/
 - web.dev, Progressive Web Apps and platform installability: https://web.dev/learn/pwa/progressive-web-apps/
