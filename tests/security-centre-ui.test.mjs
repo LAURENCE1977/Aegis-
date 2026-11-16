@@ -116,7 +116,7 @@ test('Agent Workforce can bind a run to an owner-selected Project Space memory c
   assert.match(html, /agentRunProjectSelect/);
   assert.match(html, /projectId:\s*agentRunProjectSelect\.value\s*\|\|\s*undefined/);
   assert.match(html, /for \(const select of \[chatProjectSelect, memoryProjectSelect, agentRunProjectSelect\]\)/);
-  assert.match(html, /server-derived Project Space context/i);
+  assert.match(html, /bounded brief made from accepted, non-restricted project memories/i);
 });
 
 test('Agent Workforce prepares a separate exact-resource grant before owner approval', () => {
