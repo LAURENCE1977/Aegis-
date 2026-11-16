@@ -204,10 +204,14 @@ export function createComposioClient({
       return slugs;
     },
 
-    async executeGitHubGetRepository({ sessionId, owner, repo } = {}) {
+    async executeGitHubGetRepository({ sessionId, owner, repo, connectedAccountId } = {}) {
       requireSessionId(sessionId);
       validateRepositoryPart(owner, 'owner', /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/);
       validateRepositoryPart(repo, 'repository name', /^[A-Za-z0-9_.-]{1,100}$/);
+      if (connectedAccountId !== undefined &&
+          (typeof connectedAccountId !== 'string' || !ACCOUNT_ID_PATTERN.test(connectedAccountId))) {
+        throw new TypeError('Invalid Composio connected-account ID');
+      }
       const result = await requestJson(
         '/api/v3.1/tool_router/session/' + encodeURIComponent(sessionId) + '/execute',
         {
@@ -215,6 +219,7 @@ export function createComposioClient({
           body: {
             tool_slug: TOOL_SLUG,
             arguments: { owner, repo },
+            ...(connectedAccountId === undefined ? {} : { account: connectedAccountId }),
           },
         },
       );
