@@ -82,3 +82,51 @@ test('GitHub adapter enforces a bounded response body', async () => {
     sourceUrl: 'https://github.com/Example/Repo',
   }, {}));
 });
+test('private GitHub metadata adapter uses only the vault credential and returns no secret', async () => {
+  const token = 'github_pat_' + 'a'.repeat(40);
+  let requestedUrl;
+  let requestedOptions;
+  const adapters = createBuiltinAdapterRegistry({
+    fetchImpl: async (url, options) => {
+      requestedUrl = url;
+      requestedOptions = options;
+      return new Response(JSON.stringify({
+        full_name: 'Example/PrivateRepo',
+        html_url: 'https://github.com/Example/PrivateRepo',
+        description: 'Private repository',
+        default_branch: 'main',
+        private: true,
+        archived: false,
+        fork: false,
+        pushed_at: '2026-11-01T00:00:00Z',
+        stargazers_count: 1,
+        language: 'TypeScript',
+        license: null,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+  const result = await adapters['aegis-github-private-metadata:discover']({
+    sourceUrl: 'https://github.com/Example/PrivateRepo',
+  }, { credential: token });
+  assert.equal(requestedUrl, 'https://api.github.com/repos/Example/PrivateRepo');
+  assert.equal(requestedOptions.headers.Authorization, 'Bearer ' + token);
+  assert.equal(requestedOptions.redirect, 'error');
+  assert.ok(requestedOptions.signal);
+  assert.equal(result.private, true);
+  assert.equal(result.fullName, 'Example/PrivateRepo');
+  assert.equal(JSON.stringify(result).includes(token), false);
+});
+
+test('private GitHub metadata adapter refuses missing or malformed vault credentials before fetch', async () => {
+  let calls = 0;
+  const adapters = createBuiltinAdapterRegistry({
+    fetchImpl: async () => { calls += 1; throw new Error('must not fetch'); },
+  });
+  await assert.rejects(() => adapters['aegis-github-private-metadata:discover']({
+    sourceUrl: 'https://github.com/Example/PrivateRepo',
+  }, {}), /authorized GitHub bearer credential/i);
+  await assert.rejects(() => adapters['aegis-github-private-metadata:discover']({
+    sourceUrl: 'https://github.com/Example/PrivateRepo',
+  }, { credential: 'not-a-token' }), /authorized GitHub bearer credential/i);
+  assert.equal(calls, 0);
+});
