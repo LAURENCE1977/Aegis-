@@ -4,7 +4,7 @@ import { createComposioClient } from './composio-client.mjs';
 
 const CAPABILITY_ID = 'aegis-composio-github-readonly';
 const ACTION_ID = 'get-repository';
-const CONNECTION_SCOPE = 'composio:github:repository:read';
+const CONNECTION_SCOPE = 'composio:github-repository:read';
 const GRANT_SCOPE = 'github:repository:read';
 const TOOL_SLUG = 'GITHUB_GET_A_REPOSITORY';
 
