@@ -43,8 +43,20 @@ class AgentMemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO agent_run_events')) {
+          if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], agent_run_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
+        }
+        if (sql.includes("SET status = 'failed'") && sql.includes('AGENT_DELIVERY_EXHAUSTED')) {
+          const row = db.runs.get(v[1]);
+          const now = v[2];
+          if (row && (['queued', 'pending_dispatch'].includes(row.status) ||
+              (row.status === 'running' && (!row.lease_until || row.lease_until <= now)))) {
+            row.status = 'failed'; row.error_code = 'AGENT_DELIVERY_EXHAUSTED';
+            row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
         }
         if (sql.includes("SET status = 'queued'")) {
           const row = db.runs.get(v[1]);
@@ -74,7 +86,7 @@ function makeEnv() {
   const sent = [];
   let failNextSend = false;
   const JOBS = { async send(message) { if (failNextSend) { failNextSend = false; throw new Error('queue unavailable'); } sent.push(message); } };
-  return { env: { AEGIS_JOB_TOKEN: token, DB, JOBS }, DB, sent, failSend() { failNextSend = true; } };
+  return { env: { AEGIS_JOB_TOKEN: token, AGENT_RUNS_ENABLED: 'true', DB, JOBS }, DB, sent, failSend() { failNextSend = true; } };
 }
 
 function postRun(body, headers = {}) {
@@ -124,7 +136,7 @@ test('queue consumer creates a plan-only result and never invokes tools', async 
   }), env);
   const { run } = await response.json();
   let acked = false;
-  await runtime.queue({ messages: [{ body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); } }] }, env);
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{ body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); } }] }, env);
   const saved = DB.runs.get(run.id);
   const plan = JSON.parse(saved.plan_json);
   assert.equal(saved.status, 'planned');
@@ -179,4 +191,30 @@ test('accepts JSON requests with a charset parameter and exposes the run status 
   ), env);
   assert.equal(status.status, 200);
   assert.equal((await status.json()).run.id, run.id);
+});
+
+test('agent dead-letter marks exhausted runs failed and audits redelivery idempotently', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({ objective: 'Test agent dead-letter' }), env);
+  const { run } = await response.json();
+  const message = { body: { agentRunId: run.id }, ack() {}, retry() { assert.fail('dead-letter must be acknowledged'); } };
+  await runtime.queue({ queue: 'aegis-jobs-dlq', messages: [message] }, env);
+  await runtime.queue({ queue: 'aegis-jobs-dlq', messages: [message] }, env);
+  assert.equal(DB.runs.get(run.id).status, 'failed');
+  assert.equal(DB.runs.get(run.id).error_code, 'AGENT_DELIVERY_EXHAUSTED');
+  assert.equal(DB.events.filter(event => event.event_type === 'delivery_exhausted').length, 1);
+});
+
+test('agent dead-letter cannot overwrite a completed plan', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({ objective: 'Protect completed plan' }), env);
+  const { run } = await response.json();
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{
+    body: { agentRunId: run.id }, ack() {}, retry() { assert.fail('unexpected retry'); },
+  }] }, env);
+  await runtime.queue({ queue: 'aegis-jobs-dlq', messages: [{
+    body: { agentRunId: run.id }, ack() {}, retry() { assert.fail('unexpected retry'); },
+  }] }, env);
+  assert.equal(DB.runs.get(run.id).status, 'planned');
+  assert.equal(DB.events.filter(event => event.event_type === 'delivery_exhausted').length, 0);
 });
