@@ -636,3 +636,10 @@ A third fixed read-only Composio GitHub tool is now registered and implemented:
 - Added client, adapter, capability manifest, endpoint and security tests. The complete Node/D1/Forge workflow and Cloudflare Pages preview passed on commit `98e9402e0be2315d237ab5a638e7a133ca5a27a0`.
 
 **Next CI-monitoring extension:** a separately governed read-only workflow-job summary action, bound to one exact workflow run. Job logs, reruns, dispatch and cancellation remain disabled.
+
+
+## AI research intake and standing intelligence feed — 16 November 2026
+
+The source register and preliminary decisions for the newly supplied repositories are maintained in [docs/AEGIS_RESEARCH_INTAKE.md](AEGIS_RESEARCH_INTAKE.md). This includes the Google Elephant-Goldfish Model, Vercel agent-browser, Runanywhere TrnRT, ORACLE-org/ORACLE, rederive, Coolify, OpenProject, unresolved Kiri/Hex Brain identities, and Oracle namesakes.
+
+TLDR AI is a standing discovery source for AI models, agents, open-source projects, developer tooling, research, infrastructure, security and industry developments. Primary archive: https://tldr.tech/ai/archives ; RSS: https://tldr.tech/api/rss/ai . Follow original sources before changing architecture or adding dependencies. Treat newsletter summaries as leads, not verified evidence. Every candidate must pass AEGIS reverse-engineering, licensing, security, cost and Sentinel review.
