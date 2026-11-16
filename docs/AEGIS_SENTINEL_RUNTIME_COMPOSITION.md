@@ -1,0 +1,29 @@
+# AEGIS Sentinel runtime composition
+
+**Status:** integration contract; not a deployed execution service.
+
+## Trusted composition root
+
+The only caller of `runSentinelInvocation` must be a server-side composition root. Browser clients, model output and agent prompts must never construct or inject the dependency object.
+
+The composition root must:
+
+1. Resolve the capability manifest from the trusted registry by ID and version.
+2. Derive the canonical input digest server-side from the exact validated input. Never accept an agent- or browser-supplied digest as authoritative.
+3. Load the current principal-scoped grant, provider connection and exact-operation approval from D1.
+4. Resolve secrets only after Sentinel authorizes the invocation; never put plaintext credentials in the request, model context or audit record.
+5. Persist redacted audit records before and after the adapter side effect.
+6. Route only to a pinned, reviewed adapter with bounded input/output, explicit network egress and cancellation.
+7. Atomically consume human-always approval immediately before execution.
+
+## Fail-closed requirements
+
+- Missing database bindings, unavailable audit, stale manifests, expired/revoked grants, mismatched resource/connection/input digest, or missing approval must stop execution.
+- Adapter execution must not be reachable through a public generic endpoint.
+- High-risk writes, external messages, destructive operations and device/computer control require explicit owner approval.
+- A timeout or uncertain adapter result must not automatically replay a consumed approval.
+- Every adapter response is untrusted input; redact secrets and bound its size before returning it to an agent.
+
+## Deployment gate
+
+This document and the Sentinel library are source-level foundations only. Before enabling execution, add and test the D1 composition, digest helper, secret resolution, audit writer, adapter allowlist, SSRF/egress controls, revocation checks, idempotency and stop/revoke path. Apply migrations and provision production resources only after an explicit owner-approved deployment plan.
