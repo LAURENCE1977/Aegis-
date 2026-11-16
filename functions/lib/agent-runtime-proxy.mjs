@@ -36,7 +36,7 @@ function validProxyTarget(method, path) {
     }
     return true;
   }
-  const match = /^\/v1\/agent-runs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\/(events|cancel))?$/i.exec(pathname);
+  const match = /^\/v1\/agent-runs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\/(events|cancel|authorize))?$/i.exec(pathname);
   if (!match || !UUID_PATTERN.test(match[1])) return false;
   const suffix = match[2] || '';
   if (suffix === 'events') {
@@ -48,7 +48,7 @@ function validProxyTarget(method, path) {
     return true;
   }
   if (url.search !== '') return false;
-  return suffix === 'cancel' ? method === 'POST' : method === 'GET';
+  return ['cancel', 'authorize'].includes(suffix) ? method === 'POST' : method === 'GET';
 }
 
 async function readJsonResponse(response) {
