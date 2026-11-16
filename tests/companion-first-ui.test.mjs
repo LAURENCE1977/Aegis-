@@ -99,3 +99,25 @@ test('the signed-in application shell collapses to one column on tablet and mobi
   assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?#appPanel\s*>\s*\.toolbar\s*\{[^}]*grid-column:\s*1/);
   assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?#appPanel\s*>\s*section\s*\{[^}]*grid-column:\s*1/);
 });
+
+
+test('the companion home exposes official and custom profile selection with honest session-only persistence status', () => {
+  for (const id of ['companionProfileSelect', 'customCompanionName', 'createCompanionProfile', 'companionProfileStatus']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /session only/i);
+  assert.match(html, /custom companion/i);
+});
+
+test('custom companion profiles remain presentation preferences and cannot create permissions or a second identity', () => {
+  assert.match(html, /data-companion-profile="aegis"/);
+  assert.match(html, /custom-[a-z0-9-]+/);
+  assert.match(html, /companionProfileSelect\.addEventListener/);
+  assert.match(html, /createCompanionProfile\.addEventListener/);
+  assert.doesNotMatch(html, /companionProfiles[^;]{0,240}(?:permissions|toolAccess|sentinelPolicy|ownerId)/);
+});
+
+test('companion profile selection is not persisted outside the authenticated owner-scoped API', () => {
+  assert.match(html, /session only/i);
+  assert.doesNotMatch(html, /localStorage\.(?:setItem|getItem)\([^)]*companion/i);
+});
