@@ -2,7 +2,7 @@
 
 ## Status
 
-The first durable orchestration slice is implemented on `feature/durable-agent-orchestrator-rebased` (draft PR #29). It is a plan-only workflow, not autonomous tool execution. It reuses the existing AEGIS Runtime Worker, D1 database and Queue; it does not add a competing scheduler or execution host.
+The durable orchestration slice is being integrated onto current `main` as a plan-only workflow, not autonomous tool execution. It reuses the existing AEGIS Runtime Worker, D1 database and Queue; it does not add a competing scheduler or execution host.
 
 ## Flow
 
@@ -75,7 +75,7 @@ The response includes objective, selected roles, status, attempts, timestamps, p
 
 ## Storage and deployment
 
-Migration: `migrations/runtime/0002_agent_runs.sql`. Apply it after `0001_jobs.sql` to the same runtime D1 database. It creates `agent_runs` and append-only-by-convention event history `agent_run_events`, with status/lease indexes and unique idempotency keys.
+Migration: `migrations/runtime/0002_agent_runs.sql`. Apply it after `0001_jobs.sql` to the same runtime D1 database. It creates `agent_runs` and append-only `agent_run_events` (enforced by update/delete-blocking triggers), with status/lease indexes and unique idempotency keys.
 
 The implementation reuses the existing `JOBS` Queue and runtime Worker. No additional Cloudflare resource, paid service, secret, binding or deployment was created. The existing runtime Worker must be deployed with the updated source and migration applied before the endpoints can be used.
 
@@ -111,6 +111,6 @@ A passing local/CI run and a non-production D1/Queue integration check are requi
 Focused coverage: `tests/agent-capability-bridge.test.mjs`. The runtime route/queue wiring and JSON charset matcher also received regression fixes and coverage in `tests/agent-runtime.test.mjs`. Latest branch head 4b2239654971cd6c5770565980058b36cfd7a622 passed GitHub Actions run 43753045125 under Node.js 22: 314 tests, 0 failures.
 
 
-## Stack reconciliation warning
+## Current integration boundary
 
-PR #29 currently targets snapshot branch stack/native-memory-substrate-20261115 at a331454830feb0f473e07adf49ee16884b47033b. The current PR #27 memory/Forge branch has advanced beyond that snapshot. Keep PR #29 draft and reconcile/rebase its base before merge; its 314-test run validates the orchestrator branch against the snapshot, not the combined latest PR #27 tree.
+The clean-main integration includes a shared canonical JSON/SHA-256 helper, a deeply frozen normalized payload before Sentinel receives it, and plan validation again when loading specialist data from D1. The runtime remains plan-only. The exact approval loader, grant/connection stores, encrypted vault and audit primitives are now available in source, but the trusted D1 composition root and production Worker/DB deployment are not yet enabled.
