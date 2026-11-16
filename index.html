@@ -2035,7 +2035,7 @@
         forgeKnowledgeStatus.textContent = 'Sources must be a valid JSON array with HTTPS URL, title and attribution.';
         return;
       }
-      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       forgeKnowledgeSaveBtn.disabled = true;
       forgeKnowledgeStatus.textContent = 'Saving a new draft…';
       try {
