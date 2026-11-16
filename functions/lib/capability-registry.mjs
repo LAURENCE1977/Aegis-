@@ -237,6 +237,34 @@ const CAPABILITY_MANIFESTS = [
     licence: { identifier: 'first-party', review: 'not-applicable' },
     status: 'approved',
   },
+
+  {
+    id: 'aegis-composio-github-pull-request-readonly',
+    version: '0.1.0',
+    name: 'Composio GitHub pull request metadata',
+    description: 'Read a single pull request and bounded branch/change metadata through an approved Composio session.',
+    provider: { id: 'composio', kind: 'external' },
+    interface: { kind: 'internal', method: 'POST', path: '/api/sentinel/composio-github-pull-request' },
+    actions: [{
+      id: 'get-pull-request',
+      capability: 'github.pull-request-read',
+      effect: 'read',
+      risk: 'medium',
+      approval: 'none',
+      requiredScopes: ['github:pull-request:read'],
+    }],
+    data: {
+      classification: 'confidential',
+      reads: ['GitHub pull request title, state, draft/merge status, branch references and change counts'],
+      writes: [],
+    },
+    network: { egressHosts: ['backend.composio.dev'] },
+    auth: { mode: 'secret-reference', secretRef: 'secret://connections/composio-github-readonly' },
+    limits: { requestsPerMinute: 20, timeoutMs: 8000, maxRequestBytes: 2048 },
+    provenance: { sourceUrl: SOURCE_URL, revision: SOURCE_REVISION },
+    licence: { identifier: 'first-party', review: 'not-applicable' },
+    status: 'approved',
+  },
 ];
 
 for (const manifest of CAPABILITY_MANIFESTS) validateCapabilityManifest(manifest);
