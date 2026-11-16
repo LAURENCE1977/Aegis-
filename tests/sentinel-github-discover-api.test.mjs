@@ -168,8 +168,8 @@ test('GitHub discovery executes only the fixed public metadata adapter and audit
   const body = await response.json();
   assert.equal(body.reasonCode, 'SUCCESS');
   assert.match(body.invocationId, /^[0-9a-f-]{36}$/i);
-  assert.equal(body.output.fullName, 'Example/Repo');
-  assert.equal(body.output.private, false);
+  assert.equal(body.repository.fullName, 'Example/Repo');
+  assert.equal(body.repository.private, false);
   assert.equal(db.auditRows.length, 3);
   assert.ok(db.auditRows.every(row => row[1] === body.invocationId));
 });
