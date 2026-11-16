@@ -63,6 +63,11 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
       // D1 manages foreign-key enforcement; its SQL API intentionally rejects PRAGMA statements.\n      await db.exec(sql.replace(/^\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*;\\s*/gim, ''));
     }
 
+    const schema = await db.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
+    ).all();
+    assert.deepEqual(schema.results.map((row) => row.name), ['agent_run_events', 'agent_runs']);
+
     const response = await mf.dispatchFetch('https://runtime.test/v1/agent-runs', {
       method: 'POST',
       headers: {
@@ -76,8 +81,9 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
       }),
     });
 
-    assert.equal(response.status, 201);
-    const { run } = await response.json();
+    const responseText = await response.text();
+    assert.equal(response.status, 201, responseText);
+    const { run } = JSON.parse(responseText);
     assert.ok(run.id);
     assert.equal(run.status, 'queued');
 
