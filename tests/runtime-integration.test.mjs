@@ -201,6 +201,7 @@ test('a transient task failure is returned to queued with a delayed retry', asyn
   const retryOptions = [];
   let acked = false;
   await runtime.queue({
+    queue: 'aegis-jobs',
     messages: [{
       body: { jobId: job.id },
       ack() { acked = true; },
