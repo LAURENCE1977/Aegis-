@@ -197,7 +197,7 @@ test('Anthropic provider uses the fixed Messages API with server-side bearer aut
 });
 
 test('Anthropic provider fails closed without server-side key or explicit model configuration', async () => {
-  const base = { AEGIS_MODEL_PROVIDER: 'anthropic', AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5' };
+  const base = { AEGIS_MODEL_PROVIDER: 'anthropic' };
   await assert.rejects(() => createModelStream({
     env: base,
     messages: [{ role: 'user', content: 'hello' }],
