@@ -425,3 +425,65 @@ test('agent run listing exposes cancelled status and returns no next cursor on t
   assert.equal(body.runs[0].cancelledAt, '2026-11-16T12:05:00.000Z');
   assert.equal(body.nextCursor, null);
 });
+
+
+test('agent run event timeline is bounded, newest-first and cursor-stable across timestamp ties', async () => {
+  const { env, DB } = makeEnv();
+  const runId = '00000000-0000-4000-8000-000000000055';
+  DB.runs.set(runId, {
+    id: runId, objective: 'Inspect audit history', specialists_json: '["researcher"]',
+    status: 'planned', attempts: 1, created_at: '2026-11-16T12:00:00.000Z',
+    updated_at: '2026-11-16T12:00:00.000Z',
+  });
+  DB.events.push(
+    { event_id: 'event-001', agent_run_id: runId, event_type: 'created', detail_json: '{"source":"api"}', created_at: '2026-11-16T12:01:00.000Z' },
+    { event_id: 'event-002', agent_run_id: runId, event_type: 'queued', detail_json: '{}', created_at: '2026-11-16T12:02:00.000Z' },
+    { event_id: 'event-003', agent_run_id: runId, event_type: 'running', detail_json: '{"attempt":1}', created_at: '2026-11-16T12:03:00.000Z' },
+    { event_id: 'event-004', agent_run_id: runId, event_type: 'planned', detail_json: '{"steps":2}', created_at: '2026-11-16T12:03:00.000Z' },
+  );
+
+  const first = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + runId + '/events?limit=2',
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(first.status, 200);
+  const pageOne = await first.json();
+  assert.deepEqual(pageOne.events.map((event) => event.id), ['event-004', 'event-003']);
+  assert.deepEqual(pageOne.events[0].detail, { steps: 2 });
+  assert.deepEqual(pageOne.nextCursor, {
+    before: '2026-11-16T12:03:00.000Z',
+    beforeId: 'event-003',
+  });
+
+  const cursor = new URLSearchParams(pageOne.nextCursor);
+  const second = await handleRuntimeFetch(new Request(
+    'https://runtime.example/v1/agent-runs/' + runId + '/events?' + cursor.toString() + '&limit=2',
+    { headers: { Authorization: 'Bearer ' + token } },
+  ), env);
+  assert.equal(second.status, 200);
+  const pageTwo = await second.json();
+  assert.deepEqual(pageTwo.events.map((event) => event.id), ['event-002', 'event-001']);
+  assert.equal(pageTwo.nextCursor, null);
+});
+
+test('agent run event timeline rejects malformed cursors and duplicate query parameters', async () => {
+  const { env, DB } = makeEnv();
+  const runId = '00000000-0000-4000-8000-000000000056';
+  DB.runs.set(runId, {
+    id: runId, objective: 'Inspect audit history', specialists_json: '["researcher"]',
+    status: 'planned', attempts: 1, created_at: '2026-11-16T12:00:00.000Z',
+    updated_at: '2026-11-16T12:00:00.000Z',
+  });
+  for (const query of [
+    '?before=not-a-date&beforeId=event-001',
+    '?before=2026-11-16T12%3A00%3A00.000Z',
+    '?limit=2&limit=3',
+    '?limit=51',
+  ]) {
+    const response = await handleRuntimeFetch(new Request(
+      'https://runtime.example/v1/agent-runs/' + runId + '/events' + query,
+      { headers: { Authorization: 'Bearer ' + token } },
+    ), env);
+    assert.equal(response.status, 400, query);
+  }
+});
