@@ -113,6 +113,7 @@ export function createAgentRunApprovalDecisionHandlers({
           id: params.id,
           decision: parsed.body.decision,
           decidedBy: OWNER_ID,
+          principalId: OWNER_ID,
         });
         if (!approval || approval.principalId !== OWNER_ID ||
             approval.capabilityId !== 'aegis-agent-run') {
