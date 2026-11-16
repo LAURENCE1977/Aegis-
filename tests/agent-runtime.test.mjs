@@ -155,6 +155,7 @@ test('persists a bounded agent run before queue dispatch and returns its durable
   assert.equal(run.status, 'queued');
   assert.deepEqual(run.specialists, ['researcher', 'engineer', 'reviewer']);
   assert.ok(DB.runs.has(run.id));
+  assert.ok(DB.events.some((event) => event.agent_run_id === run.id && event.event_type === 'created'));
   assert.deepEqual(sent, [{ agentRunId: run.id }]);
   assert.ok(DB.events.some((event) => event.event_type === 'queued'));
 });
