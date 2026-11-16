@@ -61,6 +61,7 @@ const TOOL_DEFINITIONS = Object.freeze([
         additionalProperties: false,
       }),
     }),
+  }),
   Object.freeze({
     type: 'function',
     function: Object.freeze({
@@ -77,7 +78,6 @@ const TOOL_DEFINITIONS = Object.freeze([
         additionalProperties: false,
       }),
     }),
-  }),
   }),
 ]);
 
