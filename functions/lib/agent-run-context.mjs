@@ -24,7 +24,7 @@ export function createAgentRunProjectContextBuilder({
     if (!Number.isFinite(now)) throw new TypeError('Invalid Project Space context clock');
 
     const workspace = await getWorkspaceImpl(db, OWNER_ID, projectId);
-    if (!workspace || workspace.status !== 'active') return null;
+    if (!workspace || workspace.id !== projectId || workspace.ownerId !== OWNER_ID || workspace.status !== 'active') return null;
 
     const [events, memories] = await Promise.all([
       listWorkspaceEventsImpl(db, OWNER_ID, projectId, 100),
