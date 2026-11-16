@@ -27,19 +27,19 @@ export function validateAgentRunSubmission(input) {
 }
 
 export function createAgentPlan(submission, metadata = {}) {
-  if (!submission || typeof submission.objective !== 'string' ||
-      !Array.isArray(submission.specialists) || submission.specialists.length === 0) {
+  if (!submission || !Array.isArray(submission.specialists) || submission.specialists.length === 0) {
     throw new TypeError('A validated agent run submission is required.');
   }
+  const validated = validateAgentRunSubmission(submission);
   if (typeof metadata.runId !== 'string' || !metadata.runId.trim() ||
       typeof metadata.createdAt !== 'string' || !Number.isFinite(Date.parse(metadata.createdAt))) {
     throw new TypeError('Valid run metadata is required.');
   }
   const sequence = ['researcher', 'planner', 'engineer', 'security', 'reviewer'];
-  const ordered = submission.specialists.slice().sort((a, b) => sequence.indexOf(a) - sequence.indexOf(b));
+  const ordered = validated.specialists.slice().sort((a, b) => sequence.indexOf(a) - sequence.indexOf(b));
   return {
     runId: metadata.runId,
-    objective: submission.objective,
+    objective: validated.objective,
     createdAt: new Date(metadata.createdAt).toISOString(),
     execution: 'plan-only',
     requiresHumanApprovalBeforeExecution: true,
