@@ -217,6 +217,10 @@ Current decisions:
 
 These are research-only candidates. None is connected, installed or granted permissions. “vo” was interpreted as v0; correct this if a different product was intended.
 
+## Runtime dead-letter recovery update — 16 November 2026
+
+A new feature branch `feature/aegis-runtime-dlq-recovery` ports the previously developed PR #8 dead-letter recovery behavior onto the current `main` baseline, avoiding the stale integration-test conflict. It adds regression coverage for exhausted deliveries, idempotent audit, terminal-job protection, active-lease protection and unknown-queue fail-closed handling; implements queue-aware processing; and registers the dedicated `aegis-jobs-dlq` consumer. The change is source-only and must pass fresh tests and preview checks before merge. It does not provision or deploy D1, Queues or the separate runtime Worker.
+
 ## 10. Implementation sequence
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
