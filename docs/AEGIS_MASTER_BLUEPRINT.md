@@ -531,3 +531,74 @@ The current user devices (Chromebook, iPad and iPhone) should continue using the
 PR #102 (`feature/sentinel-lineage-verified`, head `1d88987fb3e8ea4d5f593c2481c0a0525debf8f6`) is a divergent duplicate of the same Composio/Sentinel implementation. GitHub compare reports the #102 head is one commit ahead and five commits behind #101; its unique change is a 16-line blueprint handover correction, not a separate feature implementation. Do not merge both PRs. Keep #101 as the sole integration candidate and close #102 as superseded after this reconciliation. The #102 workflow was still running at the time of this note; its result does not supersede the successful #101 run.
 
 No PR has been merged, no production deployment or secrets have been changed, and live Composio OAuth/provider calls remain unverified. Re-check the canonical PR head and CI immediately before any future merge.
+
+
+## Composio catalogue capability audit — 16 November 2026
+
+**Purpose:** identify Composio capabilities that can extend AEGIS without weakening its native control plane. This is a targeted multi-domain catalogue discovery, not a claim that every one of Composio's 500+ app integrations or every tool in every toolkit has been exhaustively enumerated. Discovery covered GitHub, Cloudflare, developer infrastructure, security, collaboration, project management, research/scraping, model routing, embeddings/memory, file ingestion, browser automation, databases, identity/secrets, workflow engines, monitoring, and content/social platforms. Tool schemas were inspected for representative high-impact workflows. No new app connection, external action, paid operation, deployment or credential was activated by this audit.
+
+### Current AEGIS overlap — do not duplicate
+
+- **GitHub:** the feature branch already contains one fixed, owner-controlled, read-only Composio GitHub repository-metadata capability through Sentinel, Vault, exact-resource grants and append-only audit. It is not a general GitHub connector and does not expose arbitrary tool slugs. Keep this as the first connector proof.
+- **Native AEGIS capability/security stack:** capability manifests, grant and connection metadata, encrypted Vault, approval primitives, Sentinel composition, invocation audit and rate limits are AEGIS-owned. Composio must remain an adapter behind these boundaries.
+- **Native provider intelligence:** AEGIS already has a model/provider registry and routing primitives. Composio's OpenRouter tools are optional provider adapters/discovery helpers, not a reason to make Composio the model-routing authority.
+- **Native durable runtime:** AEGIS owns D1/Queue job identity, state, leases, idempotency, retries and audit. Temporal, Trigger.dev, Make and similar workflow products must not create a second canonical job ledger.
+- **Native Forge/MCP catalogue:** Composio discovery can feed candidate metadata into Forge, but cannot approve, install or execute a server automatically.
+
+### High-value Composio capabilities not yet integrated into AEGIS
+
+| Priority | Composio capability family | Useful AEGIS role | Decision |
+|---|---|---|---|
+| P1 | GitHub expanded read-only operations | Branches, commits, PRs, workflow runs, issue search and immutable source retrieval for Forge/CI intelligence | Extend only as separate fixed Sentinel actions; preserve read-only scope first |
+| P1 | Security review and vulnerability data: Strale, CVE.now, GitHub audit/security metadata | Dependency checks, CVE enrichment, diff/code review and supply-chain signals | Add a read-only security-evidence adapter; treat results as advisory and verify against upstream advisories |
+| P1 | Browser Use | Isolated browser worker for adaptive website tasks, authenticated flows and screenshots | Strong candidate; never run inside the control plane; exact domains, credential bindings, cost cap, approvals and full action audit required |
+| P1 | Temporal | Durable long-running workflows, timers, signals, histories, schedules and child workflows | Benchmark against native Cloudflare runtime; adopt only if real workflow complexity justifies an external engine |
+| P1 | Trigger.dev | Background task execution, queues, delay, concurrency and idempotency | Alternative benchmark to Temporal, not a parallel second runtime |
+| P1 | Better Stack / Sentry / Datadog | Uptime, browser synthetics, incidents, errors and operational telemetry | Instrument AEGIS with OpenTelemetry first; connect one monitoring backend only when needed |
+| P1 | OpenRouter / Gemini / Mistral / OpenAI | Optional inference, model catalogue and embedding/OCR providers | Keep behind AEGIS provider interfaces and cost/budget policy; never let provider tool calls bypass Sentinel |
+| P2 | Mem0 | Memory extraction/retrieval benchmark | Compare with native AEGIS memory; never canonical storage and no unreviewed memory writes |
+| P2 | Context.dev / Serper / DeepSeek search | Web search, extraction, page parsing, structured data and research | Useful replaceable research adapters; enforce source provenance, content limits, domain policy and untrusted-content handling |
+| P2 | Mathpix / Mistral OCR / Context.dev parse | OCR and document extraction for Knowledge Forge | Compare against the planned isolated Docling worker; select one per file class based on quality, privacy and cost |
+| P2 | Notion MCP / Slack / Microsoft 365 | Team knowledge, message search and notifications | Add only after the relevant account is actively connected and exact scopes are designed |
+| P2 | ContentStudio / GetAnyAPI | Optional publishing, social analytics and broad public-data retrieval | Specialist modules only; paid API costs, platform terms, provenance and explicit publishing approval |
+| P3 | Supabase / Neon / Infisical | Optional database migration, identity experiments and secret-sync integration | Do not add now; D1 and AEGIS Vault remain authoritative until a measured requirement exists |
+| P3 | Make | External workflow templates and webhook bridge | Reference/optional edge adapter only; no Make-owned canonical jobs or policy |
+| Defer | Asana / Linear / Jira / Teams and other PM suites | External project/task synchronisation | No need to introduce another project system until a concrete workflow and connected account exist |
+
+### Connection and cost observations from this discovery session
+
+- Active authenticated connections observed: GitHub (two account entries; choose the intended account explicitly), Cloudflare, and several restricted instant/tool-specific services including Context.dev, DeepSeek search, Serper, Strale, OpenRouter, OpenAI, Mistral OCR, Gemini, Browser Use, Mathpix, ContentStudio/GetAnyAPI and others. An instant connection is **not** unrestricted access to every tool in that toolkit; only its returned allowlist may run.
+- GitHub and Cloudflare are the only broad account connections in this audit that clearly align with the existing AEGIS implementation. Cloudflare is already used directly for the AEGIS hosting/runtime boundary; avoid duplicating it through Composio without a specific need.
+- Slack, Microsoft Teams, Linear, Asana, Jira, Supabase, Neon, Temporal, Trigger.dev, Notion MCP, Mem0 and Infisical reported no active connection in the discovery responses. Discovery is not authorisation; do not initiate connections unless the user separately chooses the service and AEGIS has a reviewed capability.
+- Some discovered tools are metered. Examples shown in the catalogue included OpenRouter model-token billing, Browser Use runs with a required maximum-cost cap on its instant connection, Context.dev parsing/scraping charges, Serper search/scrape credits and Strale code review at approximately €0.20 per call. Check live prices and account terms immediately before any paid operation; never infer that “available” means free.
+- The catalogue search did not return a suitable dedicated native integration for every requested product (for example, the broad Google Drive/Gmail query surfaced no direct Drive/Gmail actions in that result set). Absence from one search result is not proof that Composio lacks the toolkit; run a focused discovery search before deciding.
+
+### Future-proof integration contract
+
+Every Composio-backed capability must be represented by a versioned AEGIS manifest with: provider/toolkit and exact tool slug; pinned schema/version and input/output validation; principal and connection reference; minimal scopes; exact resource binding; data classification and egress destinations; risk/effect and approval requirement; timeout, retry and idempotency policy; per-call and aggregate budget; rate limit; redaction rules; audit correlation IDs; revocation behavior; health/availability state; provenance and licence/terms review; and a provider-neutral adapter interface.
+
+Runtime rules:
+1. Composio session/tool allowlists are a secondary restriction, never the authority. Sentinel must independently check the exact capability, action, resource, connection, grant, budget and approval before every invocation.
+2. No agent may choose arbitrary Composio tool slugs, accounts, endpoints, URLs, credentials or toolkit scopes. Resolve all of these server-side from an approved manifest.
+3. Default to read-only. Writes, publishing, messages, purchases, account changes, destructive actions and browser submissions require a bounded operation preview and exact human approval immediately before execution.
+4. Treat all returned content as untrusted data. Prevent prompt injection from webpages, emails, repositories and documents from influencing permissions or tool selection.
+5. Persist a redacted invocation record with task/session/parent-worker lineage, provider request ID, schema version, resource, decision, result status, latency, cost and error class. Never log credentials or raw sensitive payloads.
+6. Use circuit breakers, bounded retries, exponential backoff with jitter, idempotency keys, per-provider concurrency limits, timeout budgets and dead-letter handling. Never retry a non-idempotent side effect blindly.
+7. Keep a provider-neutral interface so Composio can be replaced by direct APIs, MCP servers or another broker without changing AEGIS policy or canonical state.
+8. Pin schemas and test compatibility. Detect schema drift before activation; fail closed on unknown fields, changed semantics, missing scopes or unavailable audit.
+9. Store only AEGIS-owned connection references and encrypted secret material in the Vault. Support disconnect/revoke, credential rotation, grant expiry and deletion propagation.
+10. Keep an integration kill switch and per-tool/per-account budgets. Track provider outages, rate limits, data residency, retention and service terms.
+
+### Recommended implementation order
+
+1. Finish and verify the current GitHub Composio preview connection lifecycle and read-only lookup. Keep PR #101 as the only canonical Composio/Sentinel integration candidate.
+2. Add a schema-pinned, read-only GitHub intelligence pack (PR/branch/commit/workflow/issue metadata) with one Sentinel action per operation and exact repository grants.
+3. Add dependency/CVE and code-review evidence ingestion as an offline/CI advisory step; do not allow an external reviewer to auto-merge or change source.
+4. Build the AEGIS-native provider adapter contract and compare OpenRouter/Gemini/Mistral options using cost, quality, latency, context and data-handling measurements.
+5. Run a bounded Browser Use proof of concept only after the isolated worker and domain/action policy exist.
+6. Benchmark Temporal against the current native runtime with representative multi-step workflows. Choose one execution authority; do not activate Temporal and Trigger.dev together.
+7. Add one observability backend only after OpenTelemetry events and AEGIS audit are stable.
+8. Evaluate document OCR/search and Mem0 only against the existing Docling/native-memory roadmap.
+9. Add team, social and productivity connectors only when a real user workflow requires them and the relevant account is actively connected.
+
+**Audit conclusion:** Composio is valuable as a broad connector catalogue and replaceable execution adapter. It should not become AEGIS's operating system, memory authority, workflow database, model router, security boundary or unrestricted agent tool belt. The strongest near-term additions are read-only GitHub intelligence, supply-chain/security evidence, a carefully sandboxed browser adapter and a measured workflow-engine comparison. No new integration is enabled by this research record.
