@@ -189,6 +189,16 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     assert.deepEqual(stepEvents.results.map((event) => event.event_type), [
       'planned', 'planned', 'planned',
     ]);
+    await assert.rejects(
+      db.prepare('UPDATE agent_run_step_events SET detail_json = ? WHERE event_id = ?')
+        .bind('{}', 'planned:' + steps.results[0].id).run(),
+      /agent run step events are append-only/,
+    );
+    await assert.rejects(
+      db.prepare('DELETE FROM agent_run_step_events WHERE event_id = ?')
+        .bind('planned:' + steps.results[0].id).run(),
+      /agent run step events are append-only/,
+    );
 
     const duplicate = await mf.dispatchFetch('https://runtime.test/v1/agent-runs', {
       method: 'POST',
