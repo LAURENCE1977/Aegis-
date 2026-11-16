@@ -80,6 +80,22 @@ Authorization: Bearer <token>
 
 The response contains `runs` and either a `nextCursor` object or `null`. Unknown query parameters, repeated parameters, invalid timestamps and incomplete cursors are rejected.
 
+### Read an agent run's event timeline
+
+```http
+GET /v1/agent-runs/<uuid>/events?limit=20
+Authorization: Bearer <token>
+```
+
+The event timeline returns bounded, newest-first lifecycle events. It uses a stable cursor over `created_at DESC, event_id DESC`, so events written at the same timestamp remain correctly ordered across pages. Event detail is parsed as JSON and malformed or oversized detail is returned as an empty object rather than raw text.
+
+```http
+GET /v1/agent-runs/<uuid>/events?limit=20&before=<createdAt>&beforeId=<eventId>
+Authorization: Bearer <token>
+```
+
+The API first verifies the parent run exists. It rejects unknown or repeated query parameters, incomplete cursors, invalid timestamps and unsafe event IDs. Each page contains at most 50 events.
+
 ### Submit, inspect and cancel an agent run
 
 Agent runs currently create a deterministic plan only; they do not invoke models, specialist workers or external tools.
@@ -127,6 +143,7 @@ Migrations:
 - `migrations/runtime/0002_agent_runs.sql` — durable agent run plans and append-only events.
 - `migrations/runtime/0003_agent_run_cancellation.sql` — cancellation marker and pending-dispatch index.
 - `migrations/runtime/0004_agent_run_listing.sql` — stable creation-time/ID index for keyset pagination.
+- `migrations/runtime/0005_agent_run_event_listing.sql` — per-run event timeline cursor index.
 
 - `jobs` stores the current state, strict task type, JSON payload, attempts, idempotency key, result, stable error code and lease.
 - `job_events` stores state-transition audit events.
