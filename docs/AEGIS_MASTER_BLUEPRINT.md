@@ -775,3 +775,10 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - This is a library-level composition milestone, not a live integration. No D1 binding was provisioned, migrations applied, vault keyring configured, external adapter registered, provider call made or deployment initiated.
 - Before enabling a route: add owner-authenticated grant/connection lifecycle endpoints, validate the D1 migration chain in an isolated database, implement an allowlisted read-only adapter, enforce egress/redirect/private-address protections, and test the full request-to-audit lifecycle. Keep arbitrary HTTP/MCP/browser execution disabled.
 - Details: `docs/AEGIS_SENTINEL_COMPOSITION.md`.
+
+### First local Sentinel adapter
+
+- Added `createBuiltinAdapterRegistry` with one local-only read capability: `aegis-module-catalogue:list`.
+- It returns descriptive AEGIS module metadata, rejects non-empty input and has no network, filesystem, secret or process access.
+- Tests exercise the adapter directly and through the D1 composition root. It is not exposed by a route and cannot be invoked by an agent or browser yet.
+- The full route, grant lifecycle, D1 migration validation and egress work remain prerequisites.
