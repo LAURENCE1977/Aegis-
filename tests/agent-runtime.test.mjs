@@ -16,6 +16,15 @@ class AgentMemoryD1 {
         if (sql.includes('WHERE idempotency_key = ?')) {
           return [...db.runs.values()].find((row) => row.idempotency_key === v[0]) || null;
         }
+        if (sql.includes('UPDATE agent_runs') && sql.includes('SET authorization_approval_id = COALESCE')) {
+          const row = db.runs.get(this.values[3]);
+          if (!row || row.status !== 'planned' || row.cancelled_at ||
+              (row.authorization_approval_id && row.authorization_approval_id !== this.values[4])) return null;
+          row.authorization_approval_id ||= this.values[0];
+          row.execution_authorized_at ||= this.values[1];
+          row.updated_at = this.values[2];
+          return row;
+        }
         if (sql.includes('UPDATE agent_runs SET status = \'running\'')) {
           const row = db.runs.get(v[2]);
           if (!row || !['queued', 'pending_dispatch'].includes(row.status)) return null;
