@@ -176,3 +176,23 @@ test('runs the read-only module catalogue end-to-end through real policy and D1 
   assert.ok(result.output.modules.some((module) => module.id === 'forge'));
   assert.equal(auditRows.length, 3);
 });
+
+test('passes deeply frozen input to the fixed adapter handler', async () => {
+  let received;
+  const dependencies = createSentinelDependencies({
+    db: fakeDb(),
+    adapters: {
+      'aegis-github-public-discovery:discover': async (input) => {
+        received = input;
+        return { frozen: Object.isFrozen(input) && Object.isFrozen(input.nested) };
+      },
+    },
+  });
+  const output = await dependencies.execute(
+    { nested: { value: 'immutable' } },
+    { capabilityId: 'aegis-github-public-discovery', actionId: 'discover', invocationId: 'freeze-1' },
+  );
+  assert.equal(Object.isFrozen(received), true);
+  assert.equal(Object.isFrozen(received.nested), true);
+  assert.deepEqual(output, { frozen: true });
+});
