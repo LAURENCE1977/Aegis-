@@ -20,6 +20,7 @@ class AgentMemoryD1 {
           const row = db.runs.get(v[2]);
           if (!row || !['queued', 'pending_dispatch'].includes(row.status)) return null;
           row.status = 'running'; row.attempts += 1; row.lease_until = v[0]; row.updated_at = v[1];
+          if (db.afterClaim) db.afterClaim(row);
           return { attempts: row.attempts };
         }
         if (sql.includes('WHERE id = ?')) return db.runs.get(v[0]) || null;
@@ -73,7 +74,7 @@ class AgentMemoryD1 {
         }
         if (sql.includes("SET status = 'planned'")) {
           const row = db.runs.get(v[2]);
-          if (row && row.status === 'running' && row.attempts === v[3]) {
+          if (row && row.status === 'running' && row.attempts === v[3] && !row.cancelled_at) {
             row.status = 'planned'; row.plan_json = v[0]; row.updated_at = v[1]; row.lease_until = null;
             return { meta: { changes: 1 } };
           }
@@ -286,4 +287,28 @@ test('cannot cancel a failed agent run', async () => {
   ), env);
   assert.equal(response.status, 409);
   assert.equal(DB.runs.get(run.id).cancelled_at, null);
+});
+
+
+test('cancellation racing with an active plan claim fences the worker result', async () => {
+  const { env, DB } = makeEnv();
+  const submitted = await handleRuntimeFetch(postRun({ objective: 'Cancel during planning' }), env);
+  const { run } = await submitted.json();
+  DB.afterClaim = (row) => {
+    row.cancelled_at = new Date().toISOString();
+    row.lease_until = null;
+  };
+  let acked = false;
+  await runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { agentRunId: run.id },
+      ack() { acked = true; },
+      retry() { assert.fail('cancelled plan must not be retried'); },
+    }],
+  }, env);
+  const saved = DB.runs.get(run.id);
+  assert.equal(acked, true);
+  assert.equal(saved.cancelled_at !== null, true);
+  assert.equal(saved.plan_json, undefined);
 });
