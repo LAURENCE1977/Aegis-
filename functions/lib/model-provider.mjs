@@ -7,7 +7,7 @@ const QWEN_REGIONS = new Set([
   'eu-central-1',
   'ap-northeast-1',
 ]);
-const MAX_MESSAGES = 11;
+const MAX_MESSAGES = 14;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 1024;
 
@@ -17,12 +17,64 @@ function validateMessages(messages) {
   }
   for (const message of messages) {
     if (!message || typeof message !== 'object' || Array.isArray(message) ||
-        !['system','user','assistant'].includes(message.role) ||
-        typeof message.content !== 'string' || !message.content.trim() ||
-        message.content.length > MAX_MESSAGE_CHARS) {
+        typeof message.content !== 'string' || message.content.length > MAX_MESSAGE_CHARS) {
+      throw new TypeError('Invalid model message');
+    }
+    if (message.role === 'tool') {
+      if (Object.keys(message).some(key => !['role', 'content', 'tool_call_id', 'name'].includes(key)) ||
+          typeof message.tool_call_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(message.tool_call_id) ||
+          typeof message.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(message.name) ||
+          !message.content.trim()) {
+        throw new TypeError('Invalid model tool result message');
+      }
+      continue;
+    }
+    if (!['system', 'user', 'assistant'].includes(message.role)) {
+      throw new TypeError('Invalid model message role');
+    }
+    if (message.role === 'assistant' && message.tool_calls !== undefined) {
+      if (Object.keys(message).some(key => !['role', 'content', 'tool_calls'].includes(key)) ||
+          !Array.isArray(message.tool_calls) || message.tool_calls.length !== 1) {
+        throw new TypeError('Invalid assistant tool-call message');
+      }
+      const call = message.tool_calls[0];
+      if (!call || typeof call !== 'object' || Array.isArray(call) ||
+          Object.keys(call).some(key => !['id', 'type', 'function'].includes(key)) ||
+          typeof call.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(call.id) ||
+          call.type !== 'function' || !call.function || typeof call.function !== 'object' ||
+          Object.keys(call.function).some(key => !['name', 'arguments'].includes(key)) ||
+          typeof call.function.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(call.function.name) ||
+          typeof call.function.arguments !== 'string' || call.function.arguments.length > 4096) {
+        throw new TypeError('Invalid assistant tool-call payload');
+      }
+      continue;
+    }
+    if (Object.keys(message).some(key => !['role', 'content'].includes(key)) || !message.content.trim()) {
       throw new TypeError('Invalid model message');
     }
   }
+}
+
+function validateTools(tools) {
+  if (tools === undefined) return [];
+  if (!Array.isArray(tools) || tools.length < 1 || tools.length > 4) {
+    throw new TypeError('Invalid model tool list');
+  }
+  for (const tool of tools) {
+    if (!tool || typeof tool !== 'object' || Array.isArray(tool) ||
+        Object.keys(tool).some(key => !['type', 'function'].includes(key)) ||
+        tool.type !== 'function' || !tool.function || typeof tool.function !== 'object' ||
+        Object.keys(tool.function).some(key => !['name', 'description', 'parameters'].includes(key)) ||
+        typeof tool.function.name !== 'string' || !/^aegis_[a-z0-9_]{1,64}$/.test(tool.function.name) ||
+        typeof tool.function.description !== 'string' || tool.function.description.length > 512 ||
+        !tool.function.parameters || typeof tool.function.parameters !== 'object' ||
+        tool.function.parameters.type !== 'object' ||
+        tool.function.parameters.additionalProperties !== false ||
+        !tool.function.parameters.properties || typeof tool.function.parameters.properties !== 'object') {
+      throw new TypeError('Invalid model tool definition');
+    }
+  }
+  return JSON.parse(JSON.stringify(tools));
 }
 
 function resolveQwenEndpoint(env) {
@@ -53,12 +105,14 @@ function resolveQwenEndpoint(env) {
   };
 }
 
-export async function createModelStream({ env, messages, fetchImpl = fetch }) {
+export async function createModelStream({ env, messages, tools, fetchImpl = fetch }) {
   if (!env || typeof env !== 'object') throw new TypeError('Model environment is required');
   validateMessages(messages);
+  const safeTools = validateTools(tools);
   const provider = env.AEGIS_MODEL_PROVIDER || 'workers-ai';
 
   if (provider === 'workers-ai') {
+    if (safeTools.length) throw new Error('Tool calling is not enabled for this Workers AI model.');
     if (!env.AI || typeof env.AI.run !== 'function') {
       throw new Error('Workers AI is not configured.');
     }
@@ -93,6 +147,7 @@ export async function createModelStream({ env, messages, fetchImpl = fetch }) {
         messages,
         max_tokens: MAX_OUTPUT_TOKENS,
         stream: true,
+        ...(safeTools.length ? { tools: safeTools, tool_choice: 'auto' } : {}),
       }),
       signal: AbortSignal.timeout(60000),
     });
