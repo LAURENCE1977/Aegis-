@@ -1,13 +1,17 @@
 import { authorizeOwner, isOwnerWriteRequest, jsonResponse, readJsonRequest } from '../lib/owner-api.mjs';
 import { proxyAgentRuntime } from '../lib/agent-runtime-proxy.mjs';
+import { buildAgentRunProjectContext } from '../lib/agent-run-context.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024;
 const ALLOWED_SPECIALISTS = new Set(['researcher', 'planner', 'engineer', 'security', 'reviewer']);
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 function validSubmission(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).some((key) => !['objective', 'specialists'].includes(key))) return false;
+      Object.keys(input).some((key) => !['objective', 'specialists', 'projectId'].includes(key))) return false;
+  if (input.projectId !== undefined &&
+      (typeof input.projectId !== 'string' || !PROJECT_ID_PATTERN.test(input.projectId))) return false;
   if (typeof input.objective !== 'string') return false;
   const objective = input.objective.trim();
   if (!objective || objective.length > 2000 ||
@@ -39,7 +43,7 @@ function validListQuery(url) {
   return true;
 }
 
-export function createAgentRunsHandlers(proxy = proxyAgentRuntime) {
+export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectContext = buildAgentRunProjectContext) {
   return {
     async onRequestGet({ request, env }) {
       const denied = await authorizeOwner(request, env);
@@ -58,6 +62,18 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime) {
       if (!validSubmission(parsed.body)) {
         return jsonResponse({ error: 'Provide an objective and optional unique list of known AEGIS specialists.' }, 400);
       }
+      let projectContext;
+      if (parsed.body.projectId !== undefined) {
+        if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+          return jsonResponse({ error: 'Project Space context is not available.' }, 503);
+        }
+        try {
+          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId);
+        } catch {
+          return jsonResponse({ error: 'Project Space context could not be loaded.' }, 503);
+        }
+        if (!projectContext) return jsonResponse({ error: 'Active Project Space not found.' }, 404);
+      }
       const idempotencyKey = request.headers.get('Idempotency-Key');
       if (idempotencyKey !== null && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) {
         return jsonResponse({ error: 'Invalid Idempotency-Key.' }, 400);
@@ -69,6 +85,7 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime) {
         body: {
           objective: parsed.body.objective.trim(),
           ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
+          ...(projectContext === undefined ? {} : { projectContext }),
         },
         ...(idempotencyKey === null ? {} : { idempotencyKey }),
       });
