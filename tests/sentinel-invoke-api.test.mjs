@@ -10,8 +10,10 @@ const envBase = {
 };
 
 class MemoryD1 {
-  constructor(grantRow = null) {
+  constructor(grantRow = null, rateLimitRow = { request_count: 1 }) {
     this.grantRow = grantRow;
+    this.rateLimitRow = rateLimitRow;
+    this.failRateLimit = false;
     this.auditRows = [];
     this.prepareCalls = 0;
   }
@@ -23,7 +25,10 @@ class MemoryD1 {
       bind(...values) { this.values = values; return this; },
       async first() {
         if (sql.includes('FROM capability_grants')) return db.grantRow ? { ...db.grantRow } : null;
-        if (sql.includes('INSERT INTO capability_invocation_limits')) return { request_count: 1 };
+        if (sql.includes('INSERT INTO capability_invocation_limits')) {
+          if (db.failRateLimit) throw new Error('rate-limit store unavailable');
+          return db.rateLimitRow;
+        }
         return null;
       },
       async run() {
@@ -147,4 +152,28 @@ test('Sentinel invokes only the granted read-only module adapter and records the
   assert.equal(db.auditRows.length, 3);
   assert.ok(db.auditRows.every(row => row[1] === body.invocationId));
   assert.equal(JSON.stringify(body).includes('inputDigest'), false);
+});
+test('Sentinel returns 429 and records a denial when the action budget is exhausted', async () => {
+  const db = new MemoryD1(activeGrant(), null);
+  const response = await onRequestPost({
+    request: await request(),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(response.status, 429);
+  const body = await response.json();
+  assert.equal(body.reasonCode, 'RATE_LIMITED');
+  assert.equal(db.auditRows.length, 1);
+});
+
+test('Sentinel fails closed with 503 when rate-limit storage is unavailable', async () => {
+  const db = new MemoryD1(activeGrant());
+  db.failRateLimit = true;
+  const response = await onRequestPost({
+    request: await request(),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
+  assert.equal(db.auditRows.length, 1);
 });
