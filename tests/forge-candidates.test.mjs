@@ -105,13 +105,16 @@ test('Forge candidate lists are isolated to the authenticated owner',async()=>{
 });
 
 test('Forge review transitions are represented by an append-only D1 audit trigger', async () => {
-  const migration = await readFile(new URL('../migrations/shared/0005_forge_candidates.sql', import.meta.url), 'utf8');
-  assert.ok(migration.includes('CREATE TRIGGER IF NOT EXISTS trg_forge_candidate_review_audit'));
-  assert.ok(migration.includes('AFTER UPDATE ON forge_candidates'));
-  assert.match(migration, /'review_changed'/);
-  assert.match(migration, /'status_changed'/);
+  const migration = await readFile(new URL('../migrations/forge/0001_candidates.sql', import.meta.url), 'utf8');
+  const reviewMigration = await readFile(new URL('../migrations/forge/0002_candidate_review.sql', import.meta.url), 'utf8');
+  assert.doesNotMatch(migration, /trg_forge_candidate_review_audit/);
+  assert.match(migration, /trg_forge_candidate_created/);
   assert.match(migration, /trg_forge_candidate_events_no_update/);
   assert.match(migration, /trg_forge_candidate_events_no_delete/);
+  assert.match(reviewMigration, /trg_forge_candidate_review_event/);
+  assert.match(reviewMigration, /trg_forge_candidate_status_event/);
+  assert.match(reviewMigration, /trg_forge_candidate_licence_gate/);
+  assert.match(reviewMigration, /json_remove\(OLD\.metadata_json/);
 });
 
 test('Forge candidate review refuses unverified reuse and terminal candidate reopening', async () => {
