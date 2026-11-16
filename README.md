@@ -83,3 +83,8 @@ AEGIS includes owner-scoped Project Spaces and an append-only activity timeline 
 ## Governed capability foundation
 
 The repository includes source-level capability grants, provider connection metadata, an AES-GCM secret vault, append-only invocation audit and provider/model token planning. Production D1 migrations, vault keyring provisioning, live provider connections and adapter execution remain separately gated; see the capability architecture documents.
+
+
+## Durable agent orchestration
+
+AEGIS has a plan-only durable specialist-run workflow on the existing runtime Worker and Queue. It stores objectives, idempotency and plans in D1; it does not run LLM agents or tools. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md). Production activation requires the D1 migration and explicit `AGENT_RUNS_ENABLED=true` configuration.
