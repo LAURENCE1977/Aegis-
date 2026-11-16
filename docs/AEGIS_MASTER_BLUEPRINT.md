@@ -359,3 +359,8 @@ Project Spaces provide owner-scoped durable project context and an append-only t
 ## Sentinel invocation gate — source integration
 
 The Sentinel mediation primitive is being ported onto the clean Project Spaces branch as `functions/lib/sentinel.mjs`, with focused tests. Its intended sequence is trusted policy-context loading, exact-manifest policy evaluation, redacted audit, atomic consumption of any one-time human approval, then adapter invocation. It is deliberately not exposed through a public API or agent runtime yet. A complete execution boundary still requires persistent grants and connections, encrypted secret resolution, concrete durable audit, payload digest derivation, isolated adapters and egress enforcement. Source integration is not deployment; no D1 migration or production resource is enabled by this step.
+
+
+## Free-Tier Ledger — verified-offer boundary
+
+The native Free-Tier Ledger validates provider allowance records against official pricing/terms URLs, explicit quota periods, card requirements, commercial-use status, overage behavior and verification timestamps. A record is considered current only when its status is `verified` and its verification age remains within the configured window; candidate and expired records are never treated as confirmed free capacity. The ledger is descriptive only: it does not create accounts, provision services, activate paid usage or store provider credentials.
