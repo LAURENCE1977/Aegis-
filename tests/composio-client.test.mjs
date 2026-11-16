@@ -248,3 +248,51 @@ test('does not return provider credentials or response headers to callers', asyn
   });
   assert.equal(JSON.stringify(result).includes('must-not-be-returned'), false);
 });
+
+test('verifies the exact GitHub connected account is active before execution', async () => {
+  let requestedUrl;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async (url) => {
+      requestedUrl = requestUrl(url);
+      return jsonResponse({
+        items: [{
+          slug: 'github',
+          connected_account: {
+            id: 'ca_abc123xyz',
+            status: 'ACTIVE',
+          },
+        }],
+      });
+    },
+  });
+
+  assert.equal(await client.getGitHubConnectionStatus({
+    sessionId,
+    connectedAccountId: 'ca_abc123xyz',
+  }), true);
+  assert.equal(
+    requestedUrl,
+    `https://backend.composio.dev/api/v3.1/tool_router/session/${sessionId}/toolkits?toolkits=github&limit=10`,
+  );
+});
+
+test('treats pending or mismatched Composio accounts as not connected', async () => {
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async () => jsonResponse({
+      items: [{
+        slug: 'github',
+        connected_account: {
+          id: 'ca_different123',
+          status: 'INITIATED',
+        },
+      }],
+    }),
+  });
+
+  assert.equal(await client.getGitHubConnectionStatus({
+    sessionId,
+    connectedAccountId: 'ca_abc123xyz',
+  }), false);
+});
