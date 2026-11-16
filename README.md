@@ -128,3 +128,9 @@ AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers A
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+## Planned universal companion and device architecture
+
+AEGIS is being designed around one shared intelligence core and an adaptive companion experience across desktop, mobile, tablet, browser, XR and feasible console/TV pathways. The interface will assess supported capabilities with privacy-preserving feature detection and select an appropriate experience tier—from accessible text/voice to lightweight and advanced 3D or optional immersive XR. Advanced graphics will never be required for essential AEGIS use.
+
+See [Universal Device and 3D Companion Architecture](docs/AEGIS_UNIVERSAL_DEVICE_AND_3D_EXPERIENCE.md) for the proposed architecture, minimum support contract, privacy boundaries, platform strategy, performance tiers and implementation sequence. This is a planned architecture, not a claim that every platform is already supported.
