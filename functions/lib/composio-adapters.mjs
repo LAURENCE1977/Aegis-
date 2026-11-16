@@ -7,6 +7,11 @@ const ACTION_ID = 'get-repository';
 const CONNECTION_SCOPE = 'composio:github-repository:read';
 const GRANT_SCOPE = 'github:repository:read';
 const TOOL_SLUG = 'GITHUB_GET_A_REPOSITORY';
+const PULL_REQUEST_CAPABILITY_ID = 'aegis-composio-github-pull-request-readonly';
+const PULL_REQUEST_ACTION_ID = 'get-pull-request';
+const PULL_REQUEST_GRANT_SCOPE = 'github:pull-request:read';
+const PULL_REQUEST_TOOL_SLUG = 'GITHUB_GET_A_PULL_REQUEST';
+const APPROVED_TOOL_SLUGS = new Set([TOOL_SLUG, PULL_REQUEST_TOOL_SLUG]);
 
 function exactKeys(value, keys) {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -30,6 +35,63 @@ function validateRepositoryInput(input) {
 function safeString(value, maxLength = 500) {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength
     ? value : undefined;
+}
+
+
+function validatePullRequestInput(input) {
+  if (!exactKeys(input, ['owner', 'repo', 'pullNumber'])) {
+    throw new TypeError('Composio pull request lookup requires exactly owner, repo and pullNumber');
+  }
+  if (typeof input.owner !== 'string' ||
+      !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(input.owner)) {
+    throw new TypeError('Invalid GitHub owner');
+  }
+  if (typeof input.repo !== 'string' || !/^[A-Za-z0-9_.-]{1,100}$/.test(input.repo)) {
+    throw new TypeError('Invalid GitHub repository name');
+  }
+  if (!Number.isSafeInteger(input.pullNumber) || input.pullNumber < 1) {
+    throw new TypeError('Invalid GitHub pull request number');
+  }
+}
+
+function safePullRequestResult(data, pullNumber) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      data.number !== pullNumber || typeof data.title !== 'string' || !data.title.trim() ||
+      data.title.length > 500 || !['open', 'closed'].includes(data.state) ||
+      typeof data.draft !== 'boolean' || typeof data.merged !== 'boolean') {
+    throw new Error('Composio returned pull request metadata outside the exact requested resource');
+  }
+  const result = {
+    number: data.number,
+    title: data.title,
+    state: data.state,
+    draft: data.draft,
+    merged: data.merged,
+  };
+  const url = safeString(data.html_url, 2048);
+  if (url) {
+    let parsed;
+    try { parsed = new URL(url); } catch { throw new Error('Composio returned an invalid pull request URL'); }
+    if (parsed.protocol !== 'https:' || parsed.hostname !== 'github.com' ||
+        parsed.username || parsed.password || parsed.port) {
+      throw new Error('Composio returned an invalid pull request URL');
+    }
+    result.url = parsed.toString();
+  }
+  for (const key of ['head', 'base']) {
+    const branch = data[key];
+    if (branch && typeof branch === 'object' && !Array.isArray(branch) &&
+        typeof branch.ref === 'string' && branch.ref.length <= 255 &&
+        typeof branch.sha === 'string' && /^[a-f0-9]{40}$/i.test(branch.sha)) {
+      result[key] = { ref: branch.ref, sha: branch.sha };
+    }
+  }
+  for (const [source, target] of [
+    ['additions', 'additions'], ['deletions', 'deletions'], ['changed_files', 'changedFiles'],
+  ]) {
+    if (Number.isSafeInteger(data[source]) && data[source] >= 0) result[target] = data[source];
+  }
+  return result;
 }
 
 function safeRepositoryResult(data, owner, repo) {
@@ -147,7 +209,8 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
     if (!connected) throw new Error('The Composio GitHub account is not active');
 
     const tools = await client.listSessionTools({ sessionId: session.sessionId });
-    if (tools.length !== 1 || tools[0] !== TOOL_SLUG) {
+    if (tools.length < 1 || tools.length > APPROVED_TOOL_SLUGS.size ||
+        !tools.includes(TOOL_SLUG) || tools.some((slug) => !APPROVED_TOOL_SLUGS.has(slug))) {
       throw new Error('Composio session tool allowlist does not match the approved capability');
     }
 
@@ -164,7 +227,79 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
     };
   };
 
+
+  const pullRequestHandler = async (input, context = {}) => {
+    validatePullRequestInput(input);
+    if (context.capabilityId !== PULL_REQUEST_CAPABILITY_ID ||
+        context.actionId !== PULL_REQUEST_ACTION_ID ||
+        typeof context.principalId !== 'string' || !context.principalId ||
+        typeof context.connectionId !== 'string' || !context.connectionId ||
+        !Array.isArray(context.scopes) || !context.scopes.includes(PULL_REQUEST_GRANT_SCOPE)) {
+      throw new Error('Composio pull request invocation context is not authorised');
+    }
+
+    const expectedResource = 'github:pull-request:' + input.owner + '/' + input.repo + '/' + input.pullNumber;
+    if (context.resourceId !== expectedResource) {
+      throw new Error('Composio invocation does not match the exact pull request resource');
+    }
+
+    const connection = await loadConnection(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+    });
+    if (!connection || connection.id !== context.connectionId ||
+        !connection.scopes.includes(CONNECTION_SCOPE)) {
+      throw new Error('The exact active Composio connection is unavailable');
+    }
+
+    const stored = await resolveVaultSecret(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+      secretRef: connection.secretRef,
+    }, env);
+    let session;
+    try { session = JSON.parse(stored || ''); } catch {
+      throw new Error('The Composio session reference is unavailable');
+    }
+    if (!exactKeys(session, ['sessionId', 'connectedAccountId'])) {
+      throw new Error('The Composio session reference is invalid');
+    }
+
+    const client = createComposioClient({
+      apiKey: env.COMPOSIO_API_KEY,
+      fetchImpl,
+      timeoutMs: 8000,
+      maxResponseBytes: 64 * 1024,
+    });
+    const connected = await client.getGitHubConnectionStatus({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+    });
+    if (!connected) throw new Error('The Composio GitHub account is not active');
+
+    const tools = await client.listSessionTools({ sessionId: session.sessionId });
+    if (!tools.includes(PULL_REQUEST_TOOL_SLUG) ||
+        tools.length < 1 || tools.length > APPROVED_TOOL_SLUGS.size ||
+        tools.some((slug) => !APPROVED_TOOL_SLUGS.has(slug))) {
+      throw new Error('Composio session does not contain the approved pull request read-only tool');
+    }
+
+    const result = await client.executeGitHubGetPullRequest({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+      owner: input.owner,
+      repo: input.repo,
+      pullNumber: input.pullNumber,
+    });
+    return {
+      pullRequest: safePullRequestResult(result.data, input.pullNumber),
+      provider: 'composio',
+      logId: result.logId,
+    };
+  };
+
   return Object.freeze({
     [CAPABILITY_ID + ':' + ACTION_ID]: handler,
+    [PULL_REQUEST_CAPABILITY_ID + ':' + PULL_REQUEST_ACTION_ID]: pullRequestHandler,
   });
 }
