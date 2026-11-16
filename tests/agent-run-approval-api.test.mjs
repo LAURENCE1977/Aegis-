@@ -124,6 +124,7 @@ test('owner decision endpoint records only explicit approve or deny decisions', 
   assert.equal(decision.decision, 'approved');
   assert.equal(decision.decidedBy, 'owner');
   assert.equal(decision.principalId, 'owner');
+  assert.equal(decision.capabilityId, 'aegis-agent-run');
 });
 
 test('owner decision endpoint rejects an approval belonging to another principal or capability', async () => {
