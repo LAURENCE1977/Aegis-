@@ -11,7 +11,11 @@ const PULL_REQUEST_CAPABILITY_ID = 'aegis-composio-github-pull-request-readonly'
 const PULL_REQUEST_ACTION_ID = 'get-pull-request';
 const PULL_REQUEST_GRANT_SCOPE = 'github:pull-request:read';
 const PULL_REQUEST_TOOL_SLUG = 'GITHUB_GET_A_PULL_REQUEST';
-const APPROVED_TOOL_SLUGS = new Set([TOOL_SLUG, PULL_REQUEST_TOOL_SLUG]);
+const WORKFLOW_RUNS_CAPABILITY_ID = 'aegis-composio-github-workflow-readonly';
+const WORKFLOW_RUNS_ACTION_ID = 'list-workflow-runs';
+const WORKFLOW_RUNS_GRANT_SCOPE = 'github:workflow:read';
+const WORKFLOW_RUNS_TOOL_SLUG = 'GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY';
+const APPROVED_TOOL_SLUGS = new Set([TOOL_SLUG, PULL_REQUEST_TOOL_SLUG, WORKFLOW_RUNS_TOOL_SLUG]);
 
 function exactKeys(value, keys) {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -52,6 +56,81 @@ function validatePullRequestInput(input) {
   if (!Number.isSafeInteger(input.pullNumber) || input.pullNumber < 1) {
     throw new TypeError('Invalid GitHub pull request number');
   }
+}
+
+
+function validateWorkflowRunsInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      ![2, 3].includes(Object.keys(input).length) ||
+      Object.keys(input).some((key) => !['owner', 'repo', 'branch'].includes(key))) {
+    throw new TypeError('Composio workflow run lookup requires owner, repo and optional branch only');
+  }
+  if (typeof input.owner !== 'string' ||
+      !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(input.owner)) {
+    throw new TypeError('Invalid GitHub owner');
+  }
+  if (typeof input.repo !== 'string' || !/^[A-Za-z0-9_.-]{1,100}$/.test(input.repo)) {
+    throw new TypeError('Invalid GitHub repository name');
+  }
+  if (input.branch !== undefined &&
+      (typeof input.branch !== 'string' || input.branch.length < 1 || input.branch.length > 128 ||
+       !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(input.branch) ||
+       input.branch.includes('..') || input.branch.includes('//'))) {
+    throw new TypeError('Invalid GitHub workflow branch');
+  }
+}
+
+function safeWorkflowRunsResult(data, owner, repo, branch) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      !Number.isSafeInteger(data.total_count) || data.total_count < 0 ||
+      !Array.isArray(data.workflow_runs) || data.workflow_runs.length > 10) {
+    throw new Error('Composio returned an invalid workflow run collection');
+  }
+  const statuses = new Set(['queued', 'in_progress', 'completed', 'waiting', 'requested', 'pending']);
+  const conclusions = new Set(['success', 'failure', 'neutral', 'cancelled', 'skipped', 'timed_out', 'action_required', 'stale']);
+  const runs = data.workflow_runs.map((run) => {
+    if (!run || typeof run !== 'object' || Array.isArray(run) ||
+        !Number.isSafeInteger(run.id) || run.id < 1 ||
+        !statuses.has(run.status) ||
+        (run.conclusion !== null && run.conclusion !== undefined && !conclusions.has(run.conclusion)) ||
+        typeof run.repository?.full_name !== 'string' ||
+        run.repository.full_name.toLowerCase() !== (owner + '/' + repo).toLowerCase() ||
+        typeof run.head_sha !== 'string' || !/^[a-f0-9]{40}$/i.test(run.head_sha) ||
+        typeof run.head_branch !== 'string' || run.head_branch.length > 128 ||
+        (branch !== undefined && run.head_branch !== branch)) {
+      throw new Error('Composio returned workflow metadata outside the exact requested repository or branch');
+    }
+    const item = {
+      id: run.id,
+      status: run.status,
+      conclusion: run.conclusion ?? null,
+      headSha: run.head_sha,
+      headBranch: run.head_branch,
+    };
+    const name = safeString(run.name, 200);
+    if (name !== undefined) item.name = name;
+    const displayTitle = safeString(run.display_title, 300);
+    if (displayTitle !== undefined) item.displayTitle = displayTitle;
+    if (Number.isSafeInteger(run.run_number) && run.run_number > 0) item.runNumber = run.run_number;
+    if (Number.isSafeInteger(run.run_attempt) && run.run_attempt > 0) item.runAttempt = run.run_attempt;
+    const url = safeString(run.html_url, 2048);
+    if (url) {
+      let parsed;
+      try { parsed = new URL(url); } catch { throw new Error('Composio returned an invalid workflow URL'); }
+      const expectedPath = '/' + owner + '/' + repo + '/actions/runs/' + run.id;
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'github.com' ||
+          parsed.pathname !== expectedPath || parsed.username || parsed.password || parsed.port) {
+        throw new Error('Composio returned a workflow URL outside the exact repository');
+      }
+      item.url = parsed.toString();
+    }
+    for (const [source, target] of [['created_at', 'createdAt'], ['updated_at', 'updatedAt']]) {
+      const value = safeString(run[source], 40);
+      if (value !== undefined && Number.isFinite(Date.parse(value))) item[target] = value;
+    }
+    return item;
+  });
+  return { totalCount: data.total_count, workflowRuns: runs };
 }
 
 function safePullRequestResult(data, owner, repo, pullNumber) {
@@ -303,8 +382,80 @@ export function createComposioAdapterRegistry({ db, env, fetchImpl = fetch } = {
     };
   };
 
+
+  const workflowRunsHandler = async (input, context = {}) => {
+    validateWorkflowRunsInput(input);
+    if (context.capabilityId !== WORKFLOW_RUNS_CAPABILITY_ID ||
+        context.actionId !== WORKFLOW_RUNS_ACTION_ID ||
+        typeof context.principalId !== 'string' || !context.principalId ||
+        typeof context.connectionId !== 'string' || !context.connectionId ||
+        !Array.isArray(context.scopes) || !context.scopes.includes(WORKFLOW_RUNS_GRANT_SCOPE)) {
+      throw new Error('Composio workflow invocation context is not authorised');
+    }
+
+    const expectedResource = 'github:repository:' + input.owner + '/' + input.repo;
+    if (context.resourceId !== expectedResource) {
+      throw new Error('Composio workflow invocation does not match the exact repository resource');
+    }
+
+    const connection = await loadConnection(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+    });
+    if (!connection || connection.id !== context.connectionId ||
+        !connection.scopes.includes(CONNECTION_SCOPE)) {
+      throw new Error('The exact active Composio connection is unavailable');
+    }
+
+    const stored = await resolveVaultSecret(db, {
+      principalId: context.principalId,
+      providerId: 'composio',
+      secretRef: connection.secretRef,
+    }, env);
+    let session;
+    try { session = JSON.parse(stored || ''); } catch {
+      throw new Error('The Composio session reference is unavailable');
+    }
+    if (!exactKeys(session, ['sessionId', 'connectedAccountId'])) {
+      throw new Error('The Composio session reference is invalid');
+    }
+
+    const client = createComposioClient({
+      apiKey: env.COMPOSIO_API_KEY,
+      fetchImpl,
+      timeoutMs: 8000,
+      maxResponseBytes: 64 * 1024,
+    });
+    const connected = await client.getGitHubConnectionStatus({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+    });
+    if (!connected) throw new Error('The Composio GitHub account is not active');
+
+    const tools = await client.listSessionTools({ sessionId: session.sessionId });
+    if (!tools.includes(WORKFLOW_RUNS_TOOL_SLUG) ||
+        tools.length < 1 || tools.length > APPROVED_TOOL_SLUGS.size ||
+        tools.some((slug) => !APPROVED_TOOL_SLUGS.has(slug))) {
+      throw new Error('Composio session does not contain the approved workflow read-only tool');
+    }
+
+    const result = await client.executeGitHubListWorkflowRuns({
+      sessionId: session.sessionId,
+      connectedAccountId: session.connectedAccountId,
+      owner: input.owner,
+      repo: input.repo,
+      ...(input.branch === undefined ? {} : { branch: input.branch }),
+    });
+    return {
+      ...safeWorkflowRunsResult(result.data, input.owner, input.repo, input.branch),
+      provider: 'composio',
+      logId: result.logId,
+    };
+  };
+
   return Object.freeze({
     [CAPABILITY_ID + ':' + ACTION_ID]: handler,
     [PULL_REQUEST_CAPABILITY_ID + ':' + PULL_REQUEST_ACTION_ID]: pullRequestHandler,
+    [WORKFLOW_RUNS_CAPABILITY_ID + ':' + WORKFLOW_RUNS_ACTION_ID]: workflowRunsHandler,
   });
 }
