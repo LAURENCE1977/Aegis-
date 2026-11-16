@@ -19,6 +19,40 @@ function json(body, status = 200, headers = {}) {
   });
 }
 
+
+async function readBoundedRequestText(request, maxBytes) {
+  const reader = request.body?.getReader();
+  if (!reader) return '';
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        try { await reader.cancel(); } catch {}
+        throw new RangeError('Request body is too large.');
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    try { await reader.cancel(); } catch {}
+    throw error;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new TypeError('Request body is not valid UTF-8.');
+  }
+}
+
 function safeEqual(left, right) {
   if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) return false;
   let mismatch = 0;
@@ -338,8 +372,13 @@ async function authorizeAgentRun(request, env, id) {
   }
   const length = Number(request.headers.get('Content-Length') || 0);
   if (length > 2048) return json({ error: 'Request body is too large.' }, 413);
+  let raw;
+  try { raw = await readBoundedRequestText(request, 2048); } catch (error) {
+    if (error instanceof RangeError) return json({ error: 'Request body is too large.' }, 413);
+    return json({ error: 'Invalid JSON.' }, 400);
+  }
   let body;
-  try { body = JSON.parse(await request.text()); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  try { body = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
   const keys = ['approvalId', 'capabilityId', 'capabilityVersion', 'actionId', 'inputDigest', 'grantId'];
   if (!body || typeof body !== 'object' || Array.isArray(body) ||
       Object.keys(body).length !== keys.length || Object.keys(body).some((key) => !keys.includes(key)) ||
