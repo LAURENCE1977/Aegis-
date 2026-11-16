@@ -453,3 +453,45 @@ test('rejects invalid workflow branch filters before any provider request', asyn
   }), /branch/i);
   assert.equal(calls, 0);
 });
+
+
+test('executes only a bounded latest-attempt job listing for one exact workflow run', async () => {
+  let captured;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async (url, options) => {
+      captured = { url: requestUrl(url), body: JSON.parse(options.body) };
+      return jsonResponse({
+        data: { total_count: 1, jobs: [{ id: 55, run_id: 123, name: 'Node tests', status: 'completed', conclusion: 'success' }] },
+        error: null,
+        log_id: 'log_jobs_123',
+      });
+    },
+  });
+  const result = await client.executeGitHubListWorkflowJobs({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', runId: 123,
+    connectedAccountId: 'ca_abc123xyz',
+  });
+  assert.deepEqual(result, {
+    data: { total_count: 1, jobs: [{ id: 55, run_id: 123, name: 'Node tests', status: 'completed', conclusion: 'success' }] },
+    logId: 'log_jobs_123',
+  });
+  assert.equal(captured.url, `https://backend.composio.dev/api/v3.1/tool_router/session/${sessionId}/execute`);
+  assert.deepEqual(captured.body, {
+    tool_slug: 'GITHUB_LIST_JOBS_FOR_A_WORKFLOW_RUN',
+    arguments: { owner: 'LAURENCE1977', repo: 'Aegis-', run_id: 123, page: 1, per_page: 20, filter: 'latest' },
+    account: 'ca_abc123xyz',
+  });
+});
+
+test('rejects invalid workflow run IDs before any provider request', async () => {
+  let calls = 0;
+  const client = createComposioClient({
+    apiKey,
+    fetchImpl: async () => { calls += 1; return jsonResponse({ data: {} }); },
+  });
+  await assert.rejects(client.executeGitHubListWorkflowJobs({
+    sessionId, owner: 'LAURENCE1977', repo: 'Aegis-', runId: 0,
+  }), /workflow run/i);
+  assert.equal(calls, 0);
+});
