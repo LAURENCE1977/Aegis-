@@ -77,7 +77,7 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
       id, principal_id, capability_id, capability_version, action_id,
       resource_id, operation_summary, connection_id, input_digest, requested_by,
       requested_at, expires_at, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
     id, input.principalId, input.capabilityId, input.capabilityVersion,
     input.actionId, input.resourceId, input.operationSummary.trim(), input.connectionId ?? null,
