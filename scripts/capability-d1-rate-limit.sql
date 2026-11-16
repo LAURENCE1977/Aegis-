@@ -31,7 +31,7 @@ DO UPDATE SET request_count = capability_invocation_limits.request_count + 1,
   updated_at = excluded.updated_at
 WHERE capability_invocation_limits.request_count < 2;
 
-CREATE TEMP TABLE capability_rate_limit_assertion (
+CREATE TABLE IF NOT EXISTS capability_rate_limit_assertion (
   ok INTEGER NOT NULL CHECK (ok = 1)
 );
 
