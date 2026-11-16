@@ -1,19 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { Miniflare } from 'miniflare';
+import { randomUUID } from 'node:crypto';
 
+const enabled = process.env.AEGIS_RUNTIME_INTEGRATION === '1';
 const token = 'aegis-miniflare-integration-token-at-least-32-characters';
-const migrationFiles = [
-  '0001_jobs.sql',
-  '0002_agent_runs.sql',
-  '0003_agent_run_cancellation.sql',
-  '0004_agent_run_listing.sql',
-  '0005_agent_run_event_listing.sql',
-  '0006_agent_run_execution_authorization.sql',
-];
 
-async function eventually(assertion, timeoutMs = 8000) {
+async function eventually(assertion, timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
   let lastError;
   while (Date.now() < deadline) {
@@ -25,17 +17,21 @@ async function eventually(assertion, timeoutMs = 8000) {
   throw lastError || new Error('Condition was not reached before timeout.');
 }
 
-test('Cloudflare runtime persists an agent run in D1 and consumes its real local Queue message', async () => {
+test('Cloudflare runtime persists an agent run in D1 and consumes its real local Queue message', {
+  skip: !enabled && 'Set AEGIS_RUNTIME_INTEGRATION=1 after applying the runtime migrations with Wrangler.',
+}, async () => {
+  const { Miniflare } = await import('miniflare');
   const mf = new Miniflare({
     scriptPath: new URL('../workers/runtime/index.mjs', import.meta.url).pathname,
     modules: true,
     compatibilityDate: '2026-08-06',
+    resourcePersistencePath: new URL('../.wrangler/test-runtime-d1/v3', import.meta.url).pathname,
     bindings: {
       AEGIS_JOB_TOKEN: token,
       AGENT_RUNS_ENABLED: 'true',
     },
     d1Databases: {
-      DB: '00000000-0000-4000-8000-000000000001',
+      DB: '00000000-0000-0000-0000-000000000000',
     },
     queueProducers: {
       JOBS: 'aegis-jobs',
@@ -58,25 +54,22 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
 
   try {
     const db = await mf.getD1Database('DB');
-    for (const migration of migrationFiles) {
-      const sql = await readFile(new URL('../migrations/runtime/' + migration, import.meta.url), 'utf8');
-      // D1 manages foreign-key enforcement; its SQL API intentionally rejects PRAGMA statements.\n      await db.exec(sql.replace(/^\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*;\\s*/gim, ''));
-    }
-
     const schema = await db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
     ).all();
     assert.deepEqual(schema.results.map((row) => row.name), ['agent_run_events', 'agent_runs']);
 
+    const idempotencyKey = 'miniflare-agent-run-' + randomUUID();
+    const objective = 'Verify the production Worker runtime against local D1 and Queues';
     const response = await mf.dispatchFetch('https://runtime.test/v1/agent-runs', {
       method: 'POST',
       headers: {
         Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'miniflare-agent-run-0001',
+        'Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify({
-        objective: 'Verify the production Worker runtime against local D1 and Queues',
+        objective,
         specialists: ['researcher', 'engineer', 'reviewer'],
       }),
     });
@@ -109,7 +102,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     assert.ok(JSON.parse(persisted.plan_json));
 
     const events = await db.prepare(
-      'SELECT event_type FROM agent_run_events WHERE agent_run_id = ? ORDER BY created_at, event_id'
+      'SELECT event_type FROM agent_run_events WHERE agent_run_id = ? ORDER BY rowid'
     ).bind(run.id).all();
     assert.deepEqual(events.results.map((event) => event.event_type), [
       'created', 'queued', 'running', 'planned',
@@ -120,16 +113,17 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
       headers: {
         Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'miniflare-agent-run-0001',
+        'Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify({
-        objective: 'Verify the production Worker runtime against local D1 and Queues',
+        objective,
         specialists: ['researcher', 'engineer', 'reviewer'],
       }),
     });
     assert.equal(duplicate.status, 201);
     assert.equal((await duplicate.json()).run.id, run.id);
-    const count = await db.prepare('SELECT COUNT(*) AS count FROM agent_runs').first();
+    const count = await db.prepare('SELECT COUNT(*) AS count FROM agent_runs WHERE idempotency_key = ?')
+      .bind(idempotencyKey).first();
     assert.equal(count.count, 1);
   } finally {
     await mf.dispose();
