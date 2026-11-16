@@ -183,7 +183,7 @@ export function createComposioClient({
           workbench: { enable: false },
           search: { enable: false },
           execute: { enable_multi_execute: false },
-          preload: { tools: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG] },
+          preload: { tools: [TOOL_SLUG, PULL_REQUEST_TOOL_SLUG, WORKFLOW_RUNS_TOOL_SLUG] },
         },
       });
       requireSessionId(result.session_id);
