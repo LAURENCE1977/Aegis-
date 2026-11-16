@@ -45,3 +45,10 @@ This is not yet wired to a public route or a deployed Worker. The current capabi
 6. Only then consider a non-production route and a separately reviewed deployment.
 
 Write, delete, arbitrary shell, arbitrary HTTP, arbitrary MCP, browser automation and self-modifying tool execution remain disabled.
+
+
+## Additional fixed adapter: public GitHub metadata
+
+`aegis-github-public-discovery:discover` is implemented in the fixed adapter registry but is not exposed by the owner invocation route. It accepts exactly one canonical `https://github.com/{owner}/{repository}` source URL, then calls only `https://api.github.com`. Redirects are rejected, timeouts are bounded to five seconds and response bodies are capped at 64 KiB while streaming. It returns public repository metadata only; it does not read source files, access private repositories, install packages or execute code.
+
+Do not expose this action until an atomic per-principal/action rate limiter and exact-resource grant validation for `github:repo:{owner}/{repository}` are implemented and tested. No public route currently selects this adapter.
