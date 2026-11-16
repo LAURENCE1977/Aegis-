@@ -717,3 +717,10 @@ The separate Cloudflare runtime now has owner-authenticated agent-run history an
 - CI now applies all runtime migrations to an isolated local D1 database and verifies the cancellation marker, history index and append-only agent-run event triggers.
 
 The runtime remains source-only and is not deployed or provisioned. Agent runs still produce a plan only; no specialist model execution, shell, browser or external side effect is enabled. The latest implementation commit `25044908e05ef892ae37544cfc4d93dab3d49a20` passed the full suite (507 tests, 0 failures), runtime D1 migration checks, Forge/capability D1 checks and Cloudflare Pages preview.
+
+
+### Agent-run event timeline — 16 November 2026
+
+Added owner-authenticated `GET /v1/agent-runs/{id}/events` with a 1–50 event page size, newest-first keyset pagination on `created_at DESC, event_id DESC`, exact parent-run existence checks, strict cursor/query validation and bounded JSON detail parsing. Malformed or oversized event detail is redacted to an empty object rather than returned raw. Migration `0005_agent_run_event_listing.sql` adds the per-run cursor index; CI verifies the index and append-only event triggers in isolated D1. The event timeline remains read-only and cannot alter or delete audit records.
+
+Latest verified implementation commit: `5c36daa16378af68b3cee2357d92844983f08c14`. CI: 509 tests passed, 0 failed; capability, runtime and Forge D1 migration/smoke checks passed; Cloudflare Pages preview succeeded.
