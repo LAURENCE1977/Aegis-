@@ -150,6 +150,16 @@ function parseAgentRunStep(row) {
   };
 }
 
+async function parseAgentRunWithSteps(env, row) {
+  const run = parseAgentRun(row);
+  if (!run) return null;
+  const stepRows = await env.DB.prepare(
+    'SELECT * FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
+  ).bind(row.id).all();
+  run.steps = (stepRows.results || []).map(parseAgentRunStep);
+  return run;
+}
+
 async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypto.randomUUID()) {
   await env.DB.prepare(
     'INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(event_id) DO NOTHING'
@@ -251,7 +261,7 @@ async function cancelAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run not found.' }, 404);
-  if (row.cancelled_at) return json({ run: parseAgentRun(row), cancelled: true });
+  if (row.cancelled_at) return json({ run: await parseAgentRunWithSteps(env, row), cancelled: true });
   if (row.status === 'failed') {
     return json({ error: 'A failed agent run cannot be cancelled.', run: parseAgentRun(row) }, 409);
   }
@@ -272,13 +282,13 @@ async function cancelAgentRun(env, id) {
   if (!updated.meta?.changes) {
     const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
     if (!current) return json({ error: 'Agent run not found.' }, 404);
-    if (current.cancelled_at) return json({ run: parseAgentRun(current), cancelled: true });
+    if (current.cancelled_at) return json({ run: await parseAgentRunWithSteps(env, current), cancelled: true });
     return json({ error: 'Agent run is no longer cancellable.', run: parseAgentRun(current) }, 409);
   }
 
   await auditAgentRun(env, id, 'cancelled', {}, 'cancelled:' + id);
   const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
-  return json({ run: parseAgentRun(current), cancelled: true });
+  return json({ run: await parseAgentRunWithSteps(env, current), cancelled: true });
 }
 
 
@@ -477,12 +487,7 @@ async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run not found.' }, 404);
-  const stepRows = await env.DB.prepare(
-    'SELECT * FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
-  ).bind(id).all();
-  const run = parseAgentRun(row);
-  run.steps = (stepRows.results || []).map(parseAgentRunStep);
-  return json({ run });
+  return json({ run: await parseAgentRunWithSteps(env, row) });
 }
 
 async function processAgentRun(message, env) {
