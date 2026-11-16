@@ -79,11 +79,12 @@ export async function onRequestPost({ request, env }) {
     }));
 
     if (!result.allowed) {
-      const unavailable = ['POLICY_CONTEXT_UNAVAILABLE', 'AUDIT_UNAVAILABLE'].includes(result.reasonCode);
+      const unavailable = ['POLICY_CONTEXT_UNAVAILABLE', 'AUDIT_UNAVAILABLE', 'RATE_LIMIT_STORE_UNAVAILABLE'].includes(result.reasonCode);
+      const rateLimited = result.reasonCode === 'RATE_LIMITED';
       return jsonResponse({
         error: unavailable ? 'Sentinel policy or audit storage is unavailable.' : 'Capability invocation denied.',
         reasonCode: result.reasonCode,
-      }, unavailable ? 503 : 403);
+      }, rateLimited ? 429 : unavailable ? 503 : 403);
     }
     if (result.reasonCode !== 'SUCCESS') {
       return jsonResponse({ error: 'The read-only adapter could not complete the request.', reasonCode: result.reasonCode }, 502);

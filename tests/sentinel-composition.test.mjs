@@ -17,7 +17,7 @@ function fakeDb() {
       return {
         bind() {
           return {
-            first: async () => null,
+            first: async () => sql.includes('INSERT INTO capability_invocation_limits') ? { request_count: 1 } : null,
             all: async () => ({ results: [] }),
             run: async () => ({ meta: { changes: 1 } }),
           };
@@ -142,7 +142,11 @@ test('runs the read-only module catalogue end-to-end through real policy and D1 
       return {
         bind(...values) {
           return {
-            first: async () => sql.includes('FROM capability_grants') ? grantRow : null,
+            first: async () => {
+              if (sql.includes('FROM capability_grants')) return grantRow;
+              if (sql.includes('INSERT INTO capability_invocation_limits')) return { request_count: 1 };
+              return null;
+            },
             all: async () => ({ results: [] }),
             run: async () => {
               if (sql.includes('INSERT INTO capability_invocation_audit')) {

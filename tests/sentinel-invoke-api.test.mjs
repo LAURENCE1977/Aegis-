@@ -23,6 +23,7 @@ class MemoryD1 {
       bind(...values) { this.values = values; return this; },
       async first() {
         if (sql.includes('FROM capability_grants')) return db.grantRow ? { ...db.grantRow } : null;
+        if (sql.includes('INSERT INTO capability_invocation_limits')) return { request_count: 1 };
         return null;
       },
       async run() {
