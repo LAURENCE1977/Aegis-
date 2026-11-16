@@ -11,10 +11,15 @@ The objective is capability per unit of complexity, latency, memory and cost—n
 - Authenticated, no-store `GET /api/modules` capability catalogue.
 - Read-only GitHub public repository discovery at `POST /api/forge/discover`.
 - Candidate and knowledge record validation in `functions/lib/forge-records.mjs`.
+- Versioned descriptive capability manifest validation and a static first-party read-only catalogue in `functions/lib/capability-registry.mjs`.
+- Authenticated, no-store `GET /api/capabilities` catalogue endpoint.
+- Pure fail-closed capability policy evaluator in `functions/lib/capability-policy.mjs`, bound to exact registered manifest identity and checking supplied grant, resource, scope, connection, approval and budget snapshots.
 - Forge and Engineering Intelligence capability declarations remain `planned`.
 - No repository code is executed, no candidate/knowledge records are persisted yet, and no permissions are granted by the registry.
 
 The GitHub discovery route requires a valid AEGIS session and same-origin POST. It accepts one HTTPS GitHub repository URL, blocks redirects, returns metadata only, and does not fetch source files. Private repositories require a separately authorised integration and are not supported by this public adapter.
+
+The capability catalogue currently describes only first-party public-repository discovery and module-list reads. Its `approved` manifest status is metadata review, not permission to invoke. The registry's grant check always denies. The pure policy evaluator can validate a caller-supplied grant/approval snapshot but is not wired to a grant store, API or runtime, and it does not consume approvals. No external connector execution, OAuth connection, persistent manifest store or invocation system is implemented. Hostname validation in a manifest is not a runtime SSRF defence.
 
 ## Universal intake
 
@@ -85,3 +90,53 @@ These are descriptive planned capabilities only. The module registry intentional
 7. Forge blueprint and benchmark workflow.
 8. Sandboxed implementation and review gates.
 9. Capability Centre for connection, health, update and disable operations.
+
+
+## Specialist agent definitions and multi-agent governance
+
+Agent-definition repositories such as [Agency Agents](https://github.com/msitarzewski/agency-agents) are knowledge sources, not execution engines. Forge should inspect individual role files, pin their source commits, record licences and provenance, and adapt only roles that solve a demonstrated AEGIS need.
+
+An AEGIS-native agent record should include:
+- stable agent ID, version, role and scope;
+- purpose, expertise and explicit non-goals;
+- instruction source, provenance, licence and review date;
+- input/output schema and expected deliverables;
+- allowed capability IDs (never raw credentials);
+- budget, timeout, retry and concurrency limits;
+- approval requirements and escalation rules;
+- evaluation cases, quality criteria and known failure modes.
+
+The orchestrator—not the agent prompt—enforces tool permissions, budgets, isolation, audit, cancellation and approval. Use a planner/worker/reviewer pattern selectively; avoid spawning agents when a single bounded task is cheaper and clearer. Agent-to-agent hand-offs must carry structured task context and provenance, not unrestricted hidden memory.
+
+## Platform-independent client and runtime design
+
+Treat cross-platform delivery as an adapter strategy:
+- one canonical API, data model and policy layer;
+- responsive web/PWA as the first reference client;
+- thin adapters for browser, Android, iOS/iPadOS and desktop-specific features;
+- provider, storage, queue, notification, voice and automation adapters behind versioned contracts;
+- capability detection and graceful degradation, not platform-name assumptions;
+- server-side durable execution, because mobile operating systems may suspend background clients.
+
+Every adapter must pass contract tests and document permissions, data handling, supported versions, limitations and fallback behaviour. Platform support is earned through real-device/browser tests, not inferred from a successful build.
+
+
+## Web ingestion and workflow orchestration
+
+Forge should treat web acquisition and workflow execution as separate capability families.
+
+### Web ingestion adapter
+Define a provider-neutral contract for search/discovery, fetch, crawl, extraction, normalization, provenance and retrieval status. Candidate providers include native permitted HTTP retrieval, Firecrawl and (as a paid fallback) Oxylabs Web API. Apply domain policy, robots/terms checks, SSRF protection, strict request/time/size limits, deduplication, content-type validation and source provenance. Treat all retrieved content as untrusted data and isolate it from instructions and permissions. Keep scraping providers optional and enforce a per-job spend cap.
+
+### Automation/connectors
+Study Activepieces for its TypeScript integration/piece model and MCP exposure. Study n8n's visual workflow UX, but its Sustainable Use License is not an OSI open-source licence and restricts some product-embedding/customer workflow-editor scenarios. Windmill is AGPLv3 with additional commercial boundaries. Do not make any external automation catalogue authoritative for AEGIS permissions; convert approved actions into AEGIS capability manifests with scopes, risk classification, schemas, rate limits, audit and approvals.
+
+### Durable workflow engines
+The current AEGIS Worker + D1 + Queue implementation remains the first small-job runtime. Benchmark Temporal, Hatchet and Trigger.dev against representative AEGIS workloads before selecting an external engine. Inngest is a further event-driven reference, but its server/CLI licence differs from its Apache-2.0 SDKs. Kestra and Airflow are better treated as later data/business-pipeline options than as replacements for the initial agent job runtime.
+
+No second workflow engine should be deployed until a benchmark establishes a need and an explicit migration/ownership model preserves one canonical AEGIS job state and audit trail. See the workflow-engine comparison in [RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md).
+
+
+## Capability System governance
+
+The detailed design is in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). Forge may discover and evaluate sources, but only reviewed AEGIS-native manifests become registry entries; registration does not enable execution or grant permission. Capability risk is assigned per action, not per provider. Central policy must validate principal, scope, resource, connection, risk, budget and approval immediately before every invocation. Keep adapter execution isolated from the control plane, secrets outside manifests and logs, and all write/external-impact operations behind explicit approval. The design is currently documentation only.

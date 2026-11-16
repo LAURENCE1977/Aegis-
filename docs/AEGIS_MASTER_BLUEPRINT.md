@@ -143,7 +143,7 @@ Forge documentation says:
 - The Pages project configuration did not list an `AEGIS_MCP_TOKEN` encrypted secret when checked; therefore the Bridge endpoint remains fail-closed until that secret is configured. Do not expose or request its value.
 
 ### AEGIS Runtime implementation snapshot — 15 November 2026
-- PR #4: https://github.com/LAURENCE1977/Aegis-/pull/4 — open, not merged.
+- PR #4: https://github.com/LAURENCE1977/Aegis-/pull/4 — **closed and merged on 16 November 2026**. Merge commit: `33820ca985b97be6152575ed6b267d0b5f8155e6`.
 - Branch: `feature/aegis-durable-job-runtime`; latest source head at the time of this update must be re-verified live.
 - Added a separate Cloudflare Worker runtime under `workers/runtime/`, D1 schema under `migrations/runtime/0001_jobs.sql`, and deployment template `workers/runtime/wrangler.toml.example`.
 - Authenticated API: `POST /v1/jobs`, `GET /v1/jobs/:id`, `GET /health`; interim bearer token `AEGIS_JOB_TOKEN`, no permissive CORS, same-origin enforcement when Origin is present, 8 KiB request limit.
@@ -153,6 +153,12 @@ Forge documentation says:
 - Runtime source is not deployed. Cloudflare account inspection found no D1 databases or Queues and only two unrelated Worker scripts (`artist-hub-preview-20261113`, `project-andromeda`). Do not confuse them with AEGIS.
 - PR #4 does not change the live Pages project. Resource provisioning and Worker deployment remain separate and require a cost/limit check plus appropriate authorisation.
 - See `docs/AEGIS_RUNTIME.md` for API, data model, deployment preparation and limitations.
+
+### AEGIS dead-letter recovery — PR #8
+- PR #8: https://github.com/LAURENCE1977/Aegis-/pull/8 — open draft, based on the former PR #4 feature branch; it has not been merged.
+- Adds a dedicated `aegis-jobs-dlq` consumer, conditional terminal failure for exhausted deliveries, idempotent audit events, and protection for active leases and terminal jobs.
+- The latest checked head `2e590313628f26c8a31646e608ff515f13b53cee` has one successful Node.js test run (`43728470853`, 87 passed) and one duplicate run cancelled; Cloudflare Pages preview succeeded. This is test/preview evidence only, not live Queue/D1 verification.
+- Because PR #4 is now merged, retarget/reconcile PR #8 with `main` before merging; inspect the resulting diff and rerun checks.
 
 ### Important branches and prior refs
 - `feature/aegis-security-forge-foundation` was the PR #1 head.
@@ -184,7 +190,7 @@ PR #4 contains the first isolated Worker source slice:
 5. Attempt fencing and optional idempotency key. Attempt IDs are captured atomically with `UPDATE ... RETURNING attempts`, preventing a stale worker from adopting a newer attempt after lease recovery.
 6. Strict allowlist containing only a no-argument health-check task.
 
-PR #4 is open and mergeable (not merged). Latest implementation commit: `97a8e4ae2403024ef88c6d17eb7049bc863cd2b0`. Latest CI run `43725405757`: **83 tests passed, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The active Pages preview is `https://ce0d2a88.aegis-6yk.pages.dev`; it does not deploy the Worker. Production Pages remains unchanged.
+PR #4 is merged into `main` at `33820ca985b97be6152575ed6b267d0b5f8155e6`. Its final Node.js CI run `43725405757` passed **83 tests, 0 failed**. The stale-attempt regression was reproduced against the old code (82 passed, 1 failed) before the fix. The Cloudflare Pages preview did not deploy the separate runtime Worker; no production Worker deployment is implied by this merge.
 
 Still missing:
 - Cloudflare D1/Queue resource provisioning and deployment.
@@ -214,7 +220,7 @@ These are research-only candidates. None is connected, installed or granted perm
 ## 10. Implementation sequence
 
 1. Re-read this blueprint and `AGENTS.md`; inspect live main, branches, PRs, Actions and Cloudflare.
-2. Keep PR #4 reviewed and green; merge only with the user's appropriate production approval.
+2. Review and integrate PR #8 dead-letter recovery against the now-merged runtime, then review PR #13 capability registry. Preserve the distinction between source merge, resource provisioning and live Worker deployment.
 3. Validate runtime code against a real local D1/Queue emulator or disposable test resources; add recovery, retry, concurrency and failure-path tests.
 4. Provision one D1 database, one Queue and a separate Worker only after confirming account free-tier headroom and no billing change.
 5. Deploy the Worker with an encrypted `AEGIS_JOB_TOKEN`; verify health, submit, status, completion, idempotency, Cron recovery and DLQ behavior.
@@ -249,3 +255,80 @@ When a new AI session starts:
 6. Do not claim the document itself proves a feature works; code, tests and deployment are the evidence.
 
 **Canonical source:** this file in the GitHub repository. Update it as architecture and implementation change.
+
+
+## 13. Cross-platform strategy — architecture requirement
+
+Detailed target matrix and release gates: [docs/PLATFORM_COMPATIBILITY.md](PLATFORM_COMPATIBILITY.md).
+
+AEGIS must be designed as a platform-independent core with replaceable client and infrastructure adapters. Cross-platform support is a long-term requirement, not a promise that every feature will be available on every device at launch.
+
+### Platform direction
+
+- **First delivery target:** responsive web application / installable PWA, tested on Chromebook browsers, iPhone Safari and iPad Safari.
+- **Next client targets:** Android and desktop browsers, using the same web client and capability contracts wherever practical.
+- **Later native targets:** Android, iOS/iPadOS, Windows, macOS and Linux clients only where browser/PWA limitations justify the additional maintenance.
+- **Server/runtime:** keep orchestration, memory, policy, agent execution and durable jobs behind documented APIs and portable contracts. Cloudflare is the current low-cost hosting choice, not a permanent architectural lock-in.
+
+### Core and adapter boundaries
+
+Keep business logic out of platform-specific UI code. Define versioned interfaces for:
+- identity, authentication and session lifecycle;
+- model/provider routing and streaming;
+- agent runs, task state, approvals, cancellation and audit;
+- memory, files, search and synchronisation;
+- notifications, scheduling and background execution;
+- voice input/output, media capture and playback;
+- browser/device automation and local capabilities;
+- secrets, secure storage and platform permission prompts.
+
+Use capability detection rather than user-agent sniffing. A client must show a clear unsupported/permission-required state when a capability is unavailable. Never silently weaken security or pretend a background task is running when the operating system has suspended it.
+
+### Portability rules
+
+1. Keep a single canonical API and data model; version contracts and maintain backwards compatibility where practical.
+2. Make the web/PWA client the reference implementation; add native shells only for capabilities that demonstrably need them.
+3. Keep provider, database, queue, object-storage and deployment integrations behind adapters so infrastructure can be replaced.
+4. Use standards where suitable: HTTPS, JSON/HTTP, MCP, OAuth 2.1/PKCE, OpenAPI and Web Push where supported.
+5. Treat local storage as a cache, not the source of truth for durable jobs or shared memory.
+6. Design offline behaviour explicitly: queue safe drafts locally, reconcile conflicts, and never imply a server-side action completed before confirmation.
+7. Isolate platform-specific permissions and sensitive capabilities; require explicit user consent and auditable scopes.
+8. Maintain automated browser/device test matrices, responsive layouts, accessibility, keyboard support and graceful degradation.
+9. Do not promise 24/7 background execution from mobile clients. Durable jobs must run server-side; mobile clients observe, approve and resume them.
+10. Measure the cost and maintenance burden of every additional client before adopting it.
+
+### Progressive delivery
+
+1. Responsive web/PWA across the user's Chromebook, iPhone and iPad.
+2. Stable API/Bridge and server-side runtime contracts.
+3. Android client/device QA adapter where useful.
+4. Desktop packaging only if it adds real value beyond the web app.
+5. Native iOS/iPadOS and Windows/macOS/Linux integrations only for validated gaps.
+6. Continuous compatibility tests and adapter conformance checks for every supported platform.
+
+**Acceptance principle:** a platform is supported only when its core workflows have been tested on real target browsers/devices, accessibility and failure states are checked, and platform limitations are documented.
+
+
+
+## 14. Web ingestion and workflow-engine strategy
+
+New candidates evaluated 15 November 2026 are recorded in [docs/RESEARCH_SOURCE_REGISTER.md](RESEARCH_SOURCE_REGISTER.md).
+
+### Web research and ingestion
+- Define a provider-neutral ingestion interface for discovery, fetch, crawl, extraction, normalization and provenance.
+- Prefer permitted native retrieval or low-cost options first; evaluate Firecrawl as an optional AGPL-licensed service and Oxylabs only as a paid, explicitly budgeted fallback.
+- Enforce target-domain policy, robots/terms review, SSRF defenses, bounded requests, content limits, deduplication and source provenance. Retrieved pages are untrusted data and cannot change agent policy or permissions.
+
+### Workflow automation and durable execution
+- Keep the existing AEGIS Worker/D1/Queue runtime as the first bounded execution engine.
+- Study Temporal, Hatchet and Trigger.dev as the leading durable-workflow comparisons; study Inngest event-driven patterns and confirm the exact product name if "Ingest" meant something else.
+- Study Activepieces connector pieces and workflow UX; keep n8n and Windmill licensing constraints explicit before any product embedding. Kestra and Apache Airflow are later options for larger data/business pipelines, not the initial agent runtime.
+- OpenDots informs the specialist-agent workspace, approval and activity UX. It does not replace AEGIS identity, policy or runtime.
+- OpenOutreach is a specialised outbound-sales agent, not core OS functionality. No external messaging, lead purchase or email sending is authorised by this research.
+
+**Non-duplication rule:** AEGIS owns canonical job IDs, state, approvals, policies and audit. Any external engine is an execution adapter behind this boundary. Do not run multiple orchestration systems for the same workload without a measured reason, clear ownership and migration plan.
+
+
+## 15. Capability System architecture
+
+The governed capability lifecycle and implementation contract are specified in [AEGIS_CAPABILITY_SYSTEM.md](AEGIS_CAPABILITY_SYSTEM.md). PR #9 defines the architecture; PR #12 implements the first read-only registry slice on `feature/aegis-capability-registry-implementation`. The v0.1 manifest validator covers provider/interface metadata, action risk/effect/approval, scopes, data classification, egress declarations, auth references, limits, provenance and licence review. An authenticated no-store API lists two first-party read-only capabilities. A pure policy evaluator is also implemented: it binds to the exact registered manifest and checks principal, grant version/status/expiry/revocation, scope, exact resource, connection, exact-operation approval and budget snapshots. It does not persist grants, atomically consume approvals, record invocations or execute adapters. `isCapabilityGranted()` still fails closed; no grant store supplies real permissions. The manifest `approved` status is review metadata only, not permission. Latest recorded Node.js 22 CI on head `6ed236f313bb4ba23dde0a2cb970815031770ab5` (run `43729190428`) passed 110/110 tests. The current runtime remains health-check-only; do not widen its task allowlist until persistent policy, atomic approvals, isolated adapters, secrets, durable audit, revocation, idempotency, SSRF controls and cost limits are implemented and tested.

@@ -67,3 +67,8 @@ The first durable runtime slice is now implemented in source under `workers/runt
 ## Project blueprint and AI handover
 
 The canonical architecture, operating principles, verified baseline, roadmap and fresh-session handover are maintained in [docs/AEGIS_MASTER_BLUEPRINT.md](docs/AEGIS_MASTER_BLUEPRINT.md). AI and engineering agents must read [AGENTS.md](AGENTS.md) before making changes. These documents are living records; always verify live repository and deployment state before relying on status notes.
+
+
+## Cross-platform roadmap
+
+AEGIS is being designed around one portable core and replaceable client/platform adapters. The first target is a responsive web/PWA experience across Chromebook, iPhone and iPad browsers, with Android, Windows, macOS and Linux extensions added when validated. See [docs/PLATFORM_COMPATIBILITY.md](docs/PLATFORM_COMPATIBILITY.md). This roadmap does not claim those later clients are already implemented.
