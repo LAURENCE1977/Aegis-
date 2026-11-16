@@ -12,6 +12,7 @@ const migrations = [
   '0004_agent_run_listing.sql',
   '0005_agent_run_event_listing.sql',
   '0006_agent_run_execution_authorization.sql',
+  '0007_agent_run_steps.sql',
 ];
 
 function splitSqlStatements(sql) {
@@ -118,9 +119,11 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
       }
     }
     const schema = await db.prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events') ORDER BY name"
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('agent_runs', 'agent_run_events', 'agent_run_steps', 'agent_run_step_events') ORDER BY name"
     ).all();
-    assert.deepEqual(schema.results.map((row) => row.name), ['agent_run_events', 'agent_runs']);
+    assert.deepEqual(schema.results.map((row) => row.name), [
+      'agent_run_events', 'agent_run_step_events', 'agent_run_steps', 'agent_runs',
+    ]);
 
     const idempotencyKey = 'miniflare-agent-run-' + randomUUID();
     const objective = 'Verify the production Worker runtime against local D1 and Queues';
@@ -169,6 +172,22 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     ).bind(run.id).all();
     assert.deepEqual(events.results.map((event) => event.event_type), [
       'created', 'queued', 'running', 'planned',
+    ]);
+
+    const steps = await db.prepare(
+      'SELECT id, step_index, specialist, status, attempts, step_json FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
+    ).bind(run.id).all();
+    assert.equal(steps.results.length, 3);
+    assert.deepEqual(steps.results.map((step) => step.specialist), [
+      'researcher', 'engineer', 'reviewer',
+    ]);
+    assert.ok(steps.results.every((step) => step.status === 'planned' && step.attempts === 0));
+    assert.ok(steps.results.every((step) => JSON.parse(step.step_json).tools.length === 0));
+    const stepEvents = await db.prepare(
+      "SELECT event_type FROM agent_run_step_events WHERE agent_run_id = ? ORDER BY created_at, event_id"
+    ).bind(run.id).all();
+    assert.deepEqual(stepEvents.results.map((event) => event.event_type), [
+      'planned', 'planned', 'planned',
     ]);
 
     const duplicate = await mf.dispatchFetch('https://runtime.test/v1/agent-runs', {
