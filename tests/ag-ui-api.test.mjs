@@ -440,3 +440,56 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
+
+
+test('AG-UI routes the Composio workflow reader through Sentinel and refuses it without an exact grant', async () => {
+  const db = new AgentToolMemoryD1(null);
+  const calls = [];
+  const response = await onRequestPost({
+    request: await request(input({
+      messages: [{ id: 'user-1', role: 'user', content: 'Check the latest workflow runs for AEGIS.' }],
+    })),
+    env: {
+      ...envBase,
+      AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      COMPOSIO_API_KEY: 'test-composio-api-key-long-enough',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      const payload = JSON.parse(options.body);
+      calls.push(payload);
+      if (calls.length === 1) {
+        return new Response(modelSseStream([
+          qwenToolDelta({ tool_calls: [{
+            index: 0, id: 'call_workflow_1', type: 'function',
+            function: {
+              name: 'aegis_read_github_workflow_runs',
+              arguments: '{"owner":"LAURENCE1977","repo":"Aegis-","branch":"feature/composio-audit-lineage-verified"}',
+            },
+          }] }),
+          'data: [DONE]\n\n',
+        ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      }
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'I need an exact Sentinel grant before reading workflow runs.' }),
+        'data: [DONE]\n\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.deepEqual(events.filter(event => event.type === 'TEXT_MESSAGE_CONTENT').map(event => event.delta), [
+    'I need an exact Sentinel grant before reading workflow runs.',
+  ]);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].messages.at(-1).content, /GRANT_REQUIRED/);
+  assert.equal(db.auditRows.length, 1);
+  assert.equal(db.auditRows[0][5], 'aegis-composio-github-workflow-readonly');
+  assert.equal(db.auditRows[0][7], 'github:repository:LAURENCE1977/Aegis-');
+});
