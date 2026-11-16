@@ -1,6 +1,7 @@
 import { getCapabilityManifest } from './capability-registry.mjs';
 import { loadCapabilityGrant } from './capability-grants.mjs';
-import { loadConnection } from './capability-connections.mjs';
+import { loadConnection, loadConnectionById } from './capability-connections.mjs';
+import { resolveVaultSecret } from './secret-vault.mjs';
 import {
   loadApproval,
   consumeApproval,
@@ -40,10 +41,10 @@ function buildAdapterMap(adapters) {
  *
  * Adapter handlers are supplied by server-side code, keyed by the exact
  * capability/action pair. Manifest URLs, paths and request fields are never
- * interpreted as adapter destinations. This function does not resolve vault
- * secrets or create a public endpoint.
+ * interpreted as adapter destinations. OAuth credentials are resolved only
+ * inside execute, after Sentinel policy, rate-limit, audit and approval gates.
  */
-export function createSentinelDependencies({ db, adapters, clock = Date.now } = {}) {
+export function createSentinelDependencies({ db, adapters, clock = Date.now, env } = {}) {
   if (!db || typeof db.prepare !== 'function') {
     throw new TypeError('A D1-compatible database binding is required');
   }
@@ -69,6 +70,31 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
       const key = context?.capabilityId + ':' + context?.actionId;
       const handler = adapterRegistry.get(key);
       if (!handler) throw new Error('Capability adapter is not registered');
+      const manifest = getCapabilityManifest(context.capabilityId);
+      if (!manifest || manifest.status !== 'approved') throw new Error('Capability manifest is unavailable');
+
+      let credential;
+      if (manifest.auth.mode === 'oauth2') {
+        if (!env) throw new Error('Vault environment is unavailable');
+        const connection = await loadConnectionById(db, {
+          id: context.connectionId,
+          principalId: context.principalId,
+        });
+        if (!connection || connection.status !== 'active' ||
+            connection.providerId !== manifest.provider.id ||
+            (connection.expiresAt && Date.parse(connection.expiresAt) <= currentTime())) {
+          throw new Error('Authorized provider connection is unavailable');
+        }
+        credential = await resolveVaultSecret(db, {
+          principalId: context.principalId,
+          providerId: manifest.provider.id,
+          secretRef: connection.secretRef,
+        }, env);
+        if (typeof credential !== 'string' || !credential.trim()) {
+          throw new Error('Authorized provider credential is unavailable');
+        }
+      }
+
       const safeContext = Object.freeze({
         invocationId: context.invocationId,
         principalId: context.principalId,
@@ -79,6 +105,7 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
         scopes: Object.freeze([...(context.scopes || [])]),
         connectionId: context.connectionId ?? null,
         inputDigest: context.inputDigest,
+        ...(credential === undefined ? {} : { credential }),
       });
       return handler(input, safeContext);
     },
