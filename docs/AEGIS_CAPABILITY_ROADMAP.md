@@ -253,7 +253,9 @@ Do not add percentages until a gate has a defined set of measurable acceptance c
 ## 8. Current truth as of this roadmap
 
 - The canonical active work remains draft PR #101 on `feature/composio-audit-lineage-verified`.
-- The preceding code commit `027fc8017250e893d3d4b5701e9f294c68647184` passed GitHub Actions run `43879054243`.
+- The earlier code commit `027fc8017250e893d3d4b5701e9f294c68647184` passed GitHub Actions run `43879054243`.
+- The documentation/README branch head `f01651f90f9958ae47910fc386a0313238bd0b47` was subsequently verified by GitHub Actions run `43939797261` (completed/success). All 15 workflow steps passed, including Node.js tests, Cloudflare runtime integration tests in Miniflare, isolated capability/runtime/Forge D1 migrations, rate-limit and append-only audit checks, agent-run cancellation checks, and Forge licence/Knowledge Library safeguards.
+- Run `43939797261` verifies the source and isolated local test environment at that commit; it does not establish that the production Cloudflare runtime Worker/Queue is deployed or live-integrated.
 - The latest research-register commit at the time this roadmap was authored is `c7d49d4f0c318dd646cbce0ee89b418b2c135212`; it is documentation, not runtime implementation.
 - Agent-run submission is plan-only. Specialist agent execution is not enabled.
 - Cloudflare Pages preview does not mean the separate runtime Worker/Queue is deployed or live-integrated.
