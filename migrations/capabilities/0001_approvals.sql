@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS capability_approvals (
   capability_version TEXT NOT NULL,
   action_id TEXT NOT NULL,
   resource_id TEXT NOT NULL,
+  operation_summary TEXT NOT NULL CHECK (length(operation_summary) BETWEEN 1 AND 500),
   connection_id TEXT,
   input_digest TEXT NOT NULL,
   requested_by TEXT NOT NULL,

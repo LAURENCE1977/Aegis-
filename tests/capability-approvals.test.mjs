@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createApprovalRequest,
   decideApprovalRequest,
+  listPendingApprovals,
   consumeApproval,
 } from '../functions/lib/capability-approvals.mjs';
 
@@ -19,23 +20,26 @@ class MemoryD1 {
           if (db.rows.has(v[0])) return { meta: { changes: 0 } };
           db.rows.set(v[0], {
             id: v[0], principal_id: v[1], capability_id: v[2], capability_version: v[3],
-            action_id: v[4], resource_id: v[5], connection_id: v[6], input_digest: v[7],
-            requested_by: v[8], requested_at: v[9], expires_at: v[10],
+            action_id: v[4], resource_id: v[5], operation_summary: v[6], connection_id: v[7], input_digest: v[8],
+            requested_by: v[9], requested_at: v[10], expires_at: v[11],
             status: 'pending', decided_by: null, decided_at: null, consumed_at: null,
           });
           return { meta: { changes: 1 } };
         }
         return { meta: { changes: 0 } };
       },
+      async all() {
+        return { results: [...db.rows.values()].filter(row => row.status === 'pending').map(row => ({ ...row })) };
+      },
       async first() {
         const v = this.values;
         if (sql.includes('UPDATE capability_approvals') && sql.includes("status = 'approved'") && sql.includes("status = 'consumed'")) {
-          const [consumedAt, id, now, principal, capability, version, action, resource, connection, digest] = v;
+          const [consumedAt, id, now, principal, capability, version, action, resource, summary, connection, digest] = v;
           const row = db.rows.get(id);
           if (!row || row.status !== 'approved' || row.consumed_at || row.expires_at <= now ||
               row.principal_id !== principal || row.capability_id !== capability ||
               row.capability_version !== version || row.action_id !== action ||
-              row.resource_id !== resource || row.connection_id !== connection ||
+              row.resource_id !== resource || row.operation_summary !== summary || row.connection_id !== connection ||
               row.input_digest !== digest) return null;
           row.status = 'consumed'; row.consumed_at = consumedAt;
           return { ...row };
@@ -63,6 +67,7 @@ const binding = {
   capabilityVersion: '1.2.0',
   actionId: 'update-description',
   resourceId: 'github:repo:owner/project',
+  operationSummary: 'Update the description of owner/project on GitHub',
   connectionId: 'connection-1',
   inputDigest: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 };
@@ -80,6 +85,7 @@ test('creates a pending approval bound to an exact operation without granting it
   assert.equal(record.status, 'pending');
   assert.equal(record.capabilityId, binding.capabilityId);
   assert.equal(record.inputDigest, binding.inputDigest);
+  assert.equal(record.operationSummary, binding.operationSummary);
   assert.equal(record.consumedAt, null);
 });
 
@@ -89,6 +95,15 @@ test('rejects incomplete or already-expired approval requests', async () => {
   await assert.rejects(() => createApprovalRequest(db, request({
     expiresAt: new Date(Date.now() - 1000).toISOString(),
   })), /expiry/i);
+});
+
+test('pending approval listing is bounded and returns the human-readable operation summary', async () => {
+  const db = new MemoryD1();
+  await createApprovalRequest(db, request(), Date.now());
+  const records = await listPendingApprovals(db, 10);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].operationSummary, binding.operationSummary);
+  await assert.rejects(() => listPendingApprovals(db, 101), /limit/i);
 });
 
 test('human decision can approve or deny only a pending unexpired request', async () => {

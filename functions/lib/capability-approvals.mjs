@@ -17,6 +17,7 @@ function mapApproval(row) {
     capabilityVersion: row.capability_version,
     actionId: row.action_id,
     resourceId: row.resource_id,
+    operationSummary: row.operation_summary,
     connectionId: row.connection_id,
     inputDigest: row.input_digest,
     requestedBy: row.requested_by,
@@ -36,6 +37,9 @@ function validateBinding(input) {
   requiredId(input.actionId, 'action identifier');
   if (typeof input.resourceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(input.resourceId) || input.resourceId.includes('..')) {
     throw new TypeError('Invalid approval resource identifier');
+  }
+  if (typeof input.operationSummary !== 'string' || input.operationSummary.trim().length < 1 || input.operationSummary.length > 500) {
+    throw new TypeError('Invalid approval operation summary');
   }
   if (input.connectionId !== null && input.connectionId !== undefined) {
     requiredId(input.connectionId, 'connection identifier');
@@ -71,12 +75,12 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
   await db.prepare(`
     INSERT INTO capability_approvals (
       id, principal_id, capability_id, capability_version, action_id,
-      resource_id, connection_id, input_digest, requested_by,
+      resource_id, operation_summary, connection_id, input_digest, requested_by,
       requested_at, expires_at, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
     id, input.principalId, input.capabilityId, input.capabilityVersion,
-    input.actionId, input.resourceId, input.connectionId ?? null,
+    input.actionId, input.resourceId, input.operationSummary.trim(), input.connectionId ?? null,
     input.inputDigest, input.requestedBy, requestedAt, expiresAt,
   ).run();
 
@@ -85,6 +89,28 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
   ).bind(id).first();
   if (!row) throw new Error('Approval request could not be persisted');
   return mapApproval(row);
+}
+
+
+/**
+ * Lists a bounded set of pending requests for the authenticated owner's inbox.
+ * Expired requests remain visible so the owner can see why they can no longer
+ * be decided; decideApprovalRequest still rejects them atomically.
+ */
+export async function listPendingApprovals(db, limit = 50) {
+  if (!db || typeof db.prepare !== 'function') {
+    throw new TypeError('Approval database is required');
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Approval list limit must be between 1 and 100');
+  }
+  const result = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE status = 'pending'
+    ORDER BY requested_at DESC
+    LIMIT ?
+  `).bind(limit).all();
+  return (result?.results || []).map(mapApproval);
 }
 
 export async function decideApprovalRequest(db, {
@@ -112,12 +138,12 @@ export async function decideApprovalRequest(db, {
  */
 export async function consumeApproval(db, {
   id, principalId, capabilityId, capabilityVersion, actionId,
-  resourceId, connectionId = null, inputDigest, now = Date.now(),
+  resourceId, operationSummary, connectionId = null, inputDigest, now = Date.now(),
 } = {}) {
   requiredId(id, 'request identifier');
   validateBinding({
     principalId, capabilityId, capabilityVersion, actionId,
-    resourceId, connectionId, inputDigest,
+    resourceId, operationSummary, connectionId, inputDigest,
   });
   if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
   const consumedAt = new Date(now).toISOString();
@@ -133,12 +159,13 @@ export async function consumeApproval(db, {
       AND capability_version = ?
       AND action_id = ?
       AND resource_id = ?
+      AND operation_summary = ?
       AND connection_id IS ?
       AND input_digest = ?
     RETURNING *
   `).bind(
     consumedAt, id, consumedAt, principalId, capabilityId,
-    capabilityVersion, actionId, resourceId, connectionId, inputDigest,
+    capabilityVersion, actionId, resourceId, operationSummary.trim(), connectionId, inputDigest,
   ).first();
   return mapApproval(row);
 }

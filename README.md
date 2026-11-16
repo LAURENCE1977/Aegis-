@@ -20,6 +20,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Read-only public GitHub repository discovery behind session authentication and same-origin protection
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
+- Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
 
 ## Security setup
 
