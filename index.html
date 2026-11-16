@@ -223,7 +223,7 @@
         <pre id="composioOutput" class="forge-preview" hidden></pre>
         <div id="agentRunSection">
           <h3>Agent workforce · plan-only</h3>
-          <p class="memory-help">Create and inspect durable specialist plans. This stage does not execute specialist work, call models or invoke tools. Execution remains disabled until the separate Sentinel approval and worker-execution stages are implemented.</p>
+          <p class="memory-help">Create and inspect durable specialist plans. You can request owner approval for a completed plan; approval records a decision only. Specialist execution remains disabled until the separate Sentinel-mediated worker stage is implemented.</p>
           <form class="memory-form" id="agentRunForm">
             <label for="agentRunObjective">Objective</label>
             <textarea id="agentRunObjective" rows="4" maxlength="2000" placeholder="Describe the work you want the AEGIS team to plan…" required></textarea>
@@ -245,7 +245,7 @@
           <div id="agentRunDetail" hidden>
             <h4>Selected run</h4>
             <p class="status" id="agentRunDetailStatus" role="status" aria-live="polite"></p>
-            <button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button>
+            <div class="input-area"><button id="agentRunRequestApprovalBtn" class="secondary" type="button" disabled>Request execution approval</button><button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button></div>
             <h4>Append-only event timeline</h4>
             <ul id="agentRunEvents" class="memory-history" aria-live="polite"></ul>
             <button id="agentRunLoadOlderEventsBtn" class="secondary" type="button" hidden disabled>Load older events</button>
@@ -342,6 +342,7 @@
     const agentRunDetailStatus = document.getElementById('agentRunDetailStatus');
     const agentRunEvents = document.getElementById('agentRunEvents');
     const agentRunCancelBtn = document.getElementById('agentRunCancelBtn');
+    const agentRunRequestApprovalBtn = document.getElementById('agentRunRequestApprovalBtn');
     const agentRunLoadOlderEventsBtn = document.getElementById('agentRunLoadOlderEventsBtn');
     const agentSpecialistInputs = [
       ['researcher', document.getElementById('agentSpecialistResearcher')],
@@ -905,6 +906,7 @@
       agentRunDetailStatus.textContent = 'Loading run and event history…';
       agentRunEvents.replaceChildren();
       agentRunCancelBtn.disabled = true;
+      agentRunRequestApprovalBtn.disabled = true;
       try {
         const data = await controlApi('/api/agent-runs/' + encodeURIComponent(agentRunId));
         const run = data.run;
@@ -912,6 +914,7 @@
         agentRunDetailStatus.textContent = run.status + ' · ' + run.objective +
           ' · attempts: ' + run.attempts + (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '');
         agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
+        agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan;
         await loadAgentRunEvents(agentRunId);
       } catch (error) {
         agentRunDetailStatus.textContent = error.message;
@@ -1000,6 +1003,22 @@
     agentRunForm.addEventListener('submit', submitAgentRun);
     agentRunRefreshBtn.addEventListener('click', loadAgentRuns);
     agentRunCancelBtn.addEventListener('click', cancelAgentRun);
+    agentRunRequestApprovalBtn.addEventListener('click', async () => {
+      if (!isAgentRunId(selectedAgentRunId) || agentRunRequestApprovalBtn.disabled) return;
+      agentRunRequestApprovalBtn.disabled = true;
+      agentRunDetailStatus.textContent = 'Requesting owner approval for this exact plan…';
+      try {
+        const data = await controlApi('/api/sentinel/agent-run-approval', {
+          method: 'POST',
+          body: JSON.stringify({ runId: selectedAgentRunId }),
+        });
+        agentRunDetailStatus.textContent = 'Approval request ' + data.approval.id + ' created. Review it in the Approval inbox; this does not execute the plan.';
+        await loadApprovals();
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+        agentRunRequestApprovalBtn.disabled = false;
+      }
+    });
     agentRunLoadOlderEventsBtn.addEventListener('click', async () => {
       if (!selectedAgentRunId || !agentRunEventCursor) return;
       agentRunLoadOlderEventsBtn.disabled = true;
@@ -1857,9 +1876,14 @@
                 button.addEventListener('click', async () => {
                   button.disabled = true;
                   try {
-                    await controlApi('/api/approvals', {
-                      method: 'POST',
-                      body: JSON.stringify({ id: approval.id, decision }),
+                    const agentRunApproval = approval.capabilityId === 'aegis-agent-run';
+                    await controlApi(agentRunApproval
+                      ? '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id)
+                      : '/api/approvals', {
+                      method: agentRunApproval ? 'PATCH' : 'POST',
+                      body: JSON.stringify(agentRunApproval
+                        ? { decision }
+                        : { id: approval.id, decision }),
                     });
                     await loadApprovals();
                   } catch (error) {
