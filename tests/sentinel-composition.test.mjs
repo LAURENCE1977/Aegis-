@@ -4,6 +4,7 @@ import { createSentinelDependencies } from '../functions/lib/sentinel-compositio
 import { createBuiltinAdapterRegistry } from '../functions/lib/sentinel-adapters.mjs';
 import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
 import { runSentinelInvocation } from '../functions/lib/sentinel.mjs';
+import { digestCanonicalInput } from '../functions/lib/canonical-input.mjs';
 
 const manifest = {
   id: 'aegis-github-public-discovery',
@@ -60,9 +61,11 @@ test('composes the persistent stores and dispatches only an explicitly registere
   assert.equal(typeof dependencies.recordAudit, 'function');
   assert.equal(typeof dependencies.registryLookup, 'function');
 
+  const input = { repository: 'LAURENCE1977/Aegis-' };
+  const inputDigest = await digestCanonicalInput(input);
   const output = await dependencies.execute(
-    { repository: 'LAURENCE1977/Aegis-' },
-    { capabilityId: manifest.id, actionId: 'discover', invocationId: 'inv-1' },
+    input,
+    { capabilityId: manifest.id, actionId: 'discover', invocationId: 'inv-1', inputDigest },
   );
   assert.deepEqual(output, {
     repository: 'LAURENCE1977/Aegis-',
@@ -85,13 +88,16 @@ test('does not derive adapter destinations from capability manifest URLs or path
       'aegis-github-public-discovery:discover': async (_input, context) => { calls += 1; receivedContext = context; return 'fixed'; },
     },
   });
+  const input = {};
+  const inputDigest = await digestCanonicalInput(input);
   const result = await dependencies.execute(
-    {},
+    input,
     {
       capabilityId: manifest.id,
       actionId: 'discover',
       endpoint: 'https://attacker.example/collect',
       path: '/attacker-controlled',
+      inputDigest,
     },
   );
   assert.equal(result, 'fixed');
@@ -106,10 +112,13 @@ test('composes the built-in module catalogue through the trusted Sentinel adapte
     db: fakeDb(),
     adapters: createBuiltinAdapterRegistry(),
   });
-  const result = await dependencies.execute({}, {
+  const input = {};
+  const inputDigest = await digestCanonicalInput(input);
+  const result = await dependencies.execute(input, {
     capabilityId: 'aegis-module-catalogue',
     actionId: 'list',
     invocationId: 'catalogue-1',
+    inputDigest,
     principalId: 'owner',
     capabilityVersion: '0.1.0',
     resourceId: 'aegis:modules',
@@ -188,11 +197,32 @@ test('passes deeply frozen input to the fixed adapter handler', async () => {
       },
     },
   });
+  const input = { nested: { value: 'immutable' } };
+  const inputDigest = await digestCanonicalInput(input);
   const output = await dependencies.execute(
-    { nested: { value: 'immutable' } },
-    { capabilityId: 'aegis-github-public-discovery', actionId: 'discover', invocationId: 'freeze-1' },
+    input,
+    { capabilityId: 'aegis-github-public-discovery', actionId: 'discover', invocationId: 'freeze-1', inputDigest },
   );
   assert.equal(Object.isFrozen(received), true);
   assert.equal(Object.isFrozen(received.nested), true);
   assert.deepEqual(output, { frozen: true });
+});
+
+test('rejects a payload that does not match the approved input digest before adapter dispatch', async () => {
+  let calls = 0;
+  const dependencies = createSentinelDependencies({
+    db: fakeDb(),
+    adapters: {
+      'aegis-github-public-discovery:discover': async () => { calls += 1; return 'should-not-run'; },
+    },
+  });
+  const input = { repository: 'attacker/changed' };
+  const approvedDigest = await digestCanonicalInput({ repository: 'owner/approved' });
+  await assert.rejects(() => dependencies.execute(input, {
+    capabilityId: 'aegis-github-public-discovery',
+    actionId: 'discover',
+    invocationId: 'digest-mismatch',
+    inputDigest: approvedDigest,
+  }), /digest.*match/i);
+  assert.equal(calls, 0);
 });
