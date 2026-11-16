@@ -214,3 +214,19 @@ The first companion foundation and a dedicated companion-led Home experience are
 This is a real interface improvement, not a completed lifelike companion. The current visual avatar remains a clearly disclosed static placeholder. Profile persistence, profile switching/customisation UI, real 2D/3D rendering, speech input/output, live perception and authenticated browser verification remain unimplemented. The Preview environment still needs its own secure authentication configuration before the signed-in workspace can be tested against live authenticated services. No credentials should be shared in chat.
 
 The next engineering task is to connect profile selection and presence events to the existing authenticated session without creating a second identity, memory store or permission system. Sentinel remains the sole authority for protected operations and capture consent.
+
+
+## 13. Implementation checkpoint — 16 November 2026
+
+The current signed-in Home experience now includes a first, deliberately bounded companion-profile selector:
+
+- The reserved official AEGIS profile is available as the default.
+- A user can create a named custom presentation profile and switch between profiles during the current browser page session.
+- Custom profiles change only the displayed companion label/presentation selection. They do not create another user identity, memory store, tool authority, permissions or Sentinel policy.
+- The UI explicitly says custom profiles are session-only. Account persistence is not connected and must not be implied.
+- No microphone, camera, speech, live avatar rendering or 3D runtime is activated by this selector.
+- Profile selection and creation are covered by the companion-first UI regression tests.
+
+**Verification:** GitHub Actions run 43967151754 completed successfully on implementation commit `f178c12a982092a7ae41d7df9874833ca74ed60d`. The Node.js test step and the full isolated D1, runtime/Queue and Forge migration/safeguard workflow passed.
+
+**Remaining before this becomes a complete profile feature:** authenticated owner-scoped profile APIs and storage, schema/migration and deletion/export design, profile editing (appearance, interaction and accessibility), cross-device sync, and browser QA using a configured authenticated session. The static companion presentation remains a placeholder; real 2D/3D rendering and speech are separate later milestones.
