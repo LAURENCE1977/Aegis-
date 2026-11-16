@@ -87,7 +87,8 @@ class AgentMemoryD1 {
           if (v[3] && [...db.runs.values()].some((row) => row.idempotency_key === v[3])) return { meta: { changes: 0 } };
           db.runs.set(v[0], {
             id: v[0], objective: v[1], specialists_json: v[2], status: 'pending_dispatch',
-            attempts: 0, idempotency_key: v[3], created_at: v[4], updated_at: v[5], cancelled_at: null,
+            attempts: 0, idempotency_key: v[3], created_at: v[4], updated_at: v[5],
+            project_id: v[6] || null, context_json: v[7] || null, cancelled_at: null,
           });
           return { meta: { changes: 1 } };
         }
