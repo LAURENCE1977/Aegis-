@@ -74,6 +74,28 @@ test('builds a bounded owner-scoped Project Space context with stable content di
   assert.doesNotMatch(JSON.stringify(first), /Raw event content|aegis\.local\/source/);
 });
 
+test('keeps multilingual Project Space snapshots inside the UTF-8 byte budget', async () => {
+  const events = Array.from({ length: 100 }, (_, index) => ({
+    ...event,
+    id: 'event-' + index,
+    summary: '😀'.repeat(240),
+    createdAt: new Date(Date.parse(event.createdAt) + index * 1000).toISOString(),
+  }));
+  const memories = Array.from({ length: 50 }, (_, index) => ({
+    ...memory,
+    id: 'memory-' + index,
+    content: '😀'.repeat(1200),
+  }));
+  const builder = makeBuilder({
+    listWorkspaceEvents: async () => events,
+    createMemoryRepository: () => ({ list: async () => memories }),
+  });
+  const context = await builder({ prepare() {} }, 'project-a');
+  const bytes = new TextEncoder().encode(JSON.stringify(context)).byteLength;
+  assert.ok(bytes <= 11 * 1024 + 128);
+  assert.ok(context.brief.budget.maxChars < 6000);
+});
+
 test('does not build context for missing or inactive Project Spaces', async () => {
   let reads = 0;
   const builder = makeBuilder({
