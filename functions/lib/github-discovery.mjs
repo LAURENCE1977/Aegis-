@@ -47,7 +47,7 @@ export function parseGitHubRepositoryUrl(sourceUrl) {
   return { owner, repository, canonicalUrl: 'https://github.com/' + owner + '/' + repository };
 }
 
-export async function discoverGitHubRepository(sourceUrl, fetchImpl = fetch) {
+export async function discoverGitHubRepository(sourceUrl, fetchImpl = fetch, { allowPrivate = false } = {}) {
   const parsed = parseGitHubRepositoryUrl(sourceUrl);
   const endpoint = 'https://api.github.com/repos/' +
     encodeURIComponent(parsed.owner) + '/' + encodeURIComponent(parsed.repository);
@@ -89,7 +89,7 @@ export async function discoverGitHubRepository(sourceUrl, fetchImpl = fetch) {
       typeof data.default_branch !== 'string' || typeof data.private !== 'boolean') {
     throw new GitHubSourceError('GitHub returned incomplete repository metadata.', 502);
   }
-  if (data.private) {
+  if (data.private && allowPrivate !== true) {
     throw new GitHubSourceError('Only public repositories can be discovered without an authorised private connection.', 403);
   }
 
@@ -101,7 +101,7 @@ export async function discoverGitHubRepository(sourceUrl, fetchImpl = fetch) {
     defaultBranch: data.default_branch,
     archived: Boolean(data.archived),
     fork: Boolean(data.fork),
-    private: false,
+    private: data.private,
     lastPushedAt: typeof data.pushed_at === 'string' ? data.pushed_at : null,
     stars: Number.isSafeInteger(data.stargazers_count) ? data.stargazers_count : null,
     primaryLanguage: typeof data.language === 'string' ? data.language : null,
