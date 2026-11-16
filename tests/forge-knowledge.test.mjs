@@ -142,7 +142,7 @@ test('creates owner-scoped draft knowledge and excludes it from accepted search'
 test('requires an explicit review transition before knowledge becomes searchable', async () => {
   const db = new KnowledgeD1();
   const created = await createForgeKnowledgeRecord(db, 'owner', input, Date.parse('2026-11-16T12:00:00.000Z'));
-  assert.throws(() => updateForgeKnowledgeReview(db, 'owner', created.id, {
+  await assert.rejects(() => updateForgeKnowledgeReview(db, 'owner', created.id, {
     status: 'accepted',
     reviewNote: 'Accept this without review.',
     expectedUpdatedAt: created.updatedAt,
@@ -179,12 +179,12 @@ test('rejects low-evidence acceptance and stale review updates', async () => {
     reviewNote: 'Reviewed, but evidence remains experimental.',
     expectedUpdatedAt: low.updatedAt,
   });
-  assert.throws(() => updateForgeKnowledgeReview(db, 'owner', low.id, {
+  await assert.rejects(() => updateForgeKnowledgeReview(db, 'owner', low.id, {
     status: 'accepted',
     reviewNote: 'Accept the experimental finding.',
     expectedUpdatedAt: reviewed.updatedAt,
   }), TypeError);
-  assert.throws(() => updateForgeKnowledgeReview(db, 'owner', low.id, {
+  await assert.rejects(() => updateForgeKnowledgeReview(db, 'owner', low.id, {
     status: 'accepted',
     reviewNote: 'Evidence has improved, accept now.',
     expectedUpdatedAt: low.updatedAt,
