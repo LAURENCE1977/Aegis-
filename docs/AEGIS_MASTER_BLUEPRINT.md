@@ -826,3 +826,13 @@ PR #45 adds `loadApproval`, which loads only an approved, unused, unexpired appr
 - Forge now has an explicit manual button to run this metadata check through Sentinel. It does not create grants or fetch source files.
 - No remote D1 database, credentials or production deployment was changed.
 - Details: `docs/AEGIS_GITHUB_DISCOVERY.md`.
+
+## AG-UI Sentinel tool loop
+
+- Added an opt-in, Qwen-only tool loop for the AG-UI chat endpoint.
+- The server supplies exactly two tool definitions: local module catalogue and public GitHub metadata. Frontend-provided tool definitions remain rejected.
+- Tool calling requires explicit `AEGIS_AGENT_TOOLS_ENABLED=true`, a valid Qwen configuration, D1 and the tested `qwen3.8-flash` model. The default Workers AI model remains text-only.
+- One tool call per run is allowed. Unknown, malformed, multiple, recursive or oversized calls fail closed.
+- Every tool call goes through `executeAgentToolCall` → `runSentinelInvocation` → exact grants, atomic rate limits, audit and fixed adapter dispatch. A single follow-up model call receives the bounded tool result without further tools.
+- No environment flags, credentials or production bindings were configured.
+- Details: `docs/AEGIS_AGENT_TOOLS.md`.
