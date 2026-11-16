@@ -27,7 +27,7 @@ class AgentMemoryD1 {
         return null;
       },
       async all() {
-        if (sql.includes('FROM agent_run_events WHERE agent_run_id = ? AND created_at < ?')) {
+        if (sql.includes('FROM agent_run_events WHERE agent_run_id = ? AND (created_at < ?')) {
           const rows = db.events
             .filter((event) => event.agent_run_id === this.values[0] &&
               (event.created_at < this.values[1] ||
