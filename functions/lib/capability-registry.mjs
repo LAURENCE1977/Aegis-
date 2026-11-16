@@ -170,7 +170,7 @@ const CAPABILITY_MANIFESTS = [
     name: 'Public GitHub repository discovery',
     description: 'Read public GitHub repository metadata without fetching or executing source code.',
     provider: { id: 'aegis-core', kind: 'builtin' },
-    interface: { kind: 'internal', method: 'POST', path: '/api/forge/discover' },
+    interface: { kind: 'internal', method: 'POST', path: '/api/sentinel/github-discover' },
     actions: [{
       id: 'discover',
       capability: 'source.discover',
