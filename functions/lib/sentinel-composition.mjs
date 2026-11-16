@@ -6,6 +6,7 @@ import {
   consumeApproval,
 } from './capability-approvals.mjs';
 import { recordCapabilityAudit } from './capability-audit.mjs';
+import { reserveCapabilityInvocation } from './capability-rate-limits.mjs';
 
 const ADAPTER_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -61,6 +62,7 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
     loadGrant: (binding) => loadCapabilityGrant(db, binding, currentTime()),
     loadConnection: (binding) => loadConnection(db, binding, currentTime()),
     loadApproval: (binding) => loadApproval(db, binding, currentTime()),
+    reserveRateLimit: (binding) => reserveCapabilityInvocation(db, { ...binding, now: currentTime() }),
     consumeApproval: (binding) => consumeApproval(db, { ...binding, now: currentTime() }),
     recordAudit: (event) => recordCapabilityAudit(db, event),
     execute: async (input, context) => {
