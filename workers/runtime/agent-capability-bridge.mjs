@@ -1,5 +1,6 @@
 import { getCapabilityManifest } from '../../functions/lib/capability-registry.mjs';
 import { runSentinelInvocation } from '../../functions/lib/sentinel.mjs';
+import { canonicalizeInput, digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
 
 const REQUEST_KEYS = new Set(['capabilityId', 'actionId', 'resourceId', 'input']);
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,79}$/;
@@ -49,21 +50,10 @@ function normalizeJson(value, seen = new WeakSet(), depth = 0) {
   }
   return output;
 }
-function canonicalJson(value) {
-  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
-  if (isPlainRecord(value)) {
-    return '{' + Object.keys(value).sort().map((key) =>
-      JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
-  }
-  return JSON.stringify(value);
-}
-
-async function digestInput(input) {
-  const canonical = canonicalJson(input);
-  const bytes = new TextEncoder().encode(canonical);
-  const hash = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-  const hex = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
-  return 'sha256:' + hex;
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
 }
 
 /**
@@ -100,14 +90,14 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
 
   let safeInput;
   try {
-    safeInput = normalizeJson(agentRequest.input);
+    safeInput = deepFreeze(normalizeJson(agentRequest.input));
   } catch {
     return { allowed: false, reasonCode: 'INPUT_NOT_JSON_SAFE' };
   }
 
   let canonicalInput;
   try {
-    canonicalInput = canonicalJson(safeInput);
+    canonicalInput = canonicalizeInput(safeInput);
     if (new TextEncoder().encode(canonicalInput).byteLength > manifest.limits.maxRequestBytes) {
       return { allowed: false, reasonCode: 'INPUT_TOO_LARGE' };
     }
@@ -117,7 +107,7 @@ export async function runAgentCapabilityRequest(agentRequest, principalContext, 
 
   let inputDigest;
   try {
-    inputDigest = await digestInput(safeInput);
+    inputDigest = await digestCanonicalInput(safeInput);
   } catch {
     return { allowed: false, reasonCode: 'INPUT_DIGEST_UNAVAILABLE' };
   }
