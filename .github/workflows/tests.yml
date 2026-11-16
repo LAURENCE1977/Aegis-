@@ -86,6 +86,21 @@ jobs:
             echo "Expected append-only agent-run event trigger to reject deletion."
             exit 1
           fi
+          step_output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT status FROM agent_run_steps WHERE id = '550e8400-e29b-41d4-a716-446655440000:1'")
+          echo "$step_output"
+          grep -q "cancelled" <<< "$step_output"
+          context_columns=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT name FROM pragma_table_info('agent_runs') WHERE name IN ('project_id', 'context_json')")
+          echo "$context_columns"
+          grep -q "project_id" <<< "$context_columns"
+          grep -q "context_json" <<< "$context_columns"
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_run_step_events SET event_type = 'tampered' WHERE event_id = 'planned:550e8400-e29b-41d4-a716-446655440000:1'"; then
+            echo "Expected append-only agent-run step event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM agent_run_step_events WHERE event_id = 'planned:550e8400-e29b-41d4-a716-446655440000:1'"; then
+            echo "Expected append-only agent-run step event trigger to reject deletion."
+            exit 1
+          fi
 
       - name: Verify runtime D1 and Queue integration in Miniflare
         env:
