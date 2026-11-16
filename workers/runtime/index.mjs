@@ -118,7 +118,7 @@ async function dispatchAgentRuns(env, limit = 25) {
     try {
       await env.JOBS.send({ agentRunId: row.id });
       const updated = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
+        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch' AND cancelled_at IS NULL"
       ).bind(new Date().toISOString(), row.id).run();
       if (updated.meta?.changes) {
         await auditAgentRun(env, row.id, 'queued');
