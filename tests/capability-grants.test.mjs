@@ -40,6 +40,15 @@ class MemoryD1 {
         }
         return { meta: { changes: 0 } };
       },
+      async all() {
+        const [principal, limit] = this.values;
+        const rows = [...db.rows.values()]
+          .filter(row => row.principal_id === principal)
+          .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+          .slice(0, limit)
+          .map(row => ({ ...row }));
+        return { results: rows };
+      },
       async first() {
         const v = this.values;
         if (sql.includes('WHERE principal_id')) {
