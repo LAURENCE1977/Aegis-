@@ -88,7 +88,7 @@ export function validateKnowledgeRecord(record) {
   if (!EVIDENCE_LEVELS.has(record.evidenceLevel)) throw new TypeError('Invalid evidence level');
   if (!KNOWLEDGE_STATUSES.has(record.status)) throw new TypeError('Invalid knowledge status');
 
-  if (!Array.isArray(record.sources) || record.sources.length < 1 || record.sources.length > 100) {
+  if (!Array.isArray(record.sources) || record.sources.length < 1 || record.sources.length > 20) {
     throw new TypeError('At least one attributable knowledge source is required');
   }
   for (const source of record.sources) {
@@ -97,7 +97,7 @@ export function validateKnowledgeRecord(record) {
     requireText(source.title, 'knowledge source title', 300);
     requireText(source.attribution, 'knowledge source attribution', 300);
   }
-  requireStringArray(record.limitations, 'knowledge limitations');
+  requireStringArray(record.limitations, 'knowledge limitations', { max: 50 });
   requireStringArray(record.applicableCapabilities, 'applicable capabilities', {
     max: 100,
     pattern: CAPABILITY_PATTERN,
