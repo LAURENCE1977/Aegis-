@@ -92,3 +92,10 @@ test('opening the Home dashboard does not move keyboard focus into the hidden co
   assert.match(showApp, /showPanel\('home'\)/);
   assert.doesNotMatch(showApp, /userInput\.focus\(\)/);
 });
+
+
+test('the signed-in application shell collapses to one column on tablet and mobile widths', () => {
+  assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?#appPanel:not\(\[hidden\]\)\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?#appPanel\s*>\s*\.toolbar\s*\{[^}]*grid-column:\s*1/);
+  assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?#appPanel\s*>\s*section\s*\{[^}]*grid-column:\s*1/);
+});
