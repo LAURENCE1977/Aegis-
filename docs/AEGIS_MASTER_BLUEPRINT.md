@@ -840,3 +840,19 @@ The detailed requirements and threat boundaries are recorded in [AEGIS Security 
 - No mass surveillance, covert tracking, stranger profiling, emotion recognition or unauthorised camera/network collection.
 
 **Implementation status:** accepted architectural direction only. No new protective-intelligence, biometric, duress, environmental-awareness or evidence-capture feature is claimed as implemented. This documentation update does not increase feature-completion percentage. Next engineering work must inspect existing Sentinel, Vault, Security Centre and authentication contracts, then select one narrow capability for test-first implementation.
+
+
+## 18. Behavioural & Investigative Intelligence
+
+The owner has accepted a direction for AEGIS to develop evidence-led behavioural analysis, detective-style reasoning, ingenuity and careful visual observation, inspired by *Person of Interest*, detective fiction and *Lie to Me*. See [AEGIS Security Suite — Architecture and Threat Model](AEGIS_SECURITY_SUITE.md), section 9.
+
+**Accepted direction and limits:**
+- Analyse authorised evidence and the user's own relevant device/security patterns; do not covertly profile other people.
+- Build source-linked timelines; separate observations, claims, assumptions, hypotheses, inferences and unknowns.
+- Generate competing explanations, seek disconfirming evidence, expose missing context and communicate uncertainty.
+- Describe visible facial movements or non-verbal cues only when explicitly authorised and relevant. Micro-expressions, gaze, voice stress and posture are not reliable proof of lying, guilt, intent or internal emotional state.
+- No lie-detector claims, credibility scoring, face identification, emotion/personality inference, sensitive-trait inference or behavioural dossiers on strangers or bystanders.
+- Use findings as decision support, not verdicts. Sentinel governs permissions and consequential actions; human review remains essential.
+- Ingenuity must remain lawful, permission-bounded and resource-conscious; it never means bypassing Sentinel or using covert surveillance.
+
+**Implementation status:** architecture/research direction only. No behavioural profiler, micro-expression detector, deception detector or investigative agent is claimed as implemented. Next step is a focused evidence review and then a narrow, testable, privacy-preserving reasoning capability. Documentation does not increase feature-completion percentage.
