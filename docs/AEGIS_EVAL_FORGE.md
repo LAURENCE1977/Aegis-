@@ -1,6 +1,6 @@
 # AEGIS Eval Forge
 
-**Status:** Deterministic scoring and byte-integrity verification foundations implemented on draft PR #103. No persisted suite catalogue, authenticated runner, execution worker, user interface or promotion API exists yet.
+**Status:** Deterministic scoring, byte-integrity verification, immutable suite registry, immutable run history and read-only owner APIs implemented on draft PR #103. No authenticated runner, execution worker, full evaluation UI or promotion API exists yet.
 
 ## Purpose
 
@@ -46,7 +46,7 @@ Tests are in `tests/eval-forge.test.mjs` and `tests/eval-evidence.test.mjs`.
 
 ## Verification
 
-Both push workflow `44152942585` and matching PR workflow `44152958048` passed on code head `c9dd7bd3a9886818d363eb79a67d370091c6eba9`. The Node.js and Cloudflare runtime integration test step passed, as did isolated capability/runtime/Forge D1 migrations, Queue integration and Guardian catalogue smoke checks. No test count is asserted here because the workflow summary available for this checkpoint reports step outcomes rather than the detailed TAP totals.
+Latest full CI passed on code head `7171d1baface0e4fabcecbe2df5bbad0e64b9be9`: push workflow `44156202471` and matching PR workflow `44156218085`. Node.js/Cloudflare runtime tests, capability/runtime/Forge D1 migrations, Queue integration, Guardian catalogue checks, Eval Forge suite registry smoke checks and Eval Forge run-history integrity smoke checks all passed. An earlier CI attempt exposed a SQLite table-constraint ordering error in migration `0009_eval_runs.sql`; the migration was corrected and the full workflow rerun successfully.
 
 ## Next implementation sequence
 
@@ -60,7 +60,7 @@ Both push workflow `44152942585` and matching PR workflow `44152958048` passed o
 
 ## Immutable suite registry — implementation slice
 
-Added on draft PR #103:
+Added on draft PR #103 and verified by full CI on 17 November 2026:
 
 - `migrations/forge/0008_eval_suites.sql` creates owner-scoped immutable suite versions with a unique owner/suite/version key, canonical content digest, JSON validity constraint and append-only registration event.
 - Database triggers reject suite update/delete and event update/delete. A suite version is a permanent revision; changing its content requires a new semantic version.
@@ -69,7 +69,7 @@ Added on draft PR #103:
 - Tests cover immutable version registration, canonical digest stability, idempotency, conflicting content, owner isolation, authentication, cross-origin writes, invalid payloads and repeated query parameters.
 - CI applies the new Forge migration and smoke-tests unique version keys, immutable suites and append-only audit events.
 
-**Boundary:** This registers and lists suite definitions only. It does not yet persist evaluation runs, store raw prompts/evidence, execute candidates, authenticate a runner or approve promotion. Evaluation-run persistence is the next slice and must accept only server-verified evidence receipts, never a caller-supplied `evidenceVerified` flag.
+**Boundary:** Suite definitions and byte-integrity-checked run results are persisted, but no raw prompts/evidence bytes are stored. The system does not execute candidates, authenticate a runner or approve promotion. A caller-supplied `evidenceVerified` flag is never trusted.
 
 
 
@@ -84,7 +84,7 @@ Added alongside the suite registry:
 - Duplicate identical run IDs are idempotent; reusing a run ID for a different result returns a conflict.
 - Owner-scoped run listing is bounded. No public route accepts caller-supplied `evidenceVerified`; the run persistence module derives that marker only after byte verification.
 
-**Important trust limitation:** A digest proves byte equality, not runner identity or truthful execution. This slice has no authenticated isolated runner or attestation receipt and is not exposed as a public run-submission endpoint. Do not treat a stored result as a production safety certification or promotion authorisation.
+**Important trust limitation:** A digest proves byte equality, not runner identity or truthful execution. There is no authenticated isolated runner or attestation receipt, and no public run-submission endpoint. Do not treat a stored result as a production safety certification or promotion authorisation.
 
 ## Explicitly not implemented
 
