@@ -1653,6 +1653,7 @@
       securitySection.hidden = panel !== 'security';
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadGuardianResources(); }
       if (panel === 'security') loadSecurityCentre();
+      if (panel === 'home') loadCompanionProfiles();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
