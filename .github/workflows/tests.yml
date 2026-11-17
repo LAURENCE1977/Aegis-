@@ -113,6 +113,25 @@ jobs:
         shell: bash
         run: |
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-seed.sql
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-assessment.sql
+          assessment_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessments WHERE id = 'learning-assessment-smoke'")
+          echo "$assessment_count"
+          grep -q "1" <<< "$assessment_count"
+          assessment_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_events WHERE assessment_id = 'assessment-smoke-check'")
+          echo "$assessment_events"
+          grep -q "1" <<< "$assessment_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_assessments SET assessment_json = '{}' WHERE id = 'learning-assessment-smoke'"; then
+            echo "Expected immutable Learning Assessment version trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_assessment_events WHERE assessment_id = 'assessment-smoke-check'"; then
+            echo "Expected append-only Learning Assessment event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-assessment-invalid-node.sql; then
+            echo "Expected Learning Assessment node binding trigger to reject an unknown node."
+            exit 1
+          fi
           guardian_resource_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT review_status FROM guardian_resources WHERE id = 'guardian-resource-smoke'")
           echo "$guardian_resource_state"
           grep -q "draft" <<< "$guardian_resource_state"
