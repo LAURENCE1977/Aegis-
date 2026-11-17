@@ -500,12 +500,12 @@ This is a design lesson, not a claim that capa or Binwalk is vulnerability-free.
 
 Implemented on the feature branch:
 - `functions/lib/evidence-intake.mjs` exports `createEvidenceDescriptor` and `validateEvidenceDescriptor`.
-- `tests/evidence-intake.test.mjs` contains nine focused tests.
+- `tests/evidence-intake.test.mjs` contains eleven focused tests.
 - The descriptor carries schema version, server-derived owner identifier, internally generated UUIDv4, lowercase SHA-256, positive safe-integer byte length, media type, path-free display name, canonical UTC acquisition timestamp and typed source kind.
 - Only a repository-blob source may carry a canonical HTTPS reference. Other source kinds must have a null reference.
 - Unknown fields are rejected. File bytes, base64 content, local filesystem paths and storage locations are not accepted by the contract.
-- The descriptor and nested source object are frozen in memory. This is not a persistence guarantee; a future database design must enforce immutable identity and append-only custody events separately.
-- The focused test was first run before the module existed and failed with the expected module-not-found result; after the implementation, all 9 focused tests passed locally with Node.js 22.
+- The descriptor and nested source object are frozen in memory. Plain-object prototypes and nested source fields are validated before creation. This is not a persistence guarantee; a future database design must enforce immutable identity and append-only custody events separately.
+- The focused test was first run before the module existed and failed with the expected module-not-found result; after the implementation, all 11 focused tests passed locally with Node.js 22.
 
 **Not implemented:** upload handling, object storage, D1 persistence, case/investigation records, parser runs, observations, extraction, UI or any scanner. The module is a metadata contract only. The full repository CI result for the implementation commit has not yet been surfaced; do not mark the feature CI-verified until that is confirmed.
 
