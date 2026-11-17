@@ -73,7 +73,15 @@ async function loadActiveCompanionProfile(env, interactionOverride) {
       const active = await getActiveCompanionProfile(env.AEGIS_DB, MEMORY_OWNER_ID);
       return active.profile;
     } catch {
-      // A configured but invalid profile store fails closed to the official identity.
+      // If the optional profile store is unavailable, accept only bounded style values.
+      if (interactionOverride !== undefined) {
+        try {
+          return {
+            ...createDefaultAegisCompanionProfile(),
+            interaction: validateCompanionInteractionSettings(interactionOverride),
+          };
+        } catch {}
+      }
       return createDefaultAegisCompanionProfile();
     }
   }
