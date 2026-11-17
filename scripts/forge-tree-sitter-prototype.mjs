@@ -152,6 +152,7 @@ export async function parseModuleImports(inputFiles) {
   const parser = new Parser();
   const files = [];
   const imports = [];
+  const symbols = [];
   const trees = [];
 
   try {
