@@ -370,6 +370,115 @@ function resolveSymbolEdges(importBindings, moduleEdges, symbols) {
   return { symbolEdges, unresolvedSymbolImports };
 }
 
+function extractReExports(root, path) {
+  const reExports = [];
+  const unresolvedReExports = [];
+
+  for (const statement of root.namedChildren.filter(node => node.type === 'export_statement')) {
+    const specifier = literal(statement.namedChildren.find(child => child.type === 'string'));
+    if (specifier === null) continue;
+
+    const exportSpecifiers = [];
+    walk(statement, node => {
+      if (node.type === 'export_specifier') exportSpecifiers.push(node);
+    });
+
+    if (exportSpecifiers.length === 0) {
+      unresolvedReExports.push({
+        path,
+        specifier,
+        reason: statement.children.some(child => child.text === '*')
+          ? 'star-or-namespace-re-export-not-resolved'
+          : 'unsupported-re-export-shape',
+        location: locationOf(statement),
+      });
+      continue;
+    }
+
+    for (const item of exportSpecifiers) {
+      const nameNode = item.childForFieldName('name');
+      const aliasNode = item.childForFieldName('alias');
+      const imported = nameNode?.type === 'string' ? literal(nameNode) : nameNode?.text;
+      const exported = aliasNode?.type === 'string' ? literal(aliasNode) : aliasNode?.text || imported;
+      if (!imported || !exported) {
+        unresolvedReExports.push({
+          path,
+          specifier,
+          reason: 'unsupported-export-name',
+          location: locationOf(item),
+        });
+        continue;
+      }
+      reExports.push({
+        path,
+        specifier,
+        imported,
+        exported,
+        location: locationOf(item),
+      });
+    }
+  }
+
+  return { reExports, unresolvedReExports };
+}
+
+function resolveReExportEdges(reExports, unresolved, moduleEdges, unresolvedImports, symbols) {
+  const reExportEdges = [];
+  const unresolvedReExports = [...unresolved];
+
+  for (const item of reExports) {
+    const moduleEdge = moduleEdges.find(edge =>
+      edge.source === item.path && edge.specifier === item.specifier);
+    if (!moduleEdge) {
+      const unresolvedModule = unresolvedImports.find(edge =>
+        edge.path === item.path && edge.specifier === item.specifier);
+      unresolvedReExports.push({
+        path: item.path,
+        specifier: item.specifier,
+        imported: item.imported,
+        exported: item.exported,
+        reason: unresolvedModule?.reason || 'unresolved-module-target',
+        location: item.location,
+      });
+      continue;
+    }
+
+    const matches = symbols.filter(symbol =>
+      symbol.path === moduleEdge.target && symbol.exported &&
+      (symbol.isDefault ? 'default' : symbol.name) === item.imported);
+
+    if (matches.length === 1) {
+      reExportEdges.push({
+        source: item.path,
+        target: moduleEdge.target,
+        imported: item.imported,
+        exported: item.exported,
+        location: item.location,
+        targetLocation: matches[0].location,
+      });
+    } else {
+      unresolvedReExports.push({
+        path: item.path,
+        target: moduleEdge.target,
+        specifier: item.specifier,
+        imported: item.imported,
+        exported: item.exported,
+        reason: matches.length > 1 ? 'ambiguous-export' : 'missing-export',
+        location: item.location,
+      });
+    }
+  }
+
+  reExportEdges.sort((a, b) => a.source.localeCompare(b.source) ||
+    a.target.localeCompare(b.target) || a.exported.localeCompare(b.exported) ||
+    a.imported.localeCompare(b.imported));
+  unresolvedReExports.sort((a, b) => a.path.localeCompare(b.path) ||
+    (a.exported || '').localeCompare(b.exported || '') ||
+    (a.imported || '').localeCompare(b.imported || '') ||
+    a.reason.localeCompare(b.reason));
+  return { reExportEdges, unresolvedReExports };
+}
+
 function extract(root, path) {
   const imports = [];
   walk(root, node => {
