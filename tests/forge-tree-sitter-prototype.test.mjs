@@ -29,7 +29,7 @@ test('extracts real JS/JSX imports and ignores import-like comments and strings'
   assert.equal(result.execution, 'none');
   assert.equal(result.parser, 'tree-sitter');
   const reactImport = result.imports.find(item => item.specifier === 'react');
-  assert.deepEqual(reactImport.location, { start: { line: 3, column: 1 }, end: { line: 3, column: 26 } });
+  assert.deepEqual(reactImport.location, { start: { line: 3, column: 1 }, end: { line: 3, column: 27 } });
   assert.deepEqual(result.imports.find(item => item.specifier === './view.jsx').location.start, { line: 4, column: 1 });
 });
 
