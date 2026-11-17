@@ -10,6 +10,8 @@ test('Learning Progress migration binds append-only progress to immutable path v
   assert.match(sql, /CREATE TABLE IF NOT EXISTS learning_progress_events/);
   assert.match(sql, /trg_learning_progress_created/);
   assert.match(sql, /trg_learning_progress_transition/);
+  assert.match(sql, /trg_learning_progress_prerequisites_insert/);
+  assert.match(sql, /trg_learning_progress_prerequisites_update/);
   assert.match(sql, /trg_learning_progress_no_delete/);
   assert.match(sql, /trg_learning_progress_events_no_update/);
   assert.match(sql, /trg_learning_progress_events_no_delete/);
