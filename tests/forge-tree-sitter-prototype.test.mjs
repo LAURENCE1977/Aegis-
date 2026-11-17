@@ -258,8 +258,8 @@ test('classifies package imports and missing relative targets without claiming a
   }]);
   assert.deepEqual(result.moduleEdges, []);
   assert.deepEqual(result.unresolvedImports.map(({ specifier, reason }) => ({ specifier, reason })), [
-    { specifier: '../outside.js', reason: 'outside-source-bundle' },
-    { specifier: 'react', reason: 'external-package' },
+    { specifier: '../../outside.js', reason: 'outside-source-bundle' },
     { specifier: './missing.js', reason: 'missing-local-target' },
+    { specifier: 'react', reason: 'external-package' },
   ]);
 });
