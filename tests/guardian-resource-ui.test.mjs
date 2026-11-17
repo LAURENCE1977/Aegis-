@@ -31,6 +31,8 @@ test('Guardian Resource cards render source text safely and expose only valid li
   assert.match(html, /resource\.status === ['"]draft['"]/);
   assert.match(html, /resource\.status === ['"]reviewed['"]/);
   assert.match(html, /resource\.status === ['"]accepted['"]/);
+  assert.match(html, /archiveButton\.textContent = ['"]Archive resource['"]/);
+  assert.match(html, /status:\s*['"]archived['"]/);
   assert.doesNotMatch(html, /guardianResourceList\.innerHTML/);
 });
 
