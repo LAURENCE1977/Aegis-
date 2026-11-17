@@ -124,7 +124,7 @@ test('companion profile selection is not persisted outside the authenticated own
 
 
 test('official companion is presented as Agent AEGIS — Your Personal Guardian', () => {
-  assert.match(html, /<title>Agent AEGIS · Your Personal Guardian<\\/title>/);
+  assert.ok(html.includes('<title>Agent AEGIS · Your Personal Guardian</title>'));
   assert.match(html, /content="Agent AEGIS — Your Personal Guardian/);
   assert.match(html, /YOUR PERSONAL GUARDIAN/);
   assert.match(html, /aria-label="Agent AEGIS companion presentation"/);
