@@ -17,3 +17,22 @@ test('Learning Assessment migration binds immutable assessments to exact learnin
   assert.match(sql, /trg_learning_assessment_events_no_update/);
   assert.match(sql, /trg_learning_assessment_events_no_delete/);
 });
+
+
+test('Learning Attempt migration enforces exact assessment binding, private results, rate limits and immutable history', async () => {
+  const sql = await readFile(new URL('../migrations/forge/0013_learning_assessment_attempts.sql', import.meta.url), 'utf8');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS learning_assessment_attempts/);
+  assert.match(sql, /UNIQUE\s*\(owner_id, id\)/i);
+  assert.match(sql, /FOREIGN KEY\s*\(owner_id, assessment_id, assessment_version\)\s*REFERENCES learning_assessments/i);
+  assert.match(sql, /attempt_digest TEXT NOT NULL CHECK \(length\(attempt_digest\) = 64\)/i);
+  assert.match(sql, /mastery_verified INTEGER NOT NULL DEFAULT 0 CHECK \(mastery_verified = 0\)/i);
+  assert.match(sql, /trg_learning_assessment_attempt_identity/);
+  assert.match(sql, /trg_learning_assessment_attempt_rate_limit/);
+  assert.match(sql, /900\.0 \/ 86400\.0/);
+  assert.match(sql, /30\.0 \/ 86400\.0/);
+  assert.match(sql, /trg_learning_assessment_attempt_submitted/);
+  assert.match(sql, /trg_learning_assessment_attempts_no_update/);
+  assert.match(sql, /trg_learning_assessment_attempts_no_delete/);
+  assert.match(sql, /trg_learning_assessment_attempt_events_no_update/);
+  assert.match(sql, /trg_learning_assessment_attempt_events_no_delete/);
+});
