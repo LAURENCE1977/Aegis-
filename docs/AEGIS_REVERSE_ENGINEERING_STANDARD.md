@@ -33,6 +33,14 @@ Inspect only the relevant surface first, then expand where evidence requires:
 
 Produce a concise architecture map: **input → validation → core mechanism → state/data → output**, including trust boundaries and external calls. Identify what is essential, optional, duplicated, heavyweight or irrelevant to AEGIS.
 
+### Reverse-assumption analysis — learn from the past
+
+When a candidate, problem or research question has a meaningful history, examine earlier attempts and overlooked evidence before designing a new solution. Include forgotten inventions, historical engineering, abandoned experiments, disputed observations, failed approaches and unresolved natural or scientific phenomena where relevant.
+
+Ask what was actually observed, what evidence survives, which explanations are supported, what assumptions may have been incomplete, what investigators could not measure at the time, and what modern tools could now test. Look for reusable underlying principles and unexpected combinations, not just surface-level resemblance.
+
+Record observations, primary evidence, competing explanations, unknowns, possible modern tests, AEGIS applications and confidence. Use explicit labels such as verified, probable, unresolved, speculative and unsupported. Never present an unresolved claim as established fact, and never use mystery as a substitute for evidence. A historical insight is a research lead, not a licence, security approval or implementation proof; all normal REA, testing and Sentinel gates still apply.
+
 ### Stage C — Extract the mechanism
 For each useful feature, state:
 1. The problem it solves.
