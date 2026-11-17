@@ -743,6 +743,15 @@
         </div>
         <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
         <div id="forgeFileList" aria-live="polite"></div>
+        <h3>Read-only codebase intelligence</h3>
+        <p class="memory-help">Select a JavaScript/TypeScript source folder or files. Forge maps local imports and package references without running the code. First version is a heuristic scanner, not a full parser.</p>
+        <form class="memory-form" id="forgeCodeIntelligenceForm">
+          <label for="forgeCodeFiles">Source files (.js, .jsx, .mjs, .cjs, .ts, .tsx)</label>
+          <input id="forgeCodeFiles" type="file" multiple webkitdirectory directory accept=".js,.jsx,.mjs,.cjs,.ts,.tsx" />
+          <button id="forgeCodeAnalyzeBtn" type="submit">Analyse source relationships</button>
+        </form>
+        <p class="status" id="forgeCodeStatus" role="status" aria-live="polite">No source files selected. Nothing is uploaded until you start an analysis.</p>
+        <div id="forgeCodeResults" aria-live="polite"></div>
         <h3>Saved source candidates</h3>
         <div id="forgeCandidateList" aria-live="polite"></div>
         <h3>Knowledge Library</h3>
@@ -2334,6 +2343,62 @@
           ' If no exact grant exists, create one for aegis-github-public-discovery / discover / github:public:OWNER/REPO in Security Centre.';
       } finally {
         forgeSentinelDiscoverBtn.disabled = false;
+      }
+    });
+
+    const forgeCodeIntelligenceForm = document.getElementById('forgeCodeIntelligenceForm');
+    const forgeCodeFiles = document.getElementById('forgeCodeFiles');
+    const forgeCodeAnalyzeBtn = document.getElementById('forgeCodeAnalyzeBtn');
+    const forgeCodeStatus = document.getElementById('forgeCodeStatus');
+    const forgeCodeResults = document.getElementById('forgeCodeResults');
+
+    forgeCodeIntelligenceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const selected = Array.from(forgeCodeFiles.files || []);
+      if (!selected.length) {
+        forgeCodeStatus.textContent = 'Choose a source folder or one or more source files first.';
+        return;
+      }
+      if (selected.length > 1000) {
+        forgeCodeStatus.textContent = 'The first analyser accepts at most 1,000 files.';
+        return;
+      }
+      forgeCodeAnalyzeBtn.disabled = true;
+      forgeCodeStatus.textContent = 'Reading selected source files locally…';
+      forgeCodeResults.replaceChildren();
+      try {
+        let totalBytes = 0;
+        const files = [];
+        for (const file of selected) {
+          if (file.size > 512 * 1024) throw new Error(file.name + ' exceeds the 512 KiB per-file limit.');
+          totalBytes += file.size;
+          if (totalBytes > 8 * 1024 * 1024) throw new Error('Selected source exceeds the 8 MiB total limit.');
+          files.push({
+            path: file.webkitRelativePath || file.name,
+            content: await file.text(),
+          });
+        }
+        forgeCodeStatus.textContent = 'Analysing ' + files.length + ' source file(s). Source is inspected as text only.';
+        const data = await controlApi('/api/forge/code-intelligence', {
+          method: 'POST',
+          body: JSON.stringify({ files }),
+        });
+        const graph = data.graph;
+        const summary = document.createElement('p');
+        summary.className = 'memory-meta';
+        summary.textContent = graph.nodes.length + ' source file(s) · ' +
+          graph.edges.length + ' resolved relationship(s) · ' +
+          graph.unresolved.length + ' unresolved local import(s) · ' +
+          graph.externalImports.length + ' external package reference(s) · execution: none';
+        const output = document.createElement('pre');
+        output.className = 'forge-preview';
+        output.textContent = JSON.stringify(graph, null, 2);
+        forgeCodeResults.append(summary, output);
+        forgeCodeStatus.textContent = 'Analysis complete. Review the unresolved and external references; this heuristic result is not a complete dependency audit.';
+      } catch (error) {
+        forgeCodeStatus.textContent = error.message || 'Code intelligence analysis failed.';
+      } finally {
+        forgeCodeAnalyzeBtn.disabled = false;
       }
     });
 
