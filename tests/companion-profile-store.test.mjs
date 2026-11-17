@@ -6,6 +6,8 @@ import {
   updateCompanionProfile,
   selectCompanionProfile,
   getActiveCompanionProfile,
+  exportCompanionProfiles,
+  purgeCompanionProfiles,
 } from '../functions/lib/companion-profile-store.mjs';
 
 class CompanionD1 {
@@ -13,6 +15,8 @@ class CompanionD1 {
     this.profiles = new Map();
     this.preferences = new Map();
     this.events = [];
+    this.purgeAuthorizations = new Map();
+    this.purgeEvents = [];
   }
   prepare(sql) {
     const db = this;
@@ -56,6 +60,36 @@ class CompanionD1 {
           });
           return { meta: { changes: 1 } };
         }
+        if (sql.includes('INSERT INTO companion_profile_purge_authorizations')) {
+          const [ownerId, nonce, expiresAt] = v;
+          db.purgeAuthorizations.set(ownerId, { owner_id: ownerId, nonce, expires_at: expiresAt });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('DELETE FROM companion_profile_preferences')) {
+          db.preferences.delete(v[0]);
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('DELETE FROM companion_profile_events')) {
+          if (!db.purgeAuthorizations.has(v[0])) throw new Error('Companion Profile purge authorization required');
+          const before = db.events.length;
+          db.events = db.events.filter(row => row.owner_id !== v[0]);
+          return { meta: { changes: before - db.events.length } };
+        }
+        if (sql.includes('DELETE FROM companion_profiles')) {
+          if (!db.purgeAuthorizations.has(v[0])) throw new Error('Companion Profile purge authorization required');
+          const before = db.profiles.size;
+          for (const [key, row] of db.profiles) if (row.owner_id === v[0]) db.profiles.delete(key);
+          return { meta: { changes: before - db.profiles.size } };
+        }
+        if (sql.includes('DELETE FROM companion_profile_purge_authorizations')) {
+          db.purgeAuthorizations.delete(v[0]);
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes('INSERT INTO companion_profile_purge_events')) {
+          const [id, ownerId, count, occurredAt] = v;
+          db.purgeEvents.push({ id, owner_id: ownerId, purged_profiles_count: count, occurred_at: occurredAt });
+          return { meta: { changes: 1 } };
+        }
         return { meta: { changes: 0 } };
       },
       async first() {
@@ -69,6 +103,9 @@ class CompanionD1 {
             row.owner_id === ownerId && row.profile_id === profileId,
           ).sort((a, b) => b.version - a.version);
           return rows[0] ?? null;
+        }
+        if (sql.includes('COUNT(*) AS total FROM companion_profiles')) {
+          return { total: [...db.profiles.values()].filter(row => row.owner_id === v[0]).length };
         }
         if (sql.includes('FROM companion_profile_preferences')) {
           return db.preferences.get(v[0]) ?? null;
@@ -88,9 +125,17 @@ class CompanionD1 {
             .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
             .slice(0, v[1]) };
         }
+        if (sql.includes('FROM companion_profile_purge_events')) {
+          return { results: db.purgeEvents.filter(row => row.owner_id === v[0]).slice(0, v[1]) };
+        }
         return { results: [] };
       },
     };
+  }
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
   }
 }
 
@@ -185,3 +230,47 @@ test('detects corrupted stored profile JSON or digest during listing', async () 
   db.profiles.set(key, { ...row, profile_json: JSON.stringify({ ...created.profile, displayName: 'Tampered' }) });
   await assert.rejects(listCompanionProfiles(db, 'owner'), /digest/i);
 });
+
+test('exports all immutable profile revisions, active selection and append-only history', async () => {
+  const db = new CompanionD1();
+  const created = await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  await updateCompanionProfile(db, 'owner', created.profile.id, 1, { displayName: 'Quiet Guide Plus' }, baseTime + 1000);
+  const exported = await exportCompanionProfiles(db, 'owner', baseTime + 2000);
+  assert.equal(exported.exportVersion, 1);
+  assert.equal(exported.profileRevisions.length, 2);
+  assert.deepEqual(exported.profileRevisions.map(item => item.version), [1, 2]);
+  assert.equal(exported.activeProfile.profile.id, created.profile.id);
+  assert.ok(exported.events.some(event => event.event_type === 'created'));
+  assert.ok(exported.events.some(event => event.event_type === 'updated'));
+  assert.ok(exported.events.some(event => event.event_type === 'selected'));
+});
+
+test('profile purge requires the exact owner confirmation phrase and leaves data intact on refusal', async () => {
+  const db = new CompanionD1();
+  await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  await assert.rejects(
+    purgeCompanionProfiles(db, 'owner', 'DELETE SOMETHING', Date.now()),
+    /confirmation/i,
+  );
+  assert.equal(db.profiles.size, 1);
+  assert.equal(db.preferences.has('owner'), true);
+});
+
+test('confirmed profile purge deletes custom content and history but retains a minimal non-identifying purge event', async () => {
+  const db = new CompanionD1();
+  const created = await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  await updateCompanionProfile(db, 'owner', created.profile.id, 1, { displayName: 'Quiet Guide Plus' }, baseTime + 1000);
+  const result = await purgeCompanionProfiles(db, 'owner', 'DELETE MY COMPANION PROFILES', Date.now());
+  assert.equal(result.purgedProfiles, 2);
+  assert.equal(db.profiles.size, 0);
+  assert.equal(db.preferences.has('owner'), false);
+  assert.equal(db.events.filter(row => row.owner_id === 'owner').length, 0);
+  assert.equal(db.purgeAuthorizations.size, 0);
+  assert.equal(db.purgeEvents.length, 1);
+  assert.equal(db.purgeEvents[0].purged_profiles_count, 2);
+  assert.equal(Object.hasOwn(db.purgeEvents[0], 'profile_id'), false);
+  assert.equal(Object.hasOwn(db.purgeEvents[0], 'profile_digest'), false);
+  const active = await getActiveCompanionProfile(db, 'owner');
+  assert.equal(active.profile.id, 'aegis');
+});
+
