@@ -168,3 +168,8 @@ AEGIS maintains a researched, framework-neutral UI direction: AEGIS-owned design
 ## Workspace, knowledge and coding-agent research
 
 The 17 November 2026 ecosystem review covers ToolJet, Mattermost, Outline, Plausible, Continue, Roo Code, SWE-agent, Plandex, GPT Pilot, Tabby and Goose. AEGIS will own its Workbench, Knowledge Forge, collaboration/task model, privacy-preserving observability and governed coding-agent workforce; upstream projects remain research references or optional adapters. GPT Pilot is excluded from execution/adoption due to its disclosed supply-chain credential-stealing incident and discontinued maintenance. Licence and maintenance status vary by project; see [the full research and security assessment](docs/AEGIS_WORKSPACE_KNOWLEDGE_CODING_AGENTS_2026-11-17.md).
+
+
+## AEGIS Forge — 80-idea audit additions
+
+The 17 November 2026 Forge audit adds four research tracks: privacy-preserving MediaPipe camera/gesture interaction, optional FastMCP local sidecars, and native scam/phishing/document-clause risk protection. These are not yet implemented. Face landmarks are not proof of liveness, hand landmarks are not full sign-language translation, OpenPhish's free feed is non-commercial, and suspicious destinations must never be fetched during checks. Passkeys remain the preferred authentication mechanism. See [the full capability and safety assessment](docs/AEGIS_FORGE_80_IDEA_AUDIT_ADDITIONS_2026-11-17.md).
