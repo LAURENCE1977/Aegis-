@@ -282,6 +282,64 @@ function resolveModuleEdges(imports, inputFiles) {
   return { moduleEdges, unresolvedImports };
 }
 
+function findModuleCycles(inputFiles, moduleEdges) {
+  const nodes = inputFiles.map(item => item.path).sort();
+  const adjacency = new Map(nodes.map(path => [path, []]));
+  for (const edge of moduleEdges) {
+    if (adjacency.has(edge.source) && adjacency.has(edge.target)) {
+      adjacency.get(edge.source).push(edge.target);
+    }
+  }
+  for (const targets of adjacency.values()) {
+    targets.sort();
+  }
+
+  let nextIndex = 0;
+  const indices = new Map();
+  const lowLinks = new Map();
+  const stack = [];
+  const onStack = new Set();
+  const components = [];
+
+  function connect(node) {
+    indices.set(node, nextIndex);
+    lowLinks.set(node, nextIndex);
+    nextIndex += 1;
+    stack.push(node);
+    onStack.add(node);
+
+    for (const target of adjacency.get(node)) {
+      if (!indices.has(target)) {
+        connect(target);
+        lowLinks.set(node, Math.min(lowLinks.get(node), lowLinks.get(target)));
+      } else if (onStack.has(target)) {
+        lowLinks.set(node, Math.min(lowLinks.get(node), indices.get(target)));
+      }
+    }
+
+    if (lowLinks.get(node) !== indices.get(node)) return;
+    const component = [];
+    let member;
+    do {
+      member = stack.pop();
+      onStack.delete(member);
+      component.push(member);
+    } while (member !== node);
+
+    component.sort();
+    if (component.length > 1 || adjacency.get(node).includes(node)) {
+      components.push(component);
+    }
+  }
+
+  for (const node of nodes) {
+    if (!indices.has(node)) connect(node);
+  }
+
+  return components.sort((a, b) => a[0].localeCompare(b[0]) ||
+    a.join('\0').localeCompare(b.join('\0')));
+}
+
 function extractImportBindings(root, path) {
   const bindings = [];
   walk(root, node => {
@@ -607,6 +665,7 @@ export async function parseModuleImports(inputFiles) {
     a.caller.localeCompare(b.caller) || a.callee.localeCompare(b.callee));
 
   const { moduleEdges, unresolvedImports } = resolveModuleEdges(imports, inputFiles);
+  const moduleCycles = findModuleCycles(inputFiles, moduleEdges);
   const { symbolEdges, unresolvedSymbolImports } =
     resolveSymbolEdges(importBindings, moduleEdges, symbols);
   const { reExportEdges, unresolvedReExports } = resolveReExportEdges(
@@ -621,6 +680,7 @@ export async function parseModuleImports(inputFiles) {
     calls,
     moduleEdges,
     unresolvedImports,
+    moduleCycles,
     symbolEdges,
     unresolvedSymbolImports,
     namespaceBindings: namespaceBindings.sort((a, b) => a.path.localeCompare(b.path) ||
