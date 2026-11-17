@@ -334,3 +334,33 @@ test('Sentinel refuses consumed-approval recovery after its exact grant has been
   assert.equal(response.status, 403);
   assert.equal(runtimeAuthoriseCalled, false);
 });
+
+test('Sentinel rejects consumed-approval recovery when the persisted plan has changed', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  const consumed = {
+    id: 'approval-changed-plan-retry', ...binding, status: 'consumed',
+    consumedAt: '2026-11-17T10:00:00.000Z',
+    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+  };
+  let runtimeAuthoriseCalled = false;
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async () => null,
+    loadConsumedRequest: async () => consumed,
+    loadGrant: async () => assert.fail('grant must not be loaded for a changed plan'),
+    proxy: async ({ method }) => {
+      if (method === 'GET') return Response.json({
+        run: { id: runId, status: 'planned', plan: { ...plan, objective: 'Changed after approval' } },
+      });
+      runtimeAuthoriseCalled = true;
+      return Response.json({});
+    },
+  });
+  const response = await handler.onRequestPost({
+    request: await makeRequest('/api/sentinel/agent-run-approval/' + consumed.id + '/authorize', 'POST', {}),
+    env: envBase,
+    params: { id: consumed.id },
+  });
+  assert.equal(response.status, 409);
+  assert.equal(runtimeAuthoriseCalled, false);
+});
