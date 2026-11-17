@@ -1097,3 +1097,25 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 2. Design authenticated reviewer identities, separation-of-duties and auditable approval decisions; the current signed session is a single-owner identity, not multi-user tenancy.
 3. Only after those controls exist, expose mastery candidate review in a UI. Keep certification, permissions and autonomous actions separate from learning scores.
 4. Continue the first-class Agent AEGIS companion and accessible mobile-first product experience; do not mistake the current static PWA shell for the finished companion.
+
+## Agent AEGIS Companion milestone — 17 November 2026
+
+**Live checkpoint:** Draft PR #103, branch `feature/rea-open-source-security-learning-batch`. Source and CI verified; not deployed.
+
+- Added owner-scoped immutable Companion Profile revisions, SHA-256 profile integrity, active profile selection, append-only events and authenticated same-origin profile APIs.
+- Official Agent AEGIS remains reserved. Custom profiles share one intelligence, memory, Sentinel and tool-authority system; they cannot create another security identity or grant themselves permissions.
+- Interaction settings (warmth, humour, directness, initiative and response detail) are stored as bounded values and translated into deterministic style guidance. Free-text profile descriptions are excluded from model instructions.
+- AG-UI accepts only the exact bounded style object for session-only fallback. A verified persisted profile takes precedence over client values. Style preferences never change safety, privacy, tool permissions, memory scope, Sentinel or approval requirements.
+- Full-screen Companion Mode reuses the existing live conversation and history, with responsive layout, Escape/close handling, focus restoration, reduced-motion support and live text-turn presence feedback.
+- Current visual is a stylised 2D placeholder. Voice, microphone capture and lifelike 3D human avatar are not implemented or deployed.
+- Full workflow [44202766321](https://github.com/LAURENCE1977/Aegis-/actions/runs/44202766321) passed on code head `44b15b81c9b208e07c3315aba1fa3aac6cf5aa8c`: **885 tests, 884 passed, 0 failed, 1 skipped**, including Companion Profile D1 migration and integrity smoke checks.
+- Production D1 is not provisioned. Profile export/deletion/purge/retention, multi-user tenancy, complete accessibility preference integration, voice and lifelike avatar runtime remain production gates.
+- PR #103 remains open/draft/unmerged; no production deployment or D1 provisioning.
+
+### Companion next gates
+
+1. Design and implement profile export, deletion/purge and retention semantics before production storage.
+2. Resolve multi-user identity/tenancy and owner scoping beyond the current single-owner session.
+3. Implement user-controlled accessibility preferences and verify them across every companion surface.
+4. Select a privacy-preserving, self-hostable lifelike avatar runtime; evaluate licensing, GPU requirements, mobile performance and static fallback before adoption.
+5. Design explicit voice/microphone consent, local processing options, capture indicators, retention/deletion and provider boundaries before enabling any audio path.
