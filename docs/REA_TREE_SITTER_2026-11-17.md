@@ -246,3 +246,20 @@ TDD evidence:
 - Full workflow 44087835272 passed on that commit, including Node.js tests, Cloudflare/Miniflare integration and all isolated D1/Forge safeguards.
 
 Remaining limitations: namespace member calls, namespace re-export aliases, shadowing-aware member resolution and cross-file symbol identity are not implemented.
+
+
+### Local module dependency cycles — implemented and verified
+
+The prototype now computes strongly connected components over resolved local module edges and emits moduleCycles as deterministic, sorted file-path groups.
+
+- Multi-file circular dependencies are reported as one strongly connected component.
+- Self-imports are reported as single-file cycles.
+- External packages and unresolved/ambiguous local imports do not create graph edges and therefore cannot create fabricated cycles.
+- The analysis is bounded by the existing maximum of 50 selected source files.
+
+TDD evidence:
+- Added a regression test first; the test-only commit cd27c5c5624574763be03f8ac087131df569cfb8 failed in the Node.js test stage (workflow 44088091061).
+- Implemented deterministic strongly connected component detection in commit eee7b35b44511b74438d219ea263669b338c0942.
+- Full workflow 44088216093 passed on that commit, including Node.js tests, Cloudflare/Miniflare integration and isolated D1/Forge safeguards.
+
+This is a local selected-bundle graph, not a whole-repository dependency audit. Dynamic imports are represented only when their module specifier is a string literal and resolves within the supplied bundle.
