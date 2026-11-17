@@ -115,10 +115,10 @@ test('lists the official profile and owner custom profiles with an explicit acti
   const db = new CompanionD1();
   await createCompanionProfile(db, 'owner', customInput(), baseTime);
   const result = await listCompanionProfiles(db, 'owner');
-  assert.equal(result.profiles[0].id, 'aegis');
-  assert.equal(result.profiles[0].kind, 'official');
+  assert.equal(result.profiles[0].profile.id, 'aegis');
+  assert.equal(result.profiles[0].profile.kind, 'official');
   assert.equal(result.profiles.length, 2);
-  assert.equal(result.activeProfile.kind, 'custom');
+  assert.equal(result.activeProfile.profile.kind, 'custom');
 });
 
 test('updates create a new immutable profile revision and reject stale writes', async () => {
@@ -146,7 +146,7 @@ test('selection is owner-scoped and can safely return to the official AEGIS prof
   );
   const official = await selectCompanionProfile(db, 'owner', null, null, baseTime + 2000);
   assert.equal(official.activeProfileId, null);
-  assert.equal(official.activeProfile.id, 'aegis');
+  assert.equal(official.activeProfile.profile.id, 'aegis');
 });
 
 test('rejects profile authority fields, official identity replacement and implicit external voice', async () => {
