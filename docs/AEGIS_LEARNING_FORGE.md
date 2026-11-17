@@ -135,7 +135,7 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 
 1. Add authoritative evidence loading and reviewer independence checks before exposing candidate generation.
 2. Decide a privacy-preserving attempt retention/deletion policy; the current append-only attempt store needs a governed retention design rather than an unreviewed delete path.
-3. Add spaced repetition only after user-controlled scheduling and notification consent are designed.
+3. Keep schedule persistence and notification delivery disabled until user-controlled scheduling and explicit reminder consent are designed.
 4. Resolve learner identity and tenancy before building a multi-user UI.
 
 
