@@ -142,3 +142,31 @@ TDD evidence:
 - Green push workflow run 44079312226 passed all 15 workflow stages: Node.js/Cloudflare tests, capability/runtime/Forge isolated D1 migrations and integrity checks, durable run cancellation/events, Queue integration, licence gates, immutable source identity, Knowledge Library review lifecycle and append-only events.
 
 The prototype remains isolated from production Forge routes. These edges are source-level structural evidence only; they are not proof of runtime execution, type correctness, safe behaviour or complete call-graph coverage.
+
+
+### Evidence-based local module dependency edges — implemented and verified
+
+The prototype now resolves literal module specifiers against the exact bounded source bundle supplied to `parseModuleImports`. It emits a separate `moduleEdges` collection and a separate `unresolvedImports` collection; it does not conflate module dependencies with function-call edges.
+
+Resolution behaviour:
+- Relative specifiers beginning with `./` or `../` are normalised relative to the importing file.
+- Exact file paths are considered first. Extensionless specifiers consider the supported JS/JSX/MJS/CJS/TS/TSX extensions and corresponding `index` files.
+- A local edge is emitted only when exactly one candidate exists in the supplied bundle.
+- Multiple candidates produce `ambiguous-local-target`; no candidate produces `missing-local-target`.
+- Paths that escape the supplied bundle root produce `outside-source-bundle`.
+- Bare/package specifiers are reported as `external-package`; they are not represented as local edges.
+- Each edge retains source path, target path, import kind, original specifier and source location. Output ordering is deterministic.
+
+TDD evidence:
+- Added tests first for static imports, re-exports, extensionless resolution, ambiguity, missing targets, external packages and source-bundle traversal.
+- Initial red workflow run 44081742013 failed at the new tests because the `moduleEdges` and `unresolvedImports` outputs did not yet exist.
+- The first implementation passed the Node.js/Cloudflare integration stage but exposed one incorrect expected ordering in the unresolved-import fixture; the implementation's deterministic ordering was correct. The fixture was corrected and the full workflow rerun.
+- Push workflow run 44081977338 passed all 15 substantive stages, including Node.js/Cloudflare tests, capability/runtime/Forge isolated D1 checks, durable agent-run cancellation/events, Queue integration, Forge licence gates, immutable source identity and Knowledge Library review lifecycle.
+- Matching PR workflow run 44081982505 also passed.
+
+Scope and limitations:
+- This is a bounded source-bundle graph, not a complete package-manager or TypeScript module resolver.
+- It does not read package.json aliases, tsconfig paths, package exports, node_modules, symlinks, generated files or files outside the supplied bundle.
+- A resolved file edge proves only that one literal specifier maps to one supplied path under this resolver's rules. It does not prove the module loads, builds, executes or is safe.
+- Symbol-level import binding and export identity resolution are the next separate step; do not infer that imported names are correctly bound merely because a file edge exists.
+- The prototype remains isolated from production Forge routes and has no authority over Sentinel, permissions or execution.
