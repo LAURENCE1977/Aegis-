@@ -1046,3 +1046,17 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - This is a scoring contract, not a trusted evaluation runner. Evidence digests are not verified against bytes or runner identity. No suite/run persistence, evaluation UI, sandbox execution or promotion API is implemented.
 - Evaluation results cannot grant permissions or deploy/promote candidates. A future execution receipt must bind pinned suite revision, candidate digest, isolated runner identity and immutable audit lineage; promotion remains a separate human/Sentinel-controlled action.
 - No production deployment, D1 provisioning, model training, external evaluator connection or automatic promotion occurred.
+
+
+## Objective-relevant Knowledge Forge → Agent Workforce context — 17 November 2026
+
+**Status:** Implemented and verified on draft PR #103; plan-only agent runs remain the only supported runtime mode.
+
+- `functions/lib/agent-run-context.mjs` now uses the submitted run objective to rank accepted Forge knowledge with the existing native deterministic BM25 retriever.
+- The context builder reads at most 100 owner-scoped accepted records, filters to high/medium evidence with attributable sources, ranks them against the objective, and attaches up to five relevant records. If nothing matches, it preserves a bounded recent-record fallback.
+- Context retains source attribution, limitations, evidence level, version and update time; marks every record `untrusted-reference`; and remains inside the existing 4 KiB knowledge and 12 KiB overall context budgets.
+- Draft/reviewed/superseded, low/experimental evidence and other-owner records are excluded. A canonical digest covers the knowledge context.
+- `functions/api/agent-runs.js` now passes the submitted objective into the trusted context builder; the API contract test verifies this handoff.
+- Tests cover objective relevance, irrelevant-record ordering, owner/status/evidence filtering, UTF-8 byte budgets and digest shape.
+- Verification: GitHub Actions run [44149968192](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149968192) passed on commit `0ae3e8f45b0492750e24320532982603052783c0`: **760 tests, 759 passed, 0 failed, 1 skipped**; runtime D1/Queue integration and Forge D1 migrations/smoke checks passed. Matching PR run [44149981505](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149981505) passed.
+- This does not enable specialist execution, external vector stores, model-as-judge, tool invocation or permission escalation. Retrieved content remains untrusted reference data.
