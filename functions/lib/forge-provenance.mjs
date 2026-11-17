@@ -175,3 +175,53 @@ export async function listForgeProvenanceRecords(db, ownerId, limit = 50) {
   `).bind(ownerId, limit).all();
   return (result?.results ?? []).map(mapProvenanceRow);
 }
+
+
+export async function linkForgeCandidateProvenance(db, ownerId, candidateId, provenanceId, now = Date.now()) {
+  requireDatabase(db);
+  requireProvenanceOwner(ownerId);
+  if (typeof candidateId !== 'string' || !ID_PATTERN.test(candidateId) ||
+      typeof provenanceId !== 'string' || !ID_PATTERN.test(provenanceId)) {
+    throw new TypeError('Invalid Forge candidate or provenance identifier');
+  }
+  if (!Number.isFinite(now)) throw new TypeError('Invalid Forge provenance link clock');
+
+  const candidate = await db.prepare(
+    'SELECT * FROM forge_candidates WHERE id = ? AND owner_id = ? LIMIT 1'
+  ).bind(candidateId, ownerId).first();
+  if (!candidate) throw new TypeError('Forge candidate not found');
+  if (['rejected', 'archived'].includes(candidate.status)) {
+    throw new TypeError('Terminal Forge candidates cannot receive provenance links');
+  }
+
+  const provenance = await db.prepare(
+    'SELECT * FROM forge_source_provenance WHERE id = ? AND owner_id = ? LIMIT 1'
+  ).bind(provenanceId, ownerId).first();
+  if (!provenance) throw new TypeError('Forge provenance record not found');
+  if (candidate.source_url !== provenance.canonical_url || candidate.version !== provenance.revision) {
+    throw new TypeError('Candidate and provenance must identify the same source and pinned revision');
+  }
+
+  const id = crypto.randomUUID().toLowerCase();
+  const createdAt = new Date(now).toISOString();
+  await db.prepare(`
+    INSERT INTO forge_candidate_provenance_links (
+      id, owner_id, candidate_id, provenance_id, created_at
+    ) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(owner_id, candidate_id, provenance_id) DO NOTHING
+  `).bind(id, ownerId, candidateId, provenanceId, createdAt).run();
+
+  const link = await db.prepare(`
+    SELECT * FROM forge_candidate_provenance_links
+    WHERE owner_id = ? AND candidate_id = ? AND provenance_id = ?
+    LIMIT 1
+  `).bind(ownerId, candidateId, provenanceId).first();
+  if (!link) throw new ForgeProvenanceConflictError();
+  return {
+    id: link.id,
+    ownerId: link.owner_id,
+    candidateId: link.candidate_id,
+    provenanceId: link.provenance_id,
+    createdAt: link.created_at,
+  };
+}
