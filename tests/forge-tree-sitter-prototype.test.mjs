@@ -297,3 +297,23 @@ test('reports missing exported names rather than inventing symbol edges', async 
     { imported: 'missing', local: 'missing', reason: 'missing-export' },
   ]);
 });
+
+
+test('resolves function-valued var declarations through their enclosing function scope', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/function-scoped-var.js',
+    content: [
+      'function start() {',
+      '  if (true) {',
+      '    var finish = () => true;',
+      '  }',
+      '  finish();',
+      '}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee, location, calleeLocation }) => ({
+    caller, callee, line: location.start.line, declarationLine: calleeLocation.start.line,
+  })), [
+    { caller: 'start', callee: 'finish', line: 5, declarationLine: 3 },
+  ]);
+});
