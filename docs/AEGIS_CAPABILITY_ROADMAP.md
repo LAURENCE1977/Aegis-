@@ -299,3 +299,7 @@ The Adaptive System Guardian is a core AEGIS capability for permissioned underst
 ### Exit criteria
 
 The first useful release must demonstrate read-only device profiling on a supported surface, AEGIS resource-budget adaptation, transparent permission/coverage states, privacy and retention controls, hostile-output handling, cancellation and regression tests. Automatic changes remain a later, separately gated capability.
+
+### Implementation checkpoint
+
+**Slice 1 — device profile contract:** implemented on the feature branch; CI verification pending. A pure schema validator and profile factory exist with explicit observation provenance, status/confidence semantics, random revocable device IDs and strict field minimisation. No host discovery adapter, passive monitoring or automatic remediation is implemented. Do not mark the delivery gate complete until the focused and full CI suites pass.
