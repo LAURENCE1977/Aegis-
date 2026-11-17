@@ -479,7 +479,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 ### Eval Forge — immutable suite registry (17 November 2026)
 
-**Status:** Implemented on stacked draft PR #103; CI verification pending.
+**Status:** Implemented and full CI verified on stacked draft PR #103 (17 November 2026).
 
 - Added Forge migration `0008_eval_suites.sql` for owner-scoped, immutable suite versions, canonical SHA-256 content digests and append-only registration events.
 - Added `functions/lib/eval-forge-store.mjs` with strict validation, canonical JSON hashing, idempotent registration, conflict rejection and bounded owner-scoped listing.
@@ -491,7 +491,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 ### Eval Forge — immutable evidence-verified run history (17 November 2026)
 
-**Status:** Implementation added to draft PR #103; CI verification pending.
+**Status:** Implemented and full CI verified on draft PR #103 (17 November 2026).
 
 - Added Forge migration `0009_eval_runs.sql` with owner-scoped unique run IDs, a foreign key to an exact registered suite version, bounded score/status constraints and append-only run events.
 - Added `functions/lib/eval-forge-runs.mjs`: verifies the registered suite digest, verifies candidate/evidence bytes through the existing verifier, then stores only the result and digests. Raw artifact/evidence bytes and prompts are not retained.
