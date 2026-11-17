@@ -282,6 +282,94 @@ function resolveModuleEdges(imports, inputFiles) {
   return { moduleEdges, unresolvedImports };
 }
 
+function extractImportBindings(root, path) {
+  const bindings = [];
+  walk(root, node => {
+    if (node.type !== 'import_statement') return;
+    const source = literal(node.childForFieldName('source'));
+    if (source === null) return;
+
+    const clause = node.namedChildren.find(child => child.type === 'import_clause');
+    if (!clause) return;
+
+    for (const child of clause.namedChildren) {
+      if (child.type === 'identifier') {
+        bindings.push({
+          path,
+          specifier: source,
+          imported: 'default',
+          local: child.text,
+          kind: 'default',
+          location: locationOf(node),
+        });
+      } else if (child.type === 'named_imports') {
+        for (const specifier of child.namedChildren.filter(item => item.type === 'import_specifier')) {
+          const nameNode = specifier.childForFieldName('name');
+          const aliasNode = specifier.childForFieldName('alias');
+          if (!nameNode) continue;
+          const imported = nameNode.type === 'string' ? literal(nameNode) : nameNode.text;
+          const local = aliasNode?.text || imported;
+          if (!imported || !local) continue;
+          bindings.push({
+            path,
+            specifier: source,
+            imported,
+            local,
+            kind: 'named',
+            location: locationOf(specifier),
+          });
+        }
+      }
+    }
+  });
+  return bindings;
+}
+
+function resolveSymbolEdges(importBindings, moduleEdges, symbols) {
+  const symbolEdges = [];
+  const unresolvedSymbolImports = [];
+
+  for (const binding of importBindings) {
+    const moduleEdge = moduleEdges.find(edge =>
+      edge.source === binding.path && edge.specifier === binding.specifier);
+    if (!moduleEdge) continue;
+
+    const matches = symbols.filter(symbol => {
+      if (symbol.path !== moduleEdge.target || !symbol.exported) return false;
+      const exportName = symbol.isDefault ? 'default' : symbol.name;
+      return exportName === binding.imported;
+    });
+
+    if (matches.length === 1) {
+      symbolEdges.push({
+        source: binding.path,
+        target: moduleEdge.target,
+        imported: binding.imported,
+        local: binding.local,
+        kind: binding.kind,
+        location: binding.location,
+        targetLocation: matches[0].location,
+      });
+    } else {
+      unresolvedSymbolImports.push({
+        path: binding.path,
+        target: moduleEdge.target,
+        imported: binding.imported,
+        local: binding.local,
+        reason: matches.length > 1 ? 'ambiguous-export' : 'missing-export',
+        location: binding.location,
+      });
+    }
+  }
+
+  symbolEdges.sort((a, b) => a.source.localeCompare(b.source) ||
+    a.target.localeCompare(b.target) || a.imported.localeCompare(b.imported) ||
+    a.local.localeCompare(b.local));
+  unresolvedSymbolImports.sort((a, b) => a.path.localeCompare(b.path) ||
+    a.imported.localeCompare(b.imported) || a.local.localeCompare(b.local));
+  return { symbolEdges, unresolvedSymbolImports };
+}
+
 function extract(root, path) {
   const imports = [];
   walk(root, node => {
@@ -352,6 +440,7 @@ export async function parseModuleImports(inputFiles) {
   const imports = [];
   const symbols = [];
   const calls = [];
+  const importBindings = [];
   const trees = [];
 
   try {
@@ -364,6 +453,7 @@ export async function parseModuleImports(inputFiles) {
       imports.push(...extract(tree.rootNode, item.path));
       symbols.push(...extractSymbols(tree.rootNode, item.path));
       calls.push(...extractCalls(tree.rootNode, item.path));
+      importBindings.push(...extractImportBindings(tree.rootNode, item.path));
     }
   } finally {
     for (const tree of trees) tree.delete();
@@ -378,6 +468,8 @@ export async function parseModuleImports(inputFiles) {
     a.caller.localeCompare(b.caller) || a.callee.localeCompare(b.callee));
 
   const { moduleEdges, unresolvedImports } = resolveModuleEdges(imports, inputFiles);
+  const { symbolEdges, unresolvedSymbolImports } =
+    resolveSymbolEdges(importBindings, moduleEdges, symbols);
 
   return {
     parser: 'tree-sitter',
@@ -388,6 +480,8 @@ export async function parseModuleImports(inputFiles) {
     calls,
     moduleEdges,
     unresolvedImports,
+    symbolEdges,
+    unresolvedSymbolImports,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
   };
 }
