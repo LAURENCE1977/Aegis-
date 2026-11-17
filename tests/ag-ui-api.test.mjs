@@ -100,7 +100,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\\r?\n\\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -614,7 +614,7 @@ test('AG-UI accepts only bounded style preferences and applies them to the conve
       ...envBase,
       AI: { async run(model, payload) {
         captured = payload;
-        return modelSseStream(['data: {"response":"Hello."}\\n\\ndata: [DONE]\\n\\n']);
+        return modelSseStream(['data: {"response":"Hello."}\n\ndata: [DONE]\n\n']);
       } },
     },
   });
