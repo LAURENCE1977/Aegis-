@@ -11,6 +11,12 @@ BEGIN
     THEN RAISE(ABORT, 'guardian resource source content and identity are immutable')
   END;
   SELECT CASE
+    WHEN NEW.review_status = OLD.review_status AND (
+      NEW.review_note != OLD.review_note OR NEW.reviewer_id IS NOT OLD.reviewer_id OR
+      NEW.updated_at != OLD.updated_at
+    ) THEN RAISE(ABORT, 'guardian resource review metadata changes require a status transition')
+  END;
+  SELECT CASE
     WHEN NEW.review_status != OLD.review_status AND NOT (
       (OLD.review_status = 'draft' AND NEW.review_status IN ('reviewed', 'archived')) OR
       (OLD.review_status = 'reviewed' AND NEW.review_status IN ('accepted', 'archived')) OR
