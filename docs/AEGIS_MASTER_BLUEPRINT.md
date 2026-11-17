@@ -1030,3 +1030,19 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - Before storage work, inspect all current persistence and object-storage bindings to avoid duplicate ledgers and to establish real runtime limits.
 - Next implementation slices: parser-run contract; normalized observation contract; safe synthetic fixtures; then a bounded storage/upload design after runtime and security review.
 - Any dynamic analysis remains a separate, disposable, isolated, no-secrets, restricted-egress capability requiring explicit approval.
+
+
+## Eval Forge milestone — 17 November 2026
+
+**Status:** First deterministic evaluation-scoring contract implemented and verified on draft PR #103.
+
+- New `functions/lib/eval-forge.mjs` validates versioned evaluation suites and scores bounded weighted case results.
+- Suite and candidate versions are strict semantic versions; candidate artifacts and per-case evidence references require lowercase SHA-256 digests.
+- Required cases must pass regardless of aggregate score; skipped cases earn no weight. Results are normalised into suite order for stable comparison.
+- The scorer returns immutable, bounded metadata and digests only; it does not store raw prompts, model outputs, files or user content.
+- `tests/eval-forge.test.mjs` covers malformed suites, duplicate/missing/unknown results, candidate/evidence digest validation, required-case gates, deterministic weighting and canonical timestamps.
+- `docs/AEGIS_EVAL_FORGE.md` records the trust boundary and next sequence.
+- Verification: GitHub Actions run [44148560150](https://github.com/LAURENCE1977/Aegis-/actions/runs/44148560150) passed on commit `db3207c18bdd54d19a9c642639fe138a8e0ed95f`: **758 tests, 757 passed, 0 failed, 1 skipped**; isolated runtime D1/Queue integration and Forge D1 migrations/smoke checks also passed. The matching pull-request run [44148574242](https://github.com/LAURENCE1977/Aegis-/actions/runs/44148574242) passed.
+- This is a scoring contract, not a trusted evaluation runner. Evidence digests are not verified against bytes or runner identity. No suite/run persistence, evaluation UI, sandbox execution or promotion API is implemented.
+- Evaluation results cannot grant permissions or deploy/promote candidates. A future execution receipt must bind pinned suite revision, candidate digest, isolated runner identity and immutable audit lineage; promotion remains a separate human/Sentinel-controlled action.
+- No production deployment, D1 provisioning, model training, external evaluator connection or automatic promotion occurred.
