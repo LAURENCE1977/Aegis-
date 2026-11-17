@@ -414,3 +414,19 @@ Important upstream status and licence findings:
 - Goose's canonical repository moved to aaif-goose/goose under the Agentic AI Foundation; Apache-2.0.
 
 No upstream source was imported or executed. No agent execution, external service, analytics tracker or workspace platform was enabled. Coding agents must use isolated scoped workspaces, deny-by-default egress, bounded resources, secret redaction, cancellation, test/review gates and fresh Sentinel authorisation. No agent may merge or deploy autonomously.
+
+
+## AEGIS Forge — 80-idea audit additions (17 November 2026)
+
+Four additional capability candidates have been accepted into the research register: MediaPipe Face Landmarker for ephemeral camera challenge signals; MediaPipe Hand Landmarker/Gesture Recognizer for opt-in accessibility and custom gestures; FastMCP for optional local Python MCP sidecars; and a native scam/phishing/document-clause risk guard. Full assessment: [AEGIS Forge 80-Idea Audit Additions](AEGIS_FORGE_80_IDEA_AUDIT_ADDITIONS_2026-11-17.md).
+
+Delivery decisions and safety gates:
+- Face landmarks/blendshapes are not a certified liveness detector. Blink/head-turn challenges are only low-assurance signals; passkeys/WebAuthn remain primary authentication. No face identity recognition, persistent biometric templates or frame storage.
+- Hand landmarks and stock gestures do not amount to full sign-language translation. Begin with custom gestures; fingerspelling/sign-language work requires appropriate datasets and Deaf-community co-design. Camera gestures are never the only duress/emergency path.
+- FastMCP is an optional sidecar framework, not the AEGIS orchestrator. Prefer supervised stdio; HTTP sidecars bind loopback unless explicitly authorised. Sentinel validates every tool call independently.
+- URLhaus community API access is subject to Auth-Key/fair-use and commercial-use terms; some downstream rulesets identify data as CC0, but that does not make all API use unrestricted. OpenPhish community feed is non-commercial and is not an assumed free production dependency.
+- Mozilla PSL (MPL-2.0) supports registrable-domain calculation, not phishing detection. Add IDN/confusable heuristics, explainable evidence and freshness metadata. Never fetch or open suspicious destinations.
+- Contract review is read-only issue-spotting, not legal advice or automated signing/acceptance.
+- Cloudflare KV/Workers have usage and CPU limits; edge deployment is optional, not an unlimited or mandatory dependency.
+
+No camera feature, model, sidecar, threat feed or document upload integration has been installed or enabled by this research.
