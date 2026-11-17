@@ -256,3 +256,50 @@ test('Sentinel requires an active exact-resource grant with every manifest scope
   assert.equal(consumed, false);
   assert.equal(runtimeCalled, false);
 });
+
+test('Sentinel safely retries runtime authorisation after the exact approval was consumed', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  const approval = {
+    id: 'approval-retry-1', ...binding, status: 'approved',
+    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+  };
+  const consumed = { ...approval, status: 'consumed', consumedAt: '2026-11-17T10:00:00.000Z' };
+  let consumedWrites = 0;
+  let runtimeWrites = 0;
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async () => consumedWrites === 0 ? approval : null,
+    loadConsumedRequest: async (_db, id, scope) => {
+      assert.equal(id, approval.id);
+      assert.equal(scope.principalId, 'owner');
+      assert.equal(scope.capabilityId, 'aegis-agent-run');
+      return consumed;
+    },
+    loadGrant: async (_db, input) => ({
+      id: 'grant-retry-1', ...input, status: 'active',
+      scopes: ['aegis:agent-run:execute'],
+    }),
+    consumeRequest: async () => {
+      consumedWrites += 1;
+      return consumed;
+    },
+    proxy: async ({ method, path, body }) => {
+      if (method === 'GET') return Response.json({ run: { id: runId, status: 'planned', plan } });
+      runtimeWrites += 1;
+      assert.equal(path, '/v1/agent-runs/' + runId + '/authorize');
+      assert.equal(body.approvalId, approval.id);
+      assert.equal(body.inputDigest, binding.inputDigest);
+      if (runtimeWrites === 1) return Response.json({ error: 'temporary runtime outage' }, { status: 502 });
+      return Response.json({ run: { id: runId }, authorised: true, executionStarted: false });
+    },
+  });
+
+  const request = () => makeRequest('/api/sentinel/agent-run-approval/' + approval.id + '/authorize', 'POST', {});
+  const first = await handler.onRequestPost({ request: await request(), env: envBase, params: { id: approval.id } });
+  assert.equal(first.status, 502);
+  const second = await handler.onRequestPost({ request: await request(), env: envBase, params: { id: approval.id } });
+  assert.equal(second.status, 200);
+  assert.equal((await second.json()).executionStarted, false);
+  assert.equal(consumedWrites, 1, 'the consumed approval must never be consumed a second time');
+  assert.equal(runtimeWrites, 2, 'the same exact runtime authorisation may be retried idempotently');
+});
