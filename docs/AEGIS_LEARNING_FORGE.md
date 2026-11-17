@@ -116,3 +116,23 @@ This still does not implement learner attempt submission, retry/cooldown policy,
 - The new attempt-history migration, assessment and attempt integrity checks, invalid-node rejection, append-only triggers and rapid-retry cooldown were exercised by the Forge D1 CI smoke workflow.
 
 Still not implemented: learner-facing identity/accounts beyond the existing owner-auth boundary, a learner UI, independent mastery certification, attempt retention/deletion policy, recommendation persistence, spaced repetition and a supervised tutor conversation. The current owner API is the existing single-owner pattern; it is not presented as a multi-tenant learner platform.
+
+
+## Independent mastery evidence — candidate policy (17 November 2026)
+
+**Status:** Pure deterministic policy added; CI is running. This is not a mastery certificate or an active learner-facing workflow.
+
+- Added `functions/lib/learning-mastery-evidence.mjs` and `tests/learning-mastery-evidence.test.mjs`.
+- A candidate requires at least two distinct passed assessment attempts on separate UTC dates, an applied-task artifact identified by SHA-256 digest, and an approving human review that explicitly references every qualifying evidence record.
+- Every record is bound to the exact immutable path version and node. Duplicate evidence identifiers, malformed identities, future timestamps, cross-version evidence and unsupported evidence kinds are rejected.
+- A single assessment pass, repeated attempts on one day, a missing applied task, incomplete review references or AI-only review cannot produce a candidate.
+- The output is `candidate_for_human_confirmation` with `masteryVerified: false`; insufficient evidence returns explicit missing-evidence reasons. No capability, autonomy, credential or permission follows.
+- **Trust boundary:** this pure policy validates structure and relationships, not the truth or provenance of the evidence. Before production use, a trusted service must load attempt records and artifact-review records from their authoritative stores, authenticate reviewer identity and independence, and bind artifact digests to retained or independently verifiable evidence. Caller-supplied JSON must never be treated as authoritative.
+- No learner identity expansion, automatic certification, AI-as-reviewer, public API or UI is introduced.
+
+### Next controls
+
+1. Add authoritative evidence loading and reviewer independence checks before exposing candidate generation.
+2. Decide a privacy-preserving attempt retention/deletion policy; the current append-only attempt store needs a governed retention design rather than an unreviewed delete path.
+3. Add spaced repetition only after user-controlled scheduling and notification consent are designed.
+4. Resolve learner identity and tenancy before building a multi-user UI.
