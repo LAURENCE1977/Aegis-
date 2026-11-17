@@ -3024,6 +3024,35 @@
               }
             });
             item.append(reviewButton);
+            const archiveButton = document.createElement('button');
+            archiveButton.type = 'button';
+            archiveButton.className = 'secondary';
+            archiveButton.textContent = 'Archive resource';
+            archiveButton.addEventListener('click', async () => {
+              const note = guardianResourceReviewNote.value.trim();
+              if (!note) {
+                guardianResourceStatus.textContent = 'Add an owner review note before archiving this resource.';
+                guardianResourceReviewNote.focus();
+                return;
+              }
+              archiveButton.disabled = true;
+              try {
+                await controlApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: 'archived',
+                    note,
+                    expectedUpdatedAt: resource.updatedAt,
+                  }),
+                });
+                guardianResourceReviewNote.value = '';
+                await loadGuardianResources();
+              } catch (error) {
+                guardianResourceStatus.textContent = error.message;
+                archiveButton.disabled = false;
+              }
+            });
+            item.append(archiveButton);
           }
           guardianResourceList.append(item);
         });
