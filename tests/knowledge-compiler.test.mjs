@@ -33,22 +33,22 @@ test('draft source material stays draft and cannot become accepted through compi
     status: 'draft',
   });
   assert.equal(compiled.chunks[0].status, 'draft');
-  assert.throws(() => compileKnowledgeDocument({
+  await assert.rejects(() => compileKnowledgeDocument({
     sourceId: 'evidence-draft',
     content: 'Unreviewed content.',
     status: 'accepted',
   }, { status: 'accepted' }), /options/);
 });
 
-test('rejects missing identity, unsafe paths, unknown fields and oversized documents', () => {
-  assert.throws(() => compileKnowledgeDocument({ content: 'text', status: 'draft' }), /source ID/);
-  assert.throws(() => compileKnowledgeDocument({
+test('rejects missing identity, unsafe paths, unknown fields and oversized documents', async () => {
+  await assert.rejects(() => compileKnowledgeDocument({ content: 'text', status: 'draft' }), /source ID/);
+  await assert.rejects(() => compileKnowledgeDocument({
     sourceId: 'evidence-1', sourcePath: '../private.md', content: 'text', status: 'draft',
   }), /source path/);
-  assert.throws(() => compileKnowledgeDocument({
+  await assert.rejects(() => compileKnowledgeDocument({
     sourceId: 'evidence-1', content: 'text', status: 'draft', ownerId: 'someone-else',
   }), /document fields/);
-  assert.throws(() => compileKnowledgeDocument({
+  await assert.rejects(() => compileKnowledgeDocument({
     sourceId: 'evidence-1', content: 'text', status: 'draft',
   }, { unknown: true }), /options/);
 });
