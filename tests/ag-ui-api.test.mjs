@@ -369,6 +369,55 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
   assert.equal(successAudit[18], null);
 });
 
+test('AG-UI reports a denied tool proposal without bypassing Sentinel grant checks', async () => {
+  const db = new AgentToolMemoryD1(null);
+  const calls = [];
+  const response = await onRequestPost({
+    request: await request(input({
+      messages: [{ id: 'user-1', role: 'user', content: 'List my AEGIS modules.' }],
+    })),
+    env: {
+      ...envBase,
+      AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      calls.push(JSON.parse(options.body));
+      if (calls.length === 1) {
+        return new Response(modelSseStream([
+          qwenToolDelta({ tool_calls: [{
+            index: 0, id: 'call_denied', type: 'function',
+            function: { name: 'aegis_list_modules', arguments: '{}' },
+          }] }),
+          'data: [DONE]\\n\\n',
+        ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      }
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'The request was not authorised.' }),
+        'data: [DONE]\\n\\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split('\\n\\n')
+    .map(frame => JSON.parse(frame.slice(6)));
+  const toolEvents = events.filter(event => event.type.startsWith('TOOL_CALL_'));
+  assert.deepEqual(toolEvents.map(event => event.type), [
+    'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END', 'TOOL_CALL_RESULT',
+  ]);
+  assert.equal(toolEvents[0].toolCallId, 'call_denied');
+  assert.match(toolEvents[3].content, /"ok":false/);
+  assert.match(toolEvents[3].content, /"reasonCode":"GRANT_REQUIRED"/);
+  assert.equal(db.auditRows.length, 1);
+  assert.equal(calls.length, 2);
+});
+
 test('AG-UI never offers or executes tools unless the owner explicitly enables supported Qwen plus D1', async () => {
   const db = new AgentToolMemoryD1(moduleListGrant());
   let captured;
