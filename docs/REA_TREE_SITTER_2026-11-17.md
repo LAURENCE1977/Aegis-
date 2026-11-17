@@ -112,3 +112,33 @@ The regression test was added first and failed as intended because the call edge
 
 
 The prototype is experimental and is not wired into the production Forge analysis route. It remains read-only and must not be treated as a whole-repository audit.
+
+
+### Lexical call resolution and declaration lineage — implemented and verified
+
+The call extractor no longer treats every function name in a file as globally visible. It now records declarations against their nearest supported lexical scope and resolves each direct identifier call by walking the call site's enclosing scope chain from nearest to outermost.
+
+Supported scope boundaries currently include program, statement blocks, switch bodies, catch clauses and loop statement scopes. Function-scoped `var` function variables are assigned to the nearest supported function/program scope; `const` and `let` function variables use the nearest lexical scope. This is a deliberately bounded first pass, not a complete ECMAScript binding or TypeScript type resolver.
+
+Each emitted edge now includes:
+- `path`, `caller`, `callee` and call-site `location`;
+- `calleeLocation`, pointing to the resolved declaration in the same source file;
+- `calleeKind`, distinguishing a function declaration from a function-valued variable.
+
+Scope identity is compared using the syntax node's type and source-index range rather than JavaScript wrapper-object identity. This matters because separate Tree-sitter node wrappers for the same underlying syntax node are not guaranteed to be reference-equal.
+
+Conservative behaviour:
+- A name declared only in an unrelated nested scope does not resolve at an outer call site.
+- A nested call resolves to the nearest visible same-name declaration.
+- An outer call is not redirected to a declaration that exists only in a nested block.
+- Ambiguous duplicate declarations in the same scope are omitted rather than guessed.
+- Member calls, unresolved identifiers, cross-file calls, aliases, dynamic dispatch, type-directed resolution and unsupported binding constructs remain outside this call-edge contract.
+
+TDD evidence:
+- Added regression coverage for unrelated nested declarations, nearest shadowed declarations, outer-vs-inner target identity and source declaration locations.
+- The first red run confirmed the global-name-set false positive: a call in an unrelated function incorrectly resolved to a function declared only in another nested scope (run 44078955277; Node test stage failed as expected).
+- A follow-up red run asserted declaration identity and reproduced the same limitation for all three lexical-scope scenarios (run 44079094226).
+- The initial scope implementation exposed a Tree-sitter wrapper identity issue: separate node wrappers did not compare equal by object reference. The implementation was corrected to use stable syntax-node identity from node type and source-index range.
+- Green push workflow run 44079312226 passed all 15 workflow stages: Node.js/Cloudflare tests, capability/runtime/Forge isolated D1 migrations and integrity checks, durable run cancellation/events, Queue integration, licence gates, immutable source identity, Knowledge Library review lifecycle and append-only events.
+
+The prototype remains isolated from production Forge routes. These edges are source-level structural evidence only; they are not proof of runtime execution, type correctness, safe behaviour or complete call-graph coverage.
