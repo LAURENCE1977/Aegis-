@@ -236,3 +236,63 @@ The Knowledge Library is currently a persisted API-backed foundation. Its dedica
 ## Mandatory Reverse Engineering Assessment (REA)
 
 All upstream candidates follow [the AEGIS Reverse Engineering Assessment standard](AEGIS_REVERSE_ENGINEERING_STANDARD.md). It defines source pinning, architecture/data-flow inspection, mechanism extraction, AEGIS ownership mapping, hard gates, weighted evaluation, minimal implementation design, TDD/benchmark proof and the required evidence report. Batch triage is not represented as full reverse engineering. The standard's hard gates override candidate scores.
+
+## Defensive security research intake — 2026-11-17
+
+The following curated repositories have been reviewed as **research indexes**, not as approved software dependencies. Their purpose is to expose candidate tools, workflows and reusable design mechanisms for AEGIS defensive security capabilities.
+
+### Curated source records
+
+| Source | Pinned README blob | Source-repository licence | Initial assessment |
+|---|---|---|---|
+| [Awesome Incident Response](https://github.com/meirwah/awesome-incident-response) | `3befe12e872e2ec4d921ed483194ab6c87c5b6a6` | Apache-2.0 | DFIR workflow, evidence collection, log/memory analysis, timelines and playbooks |
+| [Awesome Malware Analysis](https://github.com/rshipp/awesome-malware-analysis) | `e60bfd63eb9e95be48e1cd2881a65fb053aa5098` | CC-BY-4.0 | Malware analysis lifecycle, static/dynamic analysis, reverse engineering, memory and network analysis |
+| [Awesome Threat Intelligence](https://github.com/hslatman/awesome-threat-intelligence) | `a21894710858d3c8ef30b6fafdf88038591c37ca` | Apache-2.0 | Intelligence sources, formats, standards, frameworks and tools; explicitly distinguishes raw sources from analysed intelligence |
+| [Awesome Embedded and IoT Security](https://github.com/fkie-cad/awesome-embedded-and-iot-security) | Repository identity verified; README blob not yet pinned | Licence not yet verified | Firmware, hardware interfaces, wireless protocols, device analysis and research |
+| [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings) | `41fa5e3f9ebba6d5e623c19139c39d4e11cb0ffb` | MIT | Web vulnerability taxonomy, test cases and bypass reference material; offensive content requires strict defensive scoping |
+
+**Licence boundary:** the licence on a curated list applies to that repository's own covered material. It does not grant permission to copy, redistribute, execute or embed every separately linked tool, rule set, sample, payload, dataset, image or third-party document. Each actual candidate and each relevant subdirectory/plugin/rule corpus must receive its own licence and provenance review. In particular, the embedded/IoT list's licence remains unverified and is on hold for copying; its public links may still be used as discovery references.
+
+### First candidate shortlist for individual REA
+
+| Candidate | Why it merits inspection | Known constraints / next checks |
+|---|---|---|
+| [Dissect](https://github.com/fox-it/dissect) | Modular forensic artefact access across disk and file formats; potential source of parsers and evidence-normalisation patterns | Inspect package boundaries, supported artefacts, dependencies, licence and test coverage |
+| [Hayabusa](https://github.com/Yamato-Security/hayabusa) | Fast Windows event-log parsing, Sigma-based hunting and timeline export; useful model for a bounded analysis worker | Main project is AGPL-3.0; its detection rules use separate DRL 1.1. Assess these independently before reuse |
+| [Sigma](https://github.com/SigmaHQ/sigma) | Vendor-neutral detection-rule representation and rule taxonomy | Rule repositories can have their own licences; evaluate parser/spec compatibility and rule provenance |
+| [Volatility 3](https://github.com/volatilityfoundation/volatility3) | Memory-forensics framework and plugin architecture | Inspect runtime footprint, plugin licences, platform support and safe evidence handling |
+| [capa](https://github.com/mandiant/capa) | Static capability identification across PE, ELF, .NET, shellcode and sandbox reports | Repository advertises Apache-2.0; inspect rule corpus, dependencies, confidence semantics and false positives |
+| [FACT_core](https://github.com/fkie-cad/FACT_core) | Firmware extraction, analysis, search and comparison; a possible specialist IoT worker | GPL-3.0; plugin licences can differ. Upstream describes a minimum 4-core/8-GB setup and recommends 16 cores/64 GB; substantial for ordinary AEGIS hosts |
+| [Binwalk](https://github.com/ReFirmLabs/binwalk) | Firmware/container identification, extraction and entropy analysis; useful primitive for a lightweight upload-analysis pipeline | Repository advertises MIT; inspect v3 format support, extraction safety, resource limits and decompression-bomb handling |
+
+The shortlist is a research queue, not a score or adoption decision. Source-level REA, exact commit pinning, dependency review and tests are still required. No candidate is installed, executed or granted access by this intake.
+
+### AEGIS-native capability direction
+
+Build one defensive security intelligence workflow over existing AEGIS ownership boundaries rather than five separate products:
+
+1. **Evidence intake and normalisation:** accept explicitly supplied files, logs, event records, firmware images and intelligence documents; preserve source hashes, timestamps, acquisition method and chain-of-custody metadata.
+2. **Static-first inspection:** parse and classify safely before any dynamic analysis. Treat samples, archives, firmware and extracted content as hostile; enforce size, recursion, time and resource limits.
+3. **Threat knowledge graph:** connect indicators, vulnerabilities, techniques, software/firmware components, affected assets and incidents with source attribution, observation time, expiry and confidence.
+4. **Investigation timeline:** correlate evidence into a traceable sequence while separating observed facts, inferred relationships and analyst hypotheses.
+5. **Defensive validation:** turn reviewed vulnerability knowledge into harmless, non-destructive checks against explicitly authorised assets. Payload collections are references, never an execution queue.
+6. **Response planning:** produce prioritised recommendations and reversible containment proposals. Sentinel alone authorises any action that changes a host, network, account or service.
+
+### Mandatory safeguards for this domain
+
+- No live malware execution in the AEGIS control plane, user device or ordinary analysis worker.
+- Dynamic analysis, if later justified, requires a disposable isolated sandbox with no secrets, restricted egress, resource ceilings, snapshot/rollback and explicit sample-handling approval.
+- Do not automatically download malware corpora or execute payloads from curated lists.
+- Treat IOC matches as leads, not proof. Record source reliability, observation time, age/expiry, corroboration and false-positive risk; never block solely because one stale feed says so.
+- Firmware extraction is untrusted archive processing: defend against path traversal, symlinks, decompression bombs, parser crashes and malicious nested content.
+- Host discovery and collection remain opt-in, least-privilege and read-only by default. Preserve original evidence; never remediate automatically.
+- Detection rules and signatures retain their own licence, provenance, version and validation status.
+- Any external tool is a replaceable worker. AEGIS retains canonical evidence, memory, investigation state, intelligence confidence, policy and audit.
+
+### Research status
+
+- Curated source identity and selected README content inspected: incident response, malware analysis, threat intelligence and PayloadsAllTheThings.
+- Embedded/IoT repository identity confirmed, but its README commit and licence still require a separate successful inspection.
+- Selected upstream project pages and licences inspected for Hayabusa, FACT_core, capa and Binwalk.
+- No source-level REA is complete; no code has been copied, installed or executed; no AEGIS security capability is marked implemented.
+- Next sequence: inspect Dissect, capa, Hayabusa/Sigma rules and Binwalk individually; then compare native parsing/adaptation against optional isolated-worker integration. Keep FACT as a high-resource specialist candidate rather than a default dependency.
