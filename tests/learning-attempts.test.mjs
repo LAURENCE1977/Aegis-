@@ -59,6 +59,10 @@ class AttemptD1 {
         return { meta: { changes: 0 } };
       },
       async first() {
+        if (sql.includes('FROM learning_paths')) {
+          const [owner, pathId, version] = this.values;
+          return db.paths.get([owner, pathId, version].join('|')) ?? null;
+        }
         if (sql.includes('FROM learning_assessments')) {
           const [owner, assessmentId, version] = this.values;
           return db.assessments.get([owner, assessmentId, version].join('|')) ?? null;
