@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS learning_assessment_attempts (
   CHECK (json_extract(result_json, '$.scorePercent') = score_percent),
   CHECK (json_extract(result_json, '$.passed') = passed),
   CHECK (json_extract(result_json, '$.masteryVerified') = 0),
+  UNIQUE (owner_id, id),
   FOREIGN KEY (owner_id, assessment_id, assessment_version)
     REFERENCES learning_assessments(owner_id, assessment_id, version)
 );
