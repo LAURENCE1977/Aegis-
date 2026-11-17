@@ -30,7 +30,7 @@ function digest(value, label) {
   return value.toLowerCase();
 }
 
-function safePath(value) {
+function hasControlCharacters(value) {\n  return [...value].some(character => {\n    const code = character.charCodeAt(0);\n    return code <= 0x1f || code === 0x7f;\n  });\n}\n\nfunction safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 240 ||
       value.startsWith('/') || value.includes('\\') ||
       /[\\u0000-\\u001f\\u007f]/.test(value) ||
