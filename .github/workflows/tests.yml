@@ -273,10 +273,18 @@ jobs:
           initial_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
           echo "$initial_events"
           grep -q "1" <<< "$initial_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_progress (owner_id, path_id, path_version, node_id, status, created_at, updated_at) VALUES ('owner', 'javascript-foundations', '1.0.0', 'javascript-functions', 'self_reported_complete', '2026-11-17T12:01:30.000Z', '2026-11-17T12:01:30.000Z')"; then
+            echo "Expected D1 to reject completion before prerequisites are self-reported complete."
+            exit 1
+          fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_progress SET status = 'self_reported_complete', updated_at = '2026-11-17T12:02:00.000Z' WHERE owner_id = 'owner' AND path_id = 'javascript-foundations' AND path_version = '1.0.0' AND node_id = 'javascript-basics'"
           completed_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status FROM learning_progress WHERE node_id = 'javascript-basics'")
           echo "$completed_state"
           grep -q "self_reported_complete" <<< "$completed_state"
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_progress (owner_id, path_id, path_version, node_id, status, created_at, updated_at) VALUES ('owner', 'javascript-foundations', '1.0.0', 'javascript-functions', 'self_reported_complete', '2026-11-17T12:03:00.000Z', '2026-11-17T12:03:00.000Z')"
+          child_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status FROM learning_progress WHERE node_id = 'javascript-functions'")
+          echo "$child_state"
+          grep -q "self_reported_complete" <<< "$child_state"
           progress_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
           echo "$progress_events"
           grep -q "2" <<< "$progress_events"
