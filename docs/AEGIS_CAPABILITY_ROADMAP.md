@@ -596,4 +596,5 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Evidence must match the exact immutable path version/node; malformed, duplicate, future-dated and cross-version records are rejected.
 - Output is `candidate_for_human_confirmation`; `masteryVerified` remains false. No certification, capability grant or autonomy follows.
 - Structural validation is not evidence authentication. Trusted authoritative-store loading, reviewer identity/independence checks and artifact provenance verification are mandatory before any API/UI integration.
-- The new policy and tests are on PR #103; full CI is in progress. No production endpoint or learner UI was added.
+- Full CI passed on code commit `37be686edb42e9f482a936d4c8d46914448e890a` (workflow `44187738206`): **850 tests, 849 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+- No production endpoint or learner UI was added.
