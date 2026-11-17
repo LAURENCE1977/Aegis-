@@ -514,3 +514,397 @@ Security notes:
 - A SHA-256 digest identifies the supplied bytes but does not establish that the content is benign, authentic or trustworthy.
 - A display name is metadata only and must never be used as a filesystem path or object-storage key.
 - The contract does not impose the eventual upload size limit; that must be set from verified storage/runtime constraints and tested before an upload route is added.
+
+
+# Unified Open-Source Discovery, REA & Provenance Audit — 2026-11-17
+
+## Audit scope and decision rule
+
+This assessment covers the 19 named candidate repositories (17 numbered entries, with paired repositories under the OSINT and creative-tool entries) plus the four optional human-learning references. It is a source-level triage, not a full legal opinion or complete transitive dependency/SBOM audit. A root licence does not automatically cover model weights, training data, third-party assets, rule corpora, generated content, submodules or independently licensed packages.
+
+**OSI gate:** SPDX identifiers and permissive-looking terms are not by themselves proof of OSI approval. MIT, Apache-2.0, BSD and LGPL are OSI-approved licences; DRL-1.1 is a separately identified rule licence but is not OSI-approved. CC-BY-SA-4.0 is a content licence, not an OSI-approved software licence. A custom non-commercial evaluation licence fails the AEGIS core gate.
+
+**Extraction policy:** prefer independently authored AEGIS-native schemas and algorithms. Reuse only the smallest verified permissively licensed primitive with notices preserved. Content/rule packs with non-OSI licences are not bundled in the core. Unknown licence = hold/reject, never implied permission.
+
+## Important correction: actual AEGIS baseline
+
+The supplied brief describes a more mature baseline than the live branch README and Forge documentation support. At branch head inspected on 17 Nov 2026, AEGIS is still an evolving Cloudflare Pages prototype:
+- Pages Functions, Workers AI binding and optional KV are described as the current deployed foundation.
+- D1/Queue runtime source exists, but the separate Runtime Worker and its D1/Queue resources are not yet provisioned/deployed.
+- AG-UI 1.0 is a bounded, owner-only replay endpoint for terminal run history; it is not yet live specialist execution or general real-time assistant/tool streaming.
+- Project Spaces and their activity/context APIs have source-level foundations; production D1 provisioning/deployment is a separate gate.
+- Sentinel/grants/approvals and the capability vault are source-level governed foundations; no general external tool execution is enabled.
+- Forge supports authenticated public GitHub discovery, bounded tree/blob inspection and a heuristic JS/TS module-relationship report. It does not execute candidates, and the production Forge sandbox/general worker is not implemented.
+
+Therefore the proposed work must be staged against the **verified source baseline**, not assume all named services are live. Keep all runtime work feature-flagged and source-tested until deployment resources and explicit owner approval exist.
+
+## Part A — Forge licence & provenance register
+
+Status meanings:
+- **ADAPT** — approved as a design/schema reference; no wholesale import.
+- **CONDITIONAL** — useful primitive, but dependency, model, asset or runtime review remains.
+- **REFERENCE** — human research only; no runtime or copied content.
+- **HOLD / REJECT** — fails the current OSI/provenance/cost gate or cannot be verified.
+
+### 1. Codebase understanding, architecture mapping and agent workflows
+
+#### Egonex-AI/Understand-Anything — ADAPT
+
+- Repository: https://github.com/Egonex-AI/Understand-Anything
+- Pin: inspected source commit `b861852dda79273bd9d2e01c3160d42e2df510d2`; graph-guide blob `8ed3927e2a2a6365c93c043cf5866ff9668bce93`; domain-design blob `20c61da0124abb5bd778fbc0c1190325f9c523af`.
+- SPDX: `MIT`. Licence: https://github.com/Egonex-AI/Understand-Anything/blob/main/LICENSE
+- Smallest primitive: documented graph contract in `understand-anything-plugin/agents/knowledge-graph-guide.md` (version/project/nodes/edges/layers/tour; typed nodes and edges); separate domain graph design in `docs/superpowers/specs/2026-04-01-business-domain-knowledge-design.md`.
+- Runtime: PWA Browser + D1 graph metadata; static structural extraction may be Cloudflare/Forge-bounded, deeper AST work belongs on optional local node.
+- Dependencies/assets: multi-pass agent pipeline can invoke whichever agent/model runtime is installed; do not make any proprietary model mandatory. Dashboard is read-only JSON visualisation; no licence claim is made for arbitrary analysed repositories.
+- AEGIS overlap: enhances Forge's existing repository tree/blob inspection and JS/TS relationship report with a durable graph and domain-level view; does not replace Forge candidate records or Sentinel.
+- Security: graph content is untrusted; validate schema, cap node/edge counts, escape labels, never render raw HTML, and pin every source reference to a commit and line range. Incremental graph freshness must be based on content/structural fingerprints, not only branch names.
+
+#### tt-a1i/archify — ADAPT, current branch only
+
+- Repository: https://github.com/tt-a1i/archify
+- Pin: inspected `archify/SKILL.md` blob `380de2c1016ee24910d425d74cc0efc91d426be9`, repository-authoring reference blob `38d06a6173042da3557e4d447330a7c3a56ad60c`, root NOTICE blob `b63fbccce2291058a9f4abec9d64b57b527e44d7`. A current full main-branch commit SHA still needs to be frozen before copying any implementation. The release page exposed v2.16.0 at short commit `c826e6c`; do not assume that older release has the current branch's licence/skill contract.
+- SPDX: current root project `Apache-2.0`; current Skill frontmatter also says Apache-2.0. Licence: https://github.com/tt-a1i/archify/blob/main/LICENSE
+- Licence history: NOTICE says earlier MIT grants remain valid through pre-transition commit `25cf37080fc8b1dbe758a4efc3935b55f3327088`; current branch is Apache-2.0 except files/packages that state otherwise. Preserve NOTICE and third-party notices. No general trademark permission.
+- Smallest primitive: typed JSON diagram IR, schema/validator/compiler workflow, and the repository-authoring rule: freeze source identity, trace actual call/data ownership, pin commit and exact line ranges, and label unknowns.
+- Runtime: PWA Browser for the viewer; Forge Skill Blueprint for generation. AEGIS should write its own small renderer and source-evidence contract rather than embed the complete Archify application.
+- Dependencies/assets: renderer, templates, integrations and third-party packages each need separate review. Do not copy logos/marks or assume the MIT history covers current code.
+- AEGIS overlap: enhances the planned Forge visual graph; it is not a replacement for Project Spaces or the existing code analyser.
+- Security: diagrams are inert data. Escape text, validate node/edge types, allow only pinned GitHub source links, and do not trust generated topology assertions without source evidence.
+
+#### open-gsd/gsd-core — ADAPT
+
+- Repository: https://github.com/open-gsd/gsd-core
+- Pin: release `v1.21.0`, published 13 Nov 2026, release commit short SHA `357508d`; inspected gate taxonomy blob `dd015f2956dc5b97506d2f0849bc73a9d04a943d`, execute workflow blob `60c1fd2a6cc978dde6e88f37c644b2f4254321e2`, context-engineering doc blob `d5852652933d2db564be913c697cf5f3fcafdfdf`.
+- SPDX: `MIT`. Licence: https://github.com/open-gsd/gsd-core/blob/main/LICENSE
+- Smallest primitive: durable `STATE.md` / `CONTEXT.md` / `PLAN.md` / `SUMMARY.md` artifact discipline, fresh-context specialist delegation, dependency-ordered execution waves, and bounded verification/revision loops.
+- Runtime: Cloudflare Worker + D1 state machine; Queue for dispatch when actually provisioned.
+- Dependencies/weight: full installer and multi-runtime agent system are unnecessary. Its 200k-token context assumptions are model/runtime-specific and must not be copied as AEGIS guarantees.
+- AEGIS overlap: adds durable specialist-run state and context-rot resistance to the existing plan-only agent orchestration; Sentinel remains the sole approval authority.
+- Important correction: GSD's inspected canonical gate taxonomy has **four gate types** (pre-flight, revision, escalation, abort), not a verified G0–G6 named sequence. AEGIS may define its own seven lifecycle checkpoints, but must label them as AEGIS design, not quote them as GSD's exact model.
+- Security: optimistic state transitions, idempotency, bounded retries, lease/attempt fencing, append-only events, explicit cancellation and human escalation. Agent output is untrusted until verified.
+
+#### bmad-code-org/BMAD-METHOD — CONDITIONAL ADAPT / BLUEPRINT
+
+- Repository: https://github.com/bmad-code-org/BMAD-METHOD
+- Pin: stable `v6.12.4`, release commit short SHA `bab9082`; inspected README and root licence at current branch. v7 was described as preview alpha in the inspected README and is not the stable baseline.
+- SPDX: `MIT` plus an explicit BMad trademark notice. Licence: https://github.com/bmad-code-org/BMAD-METHOD/blob/main/LICENSE
+- Smallest primitive: role separation (analyst, architect, developer, QA/reviewer) and reproducible artifacts (brief, requirements, architecture, implementation plan, test/review report).
+- Runtime: Forge Skill Blueprint only.
+- Dependencies/assets: do not use BMad names, logos or marks as AEGIS branding; retain MIT/CONTRIBUTORS notices if any code is ever reused. Avoid installing the complete workflow framework.
+- AEGIS overlap: complements existing AEGIS skills and specialist planning; does not replace Forge, Sentinel or durable run records.
+- Security: agent role separation is not a permission boundary. All actions still require AEGIS capability policy and Sentinel; no skill prompt may grant tool access.
+
+### 2. Knowledge ingestion, RAG, data analysis and web extraction
+
+#### Tencent/WeKnora — BLUEPRINT ONLY
+
+- Repository: https://github.com/Tencent/WeKnora
+- Pin: inspected source revision `7d064bc3a259f87634840199f565ec4dd644ba1e`; chunking doc blob `f46f685c891f9747d42da5f4ea4eb6ad6ef8db12`; splitter blob `68ba6776bd97c5caf247fb6e4b12e86c88f29921`; retrieval-fusion blob `b009f1ea9b3dc049a05f4751fb1337a269e5ffac`.
+- SPDX: project declares `MIT` except listed third-party components. Licence: https://github.com/Tencent/WeKnora/blob/main/LICENSE
+- Smallest primitive: adaptive chunking tier chain (heading → heuristic → legacy recursive fallback), validator and diagnostics; optional parent/child chunks (small child retrieval, larger parent context); weighted Reciprocal Rank Fusion of vector and keyword results; source-linked wiki revision/rollback pattern.
+- Runtime: Cloudflare Worker/D1 for metadata, chunk records and keyword search after a D1 FTS5 compatibility test; local node for optional embeddings, large parsing and model work.
+- Dependencies/weight: explicitly exclude Docker/Postgres/Neo4j/full service stack, model vendors and external integrations. Audit every listed third-party component before copying any implementation. Do not assume all project code and assets share one licence.
+- AEGIS overlap: enhances Project Spaces and the owner-only Knowledge Library; does not replace their scope, activity timeline, accepted/review lifecycle or Forge knowledge provenance.
+- Security: preserve exact source offsets, immutable source hash and chunker version; bound document size and chunk count; treat OCR and retrieved prompt-like text as hostile data; do not let retrieval content become system instructions.
+
+#### vaibhav-space/vindex — CONDITIONAL LOCAL-NODE ADAPTER / SCHEMA REFERENCE
+
+- Repository: https://github.com/vaibhav-space/vindex
+- Pin: inspected source revision `b500081c200c5d11307cb59495c61fc0c9417ba7`; architecture doc blob `16384e0bb2ca25c208f77928ae603276caca9fe5`; OCR observation schema blob `811fcbfc5fcdaad6888e5ee4836d0f4f01175b89`; caption observation schema blob `d901698f252f36afb7b6e748f5915fb6d89a4504`.
+- SPDX: `MIT`. Licence: https://github.com/vaibhav-space/vindex/blob/main/LICENSE
+- Smallest primitive: deterministic typed Observation stream with schema version, timestamp, duration, source/extractor, runtime/model identity, confidence and references; output artifacts for timeline, scenes, ASR and OCR.
+- Runtime: Local Node Sidecar; PWA only views generated JSON/Markdown artifacts.
+- Dependencies/assets: current Python package depends on PyAV, faster-whisper, MLX/MLX-VLM, PaddleOCR/PaddlePaddle, SceneDetect, sentence-transformers and more. Heavy, hardware/platform-specific and not a Cloudflare Worker dependency. Model/weight licences and redistribution terms require a separate inventory; MIT source does not license weights.
+- AEGIS overlap: adds a deterministic media knowledge compiler for Project Spaces; does not replace the shared AEGIS intelligence core or memory.
+- Security: process only owner-selected media; sandbox decoders, cap duration/resolution/frame rate and disk usage, strip metadata where appropriate, hash inputs/outputs, and mark model-generated captions as inferred rather than observed facts.
+
+#### pgalko/BambooAI — CONDITIONAL BLUEPRINT / ISOLATED LOCAL WORKER
+
+- Repository: https://github.com/pgalko/BambooAI
+- Pin: inspected source revision `2153bf8bf86d73afc264468aa2e7a329b60f0a70`; README blob `225384b87d1d04b655d0efcd5aa47bcc954d9538`; package metadata blob `05756dd26ddb9f80e4753cb4ed45e0e306f3421b`; OSS design blob `238c82ee181768057e9c7d85fecaf954da51cdbc`.
+- SPDX: `MIT`. Licence: https://github.com/pgalko/BambooAI/blob/main/LICENSE
+- Smallest primitive: computational lineage linking numerical claims to code, intermediate results, dataset identity and a generated code map; reproduce a completed analysis in a fresh kernel before accepting the result.
+- Runtime: Forge Skill Blueprint; optional isolated Local Node Sidecar for user-approved Python execution.
+- Dependencies/weight: large Python/data-science stack; package metadata includes OpenAI, Anthropic, Google, Groq and other clients as well as local Ollama support. A local model path can avoid mandatory paid APIs, but the full application is not lightweight and should not be imported.
+- AEGIS overlap: improves Project Space and Forge evidence quality; does not replace AEGIS memory, planning or Sentinel.
+- Security: never execute untrusted generated Python inside a Cloudflare Worker or the main AEGIS process. Use disposable least-privilege execution, no secrets, restricted network, CPU/memory/time limits, pinned dependencies and replay verification. Reproducibility does not prove that the method or interpretation is correct.
+
+#### unclecode/crawl4ai — CONDITIONAL LOCAL-NODE ONLY
+
+- Repository: https://github.com/unclecode/crawl4ai
+- Pin: release `v0.9.5` (14 Oct 2026); inspected package metadata blob `f93d1068015e75d9ae5ba30e51f96b16dfdf237a`, root licence blob `ade44a7824869fe57a3dfa98ad4b7ffb764c3cb0`.
+- SPDX: `Apache-2.0`. Licence: https://github.com/unclecode/crawl4ai/blob/main/LICENSE
+- Smallest primitive: local browser-backed extraction to clean Markdown/structured JSON with canonical URL, metadata and capture-time provenance. Do not use the hosted Crawl4AI Cloud API.
+- Runtime: Local Node Sidecar (Python process/browser); not Cloudflare Worker/PWA runtime.
+- Dependencies/weight: Playwright/Chromium, Patchright, aiohttp, parsing and ranking libraries; substantial download, disk and CPU cost. Apache-2.0 requires retaining applicable copyright, licence and NOTICE attributions. Inspect dependency notices and model downloads.
+- AEGIS overlap: adds opt-in local web ingestion to Project Spaces; Forge remains the source-discovery and licence-review system.
+- Security: crawler is an SSRF and hostile-content boundary. Block loopback/private/link-local/multicast/reserved IPs including IPv4-mapped IPv6; re-resolve DNS and validate every redirect; block file/data and non-HTTP schemes; deny cloud metadata; isolate browser profile; no inherited cookies, passwords or client certificates; disable downloads; cap pages, depth, bytes, time and concurrency; enforce per-domain rate limits and robots/terms policy. Never crawl arbitrary URLs supplied by retrieved page content.
+
+### 3. Security detection, AppSec and AI hardening
+
+#### GitHubSecurityLab/skills — ADAPT AS FORGE SKILL BLUEPRINT
+
+- Repository: https://github.com/GitHubSecurityLab/skills
+- Pin: root README blob `eaa26ca7c063c6f0f851f7ede0a1a9d93d62ae38`; root licence blob `28a50fa22639e32febe14e4ffc7a732b0ba8c90a`. Freeze full commit SHA before any copied file is admitted.
+- SPDX: `MIT`. Licence: https://github.com/GitHubSecurityLab/skills/blob/main/LICENSE
+- Smallest primitive: threat-model-driven identification of untrusted-input entry points and dangerous sinks; fuzz target selection, harness quality, coverage, crash reproduction and regression-test handoff.
+- Runtime: Forge Skill Blueprint; actual fuzzing only in disposable Local Node Sidecar or CI sandbox.
+- Dependencies/assets: skills are operational instructions, not trusted AEGIS policy. Review each skill and tool command; do not install wholesale or let it bypass approvals.
+- AEGIS overlap: enhances Forge candidate review and security test planning; Sentinel remains the only authority.
+- Security: no automatic fuzz campaign against third-party services or unapproved targets. Scope fuzzing to checked-out, owner-authorised code; no production credentials; cap runtime and resource use.
+
+#### Arcanum-Sec/ai-sec-resources — REFERENCE ONLY / HOLD
+
+- Repository: https://github.com/Arcanum-Sec/ai-sec-resources
+- Pin: inspected README blob `36044278bc9b4e352cf974f90da75c0a3fead4e5`; no root LICENSE file was found in the checked paths, and no verified OSI licence was established.
+- SPDX: **unverified / no licence located**. No direct licence grant can be assumed.
+- Smallest primitive: human reading list for prompt injection, agent/MCP attacks, RAG poisoning, security labs, taxonomies and evaluation resources. No copied content or runtime integration.
+- Runtime: Reference Blueprint only.
+- Dependencies/assets: each linked resource has its own licence and risk profile.
+- AEGIS overlap: informs future AI-hardening research only.
+- Security: educational references may contain offensive test payloads; do not import them as executable tests or allow arbitrary labs to run against AEGIS.
+
+#### SigmaHQ/sigma — SPECIFICATION ADAPT ONLY; RULE CORPUS EXCLUDED FROM CORE
+
+- Repository: https://github.com/SigmaHQ/sigma
+- Pin: inspected root licence blob `f816b6993cc0d9564fd4629823cbaac8bccaff17`; no full current rule-corpus commit pinned in this pass.
+- SPDX: mixed content. The Sigma specification and logo are public domain; the SigmaHQ rules are `DRL-1.1`. Licence declaration: https://github.com/SigmaHQ/sigma/blob/master/LICENSE
+- Smallest primitive: public-domain Sigma rule specification as a design reference for logsource, detection selections/conditions, metadata, status, severity and correlation. AEGIS can implement a bounded native subset and author its own MIT rules.
+- Runtime: Cloudflare Worker/D1 for schema validation and simple event-rule evaluation; Local Node for large event streams.
+- Dependencies/assets: pySigma is a separate `LGPL-2.1-only` package; not a core dependency. SigmaHQ rule files are DRL-1.1, not public domain and not OSI-approved; do not bundle them in the core.
+- AEGIS overlap: extends Sentinel/Forge security telemetry; does not replace capability grants or human approval.
+- Security: event data and rules are untrusted; validate schemas, bound regex and correlation windows, preserve rule identity and never execute a detection result as an action.
+
+#### Neo23x0/signature-base — RULE CORPUS EXCLUDED FROM CORE
+
+- Repository: https://github.com/Neo23x0/signature-base
+- Pin: inspected root README blob `150c2dfc45ba8028de300ab6fa3b1c3973d6f3b5` and LICENSE blob `a2486e663132108cffe118790d6195a662a39ab2`; exact current commit not pinned.
+- SPDX: `DRL-1.1` for current YARA/IOC corpus except individual rules with explicit alternate licence metadata. Licence: https://github.com/Neo23x0/signature-base/blob/master/LICENSE
+- Smallest primitive: none for AEGIS core. Potential optional external user-supplied rule pack only after per-rule licence/provenance review.
+- Runtime: Local Node Sidecar only if a separately approved rule pack is supplied.
+- Caveats: rules depend on external variables in LOKI/THOR in some cases; old v2.0 release was CC-BY-NC 4.0 and is explicitly unsuitable. Never mix historical versions without licence review.
+- AEGIS overlap: may enrich local file triage, not Forge's own trust/approval logic.
+- Security: YARA matching is analysis, not proof. Treat matches as leads, record author/rule URI/licence, manage false positives and do not block or quarantine solely on one match.
+
+#### OWASP/CheatSheetSeries — REFERENCE ONLY; NO TEXT IMPORT
+
+- Repository: https://github.com/OWASP/CheatSheetSeries
+- Pin: inspected README blob `8c7cb6698d1ad20af9176c0a36caefa6907c21a0`; full commit not pinned.
+- Licence: `CC-BY-SA-4.0` (content licence; not an OSI-approved software licence). Project badge identifies the licence; https://creativecommons.org/licenses/by-sa/4.0/
+- Smallest primitive: no copied prose/checklists. Use the public security topics as a reading index, then write original AEGIS checks from independently verified standards and source evidence.
+- Runtime: Reference Blueprint only.
+- Dependencies/assets: Markdown text, images and branding have separate attribution/ShareAlike considerations; do not embed copied text into the MIT AEGIS repository.
+- AEGIS overlap: informs original Forge static-review rules.
+- Security: reference is not a substitute for testing; checks need explicit applicability, severity, evidence and false-positive guidance.
+
+#### Yamato-Security/hayabusa-rules — RULE CORPUS EXCLUDED FROM CORE
+
+- Repository: https://github.com/Yamato-Security/hayabusa-rules
+- Pin: inspected README blob `d6c19871a388ab8b96ea30f80f66020631cbfd28` and `LICENSE.md` blob `6475b1511fb96c2d3ac9fd9c1d8340032cc30488`; exact current commit not pinned.
+- SPDX: `DRL-1.1`. Licence: https://github.com/Yamato-Security/hayabusa-rules/blob/main/LICENSE.md
+- Smallest primitive: no rule content for AEGIS core. Use the rule format and documentation as reference; author original AEGIS event detections or let an owner supply an external rule pack.
+- Runtime: Local Node Sidecar only for a separately approved Windows event-log adapter.
+- Dependencies/assets: curated Sigma rules are specifically adapted for Hayabusa/Velociraptor; parser compatibility and per-rule metadata matter.
+- AEGIS overlap: adds optional Windows-node event triage, not core Forge policy.
+- Security: DRL author attribution must remain visible in rule matches if rules are ever used; rule matches are not proof and must never automatically remediate.
+
+### 4. OSINT / owner self-audit
+
+#### sherlock-project/sherlock — CONDITIONAL MANIFEST ADAPT
+
+- Repository: https://github.com/sherlock-project/sherlock
+- Pin: inspected source revision `c588d7c8b476df9f9c84912a05d1430fb8cdcdae`; data manifest blob `d3f44240cc9d6b7fff543d6492e5be066ac06a58`; schema blob `c717cb256420f86dabcfa954779d3fd38b9664fc`.
+- SPDX: `MIT`. Licence: https://github.com/sherlock-project/sherlock/blob/master/LICENSE
+- Smallest primitive: JSON endpoint manifest plus JSON Schema; each record carries endpoint templates, error classification, optional request method/payload/headers and username format constraints.
+- Runtime: Local Node Sidecar by default; PWA can present the user-approved platform checklist. A narrow Worker proxy is not the first choice.
+- Dependencies/assets: do not import the Python scraper. Manifest entries describe third-party services; each site's terms, robots/rate limits and endpoint policy remain separate.
+- AEGIS overlap: owner-controlled self-audit, not a public-person search or identity-resolution service.
+- Security/privacy: require the owner to confirm the exact handle(s) and selected platforms; default to GET/HEAD only; reject POST/PUT and arbitrary headers/bodies; filter adult/NSFW endpoints; per-site rate limit; no proxy rotation, login bypass, CAPTCHA bypass or bulk enumeration; show uncertainty and let the owner review results. The manifest contains NSFW targets and potentially state-changing request options, so never execute it unfiltered.
+
+#### p1ngul1n0/blackbird — HOLD / REJECT UNTIL VERIFIED
+
+- Repository: https://github.com/p1ngul1n0/blackbird
+- Pin: no readable README, LICENSE or data manifest could be verified in this pass; GitHub search did not surface a reliable current source.
+- SPDX: **unverified**. No licence or rights to reuse data can be assumed.
+- Smallest primitive: none until repository identity, exact source revision, manifest path and licence are verified.
+- Runtime: none.
+- AEGIS overlap/security: no integration. Do not infer it shares Sherlock's MIT licence or manifest structure.
+
+### 5. Creative / media tools
+
+#### storytold/artcraft — OPTIONAL EXTERNAL DESIGN TOOL; NO CORE DEPENDENCY
+
+- Repository: https://github.com/storytold/artcraft
+- Pin: latest release surfaced as `v0.41.0`, short commit `c3844ac`; inspected NOTICE blob `c061efac171d45b3c078dae1b6e882aac9cc9570`.
+- SPDX: `MIT OR Apache-2.0`. Licences: https://github.com/storytold/artcraft/blob/main/LICENSE-MIT and https://github.com/storytold/artcraft/blob/main/LICENSE-APACHE
+- Smallest primitive: no application code required. Optional use as a standalone local scene/character staging workflow; exchange only user-owned/exportable assets in a documented format such as glTF/GLB.
+- Runtime: optional Local Node / desktop tool, not an AEGIS runtime dependency.
+- Asset caveats: NOTICE excludes Nintendo game sound effects, meme images, some skyboxes, a third-party VMD motion file and Mixamo animation GIFs from the MIT/Apache grant. Font Awesome assets are CC-BY-4.0; fonts have OFL licences; provider logos are trademarks. Exclude all unlicensed/excluded assets from any AEGIS distribution. Review every exported model, texture, rig, motion and audio asset licence.
+- AEGIS overlap: optional content-authoring aid for the custom companion/avatar roadmap, not the companion engine or identity store.
+- Security: imported 3D files are untrusted; validate glTF resources, cap geometry/texture sizes, reject remote external references by default and strip executable scripts.
+
+#### Blizaine/Maestro — REJECT FROM AEGIS
+
+- Repository: https://github.com/Blizaine/Maestro
+- Pin: inspected root licence blob `ea64a4d1edfdcd709261e2a41f78e142dc367f53`; exact full current commit not pinned.
+- SPDX: custom `WanGP Non-Commercial Evaluation License 1.1` (not OSI-approved; no standard SPDX licence identifier).
+- Smallest primitive: none.
+- Runtime: none.
+- Caveats: prohibits commercial software use and hosted/API/backend/end-user services without separate commercial licensing; inherits WanGP terms and numerous model/weight licences. High local VRAM and storage demands also conflict with the ordinary-device baseline.
+- AEGIS overlap/security: no integration; hard reject regardless of hardware profile.
+
+#### neilsonnn/image-blaster — REJECT
+
+- Repository: https://github.com/neilsonnn/image-blaster
+- Pin: README blob `633aa3bf4ea17d4516138132758b07229948df90`; no release and no root LICENSE file located.
+- SPDX: **unlicensed / not verified**.
+- Smallest primitive: none.
+- Runtime: none.
+- Caveats: requires Claude plus World Labs and FAL credentials; listed workflows also use ElevenLabs SFX and other model services. This creates mandatory external service/API costs and proprietary dependency risk.
+- AEGIS overlap/security: no integration; hard reject until an OSI licence and genuinely local/no-cost provider path exist.
+
+### Optional learning-only references (no runtime integration)
+
+- `The-Art-of-Hacking/h4cker`: human learning/reference only.
+- `CarterPerez-dev/Cybersecurity-Projects`: human learning/reference only.
+- `iknowjason/Awesome-CloudSec-Labs`: human learning/reference only.
+- `globocom/secDevLabs`: human learning/reference only.
+- No code, lab, exploit or dataset is admitted to Forge runtime by this classification; each linked project still needs its own authorisation and licence review.
+
+## Part B — Top 5 native adaptation blueprints
+
+### 1. Forge Visual Architecture Mapper
+
+**Combine:** Understand Anything's typed structural/domain graph with Archify's source-backed diagram evidence discipline.
+
+**AEGIS-native contract (initial proposal):**
+- `graph_snapshots`: project_space_id, canonical_repo_url, commit_sha, tree_sha, schema_version, generated_at, source_fingerprint, status.
+- `graph_nodes`: snapshot_id, stable_node_id, node_type, label, relative_path, start_line, end_line, layer_id, attributes_json, evidence_status.
+- `graph_edges`: snapshot_id, source_node_id, target_node_id, edge_type, confidence, evidence_ref_id, attributes_json.
+- `graph_sources`: snapshot_id, path, blob_sha, start_line, end_line, source_kind, observed_at.
+- `graph_reviews`: snapshot_id, reviewer, decision, limitations, reviewed_at.
+- Enforce foreign keys, unique stable IDs per snapshot, bounded JSON, source revision equality and append-only review history. Store bulky graph JSON in object storage only if/when the project provisions an appropriate store; D1 owns metadata and queryable graph rows.
+
+**Pipeline:** pin Git tree → select bounded source slice → deterministic parser/manifest pass → node/edge extraction → validate referential integrity → optional semantic enrichment → reviewer pass → store snapshot → render in PWA.
+
+**Incremental strategy:** hash each selected file and its structural signature (exports, imports, declarations, routes, schema definitions); skip unchanged files; rebuild impacted edges when a signature changes; full rebuild on parser/schema major change. Never mark a graph fresh solely because the branch name is unchanged.
+
+**Visual contract:** source-backed node links must open the exact commit/path/line range. Render domain and structural views separately over the same versioned graph contract. Mark inferred edges separately from parser-observed edges.
+
+**Acceptance tests:** deterministic fixture graph; stable IDs; stale tree rejection; broken references; malicious labels/HTML; oversized node/edge sets; changed file and deleted file incremental updates; source line range accuracy; unknown-edge type rejection. No model call is needed for the structural graph.
+
+### 2. Durable Specialist-Run & Context-Rot Guard
+
+**Combine:** GSD's durable artifacts, fresh-context specialist roles, dependency waves and bounded gates with AEGIS's existing plan-only agent-run records and Sentinel.
+
+**Do not duplicate:** AEGIS already has D1 migration/source for `agent_runs`, step records, run events, idempotency, cancellation, leases/attempt fencing, plan-only orchestration and approval binding. First extend these existing records and migrations; do not create a second scheduler or parallel run ledger.
+
+**State model:** `draft → queued → planning → planned → awaiting_approval → ready → executing → verifying → succeeded`, with terminal `failed / blocked / cancelled / rejected / expired`. Only states supported by an implemented executor should be activated. Current live branch remains plan-only; execution states are design-only.
+
+**Durable artifacts:** goal/CONTEXT, source snapshot, research notes, plan, per-step checkpoint, result/SUMMARY, verification report, decision log and handover brief. Each artifact stores schema version, content digest, creator/specialist, parent artifact, source references, timestamps and sensitivity classification.
+
+**AEGIS G0–G6 proposal (AEGIS-native, not GSD's exact gate names):**
+- G0 Intake: objective, scope, owner and idempotency identity are valid.
+- G1 Authority: source/resource scope, consent, grants and data sensitivity are checked.
+- G2 Evidence: relevant source snapshots and constraints are pinned; unknowns are explicit.
+- G3 Plan: dependency graph, acceptance tests, budget and rollback/stop conditions are reviewed.
+- G4 Execute: only an enabled, allowlisted worker runs within an isolated resource boundary; high-risk work waits for Sentinel approval.
+- G5 Verify: tests, output digests, provenance and independent reviewer checks complete.
+- G6 Accept/close: user or authorised policy accepts the result; artifacts and audit lineage are sealed.
+
+These are lifecycle checkpoints, not seven unconditional human prompts. Sentinel alone authorises actions; G0–G6 must never become a second approval authority.
+
+**Reliability:** use optimistic version columns, transactional state changes, idempotency keys, queue outbox, attempt-fenced leases, heartbeat expiry, bounded retries with jitter, cancellation checks before each side effect, immutable event records and resumable checkpoints. Every specialist gets a minimal fresh context assembled from approved artifacts, not the entire chat history.
+
+**Acceptance tests:** duplicate queue delivery; stale worker lease; cancel-vs-start race; context digest mismatch; missing dependency; revision loop cap; escalation; abort preserving state; approval bound to exact plan digest; no execution while feature flag is off.
+
+### 3. Project Space Knowledge Compiler
+
+**Combine:** WeKnora chunking/retrieval and wiki lifecycle, vindex typed deterministic media observations, BambooAI code-to-claim lineage and replay.
+
+**One canonical AEGIS source model:**
+- `source_asset`: owner/project-space, canonical URI, media type, byte length, SHA-256, acquisition method/time, licence/rights, sensitivity, immutable status.
+- `processing_run`: extractor name/version, config digest, schema version, start/end, resource limits, outcome, parent run.
+- `observation`: observation ID/type, source asset ID, source byte range or media timestamp/bounding box, extractor/model identity, confidence, value digest, limitations.
+- `chunk`: source asset, exact offsets, heading breadcrumb, parent ID, chunker version, content digest.
+- `claim`: statement, claim class (observed / derived / hypothesis), supporting observation IDs, contrary evidence IDs, confidence rationale, reviewer and expiry.
+- `wiki_page_revision`: page ID, content digest, source claim IDs, revision parent, status, created by, rollback target.
+
+**Document chunking:** first attempt heading-aware chunks for structured documents; second heuristic semantic-boundary chunks; third legacy recursive split. Validate chunk size, coverage, overlap, tiny-chunk ratio and source reconstruction. Optional parent/child mode uses small retrieval children and a larger parent context. Keep original content offsets exact and heading breadcrumbs separate from the content span.
+
+**Retrieval:** begin with D1 keyword/FTS capability after a compatibility proof. Optional local embedding adapter may be added later. If both channels exist, fuse ranked lists with a bounded RRF algorithm; normalize scores from different retrievers before combined scoring; retain raw scores and channel provenance. No Neo4j, mandatory vector DB or paid embedding model.
+
+**Video:** local sidecar compiles scene/shot, frame, word-level ASR, OCR and optional VLM caption observations into versioned JSON/Markdown. JSON is canonical; Markdown is derived. Do not silently replace observations when a model changes—new extractor versions create new processing runs.
+
+**Analysis lineage:** every numeric or factual report claim links to the exact code/query, source/dataset digest, environment/dependency lock, outputs and a replay/verification result. A fresh isolated replay tests reproducibility but does not certify the analytical method as valid.
+
+**Acceptance tests:** text round-trip/source coverage; heading fallback; OCR garbage; huge documents; schema migration; deterministic repeated video fixtures; timestamp/bounding-box validity; claim with no evidence; contradictory sources; stale wiki page; replay mismatch; prompt-injection text stored as data not instructions.
+
+### 4. Forge Security & AI-Hardening Gate
+
+**Combine:** GitHub Security Lab's threat-model/fuzz workflow, independently authored AppSec controls, Sigma's public specification as a format reference, and AEGIS-native YARA/Sigma-like checks.
+
+**Candidate admission checks:**
+1. Identity: canonical repository URL, immutable commit/tree SHA, default branch, release and maintainer history.
+2. Licence: actual LICENSE/COPYING plus file-level exceptions, SPDX scan, transitive SBOM, model/asset/rule licence, notices and trademark scan. Unknown/non-OSI content blocks core reuse.
+3. Supply chain: lockfile, package lifecycle scripts, binary downloads, git dependencies, mutable tags, vendored code and dependency provenance.
+4. Static code: supported-language parse, secrets, unsafe deserialization, shell/process/network sinks, dynamic imports/eval, path traversal, authz and tenant-boundary checks.
+5. AI/agent: indirect prompt injection, untrusted skill instructions, tool schema confusion, data exfiltration, memory poisoning, connector privilege escalation and approval bypass.
+6. Test evidence: unit/regression tests, fuzz harness coverage, reproducible crash, dependency vulnerability status and bounded sandbox results.
+7. Decision: evidence-linked findings with severity, confidence, false-positive notes, fix guidance and explicit owner decision.
+
+**Rules:** public-domain Sigma specification can inform the native parser. Do not bundle SigmaHQ, Signature-Base or Hayabusa DRL rules in the MIT AEGIS core. Do not copy OWASP CC-BY-SA prose. Build first-party MIT rules/checklists from independently verified requirements; accept external user-supplied rule packs only as separately licensed, attributed data, not as core source.
+
+**Security boundary:** Forge analysis is read-only. Never install dependencies, run build scripts, execute candidate binaries, invoke fuzzers against remote services or run repo-provided tests on the Pages Worker. Dynamic/fuzz analysis requires a disposable local/CI sandbox, no secrets, no network by default, explicit scope, resource ceilings and retained logs. Sentinel approval is required for any action that changes resources or contacts a third-party target.
+
+### 5. Owner Self-Audit & Local Web Ingestion
+
+**Owner self-audit:** extract a small, versioned Sherlock-style endpoint manifest and schema. The owner explicitly confirms the usernames and selected public platforms. Default to GET/HEAD, safe platforms only, no NSFW endpoints, no arbitrary request body/headers, no proxy rotation, no login bypass, no mass enumeration. Each result stores timestamp, endpoint manifest version, response classification, evidence URL and uncertainty. A "not found" response is not proof that an account does not exist.
+
+**Blackbird:** no integration until repository, exact commit, manifest and OSI licence are independently verified.
+
+**Web ingestion:** optional Crawl4AI local-node adapter, no Crawl4AI Cloud API. It returns canonical URL, page title, capture time, response status, content hash, Markdown and extraction warnings. Require owner-initiated URLs and a per-project allowlist; protect against SSRF, DNS rebinding, redirects, private IPs, cloud metadata, file URLs, downloads, hostile HTML/JS and oversized pages. Keep browser cookies and credentials out of the crawler profile. Honour robots and site terms. Every imported page remains untrusted source data.
+
+**Acceptance tests:** manifest schema invalid; unsupported method; NSFW exclusion; owner consent missing; duplicate platform; per-origin throttle; redirects to private IP; DNS rebinding; browser download; oversized response; hostile prompt injection; revoked consent; deletion/retention request.
+
+## Part C — Priority execution roadmap
+
+### Priority 1 — Build now on the verified Cloudflare/PWA foundation
+
+1. **Forge Visual Architecture Mapper (first)** — extend the existing bounded JS/TS module relationship analyser into a versioned graph snapshot, with source-pinned evidence and a simple PWA viewer. Keep generation deterministic and model-optional.
+2. **Durable Specialist-Run & Context-Rot Guard (second)** — extend the existing plan-only agent-run schema and state machine. First ship durable context artifacts, checkpoint/restart and verification metadata; do not activate specialist execution until the isolated worker and Sentinel approval gates are deployed and tested.
+3. **Project Space Knowledge Compiler — text/document slice** — immutable source identity, extraction/offset metadata, heading/heuristic/recursive chunker, schema validation and keyword retrieval. Use D1 only after FTS compatibility and performance tests. No embeddings or video ML required in this phase.
+4. **Forge Security & AI-Hardening Gate — metadata/static slice** — licence/provenance, dependency and manifest inspection, existing parser-based source checks, untrusted-content classification and report generation. Keep all candidate analysis read-only.
+
+### Priority 2 — Local Companion Node
+
+1. **vindex-derived media compiler** — local video/audio processing, versioned observations, ASR/OCR/scenes and optional VLM; no model weights bundled until their licences and device requirements are verified.
+2. **Crawl4AI local web ingestion** — only after a hardened SSRF/browser isolation design and explicit user opt-in.
+3. **Sherlock manifest self-audit** — owner-only, filtered endpoint registry, safe GET/HEAD subset, local execution and per-site rate limits. Blackbird stays excluded.
+4. **Optional ArtCraft workflow** — standalone local avatar/scene authoring only; use clean, user-owned exports and exclude all NOTICE-listed third-party assets.
+5. **Optional isolated Python analysis worker** — BambooAI-style reproducibility lineage, but no imported BambooAI app and no Python execution in the AEGIS control plane.
+
+### Priority 3 — Reference Blueprint Only
+
+- BMAD role/artifact methodology (stable v6.12.4 only as reference; trademark-safe).
+- WeKnora wiki/revision concepts and more advanced retrieval; full stack explicitly excluded.
+- BambooAI analysis/reviewer patterns; full app and dependency stack excluded.
+- GitHub Security Lab skill patterns pending per-skill review; do not install skills as authority.
+- Arcanum AI security resource hub and the four optional cybersecurity learning repositories; human research only.
+- Sigma specification as a public-domain format reference; implement an AEGIS-native subset and original rules.
+
+### Reject / Exclude from AEGIS core
+
+- Maestro: non-OSI non-commercial evaluation licence and model/component licence burden.
+- image-blaster: no verified OSI licence and paid/proprietary API dependencies.
+- Blackbird: licence/repository/manifest not verified.
+- OWASP CheatSheetSeries prose/assets: CC-BY-SA-4.0 content licence, not OSI-approved software licence; reference only, no copying into core.
+- SigmaHQ, Neo23x0 Signature-Base and Hayabusa rule corpora: DRL-1.1, not OSI-approved; no bundled core rule content. External separately supplied rule packs require explicit licence/attribution handling.
+- Any unlicensed model weights, third-party assets, old CC-BY-NC Signature-Base release, or unknown submodule/dependency: reject until rights are verified.
+
+## Provenance pins and audit limitations
+
+- Immutable upstream source revisions and blob hashes are recorded inline above. Where only a release tag, short commit, branch or blob hash was available, it is explicitly marked as insufficient for copying code; obtain a full 40-character commit and re-fetch the exact LICENSE/NOTICE/dependency lock before admission.
+- Full transitive SBOM, security advisory review, fuzzing, runtime benchmark and per-asset/model licence review have **not** been completed for these candidates.
+- No candidate repository code, binary, rule pack, model weight or dataset has been installed or executed during this audit.
+- No AEGIS feature in this register is marked implemented. The roadmap is a design recommendation only; it does not authorise production migrations, deployment, external scanning, execution or PR merge.
