@@ -32,9 +32,18 @@ class AttemptD1 {
       values: [],
       bind(...values) { this.values = values; return this; },
       async run() {
+        if (sql.includes('INSERT INTO learning_assessments')) {
+          const [id, owner, assessmentId, version, pathId, pathVersion, nodeId, digest, json, createdAt] = this.values;
+          const key = [owner, assessmentId, version].join('|');
+          if (db.assessments.has(key)) return { meta: { changes: 0 } };
+          db.assessments.set(key, { id, owner_id: owner, assessment_id: assessmentId, version,
+            path_id: pathId, path_version: pathVersion, node_id: nodeId,
+            assessment_digest: digest, assessment_json: json, created_at: createdAt });
+          return { meta: { changes: 1 } };
+        }
         if (sql.includes('INSERT INTO learning_assessment_attempts')) {
           const [id, owner, assessmentId, version, pathId, pathVersion, nodeId,
-            assessmentDigest, attemptDigest, resultJson, occurredAt] = this.values;
+            assessmentDigest, attemptDigest, resultJson, scorePercent, passed, occurredAt] = this.values;
           const recent = db.attempts.filter(row => row.owner_id === owner &&
             row.assessment_id === assessmentId && row.assessment_version === version);
           if (recent.some(row => Date.parse(row.occurred_at) > Date.parse(occurredAt) - 30000) ||
