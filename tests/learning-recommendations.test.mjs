@@ -57,8 +57,9 @@ test('prioritises review after a failed assessment without changing learner prog
 
 test('a passed assessment recommends reinforcement, never certified mastery', () => {
   const progress = [...completedBasics, {
-    pathId: learningPath.id, pathVersion: learningPath.version,
-    nodeId: 'functions', status: 'in_progress',
+    ownerId: 'owner', pathId: learningPath.id, pathVersion: learningPath.version,
+    nodeId: 'functions', status: 'in_progress', masteryVerified: false,
+    createdAt: '2026-11-17T10:30:00.000Z', updatedAt: '2026-11-17T10:30:00.000Z',
   }];
   const attempts = [{
     attemptId: 'attempt-2', assessmentId: 'functions-check', assessmentVersion: '1.0.0',
@@ -74,8 +75,9 @@ test('a passed assessment recommends reinforcement, never certified mastery', ()
 
 test('ignores attempts from other path versions and sorts deterministically', () => {
   const progress = [...completedBasics, {
-    pathId: learningPath.id, pathVersion: learningPath.version,
-    nodeId: 'functions', status: 'in_progress',
+    ownerId: 'owner', pathId: learningPath.id, pathVersion: learningPath.version,
+    nodeId: 'functions', status: 'in_progress', masteryVerified: false,
+    createdAt: '2026-11-17T10:30:00.000Z', updatedAt: '2026-11-17T10:30:00.000Z',
   }];
   const attempts = [{
     attemptId: 'old-attempt', assessmentId: 'functions-check', assessmentVersion: '1.0.0',
