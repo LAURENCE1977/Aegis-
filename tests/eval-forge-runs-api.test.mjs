@@ -37,6 +37,7 @@ const row = {
   candidate_id: 'agent-aegis',
   candidate_version: '0.4.0',
   candidate_digest: 'c'.repeat(64),
+  evidence_verified: 1,
   result_digest: 'b'.repeat(64),
   result_json: JSON.stringify({
     id: 'run-001', suiteId: 'guardian-regression', suiteVersion: '1.0.0',
