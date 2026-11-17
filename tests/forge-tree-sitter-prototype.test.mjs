@@ -104,3 +104,22 @@ test('extracts module-level declarations and export metadata from JavaScript and
   ]);
   assert.ok(result.symbols.every(symbol => symbol.path === 'src/model.ts' && symbol.location.start.line > 0));
 });
+
+
+test('links direct calls between locally declared functions with source evidence', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/flow.js',
+    content: [
+      'function start() {',
+      '  finish();',
+      '  outside();',
+      '  service.finish();',
+      '}',
+      'function finish() {}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee, path }) => ({ caller, callee, path })), [
+    { caller: 'start', callee: 'finish', path: 'src/flow.js' },
+  ]);
+  assert.deepEqual(result.calls[0].location.start, { line: 2, column: 3 });
+});
