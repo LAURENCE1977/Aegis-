@@ -185,7 +185,7 @@ test('chat combines personal memory with only the selected Project Space memorie
   assert.match(system,/Project brief: build the AEGIS music workflow/);
   assert.doesNotMatch(system,/Private unrelated project music workflow/);
   assert.deepEqual(db.queries.map(query=>query.values[1]),[null,'project-123']);
-});\n
+});
 test('active companion preferences shape chat tone but never inject profile description or authority', async () => {
   const db = await activeProfileDb();
   const messages = await buildAskMessages({ AEGIS_DB: db }, 'Help me plan the next step.', []);
