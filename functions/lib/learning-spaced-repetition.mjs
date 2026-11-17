@@ -6,7 +6,7 @@ const MAX_ATTEMPTS = 500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INTERVALS = [1, 3, 7, 14, 30];
 
-function validateAttempt(attempt, path) {
+function validateAttempt(attempt, path, now) {
   const keys = [
     'attemptId', 'assessmentId', 'assessmentVersion', 'pathId', 'pathVersion',
     'nodeId', 'earnedPoints', 'possiblePoints', 'scorePercent', 'passed',
@@ -42,11 +42,13 @@ function validateAttempt(attempt, path) {
       new Date(Date.parse(attempt.occurredAt)).toISOString() !== attempt.occurredAt) {
     throw new TypeError('Invalid Learning Review attempt timestamp');
   }
+  const occurredAt = Date.parse(attempt.occurredAt);
+  if (occurredAt > now) throw new TypeError('Learning Review attempt cannot be future dated');
   if (attempt.pathId !== path.id || attempt.pathVersion !== path.version) return null;
   if (!path.nodes.some(node => node.id === attempt.nodeId)) {
     throw new TypeError('Learning Review attempt references an unknown node');
   }
-  return Date.parse(attempt.occurredAt);
+  return occurredAt;
 }
 
 /**
@@ -68,7 +70,7 @@ export function buildLearningReviewSchedule(path, attempts = [], now = Date.now(
   const seen = new Set();
   const daily = new Map();
   for (const attempt of attempts) {
-    const occurredAt = validateAttempt(attempt, path);
+    const occurredAt = validateAttempt(attempt, path, now);
     if (seen.has(attempt.attemptId)) throw new TypeError('Duplicate Learning Review attempt identifier');
     seen.add(attempt.attemptId);
     if (occurredAt === null) continue;
