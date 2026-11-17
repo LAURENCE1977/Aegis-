@@ -37,7 +37,7 @@ test('draft source material stays draft and cannot become accepted through compi
     sourceId: 'evidence-draft',
     content: 'Unreviewed content.',
     status: 'accepted',
-  }, { status: 'accepted' }), /options/);
+  }), /draft/);
 });
 
 test('rejects missing identity, unsafe paths, unknown fields and oversized documents', async () => {
