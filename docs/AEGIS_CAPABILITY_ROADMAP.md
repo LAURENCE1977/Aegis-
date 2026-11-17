@@ -358,3 +358,19 @@ Boundaries:
 **Test-first and verification:** RED run `44127986972` confirmed the missing catalogue module/API/migration. The initial implementation run exposed a test-fixture parameter-binding mismatch; the fake D1 fixtures were corrected. Full CI run `44128806884` passed on `eda95b240b19392a12e42c74d7546f805120cbd9`: 745 tests, 744 passed, zero failed, one skipped, plus isolated capability/runtime/Queue/Forge D1 checks and the new Guardian Resource audit smoke checks.
 
 **Not implemented:** resource review/acceptance, resource UI, learning graph persistence/progress, security finding persistence, scanners or active security testing. Dynamic tests remain disabled and must be Sentinel-authorised and isolated before implementation.
+
+
+## UI ecosystem and companion interface foundation
+
+The 17 November 2026 UI research batch records shadcn/ui, Magic UI, Aceternity UI, HyperUI, Material UI, React, Vue, Tailwind CSS and Awesome React/Vue/Frontend/Tailwind as candidates to investigate. This is not a mandate to adopt every framework or dependency.
+
+The architectural direction is an AEGIS-owned design system:
+- framework-neutral tokens and semantic interaction contracts;
+- native HTML/CSS/SVG/platform primitives wherever practical;
+- optional React and Vue adapters rather than a framework lock-in;
+- accessibility, keyboard/focus, contrast, responsive/touch and reduced-motion requirements as acceptance criteria;
+- motion/effects as optional progressive enhancement with performance budgets;
+- component provenance, exact source revision, licence, dependency and modification records;
+- no paid templates, hosted registries, proprietary components or external APIs as mandatory foundations.
+
+shadcn/ui's copy-source/registry model, Magic UI and Aceternity's motion patterns, HyperUI's lightweight Tailwind layouts, and Material UI's mature control/accessibility contracts are learning sources. Aceternity's free and paid material must remain explicitly separated. Awesome lists are discovery indexes, never licence or security endorsements. See [AEGIS UI ecosystem research](AEGIS_UI_ECOSYSTEM_RESEARCH_2026-11-17.md).
