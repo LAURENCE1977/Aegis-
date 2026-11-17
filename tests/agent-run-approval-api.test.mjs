@@ -303,3 +303,34 @@ test('Sentinel safely retries runtime authorisation after the exact approval was
   assert.equal(consumedWrites, 1, 'the consumed approval must never be consumed a second time');
   assert.equal(runtimeWrites, 2, 'the same exact runtime authorisation may be retried idempotently');
 });
+
+test('Sentinel refuses consumed-approval recovery after its exact grant has been revoked', async () => {
+  const { buildAgentPlanApprovalBinding } = await import('../workers/runtime/agent-plan-approval.mjs');
+  const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
+  const consumed = {
+    id: 'approval-revoked-retry', ...binding, status: 'consumed',
+    consumedAt: '2026-11-17T10:00:00.000Z',
+    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+  };
+  let runtimeAuthoriseCalled = false;
+  const handler = createAgentRunApprovalAuthorizationHandlers({
+    loadRequest: async () => null,
+    loadConsumedRequest: async () => consumed,
+    loadGrant: async (_db, input) => ({
+      id: 'grant-revoked', ...input, status: 'revoked',
+      scopes: ['aegis:agent-run:execute'],
+    }),
+    proxy: async ({ method }) => {
+      if (method === 'GET') return Response.json({ run: { id: runId, status: 'planned', plan } });
+      runtimeAuthoriseCalled = true;
+      return Response.json({});
+    },
+  });
+  const response = await handler.onRequestPost({
+    request: await makeRequest('/api/sentinel/agent-run-approval/' + consumed.id + '/authorize', 'POST', {}),
+    env: envBase,
+    params: { id: consumed.id },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(runtimeAuthoriseCalled, false);
+});
