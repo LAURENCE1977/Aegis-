@@ -318,3 +318,123 @@ Behavioural analysis may help detect changes in the user's own authorised device
 Before implementation, complete a focused evidence review of scientific validity, bias, false-positive rates, accessibility, privacy law, platform constraints and misuse risks. Define approved use cases and prohibited uses, data minimisation and retention, provenance, uncertainty display, user correction, red-team tests and Sentinel boundaries. No model or vendor claim is accepted without independent validation on the intended task and population.
 
 This is a design direction only. Research, documentation and model demos do not increase feature-completion percentage.
+
+
+## 10. Adaptive System Guardian
+
+**Status:** Accepted architecture and proposed capability; not implemented. No endpoint inventory agent, automatic optimiser, persistent device monitor or remediation engine is claimed as operational.
+
+The Adaptive System Guardian is an AEGIS-owned, cross-platform capability that assesses the user's own device and the environment in which AEGIS is running. It identifies compatibility constraints, resource bottlenecks, security posture gaps and safe improvement opportunities. It also adapts AEGIS's own resource use to the device. It is not a generic cleaner, antivirus replacement, benchmark vanity tool or privileged system optimiser.
+
+### 10.1 Product objectives
+
+1. **Understand the host:** build a minimal, explainable capability profile from permitted OS and browser APIs.
+2. **Protect the host:** surface relevant, evidence-backed security and resilience findings without claiming complete visibility.
+3. **Improve efficiency:** identify measurable, proportionate improvements and explain expected benefit, risk and reversibility.
+4. **Adapt AEGIS:** select suitable model sizes, concurrency, cache limits, background schedules and quality tiers for the available hardware, battery, thermal and network conditions.
+5. **Learn safely:** maintain a user-controlled baseline of device health and previously approved changes, with retention and reset controls.
+
+The promise is "make the machine work better for its owner", not "make the machine serve AEGIS". No change is recommended merely to create activity; "no change needed" is a valid result.
+
+### 10.2 Assessment scope and data minimisation
+
+A first-run assessment is read-only and purpose-limited. Depending on the platform and permissions, it may inspect:
+- device class, OS family/version and security update indicators exposed by the platform;
+- CPU architecture and available processor/compute capability where exposed;
+- total/available memory and storage capacity/free space where exposed;
+- GPU/WebGL/WebGPU capability and hardware acceleration status where exposed;
+- battery/charging and thermal/power state only through supported APIs;
+- AEGIS runtime version, enabled modules, local model inventory and AEGIS-owned resource usage;
+- user-selected applications/services or explicitly installed AEGIS endpoint adapter inventory;
+- native security controls such as encryption, secure boot, firewall and endpoint-protection status only where reliable platform APIs expose them;
+- network interface/tunnel/DNS state only where explicitly authorised and technically supported.
+
+The inventory must be limited to the user's device and declared purpose. Do not silently enumerate personal documents, browser history, messages, photos, credentials, unrelated application content, or other users' files. Do not collect a full list of installed apps by default where a narrower capability query suffices. Avoid persistent device fingerprinting: use a random, revocable AEGIS device identifier rather than deriving identity from hardware characteristics.
+
+Each field has a source, permission basis, timestamp, freshness, confidence and platform-support state. Distinguish **observed**, **inferred**, **user-reported**, **not available**, **not permitted**, **stale** and **unsupported**. Unknown is never rendered as healthy.
+
+### 10.3 Operating modes
+
+- **Discover (first run):** one-shot, read-only capability and posture assessment with a clear scope preview.
+- **Observe (passive):** opt-in collection of a small set of low-frequency health/resource metrics. No continuous full-device scans, keylogging, packet-content inspection or content surveillance.
+- **Analyse:** compare current permitted signals with the device's own baseline and documented platform expectations; surface evidence, impact, confidence, limitations and alternative explanations.
+- **Recommend:** produce a ranked improvement plan with expected benefit, risk, cost, resource impact, reversibility and exact required permission.
+- **Apply (governed):** execute only a specific, pre-authorised, allowlisted, reversible action within its granted scope. The user can inspect, pause, cancel and revoke.
+- **Verify:** measure the relevant before/after outcome, detect regressions, and offer rollback when available.
+- **Learn:** retain only the minimal device-specific settings and outcomes the user has approved; allow inspection, correction, reset and deletion.
+
+Passive means unobtrusive observation and analysis, not hidden collection or silent modification.
+
+### 10.4 Authority and action tiers
+
+Sentinel remains the sole permission and action authority. The Adaptive Guardian is a proposer and evidence source, never a privilege broker.
+
+| Tier | Behaviour | Default |
+|---|---|---|
+| 0 — Observe | Read explicitly permitted health/capability signals | Opt-in, visible and pausable |
+| 1 — Advise | Explain findings and suggested changes | Allowed; no system mutation |
+| 2 — Safe maintenance | A narrow, pre-approved allowlist of reversible AEGIS-local actions, such as reducing AEGIS background concurrency or clearing AEGIS-owned regenerable cache | Requires a separate user-enabled policy, exact scope, limits and audit |
+| 3 — System change | Change OS settings, startup entries, services, firewall, DNS, VPN, permissions, drivers, installed software or system files | Per-action explicit approval |
+| 4 — High impact | Firmware/BIOS, boot/security configuration, encryption, account/security controls, deletion of user data, wipe/reset or external network/security actions | Not autonomous; explicit informed approval and platform-specific safeguards; some actions may remain unsupported |
+
+Tier 2 never includes uninstalling third-party apps, deleting user files, disabling security, changing OS policy or silently installing/updating software. A pre-approval is narrow, revocable and bounded by action type, device, frequency, resource ceiling and expiry; it is not blanket administrator access.
+
+Every proposed or applied change records the initiating request/policy, device, action identifier and version, exact scope, preconditions, risk, approval/grant reference, before/after evidence, result, rollback reference and timestamp. Secrets and raw personal content are excluded from logs.
+
+### 10.5 Cross-platform capability adapters
+
+Use a common AEGIS device-profile contract with platform adapters and explicit support matrices:
+- **Web/PWA:** browser-exposed capabilities only; no claim of arbitrary host process, app, driver or disk inspection.
+- **ChromeOS/Chromebook:** prioritise OS/channel/update state, browser and extension permissions visible to the user, supported storage/memory estimates, Linux-container status where explicitly available, account/recovery hygiene and AEGIS's own resource use. Do not claim unrestricted host process or antivirus access.
+- **iOS/iPadOS:** use supported app/device APIs and user-provided settings; no inspection of other apps' private data, unrestricted process list, or full-device antivirus scan.
+- **Android:** use supported app, battery, storage and security APIs; privileged inventory or remediation requires a separately installed, transparent adapter and explicit OS permissions.
+- **Windows/macOS/Linux:** optional native adapters may expose richer posture/process/service information only after independent review, signed packaging, least-privilege design and clear per-permission consent. Do not run a permanent root/administrator daemon by default.
+- **AEGIS Anywhere USB:** portable, read-only host compatibility discovery by default; do not alter host boot, firmware, partitions or security settings without explicit, separate user action.
+
+A single dashboard may unify findings, but platform-specific blind spots must remain visible. A capability on one OS must not be represented as available on another.
+
+### 10.6 Recommendation quality and verification
+
+Every recommendation must include: finding ID; affected device/component; evidence and freshness; confidence; severity/impact; likely cause and alternatives; expected benefit; risk and possible side effects; prerequisites; estimated time/resource cost; exact action and permissions; reversibility/rollback; and a verification test.
+
+Prioritise by meaningful user benefit, not by count of findings. Suppress duplicate/noisy alerts, explain uncertainty, and let users dismiss, snooze, correct or report a false positive. Do not promise speed gains without measurement. If no reliable before/after metric exists, label the expected benefit as an estimate.
+
+### 10.7 Resource-aware self-adaptation
+
+The same device profile informs AEGIS's own operation:
+- choose local model/runtime tiers only after compatibility and memory-budget checks;
+- bound inference concurrency, context/cache sizes and background task frequency;
+- prefer GPU acceleration only when supported and measured to help;
+- reduce optional work under battery, heat, memory pressure or metered/poor connectivity;
+- pause or defer non-essential jobs while foreground applications need resources;
+- expose resource budgets and let the user override quality/performance trade-offs;
+- fall back safely when a model, accelerator or API is unavailable.
+
+The system must not terminate unrelated applications or seize resources from the user. Device profiling does not imply that AEGIS can install or run a model without separate consent, storage review and licence checks.
+
+### 10.8 Security, privacy and abuse controls
+
+- No covert monitoring, keylogging, screenshots, microphone/camera activation, packet payload capture, browser-history collection or remote-control capability.
+- No unrestricted shell, root/administrator privilege, arbitrary script execution or model-authored commands.
+- No automatic software installation, driver updates, uninstallations, registry/service edits or firewall/VPN/DNS changes.
+- No deleting user data, cleaning unknown directories or disabling security protections.
+- All adapters are version-pinned, REA-reviewed, signed where feasible, isolated and revocable.
+- Treat OS responses, process names, package metadata, scan results and tool output as untrusted evidence, never instructions or policy authority.
+- Protect against prompt injection in filenames, package descriptions, process metadata and diagnostic output.
+- Require authenticated owner/device binding, same-origin controls for web APIs, rate limits, bounded output and append-only audit for consequential operations.
+- Local-first processing where practical; disclose any external data egress and obtain explicit approval before sending device inventory off-device.
+- Support pause, uninstall, data export, retention configuration and complete adapter revocation.
+
+### 10.9 Delivery and acceptance gates
+
+1. **Contract and threat model:** versioned device profile, observation schema, permission matrix, retention map and threat model.
+2. **Read-only web baseline:** browser/PWA capability profile with honest unsupported states; no host scanning.
+3. **Resource adaptation:** tests proving AEGIS respects user-set CPU/memory/concurrency/battery budgets.
+4. **Native adapter prototype:** choose one desktop OS only after REA and isolated permission review; read-only inventory first.
+5. **Recommendation engine:** evidence-linked findings, confidence, duplicate suppression and ranked proposals.
+6. **Governed action runner:** Sentinel-bound exact action IDs, preconditions, approval, audit and rollback; begin with AEGIS-owned reversible settings only.
+7. **Cross-platform validation:** test representative Chromebook, iPhone/iPad, Android, Windows, macOS and Linux capability matrices; unsupported paths remain explicit.
+
+Acceptance requires tests for permission denial/revocation, stale and missing data, spoofed tool output, hostile metadata/prompt injection, resource pressure, offline operation, cancellation, approval expiry, concurrent changes, rollback failure, update failure, user override and device removal. No gate passes from documentation or a demo alone.
+
+This is an architectural proposal, not implemented functionality. Research and documentation do not increase feature-completion percentage.
