@@ -8,13 +8,13 @@ const INTERACTION_KEYS = ['warmth', 'humour', 'directness', 'initiative', 'verbo
 const ACCESSIBILITY_KEYS = ['captions', 'reducedMotion', 'highContrast', 'staticFallback'];
 const PROFILE_ID = /^custom-[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const ASSET_ID = /^(?:asset|voice):[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const OFFICIAL_DESCRIPTION = 'The official AEGIS companion identity.';
+const OFFICIAL_DESCRIPTION = 'Your Personal Guardian — a human-centred artificial intelligence companion.';
 
 const DEFAULT_PROFILE = {
   schemaVersion: 1,
   id: 'aegis',
   kind: 'official',
-  displayName: 'AEGIS',
+  displayName: 'Agent AEGIS',
   description: OFFICIAL_DESCRIPTION,
   appearance: { mode: 'adaptive', visualPreset: 'aegis', assetPackId: null },
   voice: {
@@ -79,9 +79,9 @@ export function validateCompanionProfile(profile) {
   }
   if (profile.schemaVersion !== 1) throw new TypeError('Unsupported companion profile schema.');
   if (profile.kind === 'official') {
-    if (profile.id !== 'aegis' || profile.displayName !== 'AEGIS' ||
+    if (profile.id !== 'aegis' || profile.displayName !== 'Agent AEGIS' ||
         profile.description !== OFFICIAL_DESCRIPTION) {
-      throw new TypeError('The official AEGIS identity is reserved and cannot be renamed or replaced.');
+      throw new TypeError('The official Agent AEGIS identity is reserved and cannot be renamed or replaced.');
     }
   } else if (profile.kind === 'custom') {
     if (typeof profile.id !== 'string' || !PROFILE_ID.test(profile.id) || profile.id === 'custom-aegis') {
