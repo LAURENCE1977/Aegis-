@@ -140,6 +140,35 @@ test('enforces cooldown and rolling attempt limits per owner and assessment vers
     { q1: 'b', q2: 'c' }, base + 5 * 31000), /rate limit/i);
 });
 
+test('refuses to list attempts when their immutable assessment content no longer matches its digest', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  const key = ['owner', assessment.id, assessment.version].join('|');
+  const stored = db.assessments.get(key);
+  db.assessments.set(key, {
+    ...stored,
+    assessment_json: JSON.stringify({ ...assessment, title: 'tampered assessment' }),
+  });
+  await assert.rejects(
+    listLearningAttempts(db, 'owner', assessment.id, assessment.version, 10),
+    /digest/i,
+  );
+});
+
+test('refuses attempt history whose recorded assessment digest differs from the registry', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  db.attempts[0].assessment_digest = 'f'.repeat(64);
+  await assert.rejects(
+    listLearningAttempts(db, 'owner', assessment.id, assessment.version, 10),
+    /digest/i,
+  );
+});
+
 test('lists private attempt history without answers or answer digests', async () => {
   const db = await setup();
   const base = Date.parse('2026-11-17T12:00:00.000Z');
