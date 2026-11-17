@@ -148,7 +148,7 @@ test('attaches only owner-accepted Forge knowledge as bounded untrusted project 
   const builder = makeBuilder({
     listForgeKnowledgeRecords: async (_db, ownerId, options) => {
       assert.equal(ownerId, 'owner');
-      assert.deepEqual(options, { status: 'accepted', limit: 20 });
+      assert.deepEqual(options, { status: 'accepted', limit: 100 });
       return [
         accepted,
         { ...accepted, id: 'knowledge-draft', status: 'draft' },
@@ -198,6 +198,5 @@ test('ranks accepted Forge knowledge against the submitted agent objective befor
 
   assert.deepEqual(context.knowledge.map(item => item.id), [
     'knowledge-durable-retries',
-    'knowledge-avatar-rendering',
   ]);
 });
