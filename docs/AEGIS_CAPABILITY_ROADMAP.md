@@ -588,3 +588,12 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - CI run `44183737666` passed: 838 tests, 837 passed, zero failed, one skipped, with D1 migration/runtime/Forge checks.
 - Follow-up CI run `44184401063` passed: 844 tests, 843 passed, zero failed, one skipped, with D1 migration/runtime/Forge checks.
 - Remaining: independent mastery policy/certification, learner-specific identity, learner UI, attempt retention/deletion controls, persisted recommendations and spaced repetition.
+
+
+### Learning Forge — independent mastery evidence candidate (17 November 2026)
+
+- Added a deterministic, pure candidate policy requiring two distinct passed assessment attempts on separate UTC dates, applied-task evidence with a SHA-256 artifact digest, and an approving human review that references all qualifying evidence.
+- Evidence must match the exact immutable path version/node; malformed, duplicate, future-dated and cross-version records are rejected.
+- Output is `candidate_for_human_confirmation`; `masteryVerified` remains false. No certification, capability grant or autonomy follows.
+- Structural validation is not evidence authentication. Trusted authoritative-store loading, reviewer identity/independence checks and artifact provenance verification are mandatory before any API/UI integration.
+- The new policy and tests are on PR #103; full CI is in progress. No production endpoint or learner UI was added.
