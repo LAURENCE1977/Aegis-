@@ -438,3 +438,9 @@ The system must not terminate unrelated applications or seize resources from the
 Acceptance requires tests for permission denial/revocation, stale and missing data, spoofed tool output, hostile metadata/prompt injection, resource pressure, offline operation, cancellation, approval expiry, concurrent changes, rollback failure, update failure, user override and device removal. No gate passes from documentation or a demo alone.
 
 This is an architectural proposal, not implemented functionality. Research and documentation do not increase feature-completion percentage.
+
+### 10.10 First implementation slice — device profile contract
+
+**Implemented on the feature branch; CI verification pending.** The pure Node module `functions/lib/device-profile.mjs` defines schema version 1 and validates a minimal, read-only profile. It uses a random UUID for the revocable AEGIS device identifier rather than a hardware-derived fingerprint. Every system observation carries an explicit status, source, timestamp and confidence. Unsupported, unavailable, stale or not-permitted values must be null with no confidence; missing visibility is never treated as healthy.
+
+The contract is deliberately limited to OS family/version, architecture, logical processor count, memory and storage estimates, GPU acceleration, AEGIS version/modules/resource budgets and declared permission scopes. It rejects unexpected fields such as serial numbers and installed-application inventories. This is a data contract only: no host scanner, browser adapter, passive monitor, endpoint agent or remediation is implemented by this slice.
