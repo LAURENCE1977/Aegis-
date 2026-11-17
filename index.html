@@ -1614,6 +1614,13 @@
     const createCompanionProfile = document.getElementById('createCompanionProfile');
     const companionProfileStatus = document.getElementById('companionProfileStatus');
     const companionTitle = document.getElementById('companionTitle');
+    const companionModeOverlay = document.getElementById('companionModeOverlay');
+    const openCompanionMode = document.getElementById('openCompanionMode');
+    const closeCompanionMode = document.getElementById('closeCompanionMode');
+    const companionModeChatSlot = document.getElementById('companionModeChatSlot');
+    const companionModeProfileTitle = document.getElementById('companionModeProfileTitle');
+    const companionModeProfileDescription = document.getElementById('companionModeProfileDescription');
+    const chatComposer = chatSection.querySelector('.input-area');
     let companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS', version: null }];
     let companionProfilePersistenceAvailable = false;
     let activeCompanionProfileId = 'aegis';
@@ -1633,6 +1640,10 @@
 
     function renderCompanionProfile(profile, persistent = companionProfilePersistenceAvailable) {
       companionTitle.textContent = profile.kind === 'official' ? 'Here with you.' : 'Meet ' + profile.displayName + '.';
+      companionModeProfileTitle.textContent = profile.displayName;
+      companionModeProfileDescription.textContent = profile.kind === 'official'
+        ? 'Your Personal Guardian · one shared intelligence and security system.'
+        : (profile.description || 'A custom companion presentation profile · no separate permissions or memory.');
       if (profile.kind === 'official') {
         companionProfileStatus.textContent = persistent
           ? 'Agent AEGIS · Your Personal Guardian · official identity, one shared intelligence and security system.'
@@ -1745,7 +1756,20 @@
       customCompanionName.value = '';
     });
 
+    function moveChatToCompanionMode() {
+      companionModeChatSlot.append(chatProjectSelect, chatBox, chatComposer, status);
+    }
+
+    function restoreChatFromCompanionMode() {
+      if (chatProjectSelect.parentElement === companionModeChatSlot) {
+        chatSection.append(chatProjectSelect, chatBox, chatComposer, status);
+      }
+    }
+
     function showPanel(panel) {
+      if (panel !== 'companion') restoreChatFromCompanionMode();
+      appPanel.classList.toggle('companion-mode-active', panel === 'companion');
+      document.body.classList.toggle('companion-mode-open', panel === 'companion');
       const panelTabs = {
         home: homeTab, chat: chatTab, projects: workspaceTab, memory: memoryTab,
         approvals: approvalTab, forge: forgeTab, security: securityTab,
@@ -1757,6 +1781,7 @@
       });
       homeSection.hidden = panel !== 'home';
       chatSection.hidden = panel !== 'chat';
+      companionModeOverlay.hidden = panel !== 'companion';
       workspaceSection.hidden = panel !== 'projects';
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
@@ -1770,6 +1795,21 @@
       if (panel === 'memory') loadMemories();
       if (panel === 'approvals') loadApprovals();
     }
+    openCompanionMode.addEventListener('click', () => {
+      moveChatToCompanionMode();
+      showPanel('companion');
+      userInput.focus();
+    });
+    closeCompanionMode.addEventListener('click', () => {
+      showPanel('home');
+      openCompanionMode.focus();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !companionModeOverlay.hidden) {
+        showPanel('home');
+        openCompanionMode.focus();
+      }
+    });
     homeTab.addEventListener('click', () => showPanel('home'));
     document.querySelectorAll('[data-panel-target]').forEach(button => {
       button.addEventListener('click', () => showPanel(button.dataset.panelTarget));
