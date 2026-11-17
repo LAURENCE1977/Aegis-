@@ -88,7 +88,7 @@ test('extracts module-level declarations and export metadata from JavaScript and
       'export enum State { Ready }',
       'function localOnly() {}',
       'export default function main() {}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.symbols.map(({ kind, name, exported, isDefault }) =>
     ({ kind, name, exported, isDefault })), [
@@ -167,7 +167,7 @@ test('does not resolve a call to a same-named function in an unrelated nested sc
       'function start() {',
       '  finish();',
       '}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls, []);
 });
@@ -187,7 +187,7 @@ test('resolves a shadowed call only to the nearest function declaration', async 
       'function start() {',
       '  finish();',
       '}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
     caller, callee, line: location.start.line,
@@ -210,7 +210,7 @@ test('does not treat a nested same-name declaration as the target of an outer-sc
       '    finish();',
       '  }',
       '}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
     caller, callee, line: location.start.line,
