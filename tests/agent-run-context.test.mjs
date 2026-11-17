@@ -166,3 +166,38 @@ test('attaches only owner-accepted Forge knowledge as bounded untrusted project 
   assert.match(context.knowledgeDigest, /^sha256:[a-f0-9]{64}$/);
   assert.ok(new TextEncoder().encode(JSON.stringify(context)).byteLength <= 12 * 1024);
 });
+
+
+test('ranks accepted Forge knowledge against the submitted agent objective before adding context', async () => {
+  const relevant = {
+    id: 'knowledge-durable-retries', ownerId: 'owner', title: 'Durable job retry safety',
+    domain: 'runtime', knowledgeType: 'pattern',
+    summary: 'Use attempt fencing, idempotency keys and bounded retries to prevent duplicate side effects in durable agent jobs.',
+    evidenceLevel: 'high', status: 'accepted',
+    sources: [{ url: 'https://example.org/retries', title: 'Retry design', attribution: 'AEGIS research' }],
+    limitations: ['Requires a durable task ledger.'], applicableCapabilities: ['agent.run'],
+    version: 2, updatedAt: '2026-11-16T12:00:00.000Z',
+  };
+  const unrelated = {
+    ...relevant, id: 'knowledge-avatar-rendering', title: '3D companion avatar rendering',
+    domain: 'companion',
+    summary: 'Use visemes, facial animation and adaptive level of detail for real-time avatar rendering.',
+    sources: [{ url: 'https://example.org/avatar', title: 'Avatar design', attribution: 'AEGIS research' }],
+    applicableCapabilities: ['companion.render'],
+  };
+  const builder = makeBuilder({
+    listForgeKnowledgeRecords: async () => [unrelated, relevant],
+  });
+
+  const context = await builder(
+    { prepare() {} },
+    'project-a',
+    Date.parse('2026-11-16T12:05:00.000Z'),
+    'How do we safely retry durable agent jobs without duplicate side effects?',
+  );
+
+  assert.deepEqual(context.knowledge.map(item => item.id), [
+    'knowledge-durable-retries',
+    'knowledge-avatar-rendering',
+  ]);
+});
