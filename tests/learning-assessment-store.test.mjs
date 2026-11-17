@@ -121,3 +121,20 @@ test('assessment records are owner-scoped and page size is bounded', async () =>
   assert.equal((await listLearningAssessments(db, 'owner', 10)).length, 1);
   await assert.rejects(listLearningAssessments(db, 'owner', 101), /limit/i);
 });
+
+
+test('catalogue rejects stored assessment content whose digest no longer matches', async () => {
+  const db = database();
+  await registerLearningAssessment(db, 'owner', assessment);
+  const row = [...db.assessments.values()][0];
+  row.assessment_json = JSON.stringify({ ...assessment, title: 'Tampered after registration' });
+  await assert.rejects(listLearningAssessments(db, 'owner', 10), /digest/i);
+});
+
+test('catalogue rejects a malformed stored digest rather than presenting corrupted content', async () => {
+  const db = database();
+  await registerLearningAssessment(db, 'owner', assessment);
+  const row = [...db.assessments.values()][0];
+  row.assessment_digest = 'not-a-sha256';
+  await assert.rejects(listLearningAssessments(db, 'owner', 10), /digest/i);
+});
