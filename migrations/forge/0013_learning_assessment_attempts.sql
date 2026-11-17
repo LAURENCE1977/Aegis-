@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS learning_assessment_attempts (
   path_version TEXT NOT NULL,
   node_id TEXT NOT NULL,
   assessment_digest TEXT NOT NULL CHECK (length(assessment_digest) = 64),
-  attempt_digest TEXT NOT NULL CHECK (length(attempt_digest) = 64),
   result_json TEXT NOT NULL CHECK (json_valid(result_json)),
   score_percent INTEGER NOT NULL CHECK (score_percent BETWEEN 0 AND 100),
   passed INTEGER NOT NULL CHECK (passed IN (0, 1)),
