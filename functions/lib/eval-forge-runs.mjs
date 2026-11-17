@@ -41,7 +41,7 @@ function mapRunRow(row) {
   catch { throw new TypeError('Stored Eval Forge run result is corrupt'); }
   if (run.id !== row.run_id || run.suiteId !== row.suite_id ||
       run.suiteVersion !== row.suite_version || run.candidateDigest !== row.candidate_digest ||
-      run.evidenceVerified !== true) {
+      run.evidenceVerified !== true || row.evidence_verified !== 1) {
     throw new TypeError('Stored Eval Forge run result does not match its verified record');
   }
   return Object.freeze({
