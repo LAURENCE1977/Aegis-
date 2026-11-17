@@ -113,6 +113,10 @@ test('learner catalogue never returns answer keys or pass thresholds', async () 
 test('assessment records are owner-scoped and page size is bounded', async () => {
   const db = database();
   await registerLearningAssessment(db, 'owner', assessment);
+  db.paths.set(['other-owner', path.id, path.version].join('|'), {
+    owner_id: 'other-owner', path_id: path.id, version: path.version,
+    graph_json: JSON.stringify(path),
+  });
   await registerLearningAssessment(db, 'other-owner', assessment);
   assert.equal((await listLearningAssessments(db, 'owner', 10)).length, 1);
   await assert.rejects(listLearningAssessments(db, 'owner', 101), /limit/i);
