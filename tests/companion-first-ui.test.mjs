@@ -170,3 +170,13 @@ test('custom companion profiles expose user-controlled interaction preferences w
   assert.match(html, /interaction:\s*\{/);
   assert.match(html, /presentation preferences only/i);
 });
+
+test('companion presence responds to live text conversation states without implying voice capture', () => {
+  assert.match(html, /function setCompanionModePresence/);
+  assert.match(html, /setCompanionModePresence\('thinking'/);
+  assert.match(html, /setCompanionModePresence\('responding'/);
+  assert.match(html, /setCompanionModePresence\('idle'/);
+  assert.match(html, /data-presence="thinking"/);
+  assert.match(html, /@keyframes companion-presence-pulse/);
+  assert.match(html, /Microphone capture and spoken responses are not connected/);
+});
