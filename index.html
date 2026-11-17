@@ -762,6 +762,33 @@
               <button id="createCompanionProfile" type="button">Create</button>
             </div>
             <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Loading saved companion profiles…</p>
+            <details class="companion-personality-settings">
+              <summary>Personalise your companion</summary>
+              <div class="companion-setting-grid">
+                <label for="companionWarmth">Warmth <output id="companionWarmthValue">70</output></label>
+                <input id="companionWarmth" type="range" min="0" max="100" value="70" />
+                <label for="companionHumour">Humour <output id="companionHumourValue">35</output></label>
+                <input id="companionHumour" type="range" min="0" max="100" value="35" />
+                <label for="companionDirectness">Directness <output id="companionDirectnessValue">65</output></label>
+                <input id="companionDirectness" type="range" min="0" max="100" value="65" />
+                <label for="companionInitiative">Initiative <output id="companionInitiativeValue">50</output></label>
+                <input id="companionInitiative" type="range" min="0" max="100" value="50" />
+                <label for="companionVerbosity">Response detail</label>
+                <select id="companionVerbosity">
+                  <option value="concise">Concise</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="detailed">Detailed</option>
+                </select>
+                <label for="companionVisualPreset">Visual theme</label>
+                <select id="companionVisualPreset">
+                  <option value="aegis">AEGIS</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="custom">Custom glow</option>
+                </select>
+                <button id="saveCompanionSettings" type="button" disabled>Save companion settings</button>
+                <p id="companionSettingsStatus" class="companion-profile-note" role="status" aria-live="polite">Custom presentation settings do not change permissions, tools or memory access.</p>
+              </div>
+            </details>
           </div>
           <div class="companion-mode-action">
             <button id="openCompanionMode" type="button">Enter full-screen companion mode <span aria-hidden="true">↗</span></button>
