@@ -537,3 +537,15 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Deterministic weighted scoring requires exactly one valid answer per question and enforces a declared pass threshold.
 - The scorer explicitly returns `masteryVerified: false`; no persisted mastery, learner-facing delivery API or certification is claimed.
 - Next: immutable assessment registry, private answer-key handling, append-only attempt history and policy-backed mastery verification. No external model-as-judge or automatic skill inference.
+
+
+## Web Intelligence & Media Production Forge — ecosystem intake (17 November 2026)
+
+**Status:** Research and architecture intake only. See [Web Intelligence & Media Production Intake](AEGIS_FORGE_WEB_INTELLIGENCE_MEDIA_PRODUCTION_INTAKE_2026-11-17.md).
+
+- Reviewed Crawlee, Scrapy (duplicate collapsed), AutoScraper, curl-impersonate, yt-dlp, Video Use, FireRed-OpenStoryline, AutoClip, Herk Edit Kit, AutoSubs, StoryToolkitAI, FunClip, NarratoAI, BackgroundRemover and LatentSync.
+- Web direction: AEGIS-owned permission-aware source registry, bounded crawl scheduler, extraction profiles, SSRF-safe fetch policy, content hashes, field-level provenance, freshness/drift tracking and reproducible exports. Crawlee/Scrapy remain replaceable adapters; AutoScraper can propose selectors but cannot certify extraction.
+- Media direction: native non-destructive project/EDL, local transcript studio, semantic footage search, story/selects, approval-gated edits, optional effects workers, bounded render and cut-boundary QA. Video Use, FireRed-OpenStoryline and Herk Edit Kit are valuable workflow references, not wholesale framework dependencies.
+- Licence/lifecycle gates: AutoScraper MIT; Crawlee Python Apache-2.0; Scrapy BSD-3-Clause; curl-impersonate MIT but explicitly excluded for stealth/anti-bot evasion; yt-dlp Unlicense repo with dependency licences and copyright/platform terms still applicable; FireRed-OpenStoryline Apache-2.0; AutoClip and Herk Edit Kit MIT reported pending exact identity pin; AutoSubs MIT code with optional MMS CC BY-NC 4.0 weights; StoryToolkitAI GPL-3.0 and lifecycle caution; FunClip/NarratoAI MIT reported; BackgroundRemover MIT; LatentSync Apache-2.0 code with separate model-weight restrictions.
+- No authentication/paywall/CAPTCHA/access-control bypass, browser fingerprint spoofing, proxy rotation, cookie/session extraction, arbitrary URL crawling, unattended publishing or paid API dependency. SSRF protection, DNS/redirect validation, per-host rate limits, untrusted-content isolation, user consent, copyright and model-weight licence review are mandatory.
+- No packages, models, binaries, media, external services or accounts were installed, executed, connected, uploaded or deployed.
