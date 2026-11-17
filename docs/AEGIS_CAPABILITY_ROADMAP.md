@@ -502,3 +502,15 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 - Added authenticated read-only `GET /api/eval/runs` for owner-scoped bounded result inspection. No public run-creation route exists before trusted runner attestation.
 - Database constraints bind the stored result JSON to run/suite/candidate/status/score columns and require the evidence-integrity marker; readers reject missing markers.
+
+
+### Learning Forge — immutable learning-path registry (17 November 2026)
+
+**Status:** Implementation added on draft PR #103; full CI verification pending.
+
+- Added `migrations/forge/0010_learning_paths.sql` for owner-scoped immutable graph versions, canonical SHA-256 digest and append-only registration events.
+- Added `functions/lib/learning-forge.mjs` to validate learning graph prerequisites, HTTPS source attribution and licence status; canonicalise JSON; register idempotently; reject conflicting content under an existing version; and list owner-scoped paths.
+- Added authenticated same-origin `GET/POST /api/learning/paths` with bounded request bodies and page size.
+- Added store, API and migration tests plus D1 smoke checks for duplicate-version rejection and immutable audit history.
+- This is a learning-path catalogue, not yet a mastery engine. Node progress, practice attempts, evidence-backed mastery, spaced repetition and adaptive sequencing remain future slices.
+- Learning content is linked and attributed; the registry does not scrape, copy or redistribute course content.
