@@ -74,3 +74,33 @@ test('rejects unsafe paths, duplicate files and aggregate source beyond the boun
     content: 'x'.repeat(32 * 1024),
   }))), /total|aggregate|bundle/i);
 });
+
+
+test('extracts module-level declarations and export metadata from JavaScript and TypeScript', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/model.ts',
+    content: [
+      'export function greet(name: string) { return name; }',
+      'export class Greeter {}',
+      'export const answer = 42, other = true;',
+      'export interface Props { label: string }',
+      'export type Identifier = string;',
+      'export enum State { Ready }',
+      'function localOnly() {}',
+      'export default function main() {}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.symbols.map(({ kind, name, exported, isDefault }) =>
+    ({ kind, name, exported, isDefault })), [
+    { kind: 'function', name: 'greet', exported: true, isDefault: false },
+    { kind: 'class', name: 'Greeter', exported: true, isDefault: false },
+    { kind: 'const', name: 'answer', exported: true, isDefault: false },
+    { kind: 'const', name: 'other', exported: true, isDefault: false },
+    { kind: 'interface', name: 'Props', exported: true, isDefault: false },
+    { kind: 'type', name: 'Identifier', exported: true, isDefault: false },
+    { kind: 'enum', name: 'State', exported: true, isDefault: false },
+    { kind: 'function', name: 'localOnly', exported: false, isDefault: false },
+    { kind: 'function', name: 'main', exported: true, isDefault: true },
+  ]);
+  assert.ok(result.symbols.every(symbol => symbol.path === 'src/model.ts' && symbol.location.start.line > 0));
+});
