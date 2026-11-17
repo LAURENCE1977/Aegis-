@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS companion_profiles (
   id TEXT PRIMARY KEY NOT NULL,
   owner_id TEXT NOT NULL,
   profile_id TEXT NOT NULL CHECK (
-    length(profile_id) BETWEEN 8 AND 70 AND substr(profile_id, 1, 7) = 'custom-'
+    length(profile_id) BETWEEN 8 AND 70 AND substr(profile_id, 1, 7) = 'custom-' AND\n    profile_id NOT GLOB '*[^a-z0-9-]*' AND substr(profile_id, 8, 1) GLOB '[a-z0-9]' AND\n    substr(profile_id, -1, 1) GLOB '[a-z0-9]'
   ),
   version INTEGER NOT NULL CHECK (version >= 1),
   profile_digest TEXT NOT NULL CHECK (
@@ -57,6 +57,28 @@ CREATE TABLE IF NOT EXISTS companion_profile_events (
 CREATE INDEX IF NOT EXISTS idx_companion_profile_events_owner_timeline
   ON companion_profile_events(owner_id, occurred_at DESC, id DESC);
 
+-- A purge authorization exists only inside the atomic owner-requested purge batch.
+-- Its short expiry prevents a stale authorization from opening a later deletion window.
+CREATE TABLE IF NOT EXISTS companion_profile_purge_authorizations (
+  owner_id TEXT PRIMARY KEY NOT NULL,
+  nonce TEXT NOT NULL CHECK (
+    length(nonce) = 32 AND nonce NOT GLOB '*[^a-f0-9]*'
+  ),
+  expires_at TEXT NOT NULL
+);
+
+-- Retain only a minimal audit that a purge occurred and how many revisions were erased.
+-- It deliberately contains no profile identifiers, profile content or content digests.
+CREATE TABLE IF NOT EXISTS companion_profile_purge_events (
+  id TEXT PRIMARY KEY NOT NULL,
+  owner_id TEXT NOT NULL,
+  purged_profiles_count INTEGER NOT NULL CHECK (purged_profiles_count BETWEEN 0 AND 500),
+  occurred_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_companion_profile_purge_events_owner_timeline
+  ON companion_profile_purge_events(owner_id, occurred_at DESC, id DESC);
+
 CREATE TRIGGER IF NOT EXISTS trg_companion_profile_registered
 AFTER INSERT ON companion_profiles
 BEGIN
@@ -77,8 +99,13 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS trg_companion_profiles_no_delete
 BEFORE DELETE ON companion_profiles
+WHEN NOT EXISTS (
+  SELECT 1 FROM companion_profile_purge_authorizations
+  WHERE owner_id = OLD.owner_id
+    AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+)
 BEGIN
-  SELECT RAISE(ABORT, 'Companion Profile revisions cannot be deleted');
+  SELECT RAISE(ABORT, 'Companion Profile revisions require an authorized owner purge');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_companion_profile_events_no_update
@@ -89,6 +116,29 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS trg_companion_profile_events_no_delete
 BEFORE DELETE ON companion_profile_events
+WHEN NOT EXISTS (
+  SELECT 1 FROM companion_profile_purge_authorizations
+  WHERE owner_id = OLD.owner_id
+    AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+)
 BEGIN
-  SELECT RAISE(ABORT, 'Companion Profile events are append-only');
+  SELECT RAISE(ABORT, 'Companion Profile events require an authorized owner purge');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_companion_profile_purge_events_no_update
+BEFORE UPDATE ON companion_profile_purge_events
+BEGIN
+  SELECT RAISE(ABORT, 'Companion Profile purge events are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_companion_profile_purge_events_no_delete
+BEFORE DELETE ON companion_profile_purge_events
+BEGIN
+  SELECT RAISE(ABORT, 'Companion Profile purge events are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_companion_profile_purge_authorizations_no_update
+BEFORE UPDATE ON companion_profile_purge_authorizations
+BEGIN
+  SELECT RAISE(ABORT, 'Companion Profile purge authorizations cannot be modified');
 END;
