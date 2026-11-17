@@ -170,3 +170,32 @@ Scope and limitations:
 - A resolved file edge proves only that one literal specifier maps to one supplied path under this resolver's rules. It does not prove the module loads, builds, executes or is safe.
 - Symbol-level import binding and export identity resolution are the next separate step; do not infer that imported names are correctly bound merely because a file edge exists.
 - The prototype remains isolated from production Forge routes and has no authority over Sentinel, permissions or execution.
+
+
+### Import-to-export symbol identity — implemented and verified
+
+The prototype now makes a second, distinct pass after local module resolution. It extracts default and named import bindings (including named aliases) and matches them against directly declared exported symbols in the resolved target file.
+
+Outputs:
+- `symbolEdges`: importer path, target path, imported/exported name, local binding name, import kind, import-site location and target declaration location.
+- `unresolvedSymbolImports`: missing or ambiguous export names, retained separately rather than converted into guessed edges.
+
+Supported first-pass cases:
+- Named imports, including aliases such as `import { run as start }`.
+- Default imports matched to declarations marked as default exports.
+- Directly declared exported functions, classes, variables and TypeScript interface/type/enum declarations already represented by the symbol extractor.
+
+Conservative exclusions:
+- Namespace imports are not expanded into per-symbol edges.
+- Re-export lists and barrel-file forwarding are not followed as symbol aliases yet.
+- CommonJS destructuring, dynamic imports, import-equals, package exports, path aliases and type-driven resolution are not treated as proven symbol bindings.
+- An import with no matching direct export becomes `missing-export`; duplicate matching declarations become `ambiguous-export`.
+- File-level module edges and symbol-level edges remain separate evidence classes.
+
+TDD evidence:
+- Added tests first for named imports, aliases, default imports, declaration locations and missing exports.
+- Initial red workflow run 44082446924 failed at the new tests because `symbolEdges` and `unresolvedSymbolImports` did not yet exist.
+- Implemented import-binding extraction from Tree-sitter import-clause/import-specifier nodes and matched those bindings to exported symbol declarations in resolved target files.
+- Push workflow run 44082589942 and matching PR workflow run 44082599328 both passed all 15 substantive workflow stages, including Node.js/Cloudflare tests, capability/runtime/Forge isolated D1 verification, durable run/Queue integration, licence gates, immutable source identity and Knowledge Library review lifecycle.
+
+This is source-level declaration matching, not proof of runtime binding or successful compilation. The parser remains isolated from production Forge routes.
