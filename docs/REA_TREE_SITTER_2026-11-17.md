@@ -232,3 +232,17 @@ TDD evidence:
 - Full workflow 44087455235 passed on 808ad678e263a52ddf75d77481c5d043320dfdda, including Node.js tests, Cloudflare/Miniflare integration and all isolated capability, runtime and Forge D1 safeguards.
 
 The parser remains an isolated prototype: no production Forge route integration, no source execution, no dynamic package resolution, and no production WASM adoption.
+
+
+### Namespace import bindings — implemented and verified
+
+The prototype now records namespace imports as explicit module-level bindings, including source file, module specifier, local namespace name, kind and source location.
+
+Namespace imports are intentionally not expanded into guessed per-symbol edges. Their presence is represented separately in namespaceBindings until member-level resolution can account for namespace aliases, shadowing and module export semantics.
+
+TDD evidence:
+- Added a regression test first; the test-only commit d586804856dd4743022ce4c567776d4699704d42 failed in the Node.js test stage (workflow 44087716655), as namespaceBindings was not yet exposed.
+- Implemented namespace binding extraction in commit 82235458bfeed53c55977c7a92e119eb4246146e.
+- Full workflow 44087835272 passed on that commit, including Node.js tests, Cloudflare/Miniflare integration and all isolated D1/Forge safeguards.
+
+Remaining limitations: namespace member calls, namespace re-export aliases, shadowing-aware member resolution and cross-file symbol identity are not implemented.
