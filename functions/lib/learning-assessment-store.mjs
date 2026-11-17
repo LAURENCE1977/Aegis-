@@ -21,7 +21,7 @@ async function sha256Hex(value) {
   const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
-function mapAssessmentRow(row) {
+async function mapAssessmentRow(row) {
   if (!row || typeof row.owner_id !== 'string' || typeof row.assessment_id !== 'string' ||
       typeof row.version !== 'string' || typeof row.path_id !== 'string' ||
       typeof row.path_version !== 'string' || typeof row.node_id !== 'string' ||
@@ -33,6 +33,10 @@ function mapAssessmentRow(row) {
   try { assessment = JSON.parse(row.assessment_json); }
   catch { throw new TypeError('Stored Learning Assessment JSON is corrupt'); }
   validateLearningAssessment(assessment);
+  if (!/^[a-f0-9]{64}$/.test(row.assessment_digest) ||
+      await sha256Hex(canonicalJson(assessment)) !== row.assessment_digest) {
+    throw new TypeError('Stored Learning Assessment digest does not match its content');
+  }
   if (assessment.id !== row.assessment_id || assessment.version !== row.version ||
       assessment.pathId !== row.path_id || assessment.pathVersion !== row.path_version ||
       assessment.nodeId !== row.node_id) {
@@ -87,7 +91,7 @@ export async function registerLearningAssessment(db, ownerId, assessment, now = 
     WHERE owner_id = ? AND assessment_id = ? AND version = ? LIMIT 1
   `).bind(ownerId, assessment.id, assessment.version).first();
   if (!row) throw new Error('Learning Assessment could not be persisted');
-  const stored = mapAssessmentRow(row);
+  const stored = await mapAssessmentRow(row);
   if (stored.digest !== digest) throw new LearningAssessmentConflictError();
   return { ...stored, created: row.id === id };
 }
@@ -104,13 +108,13 @@ export async function listLearningAssessments(db, ownerId, limit = 50) {
     ORDER BY created_at DESC, assessment_id ASC, version DESC
     LIMIT ?
   `).bind(ownerId, limit).all();
-  return (result?.results ?? []).map(row => {
-    const stored = mapAssessmentRow(row);
+  return Promise.all((result?.results ?? []).map(async row => {
+    const stored = await mapAssessmentRow(row);
     return Object.freeze({
       ownerId: stored.ownerId,
       assessment: projectLearnerAssessment(stored.assessment),
       digest: stored.digest,
       createdAt: stored.createdAt,
     });
-  });
+  }));
 }
