@@ -91,10 +91,10 @@ Scores are provisional and reflect the limited inspection depth. Unknowns are no
 | Security and controllability | 3 | 9 / 15 | Security guidance exists; execution and supply-chain surface remains substantial |
 | Runtime and hardware fit | 3 | 9 / 15 | Lightweight for some local tasks, but Python and upstream applications vary widely |
 | Complexity reduction | 3 | 6 / 10 | Can reduce bespoke integrations; hub and harness ecosystem also add maintenance |
-| Maintenance and tests | 4 | 8 / 10 | Active project, documented tests and CI; not a substitute for harness-by-harness review |
+| Maintenance and tests | 3 | 6 / 10 | Large contributor ecosystem and documented tests/CI, but inspected main head is dated 2026-09-22; recent maintenance cadence needs further verification |
 | Cost/free viability | 5 | 10 / 10 | Core project is open source; individual integrations may incur separate costs |
 | Portability | 3 | 3 / 5 | CLI pattern is portable, but wrapped applications and installers are platform-specific |
-| **Total** |  | **73 / 100** | **Selective experiment only** |
+| **Total** |  | **71 / 100** | **Selective experiment only** |
 
 ## 8. Recommended AEGIS action
 
