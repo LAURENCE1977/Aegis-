@@ -82,7 +82,7 @@ test('provenance records are listed only for their owner and bounded to 100',asy
  await createForgeProvenanceRecord(db,'other',{...validRecord(),canonicalUrl:'https://github.com/example/other'});
  assert.equal((await listForgeProvenanceRecords(db,'owner')).length,1);
  assert.equal((await listForgeProvenanceRecords(db,'owner',1)).length,1);
- assert.throws(()=>listForgeProvenanceRecords(db,'owner',101));
+ await assert.rejects(()=>listForgeProvenanceRecords(db,'owner',101),/between 1 and 100/);
 });
 
 test('unresolved component licences cannot be persisted as reuse or adaptation records',async()=>{
