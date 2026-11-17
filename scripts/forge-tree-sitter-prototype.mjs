@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { createRequire } from 'node:module';
 import { Parser, Language } from 'web-tree-sitter';
 
@@ -220,6 +220,68 @@ function extractCalls(root, path) {
   return calls;
 }
 
+const LOCAL_EXTENSIONS = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'];
+
+function resolveLocalSpecifier(sourcePath, specifier, availablePaths) {
+  if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
+    return { reason: 'external-package' };
+  }
+
+  const candidateBase = posix.normalize(posix.join(posix.dirname(sourcePath), specifier));
+  if (candidateBase === '..' || candidateBase.startsWith('../') || candidateBase.startsWith('/')) {
+    return { reason: 'outside-source-bundle' };
+  }
+
+  const hasExtension = Boolean(posix.extname(candidateBase));
+  const candidates = hasExtension
+    ? [candidateBase]
+    : [
+        candidateBase,
+        ...LOCAL_EXTENSIONS.map(extension => candidateBase + extension),
+        ...LOCAL_EXTENSIONS.map(extension => posix.join(candidateBase, 'index' + extension)),
+      ];
+  const matches = [...new Set(candidates.filter(candidate => availablePaths.has(candidate)))];
+
+  if (matches.length === 0) return { reason: 'missing-local-target' };
+  if (matches.length > 1) return { reason: 'ambiguous-local-target' };
+  return { target: matches[0] };
+}
+
+function resolveModuleEdges(imports, inputFiles) {
+  const availablePaths = new Set(inputFiles.map(item => item.path));
+  const moduleEdges = [];
+  const unresolvedImports = [];
+
+  for (const item of imports) {
+    const resolved = resolveLocalSpecifier(item.path, item.specifier, availablePaths);
+    if (resolved.target) {
+      moduleEdges.push({
+        source: item.path,
+        target: resolved.target,
+        kind: item.kind,
+        specifier: item.specifier,
+        location: item.location,
+      });
+    } else {
+      unresolvedImports.push({
+        path: item.path,
+        specifier: item.specifier,
+        kind: item.kind,
+        reason: resolved.reason,
+        location: item.location,
+      });
+    }
+  }
+
+  const bySource = (a, b) => a.path.localeCompare(b.path) ||
+    a.specifier.localeCompare(b.specifier) || a.kind.localeCompare(b.kind);
+  moduleEdges.sort((a, b) => a.source.localeCompare(b.source) ||
+    a.target.localeCompare(b.target) || a.specifier.localeCompare(b.specifier) ||
+    a.kind.localeCompare(b.kind));
+  unresolvedImports.sort(bySource);
+  return { moduleEdges, unresolvedImports };
+}
+
 function extract(root, path) {
   const imports = [];
   walk(root, node => {
@@ -315,6 +377,8 @@ export async function parseModuleImports(inputFiles) {
     a.location.start.column - b.location.start.column ||
     a.caller.localeCompare(b.caller) || a.callee.localeCompare(b.callee));
 
+  const { moduleEdges, unresolvedImports } = resolveModuleEdges(imports, inputFiles);
+
   return {
     parser: 'tree-sitter',
     execution: 'none',
@@ -322,6 +386,8 @@ export async function parseModuleImports(inputFiles) {
     imports,
     symbols,
     calls,
+    moduleEdges,
+    unresolvedImports,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
   };
 }
