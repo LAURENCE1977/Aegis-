@@ -117,7 +117,8 @@ class CompanionD1 {
         if (sql.includes('FROM companion_profiles')) {
           return { results: [...db.profiles.values()]
             .filter(row => row.owner_id === v[0])
-            .sort((a, b) => a.profile_id.localeCompare(b.profile_id) || b.version - a.version)
+            .sort((a, b) => a.profile_id.localeCompare(b.profile_id) ||
+              (sql.includes('version ASC') ? a.version - b.version : b.version - a.version))
             .slice(0, v[1]) };
         }
         if (sql.includes('FROM companion_profile_events')) {
