@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerLearningAssessment } from '../functions/lib/learning-assessment-store.mjs';
+import { registerLearningPath } from '../functions/lib/learning-forge.mjs';
+import { loadLearningMasteryEvidence, buildLearningMasteryCandidateFromStore } from '../functions/lib/learning-mastery-evidence-store.mjs';
 import {
   submitLearningAttempt,
   listLearningAttempts,
@@ -32,6 +34,14 @@ class AttemptD1 {
       values: [],
       bind(...values) { this.values = values; return this; },
       async run() {
+        if (sql.includes('INSERT INTO learning_paths')) {
+          const [id, owner, pathId, version, digest, json, createdAt] = this.values;
+          const key = [owner, pathId, version].join('|');
+          if (db.paths.has(key)) return { meta: { changes: 0 } };
+          db.paths.set(key, { id, owner_id: owner, path_id: pathId, version,
+            graph_digest: digest, graph_json: json, created_at: createdAt });
+          return { meta: { changes: 1 } };
+        }
         if (sql.includes('INSERT INTO learning_assessments')) {
           const [id, owner, assessmentId, version, pathId, pathVersion, nodeId, digest, json, createdAt] = this.values;
           const key = [owner, assessmentId, version].join('|');
@@ -74,6 +84,15 @@ class AttemptD1 {
         return null;
       },
       async all() {
+        if (sql.includes('FROM learning_paths')) {
+          const [owner, limit] = this.values;
+          return { results: [...db.paths.values()].filter(row => row.owner_id === owner).slice(0, limit) };
+        }
+        if (sql.includes('FROM learning_assessments')) {
+          const [owner, pathId, pathVersion, nodeId, limit] = this.values;
+          return { results: [...db.assessments.values()].filter(row => row.owner_id === owner &&
+            row.path_id === pathId && row.path_version === pathVersion && row.node_id === nodeId).slice(0, limit) };
+        }
         const [owner, assessmentId, version, limit] = this.values;
         return { results: db.attempts.filter(row => row.owner_id === owner &&
           row.assessment_id === assessmentId && row.assessment_version === version)
@@ -85,13 +104,53 @@ class AttemptD1 {
 
 async function setup() {
   const db = new AttemptD1();
-  db.paths.set(['owner', pathDefinition.id, pathDefinition.version].join('|'), {
-    owner_id: 'owner', path_id: pathDefinition.id, version: pathDefinition.version,
-    graph_json: JSON.stringify(pathDefinition),
-  });
-  await registerLearningAssessment(db, 'owner', assessment);
+  await registerLearningPath(db, 'owner', pathDefinition, Date.parse('2026-11-17T09:00:00.000Z'));
+  await registerLearningAssessment(db, 'owner', assessment, Date.parse('2026-11-17T09:01:00.000Z'));
   return db;
 }
+
+test('loads mastery evidence only from verified owner-scoped path, assessment and attempt stores', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  const loaded = await loadLearningMasteryEvidence(
+    db, 'owner', pathDefinition.id, pathDefinition.version, 'javascript-basics', base + 1000,
+  );
+  assert.equal(loaded.path.id, pathDefinition.id);
+  assert.equal(loaded.evidence.length, 1);
+  assert.equal(loaded.evidence[0].kind, 'assessment_pass');
+  assert.equal(loaded.evidence[0].passed, true);
+  assert.equal(loaded.evidence[0].masteryVerified, false);
+  assert.deepEqual(loaded.unavailableEvidenceKinds, ['applied_task', 'human_review']);
+});
+
+test('store-backed mastery candidate cannot be completed by caller-injected task or reviewer claims', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  const candidate = await buildLearningMasteryCandidateFromStore(
+    db, 'owner', pathDefinition.id, pathDefinition.version, 'javascript-basics', base + 1000,
+  );
+  assert.equal(candidate.status, 'insufficient_evidence');
+  assert.equal(candidate.masteryVerified, false);
+  assert.ok(candidate.missing.includes('applied_task_evidence'));
+  assert.ok(candidate.missing.includes('independent_human_review_of_all_evidence'));
+});
+
+test('store-backed mastery evidence rejects another owner and tampered path or assessment records', async () => {
+  const db = await setup();
+  await assert.rejects(loadLearningMasteryEvidence(
+    db, 'another-owner', pathDefinition.id, pathDefinition.version, 'javascript-basics',
+  ), /not found/i);
+  const key = ['owner', assessment.id, assessment.version].join('|');
+  const row = db.assessments.get(key);
+  db.assessments.set(key, { ...row, assessment_json: JSON.stringify({ ...assessment, title: 'tampered' }) });
+  await assert.rejects(loadLearningMasteryEvidence(
+    db, 'owner', pathDefinition.id, pathDefinition.version, 'javascript-basics',
+  ), /digest/i);
+});
 
 test('submits a server-scored attempt against an immutable registered assessment', async () => {
   const db = await setup();
