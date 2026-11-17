@@ -12,7 +12,7 @@ test('the signed-in home is companion-first and exposes an accessible presentati
   const stage = html.indexOf('id="companionStage"');
   const chat = html.indexOf('id="chatBox"');
   assert.ok(stage >= 0 && chat > stage, 'companion stage must appear before the conversation');
-  assert.match(html, /aria-label="AEGIS companion presentation"/);
+  assert.match(html, /aria-label="Agent AEGIS companion presentation"/);
 });
 
 test('the companion presentation is honest about the avatar runtime and does not impersonate a live human', () => {
