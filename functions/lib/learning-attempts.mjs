@@ -78,8 +78,9 @@ function mapAttempt(row) {
       result.earnedPoints > result.possiblePoints ||
       !Number.isInteger(result.scorePercent) || result.scorePercent < 0 || result.scorePercent > 100 ||
       result.scorePercent !== Math.round((result.earnedPoints / result.possiblePoints) * 100) ||
-      typeof result.passed !== 'boolean' || result.passed !== (result.scorePercent >= 1 && result.passed) && row.passed === 1 ||
+      typeof result.passed !== 'boolean' ||
       result.masteryVerified !== false ||
+      row.path_id !== result.pathId || row.path_version !== result.pathVersion || row.node_id !== result.nodeId ||
       row.score_percent !== result.scorePercent ||
       row.passed !== (result.passed ? 1 : 0) ||
       row.mastery_verified !== 0) {
