@@ -268,3 +268,25 @@ export async function selectCompanionProfile(db, ownerId, profileId, version, no
     activeProfile: Object.freeze({ profile: profile.profile, version: profile.version }),
   });
 }
+
+export async function getActiveCompanionProfile(db, ownerId) {
+  requireDatabase(db);
+  requireOwner(ownerId);
+  const preferences = await db.prepare(`
+    SELECT * FROM companion_profile_preferences WHERE owner_id = ? LIMIT 1
+  `).bind(ownerId).first();
+  if (!preferences || (preferences.active_profile_id === null &&
+      preferences.active_profile_version === null)) {
+    return Object.freeze({ profile: createDefaultAegisCompanionProfile(), version: null });
+  }
+  if (typeof preferences.active_profile_id !== 'string' ||
+      !Number.isInteger(preferences.active_profile_version) ||
+      preferences.active_profile_version < 1) {
+    throw new TypeError('Stored active Companion Profile selection is invalid');
+  }
+  const active = await readExactProfile(
+    db, ownerId, preferences.active_profile_id, preferences.active_profile_version,
+  );
+  if (!active) throw new TypeError('Stored active Companion Profile selection is invalid');
+  return Object.freeze({ profile: active.profile, version: active.version });
+}
