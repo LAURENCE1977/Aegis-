@@ -112,3 +112,17 @@ export async function listLearningPaths(db, ownerId, limit = 50) {
   `).bind(ownerId, limit).all();
   return Promise.all((result?.results ?? []).map(mapPathRow));
 }
+
+export async function getLearningPath(db, ownerId, pathId, version) {
+  requireDatabase(db);
+  requireOwner(ownerId);
+  if (typeof pathId !== 'string' || !ID_PATTERN.test(pathId) ||
+      typeof version !== 'string' || !VERSION_PATTERN.test(version)) {
+    throw new TypeError('Invalid Learning Path identity');
+  }
+  const row = await db.prepare(`
+    SELECT * FROM learning_paths
+    WHERE owner_id = ? AND path_id = ? AND version = ? LIMIT 1
+  `).bind(ownerId, pathId, version).first();
+  return row ? mapPathRow(row) : null;
+}
