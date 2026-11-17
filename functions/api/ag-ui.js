@@ -12,6 +12,8 @@ import {
   createTextRunContentEvent,
   createTextRunFinishEvents,
   createTextRunErrorEvent,
+  createToolCallStartEvents,
+  createToolCallResultEvent,
   encodeAgUiSse,
   createAgUiSseResponse,
 } from "../lib/ag-ui.mjs";
@@ -300,6 +302,13 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               throw agentStreamError("TOOL_NOT_ALLOWED", "The requested tool is not in the server-owned AEGIS tool registry.");
             }
 
+            controller.enqueue(encoder.encode(encodeAgUiSse(
+              createToolCallStartEvents({
+                toolCallId: call.id,
+                toolCallName: call.function.name,
+                argumentsText: call.function.arguments,
+              }),
+            )));
             const toolResult = await executeAgentToolCall({
               name: call.function.name,
               argumentsText: call.function.arguments,
@@ -312,6 +321,13 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               workerId: "aegis-ag-ui",
             });
             const toolContent = boundedToolResult(toolResult);
+            controller.enqueue(encoder.encode(encodeAgUiSse([
+              createToolCallResultEvent({
+                messageId: runId,
+                toolCallId: call.id,
+                content: toolContent,
+              }),
+            ])));
             const assistantToolCall = {
               role: "assistant",
               content: messageText,
