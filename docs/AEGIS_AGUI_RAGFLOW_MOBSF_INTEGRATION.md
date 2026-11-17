@@ -72,7 +72,7 @@ Upstream:
 - Licence: GPL-3.0.
 - Supports static analysis for Android, iOS and Windows mobile artifacts and source packages; dynamic analysis uses supported emulators, simulators or physical test devices; upstream exposes REST/CLI integration.
 
-Decision: adapter research approved; no MobSF service, Docker image, emulator, device or binary is installed or activated by this change.
+Decision: adapter research approved; no MobSF service, Docker image, emulator, device or binary is installed or activated by this change. A pure report-normalization contract is implemented in `functions/lib/mobile-security-report.mjs`; it accepts a narrow static-only report shape, validates artifact/evidence digests and locations, bounds input size/findings, marks all findings `unreviewed`, and explicitly sets authority/remediation permission to `none`/`false`. It does not call MobSF or run apps.
 
 Required boundary:
 - Accept only owner-supplied artifacts or artifacts with explicit source provenance and testing authority.
@@ -99,9 +99,9 @@ No production route or automatic scan is added until all applicable gates pass:
 
 ## Current status
 
-- Multi-hop named re-export adapter: full workflow 44095169702 succeeded.
+- Multi-hop named re-export adapter: full workflow `44095169702` succeeded.\n- Architecture graph, knowledge chunking/retrieval/compiler and static mobile-report normalizer: Node.js/Cloudflare runtime tests and all isolated capability, runtime and Forge D1 checks passed in full workflow `44100779738` (completed/success).
 - Architecture graph serializer and tests: Node.js/Cloudflare runtime test stage and all isolated D1 checks passed in workflow `44099632898` (completed/success). It remains isolated from production routes/UI.
 - AG-UI: live text streaming and bounded terminal replay are implemented; full event-family conformance, persisted event semantics and TOOL_CALL_* visibility remain future work.
 - RAGFlow: native foundations now include Markdown chunking, lexical BM25 retrieval and evidence-bound compilation; upload/extraction/storage integration and semantic retrieval remain future work. No heavyweight dependency installed.
-- MobSF: isolated adapter design recorded; no worker or dynamic analysis activated.
+- MobSF: static report normalization contract implemented and tested; no scanner worker, Docker service, emulator, device or dynamic analysis activated.
 - No PR merge, production deployment, device scan, source execution or paid service activation.
