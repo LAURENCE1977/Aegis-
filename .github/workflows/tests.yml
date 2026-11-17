@@ -30,10 +30,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Install pinned Tree-sitter WASM prototype dependencies
-        run: npm install --no-save --no-package-lock --ignore-scripts web-tree-sitter@0.27.2 tree-sitter-javascript@0.25.0 tree-sitter-typescript@0.23.2
-      - name: Install pinned Miniflare runtime emulator
-        run: npm install --no-save --no-package-lock miniflare@4.20260730.0
+      - name: Install pinned parser and runtime test dependencies
+        run: npm install --no-save --no-package-lock --ignore-scripts web-tree-sitter@0.27.2 tree-sitter-javascript@0.25.0 tree-sitter-typescript@0.23.2 miniflare@4.20260730.0
       - name: Run Node.js and Cloudflare runtime integration tests
         run: node --test tests/*.test.mjs
       - name: Install Wrangler for local D1 verification
