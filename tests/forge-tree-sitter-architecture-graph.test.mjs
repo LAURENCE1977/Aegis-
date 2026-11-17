@@ -15,8 +15,8 @@ test('serializes files, declarations and relationships with deterministic source
     'file:src/a.js',
     'file:src/b.js',
     'file:src/unused.js',
-    'symbol:src/a.js#finish@2:10',
-    'symbol:src/a.js#start@1:17',
+    'symbol:src/a.js#finish@2:1',
+    'symbol:src/a.js#start@1:8',
     'symbol:src/unused.js#unused@1:14',
   ]);
   assert.ok(result.edges.some(edge =>
@@ -26,8 +26,8 @@ test('serializes files, declarations and relationships with deterministic source
     edge.evidence.path === 'src/b.js'));
   assert.ok(result.edges.some(edge =>
     edge.type === 'calls' &&
-    edge.source === 'symbol:src/a.js#start@1:17' &&
-    edge.target === 'symbol:src/a.js#finish@2:10' &&
+    edge.source === 'symbol:src/a.js#start@1:8' &&
+    edge.target === 'symbol:src/a.js#finish@2:1' &&
     edge.evidence.location.start.line === 1));
   assert.deepEqual(result.disconnectedComponents, [
     ['src/a.js', 'src/b.js'],
