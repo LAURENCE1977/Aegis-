@@ -116,7 +116,7 @@ test('links direct calls between locally declared functions with source evidence
       '  service.finish();',
       '}',
       'function finish() {}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee, path }) => ({ caller, callee, path })), [
     { caller: 'start', callee: 'finish', path: 'src/flow.js' },
