@@ -79,3 +79,37 @@ Owner-only Pages API:
 Migration: `migrations/forge/0004_source_provenance.sql`.
 
 This is a provenance register, not an automatic legal opinion or licence scanner. A human must verify the actual source, dependency, model, dataset and asset terms. It does not install or execute upstream code. The API/migration must pass CI and be applied to a preview database before it can be called operational in a deployed environment.
+
+
+## Candidate-to-provenance links
+
+Forge can attach a candidate to its source provenance record without mutating either record.
+
+- A link is allowed only when candidate and provenance belong to the same owner.
+- The candidate's canonical source URL and pinned version must exactly match the provenance record's canonical URL and immutable revision.
+- Rejected and archived candidates cannot receive new links.
+- Links are stored separately in forge_candidate_provenance_links, with owner-scoped foreign keys and a unique owner/candidate/provenance tuple.
+- Link records are append-only and do not alter candidate status or licence decisions.
+- Owner-authenticated, same-origin API: POST /api/forge/candidates/:id/provenance.
+
+Migration: migrations/forge/0005_candidate_provenance_links.sql.
+
+## Read-only codebase intelligence — first JavaScript/TypeScript slice
+
+Forge now includes a bounded, non-executing module-relationship analyser for supplied JavaScript/TypeScript source files.
+
+- Library: functions/lib/forge-code-intelligence.mjs.
+- Owner-authenticated, same-origin API: POST /api/forge/code-intelligence.
+- Request shape: { "files": [{ "path": "src/main.ts", "content": "..." }] }.
+- Output contains source nodes, resolved relative import/re-export edges, unresolved relative imports and external package references.
+- Recognises static imports, re-exports, literal dynamic imports and literal CommonJS require() calls.
+- Non-literal dynamic imports are ignored rather than guessed.
+- Hard limits: 1,000 files, 512 KiB per file and 8 MiB total source content. Paths must be relative, unique and cannot traverse above the supplied source root.
+- The API request body is streamed and bounded before parsing. Unknown top-level fields are rejected.
+- The analyser never imports, evaluates, builds, installs or executes inspected source.
+
+**Accuracy boundary:** this first slice is a heuristic scanner, not a full JavaScript/TypeScript parser. It can miss syntax forms and may misread import-like text in comments or strings. It reports only relationships it can resolve from the supplied file set; unresolved and external references are not evidence that a dependency is absent. It does not yet fetch an entire repository, inspect package manifests/lockfiles, build a complete dependency graph, map symbols/call graphs, or provide a UI.
+
+The next engineering stages are: connect this bounded analyser to a safe, pinned repository-file selection flow; add parser-backed analysis (Tree-sitter REA first); then add a dedicated Forge review UI with clear source/revision, coverage and confidence indicators. No source is executed and no findings are automatically accepted into Agent context.
+
+Verification: GitHub Actions run 44034848114 completed successfully for commit b81030236da5d3566c2d0df86592d4efd9f3feb7. It includes the full Node.js suite, Miniflare runtime integration, isolated capability/runtime/Forge D1 migrations and safeguards. No preview/production D1 migration or deployment was performed.
