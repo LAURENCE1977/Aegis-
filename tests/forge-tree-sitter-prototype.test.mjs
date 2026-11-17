@@ -155,3 +155,67 @@ test('links calls to locally declared arrow-function variables', async () => {
   ]);
   assert.deepEqual(result.calls[0].location.start, { line: 1, column: 21 });
 });
+
+
+test('does not resolve a call to a same-named function in an unrelated nested scope', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/shadowing.js',
+    content: [
+      'function outer() {',
+      '  function finish() {}',
+      '}',
+      'function start() {',
+      '  finish();',
+      '}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls, []);
+});
+
+test('resolves a shadowed call only to the nearest function declaration', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/nested-shadowing.js',
+    content: [
+      'function finish() {}',
+      'function outer() {',
+      '  function finish() {}',
+      '  function inner() {',
+      '    finish();',
+      '  }',
+      '  finish();',
+      '}',
+      'function start() {',
+      '  finish();',
+      '}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
+    caller, callee, line: location.start.line,
+  })), [
+    { caller: 'inner', callee: 'finish', line: 5 },
+    { caller: 'outer', callee: 'finish', line: 7 },
+    { caller: 'start', callee: 'finish', line: 10 },
+  ]);
+});
+
+test('does not treat a nested same-name declaration as the target of an outer-scope call', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/lexical-shadowing.js',
+    content: [
+      'function finish() {}',
+      'function start() {',
+      '  finish();',
+      '  function nested() {',
+      '    function finish() {}',
+      '    finish();',
+      '  }',
+      '}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
+    caller, callee, line: location.start.line,
+  })), [
+    { caller: 'start', callee: 'finish', line: 3 },
+    { caller: 'nested', callee: 'finish', line: 6 },
+  ]);
+});
