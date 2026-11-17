@@ -170,10 +170,11 @@ function resolveMembers(root, path, namespaceBindings, moduleEdges, symbols) {
     }
   });
 
-  const byLocation = (a, b) => a.path.localeCompare(b.path) ||
+  const byLocation = (a, b) => (a.path ?? a.source ?? '').localeCompare(b.path ?? b.source ?? '') ||
     a.location.start.line - b.location.start.line ||
     a.location.start.column - b.location.start.column ||
-    a.namespace.localeCompare(b.namespace) || a.imported.localeCompare(b.imported);
+    (a.namespace ?? '').localeCompare(b.namespace ?? '') ||
+    (a.imported ?? '').localeCompare(b.imported ?? '');
   edges.sort(byLocation);
   unresolved.sort(byLocation);
   return { namespaceMemberEdges: edges, unresolvedNamespaceMembers: unresolved };
