@@ -105,3 +105,73 @@ export function validateSourceProvenanceRecord(record) {
   }
   return true;
 }
+
+
+const OWNER_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function requireDatabase(db) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Forge provenance database is required');
+}
+
+function requireProvenanceOwner(ownerId) {
+  if (typeof ownerId !== 'string' || !OWNER_PATTERN.test(ownerId)) {
+    throw new TypeError('Invalid Forge provenance owner');
+  }
+}
+
+function mapProvenanceRow(row) {
+  if (!row) return null;
+  let record;
+  try { record = JSON.parse(row.record_json); }
+  catch { throw new TypeError('Stored Forge provenance record is corrupt'); }
+  validateSourceProvenanceRecord(record);
+  return { ...record, ownerId: row.owner_id, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export class ForgeProvenanceConflictError extends Error {
+  constructor() {
+    super('Forge provenance record could not be persisted consistently.');
+    this.name = 'ForgeProvenanceConflictError';
+  }
+}
+
+export async function createForgeProvenanceRecord(db, ownerId, input, now = Date.now()) {
+  requireDatabase(db);
+  requireProvenanceOwner(ownerId);
+  if (!Number.isFinite(now)) throw new TypeError('Invalid Forge provenance clock');
+  validateSourceProvenanceRecord(input);
+
+  const timestamp = new Date(now).toISOString();
+  const id = crypto.randomUUID().toLowerCase();
+  const recordJson = JSON.stringify(input);
+  await db.prepare(`
+    INSERT INTO forge_source_provenance (
+      id, owner_id, canonical_url, revision, record_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(owner_id, canonical_url, revision) DO NOTHING
+  `).bind(id, ownerId, input.canonicalUrl, input.revision, recordJson, timestamp, timestamp).run();
+
+  const row = await db.prepare(`
+    SELECT * FROM forge_source_provenance
+    WHERE owner_id = ? AND canonical_url = ? AND revision = ?
+    LIMIT 1
+  `).bind(ownerId, input.canonicalUrl, input.revision).first();
+  if (!row) throw new ForgeProvenanceConflictError();
+  const record = mapProvenanceRow(row);
+  return { record, created: row.id === id };
+}
+
+export async function listForgeProvenanceRecords(db, ownerId, limit = 50) {
+  requireDatabase(db);
+  requireProvenanceOwner(ownerId);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Forge provenance limit must be between 1 and 100');
+  }
+  const result = await db.prepare(`
+    SELECT * FROM forge_source_provenance
+    WHERE owner_id = ?
+    ORDER BY updated_at DESC, id ASC
+    LIMIT ?
+  `).bind(ownerId, limit).all();
+  return (result?.results ?? []).map(mapProvenanceRow);
+}
