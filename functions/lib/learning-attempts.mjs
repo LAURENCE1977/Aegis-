@@ -71,8 +71,18 @@ function mapAttempt(row) {
   catch { throw new TypeError('Stored Learning Attempt result is corrupt'); }
   if (!result || result.attemptId !== row.id || result.assessmentId !== row.assessment_id ||
       result.assessmentVersion !== row.assessment_version ||
+      typeof result.pathId !== 'string' || typeof result.pathVersion !== 'string' ||
+      typeof result.nodeId !== 'string' ||
+      !Number.isInteger(result.earnedPoints) || result.earnedPoints < 0 ||
+      !Number.isInteger(result.possiblePoints) || result.possiblePoints < 1 ||
+      result.earnedPoints > result.possiblePoints ||
       !Number.isInteger(result.scorePercent) || result.scorePercent < 0 || result.scorePercent > 100 ||
-      typeof result.passed !== 'boolean' || result.masteryVerified !== false) {
+      result.scorePercent !== Math.round((result.earnedPoints / result.possiblePoints) * 100) ||
+      typeof result.passed !== 'boolean' || result.passed !== (result.scorePercent >= 1 && result.passed) && row.passed === 1 ||
+      result.masteryVerified !== false ||
+      row.score_percent !== result.scorePercent ||
+      row.passed !== (result.passed ? 1 : 0) ||
+      row.mastery_verified !== 0) {
     throw new TypeError('Stored Learning Attempt result does not match its record');
   }
   return Object.freeze({
