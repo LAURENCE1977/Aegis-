@@ -868,3 +868,49 @@ The owner has accepted a direction for AEGIS to develop evidence-led behavioural
 - Ingenuity must remain lawful, permission-bounded and resource-conscious; it never means bypassing Sentinel or using covert surveillance.
 
 **Implementation status:** architecture/research direction only. No behavioural profiler, micro-expression detector, deception detector or investigative agent is claimed as implemented. Next step is a focused evidence review and then a narrow, testable, privacy-preserving reasoning capability. Documentation does not increase feature-completion percentage.
+
+
+## 19. Forge provenance implementation checkpoint — 17 November 2026
+
+**Working branch:** `feature/composio-audit-lineage-verified`  
+**Canonical PR:** #101 (open, unmerged; do not merge without explicit approval).  
+**Production main:** unchanged by the intended feature-branch work. No production deployment or database migration has been run.
+
+### Implemented on the feature branch
+
+- Strict source provenance schema: immutable 40/64-character revision, canonical HTTPS source URL, inspection depth/time, exact licence evidence, component inventory, AEGIS capability tags, decision, status and source evidence.
+- Separate component licence review for dependencies, models, datasets, assets, fonts, hardware and build tools.
+- Reuse/adapt/combine blocked when any inventoried licence remains unresolved; approval requires source-level/full inspection and all inventoried licences verified.
+- Owner-scoped D1 persistence, deduplication by owner/source/revision and immutable record content/source identity.
+- Append-only creation event table protected by database triggers.
+- Authenticated, same-origin write API and bounded owner-scoped list API.
+- Unit, persistence, migration-contract and API tests added.
+
+Files:
+- `functions/lib/forge-provenance.mjs`
+- `functions/api/forge/provenance.js`
+- `migrations/forge/0004_source_provenance.sql`
+- `tests/forge-provenance.test.mjs`
+- `tests/forge-provenance-store.test.mjs`
+- `tests/forge-provenance-api.test.mjs`
+- `docs/REA_REPOSITORY_BATCH_2026-11-17.md`
+
+### Upstream candidate triage
+
+See [Repository Batch Review — 17 November 2026](REA_REPOSITORY_BATCH_2026-11-17.md). React Native Reusables and its templates are MIT mobile UI references only; Context Engineering Intro is an MIT process/template reference; Semantic Kernel is MIT but its README points to Microsoft Agent Framework as successor and is not adopted; ABC-Bench has no repository LICENSE file at the pinned revision and remains held from code/dataset reuse; “vibe coding” did not identify one exact repository. No dependency was added or upstream code executed.
+
+### Verification and rollout status
+
+- CI for the provenance implementation is running after a test-fixture correction; verify the latest run before describing this feature as green.
+- The migration is committed but has **not** been applied to production or preview D1.
+- The API is not declared production-operational until the migration is applied to a preview database and route integration is verified.
+- No source candidate is automatically approved by GitHub SPDX metadata; human licence review remains mandatory.
+- This work does not authorize merge, deploy, paid services, external model calls or repository execution.
+
+### Next build slice
+
+1. Verify CI and fix any regression.
+2. Apply migration only to an isolated preview database after explicit deployment authorization.
+3. Add Forge UI for recording/reviewing source provenance and linking records to candidate lifecycle.
+4. Build a bounded, read-only codebase context/architecture extraction primitive (AST/import/dependency map) with no execution of inspected source.
+5. Later evaluate ABC-Bench-like end-to-end tests only in disposable, isolated workers with pinned tasks and no production credentials.
