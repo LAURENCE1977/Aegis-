@@ -123,3 +123,20 @@ test('links direct calls between locally declared functions with source evidence
   ]);
   assert.deepEqual(result.calls[0].location.start, { line: 2, column: 3 });
 });
+
+
+test('attributes direct calls inside arrow-function variables to their local symbol', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/arrows.js',
+    content: [
+      'const start = () => {',
+      '  finish();',
+      '};',
+      'function finish() {}',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee }) => ({ caller, callee })), [
+    { caller: 'start', callee: 'finish' },
+  ]);
+  assert.deepEqual(result.calls[0].location.start, { line: 2, column: 3 });
+});
