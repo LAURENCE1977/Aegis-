@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description" content="AEGIS — Personal AI Assistant" />
+  <meta name="description" content="Agent AEGIS — Your Personal Guardian. A human-centred artificial intelligence companion." />
   <meta name="theme-color" content="#07090e" />
-  <meta name="apple-mobile-web-app-title" content="AEGIS" />
+  <meta name="apple-mobile-web-app-title" content="Agent AEGIS" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/aegis.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/icons/aegis.svg" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>AEGIS · AI Assistant</title>
+  <title>Agent AEGIS · Your Personal Guardian</title>
   <style>
     :root {
       color-scheme: dark;
@@ -585,8 +585,8 @@
 <body>
   <div class="container">
     <header>
-      <h1>AEGIS</h1>
-      <p class="subtitle">Personal AI Assistant</p>
+      <h1>AGENT AEGIS</h1>
+      <p class="subtitle">Your Personal Guardian</p>
       <button class="logout" id="logoutBtn" type="button" hidden>Sign out</button>
     </header>
 
@@ -663,8 +663,8 @@
             <div class="home-assurance"><span class="home-assurance-mark">✳</span><span>One connected experience, with you in control.</span></div>
           </section>
                 <section class="companion-stage" id="companionStage" aria-labelledby="companionTitle">
-        <p class="companion-kicker">YOUR AEGIS COMPANION</p>
-        <div class="companion-presence" id="companionVisual" role="img" aria-label="AEGIS companion presentation">
+        <p class="companion-kicker">YOUR PERSONAL GUARDIAN</p>
+        <div class="companion-presence" id="companionVisual" role="img" aria-label="Agent AEGIS companion presentation">
           <div class="companion-orbit" aria-hidden="true"></div>
           <div class="companion-avatar" aria-hidden="true">
             <span class="avatar-head"></span>
@@ -674,12 +674,12 @@
         </div>
         <div class="companion-copy">
           <h2 id="companionTitle">Here with you.</h2>
-          <p>One AEGIS, shared across your devices. Talk things through, make plans, explore ideas, or simply take things at your own pace.</p>
+          <p>Agent AEGIS is your personal guardian: an intelligent companion designed to understand your context, help you think things through and support you across your devices — always with you in control.</p>
           <p class="companion-status" id="companionStatus" aria-live="polite">Companion presentation layer · interactive avatar runtime is in development.</p>
           <div class="companion-profile-controls" aria-label="Companion profile controls">
             <label for="companionProfileSelect">Your companion</label>
             <select id="companionProfileSelect">
-              <option value="aegis" data-companion-profile="aegis">Official AEGIS</option>
+              <option value="aegis" data-companion-profile="aegis">Official Agent AEGIS</option>
             </select>
             <label for="customCompanionName">Create a custom companion</label>
             <div class="companion-profile-create">
@@ -1413,7 +1413,7 @@
     const createCompanionProfile = document.getElementById('createCompanionProfile');
     const companionProfileStatus = document.getElementById('companionProfileStatus');
     const companionTitle = document.getElementById('companionTitle');
-    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'AEGIS' }];
+    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS' }];
     const customIdPattern = /^custom-[a-z0-9-]+$/;
 
     companionProfileSelect.addEventListener('change', () => {
@@ -1425,7 +1425,7 @@
       }
       companionTitle.textContent = selected.kind === 'official' ? 'Here with you.' : 'Meet ' + selected.displayName + '.';
       companionProfileStatus.textContent = selected.kind === 'official'
-        ? 'Official AEGIS presentation · one shared AEGIS intelligence and security system.'
+        ? 'Agent AEGIS · Your Personal Guardian · one shared intelligence and security system.'
         : selected.displayName + ' is a custom presentation profile · session only, with no separate permissions or memory.';
     });
 
