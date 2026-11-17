@@ -115,12 +115,18 @@ export function buildLearningMasteryCandidate(path, nodeId, evidence, now = Date
     ...assessments.map(({ item }) => item.id),
     ...applications.map(({ item }) => item.id),
   ]);
-  const qualifyingReview = reviews.find(({ item }) =>
+  const completeReview = reviews.find(({ item }) =>
     requiredIds.size >= 3 &&
     item.evidenceRefs.length === requiredIds.size &&
     item.evidenceRefs.every(id => requiredIds.has(id)) &&
     [...requiredIds].every(id => item.evidenceRefs.includes(id))
   );
+  const latestEvidenceAt = Math.max(
+    ...validated.filter(({ item }) => requiredIds.has(item.id)).map(({ occurredAt }) => occurredAt),
+  );
+  const qualifyingReview = completeReview && completeReview.occurredAt > latestEvidenceAt
+    ? completeReview
+    : null;
 
   if (attempts.size < 2 || assessmentDays.size < 2 || applications.length < 1 || !qualifyingReview) {
     return Object.freeze({
@@ -134,7 +140,8 @@ export function buildLearningMasteryCandidate(path, nodeId, evidence, now = Date
         ...(attempts.size < 2 ? ['two_distinct_passed_attempts'] : []),
         ...(assessmentDays.size < 2 ? ['assessment_repetition_on_separate_utc_dates'] : []),
         ...(applications.length < 1 ? ['applied_task_evidence'] : []),
-        ...(!qualifyingReview ? ['independent_human_review_of_all_evidence'] : []),
+        ...(!completeReview ? ['independent_human_review_of_all_evidence'] : []),
+        ...(completeReview && !qualifyingReview ? ['human_review_after_all_evidence'] : []),
       ]),
     });
   }
