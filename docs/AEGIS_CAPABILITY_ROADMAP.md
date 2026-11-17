@@ -598,3 +598,11 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Structural validation is not evidence authentication. Trusted authoritative-store loading, reviewer identity/independence checks and artifact provenance verification are mandatory before any API/UI integration.
 - Full CI passed on code commit `37be686edb42e9f482a936d4c8d46914448e890a` (workflow `44187738206`): **850 tests, 849 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
 - No production endpoint or learner UI was added.
+
+
+### Learning Forge — adaptive spaced review (17 November 2026)
+
+- Added a pure local scheduler using latest-per-UTC-day assessment attempts; same-day retries do not inflate successful review history.
+- Failed checks reset the review sequence and suggest a one-day revisit; successful review days expand suggested intervals through 1, 3, 7, 14 and 30 days.
+- Exact path-version binding, deterministic due dates, overdue state and explanatory reasons are included. Mastery remains false.
+- No schedule persistence, notification dispatch or reminder consent is assumed. Full CI is running on code commit `1633b089f2145b3a8adc97d0689cc98b1e703d7c`.
