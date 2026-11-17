@@ -157,3 +157,16 @@ test('full-screen companion mode remains responsive and honours reduced motion',
   assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?\.companion-mode-layout/);
   assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
+
+test('custom companion profiles expose user-controlled interaction preferences with versioned saves', () => {
+  for (const id of [
+    'companionWarmth', 'companionHumour', 'companionDirectness', 'companionInitiative',
+    'companionVerbosity', 'companionVisualPreset', 'saveCompanionSettings',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /controlApi\('\/api\/companion\/profiles\/' \+/);
+  assert.match(html, /expectedVersion/);
+  assert.match(html, /interaction:\s*\{/);
+  assert.match(html, /presentation preferences only/i);
+});
