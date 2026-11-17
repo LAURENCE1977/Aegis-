@@ -72,7 +72,7 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
           return jsonResponse({ error: 'Project Space context is not available.' }, 503);
         }
         try {
-          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId);
+          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId, Date.now(), parsed.body.objective.trim());
         } catch {
           return jsonResponse({ error: 'Project Space context could not be loaded.' }, 503);
         }
