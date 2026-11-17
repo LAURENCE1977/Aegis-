@@ -140,3 +140,18 @@ test('attributes direct calls inside arrow-function variables to their local sym
   ]);
   assert.deepEqual(result.calls[0].location.start, { line: 2, column: 3 });
 });
+
+
+test('links calls to locally declared arrow-function variables', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/arrow-callee.js',
+    content: [
+      'const start = () => finish();',
+      'const finish = () => true;',
+    ].join('\\n'),
+  }]);
+  assert.deepEqual(result.calls.map(({ caller, callee }) => ({ caller, callee })), [
+    { caller: 'start', callee: 'finish' },
+  ]);
+  assert.deepEqual(result.calls[0].location.start, { line: 1, column: 22 });
+});
