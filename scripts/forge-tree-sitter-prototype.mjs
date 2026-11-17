@@ -156,7 +156,7 @@ function lexicalScopeChain(node) {
   const scopes = [];
   let current = node.parent;
   while (current) {
-    if (LEXICAL_SCOPE_TYPES.has(current.type)) scopes.push(current);
+    if (LEXICAL_SCOPE_TYPES.has(current.type) || FUNCTION_SCOPE_TYPES.has(current.type)) scopes.push(current);
     current = current.parent;
   }
   return scopes;
