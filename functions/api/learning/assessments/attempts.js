@@ -4,7 +4,7 @@ import { listLearningAttempts, submitLearningAttempt } from '../../../lib/learni
 const OWNER_ID = 'owner';
 const MAX_BODY_BYTES = 16 * 1024;
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const VERSION_PATTERN = /^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9]*)$/;
+const VERSION_PATTERN = /^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/;
 
 export async function onRequestGet({ request, env }) {
   const denied = await authorizeOwner(request, env);
