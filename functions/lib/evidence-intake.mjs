@@ -6,7 +6,9 @@ const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}
 const MEDIA_TYPE_PATTERN = /^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/;
 
 function isRecord(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function exactKeys(value, keys, label) {
@@ -76,15 +78,17 @@ export function validateEvidenceDescriptor(descriptor) {
 
 /**
  * Create a metadata-only identity for original evidence.
- * ownerId must be derived from the authenticated server-side principal, never trusted from a client request.
- * File bytes and storage locations are deliberately outside this contract.
+ * ownerId and acquiredAt must be set by trusted server-side code. sha256 and byteLength must be
+ * calculated from the exact original bytes by trusted server-side code, never accepted as client assertions.
+ * mediaType is a hint, not proof of file format. File bytes and storage locations are outside this contract.
  */
 export function createEvidenceDescriptor(input) {
   exactKeys(input, [
     'ownerId', 'sha256', 'byteLength', 'mediaType', 'displayName', 'acquiredAt', 'source',
   ], 'evidence descriptor input');
+  validateSource(input.source);
 
-  const source = Object.freeze({ kind: input.source?.kind, reference: input.source?.reference });
+  const source = Object.freeze({ kind: input.source.kind, reference: input.source.reference });
   const descriptor = {
     schemaVersion: 1,
     evidenceId: randomUUID(),
