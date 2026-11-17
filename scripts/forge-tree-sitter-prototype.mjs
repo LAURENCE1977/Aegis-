@@ -33,6 +33,57 @@ function walk(node, visit) {
   for (let i = 0; i < node.childCount; i++) walk(node.child(i), visit);
 }
 
+function locationOf(node) {
+  return {
+    start: { line: node.startPosition.row + 1, column: node.startPosition.column + 1 },
+    end: { line: node.endPosition.row + 1, column: node.endPosition.column + 1 },
+  };
+}
+
+function declarationKind(node) {
+  if (node.type === 'function_declaration' || node.type === 'generator_function_declaration') return 'function';
+  if (node.type === 'class_declaration') return 'class';
+  if (node.type === 'interface_declaration') return 'interface';
+  if (node.type === 'type_alias_declaration') return 'type';
+  if (node.type === 'enum_declaration') return 'enum';
+  if (node.type === 'lexical_declaration' || node.type === 'variable_declaration') {
+    const keyword = node.children.find(child => ['const', 'let', 'var'].includes(child.text))?.text;
+    return keyword || 'variable';
+  }
+  return null;
+}
+
+function extractSymbols(root, path) {
+  const symbols = [];
+  for (const topLevel of root.namedChildren) {
+    const exported = topLevel.type === 'export_statement';
+    const declaration = exported
+      ? topLevel.namedChildren.find(child => declarationKind(child))
+      : topLevel;
+    if (!declaration) continue;
+
+    const kind = declarationKind(declaration);
+    const isDefault = exported && topLevel.children.some(child => child.text === 'default');
+    const declarations = kind === 'const' || kind === 'let' || kind === 'var' || kind === 'variable'
+      ? declaration.namedChildren.filter(child => child.type === 'variable_declarator')
+      : [declaration];
+
+    for (const item of declarations) {
+      const nameNode = item.childForFieldName('name');
+      if (!nameNode || nameNode.type !== 'identifier' && nameNode.type !== 'type_identifier') continue;
+      symbols.push({
+        path,
+        kind: kind === 'variable' ? 'variable' : kind,
+        name: nameNode.text,
+        exported,
+        isDefault,
+        location: locationOf(item),
+      });
+    }
+  }
+  return symbols;
+}
+
 function extract(root, path) {
   const imports = [];
   walk(root, node => {
@@ -43,10 +94,7 @@ function extract(root, path) {
         kind: node.type === 'import_statement' ? 'static' : 're-export',
         specifier,
         // Human-readable, one-based coordinates; end is exclusive.
-        location: {
-          start: { line: node.startPosition.row + 1, column: node.startPosition.column + 1 },
-          end: { line: node.endPosition.row + 1, column: node.endPosition.column + 1 },
-        },
+        location: locationOf(node),
       });
     }
     if (node.type === 'call_expression') {
@@ -58,10 +106,7 @@ function extract(root, path) {
           path,
           kind: callee.type === 'import' ? 'dynamic' : 'commonjs',
           specifier,
-          location: {
-            start: { line: node.startPosition.row + 1, column: node.startPosition.column + 1 },
-            end: { line: node.endPosition.row + 1, column: node.endPosition.column + 1 },
-          },
+          location: locationOf(node),
         });
       }
     }
@@ -117,6 +162,7 @@ export async function parseModuleImports(inputFiles) {
       trees.push(tree);
       files.push({ path: item.path, hasError: tree.rootNode.hasError });
       imports.push(...extract(tree.rootNode, item.path));
+      symbols.push(...extractSymbols(tree.rootNode, item.path));
     }
   } finally {
     for (const tree of trees) tree.delete();
@@ -131,6 +177,7 @@ export async function parseModuleImports(inputFiles) {
     execution: 'none',
     files,
     imports,
+    symbols,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
   };
 }
