@@ -6,6 +6,7 @@ import {
   listPendingApprovals,
   loadApproval,
   loadApprovedApprovalById,
+  loadConsumedApprovalById,
   consumeApproval,
 } from '../functions/lib/capability-approvals.mjs';
 
@@ -60,6 +61,12 @@ class MemoryD1 {
               (capabilityId !== null && row.capability_id !== capabilityId)) return null;
           row.status = decision; row.decided_by = decidedBy; row.decided_at = decidedAt;
           return { ...row };
+        }
+        if (sql.includes('SELECT * FROM capability_approvals') && sql.includes("status = 'consumed'")) {
+          const [id, principal, capability] = v;
+          const row = db.rows.get(id);
+          return row && row.principal_id === principal && row.capability_id === capability &&
+            row.status === 'consumed' && row.consumed_at ? { ...row } : null;
         }
         if (sql.includes('SELECT * FROM capability_approvals') && sql.includes('id = ? AND principal_id = ?')) {
           const [id, principal, capability, now] = v;
@@ -300,5 +307,44 @@ test('Sentinel can retrieve a specific approved owner capability by its opaque a
   }), null);
   assert.equal(await loadApprovedApprovalById(db, pending.id, {
     principalId: 'owner', capabilityId: 'other', now: Date.now(),
+  }), null);
+});
+
+
+test('loads a consumed approval only for its exact owner and capability for idempotent recovery', async () => {
+  const db = new MemoryD1();
+  const pending = await createApprovalRequest(db, request({
+    principalId: 'owner',
+    capabilityId: 'aegis-agent-run',
+    capabilityVersion: '0.1.0',
+    actionId: 'approve-execution',
+    resourceId: 'agent-run:00000000-0000-4000-8000-000000000001',
+    connectionId: null,
+  }), Date.now());
+  await decideApprovalRequest(db, {
+    id: pending.id, decision: 'approved', decidedBy: 'owner',
+    principalId: 'owner', capabilityId: 'aegis-agent-run', now: Date.now(),
+  });
+  const consumed = await consumeApproval(db, {
+    id: pending.id,
+    principalId: 'owner',
+    capabilityId: 'aegis-agent-run',
+    capabilityVersion: '0.1.0',
+    actionId: 'approve-execution',
+    resourceId: 'agent-run:00000000-0000-4000-8000-000000000001',
+    operationSummary: pending.operationSummary,
+    connectionId: null,
+    inputDigest: pending.inputDigest,
+    now: Date.now(),
+  });
+  assert.equal(consumed.status, 'consumed');
+  assert.equal((await loadConsumedApprovalById(db, pending.id, {
+    principalId: 'owner', capabilityId: 'aegis-agent-run',
+  })).id, pending.id);
+  assert.equal(await loadConsumedApprovalById(db, pending.id, {
+    principalId: 'another-owner', capabilityId: 'aegis-agent-run',
+  }), null);
+  assert.equal(await loadConsumedApprovalById(db, pending.id, {
+    principalId: 'owner', capabilityId: 'another-capability',
   }), null);
 });
