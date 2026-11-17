@@ -340,6 +340,15 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
   assert.deepEqual(events.filter(event => event.type === 'TEXT_MESSAGE_CONTENT').map(event => event.delta), [
     'I checked AEGIS and found the module catalogue.',
   ]);
+  const toolEvents = events.filter(event => event.type.startsWith('TOOL_CALL_'));
+  assert.deepEqual(toolEvents.map(event => event.type), [
+    'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END', 'TOOL_CALL_RESULT',
+  ]);
+  assert.equal(toolEvents[0].toolCallId, 'call_123');
+  assert.equal(toolEvents[0].toolCallName, 'aegis_list_modules');
+  assert.equal(toolEvents[1].delta, '{}');
+  assert.equal(toolEvents[3].messageId, 'run-123');
+  assert.match(toolEvents[3].content, /"ok":true/);
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[0].tools.map(tool => tool.function.name), [
     'aegis_list_modules',
