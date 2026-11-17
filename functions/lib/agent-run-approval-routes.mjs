@@ -9,6 +9,7 @@ import {
   listPendingApprovals,
   decideApprovalRequest,
   loadApprovedApprovalById,
+  loadConsumedApprovalById,
   consumeApproval,
 } from './capability-approvals.mjs';
 import { buildAgentPlanApprovalBinding } from '../../workers/runtime/agent-plan-approval.mjs';
@@ -135,6 +136,7 @@ export function createAgentRunApprovalDecisionHandlers({
 export function createAgentRunApprovalAuthorizationHandlers({
   proxy = proxyAgentRuntime,
   loadRequest = loadApprovedApprovalById,
+  loadConsumedRequest = loadConsumedApprovalById,
   loadGrant = loadCapabilityGrant,
   consumeRequest = consumeApproval,
 } = {}) {
@@ -153,12 +155,18 @@ export function createAgentRunApprovalAuthorizationHandlers({
 
       const approvalId = params.id;
       try {
-        const approval = await loadRequest(env.AEGIS_DB, approvalId, {
+        const activeApproval = await loadRequest(env.AEGIS_DB, approvalId, {
           principalId: OWNER_ID,
           capabilityId: 'aegis-agent-run',
         });
-        if (!approval || approval.id !== approvalId || approval.status !== 'approved' ||
-            approval.decidedBy !== OWNER_ID) {
+        const approval = activeApproval || await loadConsumedRequest(env.AEGIS_DB, approvalId, {
+          principalId: OWNER_ID,
+          capabilityId: 'aegis-agent-run',
+        });
+        if (!approval || approval.id !== approvalId ||
+            !['approved', 'consumed'].includes(approval.status) ||
+            approval.decidedBy !== OWNER_ID ||
+            (approval.status === 'consumed' && !approval.consumedAt)) {
           return jsonResponse({ error: 'An active owner-approved execution request is required.' }, 409);
         }
         const match = /^agent-run:([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(approval.resourceId || '');
@@ -196,10 +204,12 @@ export function createAgentRunApprovalAuthorizationHandlers({
             reasonCode: 'ACTIVE_EXACT_RESOURCE_GRANT_REQUIRED',
           }, 403);
         }
-        const consumed = await consumeRequest(env.AEGIS_DB, {
-          id: approvalId,
-          ...binding,
-        });
+        const consumed = approval.status === 'consumed'
+          ? approval
+          : await consumeRequest(env.AEGIS_DB, {
+            id: approvalId,
+            ...binding,
+          });
         if (!consumed || consumed.status !== 'consumed' || consumed.id !== approvalId) {
           return jsonResponse({ error: 'Approval was already consumed or is no longer valid.' }, 409);
         }
