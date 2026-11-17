@@ -514,3 +514,15 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Added store, API and migration tests plus D1 smoke checks for duplicate-version rejection and immutable audit history.
 - This is a learning-path catalogue, not yet a mastery engine. Node progress, practice attempts, evidence-backed mastery, spaced repetition and adaptive sequencing remain future slices.
 - Learning content is linked and attributed; the registry does not scrape, copy or redistribute course content.
+
+
+### Learning Forge — prerequisite-gated learner progress (17 November 2026)
+
+**Status:** Implementation added on draft PR #103; full CI verification pending.
+
+- Added `migrations/forge/0011_learning_progress.sql` for owner/path-version/node progress and append-only events; progress history cannot be deleted.
+- Added `functions/lib/learning-progress.mjs` with exact path/node binding, optimistic concurrency and prerequisite-gated transitions.
+- Added authenticated `GET/PATCH /api/learning/paths/:id/progress`; writes are same-origin and bounded.
+- Progress labels are `in_progress` and `self_reported_complete`, not verified mastery. API responses explicitly set `masteryVerified: false`.
+- Both the service and D1 triggers enforce prerequisites before downstream completion. CI smoke checks attempt a database-level bypass and verify it is rejected.
+- Assessment, evidence-backed mastery, spaced repetition and adaptive sequencing remain future work.
