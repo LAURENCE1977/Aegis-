@@ -84,17 +84,18 @@ test('rejects a stale tree revision before reading any source blobs', async () =
 });
 
 test('rejects unlisted paths, mismatched blob SHAs and oversized selections before blob reads', async () => {
-  for (const files of [
+  const cases = [
     [{ path: 'README.md', sha: mainSha }],
     [{ path: 'src/main.ts', sha: depSha }],
     Array.from({ length: 51 }, (_, i) => ({ path: 'src/' + i + '.ts', sha: mainSha })),
-  ]) {
+  ];
+  for (const [index, files] of cases.entries()) {
     const { fetchImpl, calls } = githubFetch();
     const result = await onRequestPost({
       request: await request({ sourceUrl, treeSha, files }), env, fetchImpl,
     });
     assert.equal(result.status, 400);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, index < 2 ? 2 : 0);
   }
 });
 
