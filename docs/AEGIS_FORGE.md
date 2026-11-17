@@ -58,3 +58,24 @@ Owner-only Pages API:
 Migration: `migrations/forge/0003_knowledge_records.sql`.
 
 The Knowledge Library is currently a persisted API-backed foundation. Its dedicated Forge UI and retrieval of accepted records into Agent Workforce context remain follow-on work. No external source is automatically trusted or ingested, and no record can trigger a tool or deployment.
+
+
+## Source Provenance Register — pinned, owner-scoped reuse evidence
+
+The Source Provenance Register records what was inspected and which licence obligations were actually checked before a source is reused or adapted. It is distinct from repository discovery and from the general Forge candidate catalogue.
+
+- Each record is pinned to a 40- or 64-character immutable source revision; branch names and version labels are not accepted as revisions.
+- The record includes inspection depth/time, source licence and licence-file URL, separately inventoried dependency/model/dataset/asset/font/build-tool licences, relevant AEGIS capabilities, decision and evidence URLs.
+- Reuse, adaptation and combination are rejected if any source or component licence is unresolved.
+- An `approved` record requires source-level or full inspection and verified licences for all inventoried components.
+- Records are owner-scoped and deduplicated by owner + canonical source URL + immutable revision.
+- D1 protects source identity and record content from mutation/deletion. A database trigger records creation in an append-only event table.
+- The API is authenticated, same-origin for writes, JSON-only, body-bounded and returns no-store responses.
+
+Owner-only Pages API:
+- `GET /api/forge/provenance?limit=50` — list up to 100 records for the owner.
+- `POST /api/forge/provenance` — validate and persist one provenance record; duplicate submissions return the existing record.
+
+Migration: `migrations/forge/0004_source_provenance.sql`.
+
+This is a provenance register, not an automatic legal opinion or licence scanner. A human must verify the actual source, dependency, model, dataset and asset terms. It does not install or execute upstream code. The API/migration must pass CI and be applied to a preview database before it can be called operational in a deployed environment.
