@@ -942,3 +942,50 @@ See [Repository Batch Review — 17 November 2026](REA_REPOSITORY_BATCH_2026-11-
 - Subsequent commits in this section are documentation-only.
 - Browser visual/accessibility verification remains outstanding.
 - No preview/production D1 migration, production deployment or PR merge has occurred. PR #101 remains open and unmerged.
+
+
+## 21. Adaptive System Guardian
+
+**Accepted architecture direction; not implemented.** See [AEGIS Security Suite — Architecture and Threat Model](AEGIS_SECURITY_SUITE.md), section 10, for the detailed threat model and acceptance gates.
+
+Agent AEGIS should understand the machine and operating environment it runs on, identify safe opportunities to improve the user's device, and adapt its own resource footprint to the device's actual capabilities. This is a core AEGIS capability, not a third-party cleaner or an unrestricted privileged endpoint agent.
+
+### Product shape
+
+Four connected capabilities:
+1. **System Intelligence:** minimal, permissioned discovery of hardware, OS, resources, supported APIs, security posture and AEGIS runtime capabilities.
+2. **Adaptive Optimisation:** identify measurable bottlenecks and opportunities, rank recommendations by user benefit, risk, confidence and reversibility.
+3. **System Protection:** report evidence-backed posture gaps, compatibility issues and relevant security changes without claiming visibility the platform does not expose.
+4. **Environmental Learning:** establish a user-controlled device baseline and adapt AEGIS model/runtime tier, concurrency, cache, background scheduling and quality settings to available resources.
+
+### Operating lifecycle
+
+Discover (read-only) → Observe (opt-in, low-frequency signals) → Analyse → Recommend → Apply (only through Sentinel-authorised exact actions) → Verify → Learn (user-controlled, minimal retention).
+
+"Passive" means low-disruption observation and analysis. It does not mean hidden collection or silent modification. "No change needed" is a valid outcome.
+
+### Authority and safety
+
+- Sentinel remains the sole authority for permission, approval, revocation, rate limits and consequential actions.
+- Default posture is read-only. Recommendations do not mutate the system.
+- A narrow, user-enabled allowlist may later permit reversible AEGIS-local adjustments, such as reducing AEGIS background concurrency or clearing only AEGIS-owned regenerable cache.
+- OS settings, startup entries, services, drivers, software installation/removal, firewall, DNS, VPN, permissions, firmware, boot, encryption and user data changes require explicit per-action approval or remain unsupported.
+- No unrestricted shell/root daemon, covert monitoring, keylogging, screenshots, personal-file inspection, arbitrary scripts, security disabling or destructive cleanup.
+- All changes require before/after evidence, audit, verification and rollback where technically possible.
+- Device and diagnostic outputs are untrusted evidence, not instructions or authority.
+
+### Cross-platform design
+
+Use a shared versioned device-profile contract with separate web/PWA, ChromeOS, iOS/iPadOS, Android, Windows, macOS, Linux and USB adapters. Report platform-specific visibility and permission limits; never imply that a browser or mobile app can inspect the entire host. Avoid persistent hardware fingerprinting; use revocable AEGIS device IDs.
+
+### Delivery sequence
+
+1. Device profile and observation contracts plus threat model.
+2. Read-only web/PWA capability profile and explicit unsupported states.
+3. Resource-aware adaptation of AEGIS's own workloads.
+4. One native desktop read-only adapter after REA and permission review.
+5. Evidence-ranked recommendation engine.
+6. Sentinel-governed action runner, initially restricted to AEGIS-local reversible settings.
+7. Cross-platform validation, update/rollback and user controls.
+
+**Status rule:** no scanner, passive monitor, optimiser, native endpoint agent or automatic remediation is claimed as implemented. Documentation is not implementation progress. Each gate needs tests and platform evidence.
