@@ -84,6 +84,33 @@ function extractSymbols(root, path) {
   return symbols;
 }
 
+function functionOwnerName(callNode) {
+  let current = callNode.parent;
+  while (current) {
+    if (current.type === 'function_declaration' || current.type === 'generator_function_declaration') {
+      const name = current.childForFieldName('name');
+      return name?.type === 'identifier' ? name.text : null;
+    }
+    if (current.type === 'arrow_function' || current.type === 'function_expression' ||
+        current.type === 'generator_function') {
+      const ownName = current.childForFieldName('name');
+      if (ownName?.type === 'identifier') return ownName.text;
+
+      let parent = current.parent;
+      while (parent && ['parenthesized_expression', 'as_expression', 'satisfies_expression'].includes(parent.type)) {
+        parent = parent.parent;
+      }
+      if (parent?.type === 'variable_declarator') {
+        const variableName = parent.childForFieldName('name');
+        return variableName?.type === 'identifier' ? variableName.text : null;
+      }
+      return null;
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
 function extractCalls(root, path) {
   const declaredFunctions = new Set();
   walk(root, node => {
@@ -98,16 +125,12 @@ function extractCalls(root, path) {
     const callee = node.child(0);
     if (callee?.type !== 'identifier' || !declaredFunctions.has(callee.text)) return;
 
-    let enclosing = node.parent;
-    while (enclosing && !['function_declaration', 'generator_function_declaration'].includes(enclosing.type)) {
-      enclosing = enclosing.parent;
-    }
-    const caller = enclosing?.childForFieldName('name');
-    if (!caller || caller.type !== 'identifier') return;
+    const caller = functionOwnerName(node);
+    if (!caller) return;
 
     calls.push({
       path,
-      caller: caller.text,
+      caller,
       callee: callee.text,
       location: locationOf(node),
     });
