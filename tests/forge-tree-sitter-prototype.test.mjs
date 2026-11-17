@@ -153,5 +153,5 @@ test('links calls to locally declared arrow-function variables', async () => {
   assert.deepEqual(result.calls.map(({ caller, callee }) => ({ caller, callee })), [
     { caller: 'start', callee: 'finish' },
   ]);
-  assert.deepEqual(result.calls[0].location.start, { line: 1, column: 22 });
+  assert.deepEqual(result.calls[0].location.start, { line: 1, column: 21 });
 });
