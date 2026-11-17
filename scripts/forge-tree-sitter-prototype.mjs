@@ -46,7 +46,7 @@ export async function parseModuleImports(inputFiles) {
       if (new TextEncoder().encode(item.content).byteLength > MAX_FILE_BYTES) throw new TypeError('Tree-sitter source file exceeds 32 KiB');
       parser.setLanguage(ext === '.ts' ? languages.ts : ext === '.tsx' ? languages.tsx : languages.js);
       const tree = parser.parse(item.content);
-      files.push({ path: item.path, hasError: tree.rootNode.hasError() });
+      files.push({ path: item.path, hasError: tree.rootNode.hasError });
       imports.push(...extract(tree.rootNode, item.path));
       tree.delete();
     }
