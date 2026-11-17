@@ -19,12 +19,15 @@ function buildAcceptedKnowledgeContext(records, objective = '') {
     ['high', 'medium'].includes(record.evidenceLevel) &&
     Array.isArray(record.sources) && record.sources.length > 0
   );
-  const rankedIds = objective.trim()
+  const ranked = objective.trim()
     ? rankKnowledgeChunks(objective.slice(0, 500), eligible.map((record) => {
       const text = [record.title, record.domain, record.knowledgeType, record.summary,
         ...(record.limitations || []), ...(record.applicableCapabilities || [])].join(' ');
       return { id: record.id, text, sourceId: record.id, startOffset: 0, endOffset: text.length, status: 'accepted' };
-    }), { limit: 5 }).map((item) => item.id)
+    }), { limit: 5 })
+    : [];
+  const rankedIds = ranked.length
+    ? ranked.map((item) => item.id)
     : eligible.slice(0, 5).map((record) => record.id);
   const byId = new Map(eligible.map((record) => [record.id, record]));
   const selected = [];
