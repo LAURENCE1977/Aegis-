@@ -16,12 +16,12 @@ class ResourceApiD1 {
       async run() {
         const v = this.values;
         if (sql.includes('INSERT INTO guardian_resources')) {
-          const [id, ownerId, canonicalUrl, revision, recordJson, status, createdAt, updatedAt] = v;
+          const [id, ownerId, canonicalUrl, revision, recordJson, createdAt, updatedAt] = v;
           const key = ownerId + '|' + canonicalUrl + '|' + revision;
           if ([...db.rows.values()].some(row => row.uniqueKey === key)) return { meta: { changes: 0 } };
           db.rows.set(id, {
             id, owner_id: ownerId, canonical_url: canonicalUrl, source_revision: revision,
-            record_json: recordJson, review_status: status, created_at: createdAt,
+            record_json: recordJson, review_status: 'draft', created_at: createdAt,
             updated_at: updatedAt, uniqueKey: key,
           });
           db.events.push({ resource_id: id, owner_id: ownerId, event_type: 'created' });
