@@ -351,6 +351,81 @@
     .companion-profile-create { display: flex; gap: 8px; }
     .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
     .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    .companion-mode-action { width: 100%; max-width: 320px; margin-top: 14px; display: grid; gap: 7px; }
+    .companion-mode-action button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .companion-mode-action p { margin: 0; color: var(--muted); font-size: .66rem; line-height: 1.45; }
+    body.companion-mode-open { overflow: hidden; }
+    #appPanel.companion-mode-active { display: block; }
+    #appPanel.companion-mode-active > .toolbar { display: none; }
+    .companion-mode-overlay:not([hidden]) {
+      position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column;
+      gap: 18px; padding: clamp(16px, 2.5vw, 34px);
+      overflow: auto; color: var(--text);
+      background:
+        radial-gradient(ellipse at 14% 0%, rgba(34,211,238,.13), transparent 38rem),
+        radial-gradient(ellipse at 88% 78%, rgba(99,102,241,.12), transparent 34rem),
+        #080b12;
+    }
+    .companion-mode-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      width: min(100%, 1600px); margin: 0 auto; padding: 2px 2px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+    .companion-mode-kicker { margin: 0 0 5px; color: #8da9bb; font-size: .64rem; font-weight: 780; letter-spacing: .16em; }
+    .companion-mode-header h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.4rem); letter-spacing: -.055em; }
+    .companion-mode-header-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+    .companion-mode-indicator { color: #9cc7ca; font-size: .66rem; font-weight: 750; letter-spacing: .1em; }
+    .companion-mode-layout {
+      display: grid; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.15fr);
+      gap: 18px; width: min(100%, 1600px); margin: 0 auto; flex: 1; min-height: 0;
+    }
+    .companion-mode-presence-panel, .companion-mode-chat-panel {
+      min-width: 0; border: 1px solid var(--border); border-radius: 20px;
+      background: linear-gradient(145deg, rgba(18,26,41,.94), rgba(12,18,29,.96));
+      box-shadow: var(--shadow);
+    }
+    .companion-mode-presence-panel {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: clamp(18px, 3vw, 32px); overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(34,211,238,.13), transparent 52%),
+        linear-gradient(155deg, rgba(16,30,45,.96), rgba(9,15,26,.99));
+    }
+    .companion-mode-presence { width: 100%; max-width: 560px; min-height: clamp(300px, 54vh, 570px); flex: 0 0 auto; }
+    .companion-mode-presence .companion-orbit { width: min(90%, 440px); }
+    .companion-mode-presence .companion-avatar { transform: scale(1.55); }
+    .companion-mode-profile-copy { width: min(100%, 440px); text-align: center; }
+    .companion-mode-profile-copy h3 { margin: 0 0 7px; font-size: 1.35rem; letter-spacing: -.035em; }
+    .companion-mode-profile-copy p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+    .companion-mode-profile-copy #companionModeState { margin-top: 10px; color: #8da9bb; font-size: .7rem; }
+    .companion-mode-chat-panel { display: flex; flex-direction: column; min-height: 0; padding: clamp(12px, 1.8vw, 22px); }
+    #companionModeChatSlot { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 12px; }
+    #companionModeChatSlot .project-context { margin: 0; }
+    #companionModeChatSlot #chatBox { flex: 1; min-height: 300px; max-height: none; margin: 0; }
+    #companionModeChatSlot .input-area { margin: 0; }
+    #companionModeChatSlot > .status { margin: 0; }
+    @media (max-width: 820px) {
+      .companion-mode-overlay:not([hidden]) { gap: 12px; padding: 12px; }
+      .companion-mode-header { align-items: flex-start; flex-direction: column; }
+      .companion-mode-header-actions { width: 100%; justify-content: space-between; }
+      .companion-mode-layout { grid-template-columns: minmax(0, 1fr); }
+      .companion-mode-presence-panel { display: grid; grid-template-columns: minmax(130px, .65fr) minmax(0, 1fr); gap: 8px; }
+      .companion-mode-presence { min-height: 190px; max-width: 260px; }
+      .companion-mode-presence .companion-orbit { width: 190px; }
+      .companion-mode-presence .companion-avatar { transform: scale(.9); }
+      .companion-mode-profile-copy { text-align: left; }
+      .companion-mode-chat-panel { min-height: 58vh; }
+      #companionModeChatSlot #chatBox { min-height: 38vh; }
+    }
+    @media (max-width: 520px) {
+      .companion-mode-header-actions { align-items: flex-start; flex-direction: column; }
+      .companion-mode-presence-panel { grid-template-columns: minmax(0, 1fr); }
+      .companion-mode-presence { min-height: 170px; margin: 0 auto; }
+      .companion-mode-presence .companion-orbit { width: 165px; }
+      .companion-mode-presence .companion-avatar { transform: scale(.72); }
+      .companion-mode-profile-copy { text-align: center; }
+      .companion-mode-chat-panel { min-height: 60vh; padding: 10px; }
+    }
     @media (max-width: 520px) {
       .companion-profile-controls { max-width: 100%; text-align: left; }
     }
