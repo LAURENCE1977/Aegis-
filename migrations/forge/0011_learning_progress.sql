@@ -67,6 +67,55 @@ BEGIN
   );
 END;
 
+
+CREATE TRIGGER IF NOT EXISTS trg_learning_progress_prerequisites_insert
+BEFORE INSERT ON learning_progress
+WHEN NEW.status = 'self_reported_complete' AND EXISTS (
+  SELECT 1
+  FROM learning_paths AS path,
+       json_each(path.graph_json, '$.nodes') AS node,
+       json_each(node.value, '$.prerequisites') AS prerequisite
+  WHERE path.owner_id = NEW.owner_id
+    AND path.path_id = NEW.path_id
+    AND path.version = NEW.path_version
+    AND json_extract(node.value, '$.id') = NEW.node_id
+    AND NOT EXISTS (
+      SELECT 1 FROM learning_progress AS prior
+      WHERE prior.owner_id = NEW.owner_id
+        AND prior.path_id = NEW.path_id
+        AND prior.path_version = NEW.path_version
+        AND prior.node_id = prerequisite.value
+        AND prior.status = 'self_reported_complete'
+    )
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Learning prerequisites must be self-reported complete');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_learning_progress_prerequisites_update
+BEFORE UPDATE OF status ON learning_progress
+WHEN NEW.status = 'self_reported_complete' AND EXISTS (
+  SELECT 1
+  FROM learning_paths AS path,
+       json_each(path.graph_json, '$.nodes') AS node,
+       json_each(node.value, '$.prerequisites') AS prerequisite
+  WHERE path.owner_id = NEW.owner_id
+    AND path.path_id = NEW.path_id
+    AND path.version = NEW.path_version
+    AND json_extract(node.value, '$.id') = NEW.node_id
+    AND NOT EXISTS (
+      SELECT 1 FROM learning_progress AS prior
+      WHERE prior.owner_id = NEW.owner_id
+        AND prior.path_id = NEW.path_id
+        AND prior.path_version = NEW.path_version
+        AND prior.node_id = prerequisite.value
+        AND prior.status = 'self_reported_complete'
+    )
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Learning prerequisites must be self-reported complete');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_learning_progress_no_delete
 BEFORE DELETE ON learning_progress
 BEGIN
