@@ -1,6 +1,6 @@
 # AEGIS Learning Forge
 
-**Status:** Immutable, owner-scoped learning-path registry implemented and full CI verified on draft PR #103 (17 November 2026).
+**Status:** Immutable learning-path registry and prerequisite-gated self-reported progress implemented on draft PR #103; full CI for the progress slice is pending.
 
 ## Contract
 
@@ -25,3 +25,15 @@ A learning path is a versioned graph:
 This slice is a catalogue and graph registry, not a complete adaptive tutor or mastery engine. It does not yet persist node progress, practice attempts, mastery evidence, spaced-repetition schedules, learning recommendations or adaptive sequencing. It does not ingest or copy course content, scrape source sites, assess user skill automatically or send learning data to external providers.
 
 The next slice should add owner-scoped progress events, prerequisite-gated transitions, explicit learner corrections and evidence-backed mastery without turning time-on-task or completion clicks into proof of mastery.
+
+
+## Learner progress and prerequisite gates
+
+A second slice adds owner-scoped learner progress:
+
+- `migrations/forge/0011_learning_progress.sql` stores node state against an exact immutable path version and appends progress events. Progress rows cannot be deleted; events cannot be updated or deleted.
+- The state labels are deliberately modest: `in_progress` and `self_reported_complete`. A completion click is not proof of learning; every response explicitly reports `masteryVerified: false`.
+- `functions/lib/learning-progress.mjs` enforces optimistic concurrency, allowed transitions, exact path/node identity and prerequisite completion before a learner can start or self-report completion of a downstream node.
+- D1 triggers independently enforce the prerequisite rule on insert and update, preventing direct database writes from bypassing the graph gate.
+- Authenticated `GET/PATCH /api/learning/paths/:id/progress` lists and records progress with same-origin write protection and bounded request bodies.
+- No assessment engine, mastery certification, spaced-repetition scheduler or automatic skill inference is enabled.
