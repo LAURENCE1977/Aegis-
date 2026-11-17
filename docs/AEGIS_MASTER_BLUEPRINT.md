@@ -914,3 +914,31 @@ See [Repository Batch Review — 17 November 2026](REA_REPOSITORY_BATCH_2026-11-
 3. Add Forge UI for recording/reviewing source provenance and linking records to candidate lifecycle.
 4. Build a bounded, read-only codebase context/architecture extraction primitive (AST/import/dependency map) with no execution of inspected source.
 5. Later evaluate ABC-Bench-like end-to-end tests only in disposable, isolated workers with pinned tasks and no production credentials.
+
+
+## 20. Forge repository-backed code intelligence — 17 November 2026
+
+### Implemented on the feature branch
+
+- Forge now analyses selected JavaScript/TypeScript files from its public GitHub repository inspector.
+- The repository-backed endpoint accepts only the source URL, inspected recursive tree SHA and selected path/blob-SHA pairs.
+- It re-inspects the repository tree, rejects stale tree revisions, validates each selected path and blob SHA against the pinned tree, reads only the selected Git blobs, and verifies the returned object SHA and byte size.
+- Selection is capped at 50 files; each GitHub blob is limited to 32 KiB. Existing analyser limits remain in force.
+- The Forge UI now provides source-file checkboxes for eligible JS/TS files and displays the resulting relationship report.
+- The analysis remains heuristic and selected-file-only. It does not claim a whole-repository dependency audit, semantic correctness, security proof or buildability.
+- Source code is never executed, installed, built or automatically accepted into AEGIS knowledge.
+
+### Tree-sitter parser decision
+
+- A source-level REA is recorded at docs/REA_TREE_SITTER_2026-11-17.md.
+- Reviewed the MIT-licensed Tree-sitter runtime/web binding and JavaScript/JSX and TypeScript/TSX grammars at immutable upstream commits.
+- Decision: prototype/adapt, not yet a production dependency.
+- Before adoption, prove exact WASM packaging and runtime compatibility in Miniflare/Cloudflare Workers and browser; pin all runtime/grammar artifacts and integrity hashes; measure bundle size, cold-start, memory and parse time; add syntax fixtures and explicit incomplete/error states.
+- Parser output remains untrusted evidence. It cannot change Sentinel permissions, approval decisions, provenance or knowledge status.
+
+### Verification and rollout
+
+- Full GitHub Actions suite passed on commit b52a9465089768dff3232815c74ea8ea04ed7a33, run 44037707629.
+- Subsequent commits in this section are documentation-only.
+- Browser visual/accessibility verification remains outstanding.
+- No preview/production D1 migration, production deployment or PR merge has occurred. PR #101 remains open and unmerged.
