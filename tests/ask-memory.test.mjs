@@ -97,7 +97,8 @@ async function activeProfileDb() {
     },
   });
 }
-\nasync function makeRequest() {
+
+async function makeRequest() {
   const token=await createSessionToken(secret);
   return new Request('https://aegis.example/api/ask',{
     method:'POST',
