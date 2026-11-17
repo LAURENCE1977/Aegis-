@@ -40,8 +40,16 @@ function validateProgressRecords(progress, path) {
       'ownerId', 'pathId', 'pathVersion', 'nodeId', 'status',
       'masteryVerified', 'createdAt', 'updatedAt',
     ], 'progress');
+    if (typeof record.ownerId !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(record.ownerId)) {
+      throw new TypeError('Invalid Learning Recommendation progress owner');
+    }
     validIdentity(record.pathId, 'progress path identifier');
     validVersion(record.pathVersion, 'progress path version');
+    validTimestamp(record.createdAt, 'progress creation timestamp');
+    validTimestamp(record.updatedAt, 'progress update timestamp');
+    if (Date.parse(record.updatedAt) < Date.parse(record.createdAt)) {
+      throw new TypeError('Learning Recommendation progress timestamps are out of order');
+    }
     validIdentity(record.nodeId, 'progress node identifier');
     if (record.pathId !== path.id || record.pathVersion !== path.version ||
         !path.nodes.some(node => node.id === record.nodeId)) {
@@ -74,9 +82,7 @@ function validateAttempts(attempts, path) {
     validVersion(attempt.pathVersion, 'attempt path version');
     validIdentity(attempt.nodeId, 'attempt node identifier');
     validTimestamp(attempt.occurredAt, 'attempt timestamp');
-    if (attempt.pathId !== path.id || attempt.pathVersion !== path.version ||
-        !path.nodes.some(node => node.id === attempt.nodeId) ||
-        !Number.isInteger(attempt.earnedPoints) || attempt.earnedPoints < 0 ||
+    if (!Number.isInteger(attempt.earnedPoints) || attempt.earnedPoints < 0 ||
         !Number.isInteger(attempt.possiblePoints) || attempt.possiblePoints < 1 ||
         attempt.earnedPoints > attempt.possiblePoints ||
         !Number.isInteger(attempt.scorePercent) || attempt.scorePercent < 0 ||
@@ -84,6 +90,10 @@ function validateAttempts(attempts, path) {
         attempt.scorePercent !== Math.round((attempt.earnedPoints / attempt.possiblePoints) * 100) ||
         typeof attempt.passed !== 'boolean' || attempt.masteryVerified !== false) {
       throw new TypeError('Invalid Learning Recommendation attempt record');
+    }
+    if (attempt.pathId !== path.id || attempt.pathVersion !== path.version) continue;
+    if (!path.nodes.some(node => node.id === attempt.nodeId)) {
+      throw new TypeError('Learning Recommendation attempt references an unknown node');
     }
     const current = latestByNode.get(attempt.nodeId);
     if (!current || Date.parse(attempt.occurredAt) > Date.parse(current.occurredAt)) {
