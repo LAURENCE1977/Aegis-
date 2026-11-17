@@ -113,6 +113,20 @@ jobs:
         shell: bash
         run: |
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-seed.sql
+          guardian_resource_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT review_status FROM guardian_resources WHERE id = 'guardian-resource-smoke'")
+          echo "$guardian_resource_state"
+          grep -q "draft" <<< "$guardian_resource_state"
+          guardian_resource_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM guardian_resource_events WHERE resource_id = 'guardian-resource-smoke'")
+          echo "$guardian_resource_events"
+          grep -q "1" <<< "$guardian_resource_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE guardian_resource_events SET event_type = 'archived' WHERE resource_id = 'guardian-resource-smoke'"; then
+            echo "Expected Guardian Resource events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM guardian_resource_events WHERE resource_id = 'guardian-resource-smoke'"; then
+            echo "Expected Guardian Resource events to reject deletion."
+            exit 1
+          fi
           if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_candidates SET decision = 'adapt' WHERE id = 'forge-smoke'"; then
             echo "Expected licence gate to reject reuse before owner verification."
             exit 1
