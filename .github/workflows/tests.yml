@@ -182,3 +182,31 @@ jobs:
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql
+
+      - name: Verify Eval Forge immutable suite registry and append-only audit
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-eval-smoke.sql
+          suite_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM eval_suite_events WHERE suite_id = 'guardian-regression' AND version = '1.0.0'")
+          echo "$suite_events"
+          grep -q "1" <<< "$suite_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_suites SET suite_json = '{}' WHERE id = 'eval-suite-smoke'"; then
+            echo "Expected registered evaluation suite versions to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_suites WHERE id = 'eval-suite-smoke'"; then
+            echo "Expected registered evaluation suite versions to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_suite_events SET event_type = 'tampered' WHERE id = 'registered:eval-suite-smoke'"; then
+            echo "Expected evaluation suite events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_suite_events WHERE id = 'registered:eval-suite-smoke'"; then
+            echo "Expected evaluation suite events to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO eval_suites (id, owner_id, suite_id, version, suite_digest, suite_json, created_at) VALUES ('eval-suite-bypass', 'owner', 'guardian-regression', '1.0.0', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '{}', '2026-11-17T12:01:00.000Z')"; then
+            echo "Expected owner/suite/version uniqueness to reject duplicate suite versions."
+            exit 1
+          fi
