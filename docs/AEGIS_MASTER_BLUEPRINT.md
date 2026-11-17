@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 16 November 2026.  
+**Canonical project record.** Last refreshed: 17 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -1075,3 +1075,25 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - Accessibility: live status region, labelled controls and visible review notes. No repository content is installed, fetched or executed by this UI.
 - Verification: GitHub Actions run [44151172821](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151172821) passed on commit `d2e260f649b55014eca2ba8a1342d6cd2e1f4588`: **764 tests, 763 passed, 0 failed, 1 skipped**; isolated runtime D1/Queue and Forge D1 migration/smoke checks passed. Matching PR run [44151188778](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151188778) passed.
 - Production deployment and production D1 provisioning remain separate and have not been performed.
+
+## Learning Forge evidence integrity milestone — 17 November 2026
+
+**Live checkpoint:** Draft PR #103, branch `feature/rea-open-source-security-learning-batch`. Verify the latest head and CI again before relying on this handover.
+
+- Learning Forge now includes immutable path and assessment registries, owner-scoped progress, server-scored assessment attempts, append-only attempt history, explainable next-action recommendations and local spaced-review suggestions.
+- Mastery remains deliberately non-certifying. The candidate policy requires repeated passes on separate UTC dates, applied-task evidence and an approving human review that occurs strictly after all evidence it approves.
+- Exact path lookup revalidates the immutable graph SHA-256 digest. Attempt history revalidates the registered assessment content digest and each attempt's binding to that assessment digest.
+- `functions/lib/learning-mastery-evidence-store.mjs` loads assessment evidence only from the exact owner's registered path, assessment and server-scored attempt stores. It rejects cross-owner/path/node records, malformed/future timestamps and evidence sets beyond bounded limits.
+- The store-backed candidate builder accepts no caller-supplied applied-task or reviewer claims. Those evidence kinds remain unavailable until an independently verifiable artifact store and authenticated independent-review model exist.
+- Assessment answers and answer-pattern hashes are not retained. Attempts store bounded scores/provenance only. Append-only retention requires a separate privacy and deletion policy.
+- Local spaced review uses latest-per-UTC-day attempts, resets after failure, and expands successful intervals through 1/3/7/14/30 days. It does not persist schedules, send reminders or certify mastery.
+- Full CI workflow [44198403611](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198403611) passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`: **855 tests, 854 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge D1 migrations and smoke checks passing.
+- Regression proof: [44198022972](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198022972) failed on the two new digest-tampering tests before the fix; the subsequent full run passed.
+- The docs-only follow-up now has a separate CI run in progress. PR #103 remains open/draft/unmerged; no production deployment or D1 provisioning was performed.
+
+### Next build gates
+
+1. Design content-addressed applied-task evidence storage with strict size/type limits, provenance, retention and user deletion/export semantics before persisting user work.
+2. Design authenticated reviewer identities, separation-of-duties and auditable approval decisions; the current signed session is a single-owner identity, not multi-user tenancy.
+3. Only after those controls exist, expose mastery candidate review in a UI. Keep certification, permissions and autonomous actions separate from learning scores.
+4. Continue the first-class Agent AEGIS companion and accessible mobile-first product experience; do not mistake the current static PWA shell for the finished companion.
