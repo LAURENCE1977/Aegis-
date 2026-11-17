@@ -22,6 +22,7 @@ test('extracts real JS/JSX imports and ignores import-like comments and strings'
     ['dynamic', './lazy.js'],
     ['commonjs', './common.cjs'],
   ]);
+  assert.equal(result.files[0].hasError, false);
   assert.equal(result.execution, 'none');
   assert.equal(result.parser, 'tree-sitter');
 });
@@ -32,6 +33,7 @@ test('parses TypeScript and TSX and reports syntax errors without executing sour
     { path: 'src/broken.ts', content: 'import { value } from \"./value\"; const = ;' },
   ]);
   assert.equal(result.files.length, 2);
+  assert.equal(result.files.find(file => file.path === 'src/component.tsx').hasError, false);
   assert.ok(result.files.some(file => file.path === 'src/broken.ts' && file.hasError));
   assert.ok(result.imports.some(item => item.specifier === './types'));
   assert.equal(result.execution, 'none');
