@@ -33,7 +33,7 @@ test('recognises literal dynamic imports but ignores non-literal dynamic express
     { path: 'src/lazy.js', content: 'export default 1;' },
   ]);
   assert.deepEqual(result.edges.map(edge => [edge.from, edge.to]), [['src/main.js', 'src/lazy.js']]);
-  assert.equal(result.dynamicUnresolved.length, 0);
+  assert.equal(result.unresolved.length, 0);
 });
 
 test('rejects traversal paths, duplicate paths, oversized files and excessive file counts', () => {
