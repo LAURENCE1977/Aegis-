@@ -550,6 +550,8 @@ export async function parseModuleImports(inputFiles) {
   const symbols = [];
   const calls = [];
   const importBindings = [];
+  const reExports = [];
+  const unresolvedReExportSyntax = [];
   const trees = [];
 
   try {
@@ -563,6 +565,9 @@ export async function parseModuleImports(inputFiles) {
       symbols.push(...extractSymbols(tree.rootNode, item.path));
       calls.push(...extractCalls(tree.rootNode, item.path));
       importBindings.push(...extractImportBindings(tree.rootNode, item.path));
+      const extractedReExports = extractReExports(tree.rootNode, item.path);
+      reExports.push(...extractedReExports.reExports);
+      unresolvedReExportSyntax.push(...extractedReExports.unresolvedReExports);
     }
   } finally {
     for (const tree of trees) tree.delete();
@@ -579,6 +584,8 @@ export async function parseModuleImports(inputFiles) {
   const { moduleEdges, unresolvedImports } = resolveModuleEdges(imports, inputFiles);
   const { symbolEdges, unresolvedSymbolImports } =
     resolveSymbolEdges(importBindings, moduleEdges, symbols);
+  const { reExportEdges, unresolvedReExports } = resolveReExportEdges(
+    reExports, unresolvedReExportSyntax, moduleEdges, unresolvedImports, symbols);
 
   return {
     parser: 'tree-sitter',
@@ -591,6 +598,8 @@ export async function parseModuleImports(inputFiles) {
     unresolvedImports,
     symbolEdges,
     unresolvedSymbolImports,
+    reExportEdges,
+    unresolvedReExports,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
   };
 }
