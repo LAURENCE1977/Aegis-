@@ -617,3 +617,12 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Full workflow [44189175803](https://github.com/LAURENCE1977/Aegis-/actions/runs/44189175803) passed on code head `3ee155670cce21e1504a1a6ba45ff36305633061`: **850 tests, 849 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge D1 migrations and smoke checks all successful.
 - Full workflow [44188619578](https://github.com/LAURENCE1977/Aegis-/actions/runs/44188619578) separately passed the strict evidence-review chronology regression: **857 tests, 856 passed, 0 failed, 1 skipped**.
 - Remaining trust boundary: the mastery candidate policy still consumes structured evidence and does not authenticate its provenance, prove reviewer independence or verify artifact contents. No production API, learner UI, certificate, capability grant, persisted review schedule or reminder service is introduced.
+
+### Learning Forge — store-backed mastery evidence ingestion (17 November 2026)
+
+- Added exact owner/path/version lookup through the immutable Learning Path registry; graph content is revalidated against its SHA-256 digest.
+- Added an internal evidence loader that reads registered assessments and server-scored attempt records for the exact path revision/node. Attempt records are revalidated against their registered assessment content digest and their stored digest binding.
+- Evidence is projected from authoritative attempt rows, not caller-supplied JSON. The loader rejects cross-owner/path/node records, malformed/future timestamps and oversized evidence sets.
+- The store-backed candidate builder currently returns insufficient evidence unless separate applied-task and independent human-review evidence sources are available. Those sources are not yet implemented; no mastery certification or capability grant is possible.
+- Regression proof: pre-fix workflow [44198022972](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198022972) reproduced both digest-tampering failures. Full workflow [44198403611](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198403611) passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`: **855 tests, 854 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+- Next trust work: content-addressed applied-task artifacts with retention controls; authenticated reviewer identity and separation-of-duties; then multi-learner tenancy. Do not expose a mastery API/UI until those are real.
