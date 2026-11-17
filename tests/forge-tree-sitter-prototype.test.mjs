@@ -50,3 +50,21 @@ test('rejects oversized and unsupported input before parsing', async () => {
     { path: 'src/readme.md', content: 'text' },
   ]), /unsupported/i);
 });
+
+
+test('rejects unsafe paths, duplicate files and aggregate source beyond the bounded budget', async () => {
+  await assert.rejects(() => parseModuleImports([
+    { path: '../outside.js', content: 'export {};' },
+  ]), /path/i);
+  await assert.rejects(() => parseModuleImports([
+    { path: '/absolute.js', content: 'export {};' },
+  ]), /path/i);
+  await assert.rejects(() => parseModuleImports([
+    { path: 'src/same.js', content: 'export {};' },
+    { path: 'src/same.js', content: 'export {};' },
+  ]), /duplicate/i);
+  await assert.rejects(() => parseModuleImports(Array.from({ length: 40 }, (_, index) => ({
+    path: `src/file-${index}.js`,
+    content: 'x'.repeat(32 * 1024),
+  }))), /total|aggregate|bundle/i);
+});
