@@ -114,9 +114,19 @@ function functionOwnerName(callNode) {
 function extractCalls(root, path) {
   const declaredFunctions = new Set();
   walk(root, node => {
-    if (node.type !== 'function_declaration' && node.type !== 'generator_function_declaration') return;
-    const name = node.childForFieldName('name');
-    if (name?.type === 'identifier') declaredFunctions.add(name.text);
+    if (node.type === 'function_declaration' || node.type === 'generator_function_declaration') {
+      const name = node.childForFieldName('name');
+      if (name?.type === 'identifier') declaredFunctions.add(name.text);
+      return;
+    }
+    if (node.type === 'variable_declarator') {
+      const value = node.childForFieldName('value');
+      const name = node.childForFieldName('name');
+      if (name?.type === 'identifier' &&
+          ['arrow_function', 'function_expression', 'generator_function'].includes(value?.type)) {
+        declaredFunctions.add(name.text);
+      }
+    }
   });
 
   const calls = [];
