@@ -5,6 +5,7 @@ import {
   listCompanionProfiles,
   updateCompanionProfile,
   selectCompanionProfile,
+  getActiveCompanionProfile,
 } from '../functions/lib/companion-profile-store.mjs';
 
 class CompanionD1 {
@@ -119,6 +120,17 @@ test('lists the official profile and owner custom profiles with an explicit acti
   assert.equal(result.profiles[0].profile.kind, 'official');
   assert.equal(result.profiles.length, 2);
   assert.equal(result.activeProfile.profile.kind, 'custom');
+});
+
+test('returns the verified active profile or the official AEGIS default', async () => {
+  const db = new CompanionD1();
+  const official = await getActiveCompanionProfile(db, 'owner');
+  assert.equal(official.profile.id, 'aegis');
+  assert.equal(official.version, null);
+  const created = await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  const active = await getActiveCompanionProfile(db, 'owner');
+  assert.equal(active.profile.id, created.profile.id);
+  assert.equal(active.version, 1);
 });
 
 test('updates create a new immutable profile revision and reject stale writes', async () => {
