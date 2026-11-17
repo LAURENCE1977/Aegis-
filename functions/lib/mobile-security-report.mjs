@@ -17,12 +17,11 @@ function exactKeys(value, allowed, required = allowed) {
 
 function text(value, label, max = 500) {
   if (typeof value !== 'string' || !value.trim() || value.length > max ||
-      hasControlCharacters(value) ||
+      hasControlCharacters(value)) {
     throw new TypeError('Invalid mobile security ' + label);
   }
   return value.trim();
 }
-
 function digest(value, label) {
   if (typeof value !== 'string' || !/^[a-f0-9]{64}$/i.test(value)) {
     throw new TypeError('Invalid mobile security ' + label);
