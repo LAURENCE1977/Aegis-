@@ -57,7 +57,7 @@ export function validateDeviceProfile(profile) {
   for (const key of SYSTEM_FIELDS) observation(profile.system[key], key);
   const total = profile.system.storageBytes;
   const free = profile.system.storageFreeBytes;
-  if (total.value !== null && free.value !== null && total.value > 0 && free.value > total.value) {
+  if (total.value !== null && free.value !== null && free.value > total.value) {
     throw new TypeError('Free storage cannot exceed total storage');
   }
   exactKeys(profile.aegis, ['version', 'activeModules', 'resourceBudget'], 'AEGIS runtime profile');
