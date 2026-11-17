@@ -62,3 +62,10 @@ A second slice adds owner-scoped learner progress:
 - Results continue to state `masteryVerified: false`. A passing score alone is not a durable mastery credential.
 - The learner projection is a pure contract, not yet an HTTP endpoint. A future endpoint must load trusted registered assessment versions server-side and must never accept an assessment definition or answer key supplied by the learner.
 - Still required: immutable assessment persistence, attempt-rate policy, append-only attempts, authenticated learner endpoints, assessment version revocation/supersession policy, and independent mastery verification.
+
+
+### Learning assessment CI correction — weighted-score expectation (17 Nov 2026)
+- The full test run exposed an incorrect test expectation, not a scoring defect: with weights 1, 1 and 2, answering only the second question correctly earns 25%, not 50%.
+- Corrected the fixture to test a genuine 50% case (the two one-point questions correct) and added a separate 25% assertion.
+- The failed run 44176407237 executed 815 tests: 813 passed, one failed, one skipped. D1/runtime steps were skipped because the Node.js step failed.
+- Corrected test commit: 415d06067c0695a4351be7dd272d72825c4890a6. Fresh CI is pending; no pass is claimed.
