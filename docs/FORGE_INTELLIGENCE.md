@@ -425,7 +425,7 @@ Ownership:
 - Sentinel remains the only authority for any consequential action. Detection results and parser output are untrusted data and cannot grant permissions or trigger remediation.
 - Security rules remain versioned knowledge with source/licence metadata; rule matches link to evidence and never become proof by themselves.
 
-First implementation candidate (design only): **Evidence Intake Contract v1**. Define immutable source identity (SHA-256, byte length, media/format hints, acquisition time/method, owner/case reference), parser-run identity (tool/version/config, limits, start/end, outcome), and normalized observation identity (source offsets/paths, observation type/value, provenance, confidence/limitations). Keep original bytes immutable and separate from derived outputs. Add explicit statuses for complete, partial, unsupported, rejected and failed analysis.
+The first implementation slice is now a **metadata-only Evidence Identity Contract v1**. It records immutable source identity (SHA-256, byte length, media type, safe display name, acquisition timestamp, owner and source kind/reference). Parser-run identity and normalized observations remain follow-on contracts; original bytes and storage references are deliberately outside this module.
 
 Acceptance gates before implementation:
 1. Inspect current migrations and data ownership to avoid a duplicate evidence ledger.
@@ -494,3 +494,23 @@ AEGIS requirements derived from this:
 Binwalk's inspected fuzzing manifest exists at `ReFirmLabs/binwalk@26713972e3f9f52dc37d4a421c4554b0bd9e82ef`, blob `3e5dd2965b8675e376dc0930ed66c8e4b12a6a60`; it declares an AFL dependency using a wildcard version. This establishes a fuzzing-related project surface, but not the coverage or quality of its fuzz targets. Inspect the actual harnesses and pin the fuzz toolchain before drawing conclusions. Fuzzing is not a substitute for AEGIS-specific bounds and isolation.
 
 This is a design lesson, not a claim that capa or Binwalk is vulnerability-free. No upstream test suite or fuzz campaign was run during this review.
+
+
+### Evidence Identity Contract v1 — first implementation slice
+
+Implemented on the feature branch:
+- `functions/lib/evidence-intake.mjs` exports `createEvidenceDescriptor` and `validateEvidenceDescriptor`.
+- `tests/evidence-intake.test.mjs` contains nine focused tests.
+- The descriptor carries schema version, server-derived owner identifier, internally generated UUIDv4, lowercase SHA-256, positive safe-integer byte length, media type, path-free display name, canonical UTC acquisition timestamp and typed source kind.
+- Only a repository-blob source may carry a canonical HTTPS reference. Other source kinds must have a null reference.
+- Unknown fields are rejected. File bytes, base64 content, local filesystem paths and storage locations are not accepted by the contract.
+- The descriptor and nested source object are frozen in memory. This is not a persistence guarantee; a future database design must enforce immutable identity and append-only custody events separately.
+- The focused test was first run before the module existed and failed with the expected module-not-found result; after the implementation, all 9 focused tests passed locally with Node.js 22.
+
+**Not implemented:** upload handling, object storage, D1 persistence, case/investigation records, parser runs, observations, extraction, UI or any scanner. The module is a metadata contract only. The full repository CI result for the implementation commit has not yet been surfaced; do not mark the feature CI-verified until that is confirmed.
+
+Security notes:
+- The caller must derive `ownerId` from the authenticated server-side principal. Never trust a client-supplied owner identifier.
+- A SHA-256 digest identifies the supplied bytes but does not establish that the content is benign, authentic or trustworthy.
+- A display name is metadata only and must never be used as a filesystem path or object-storage key.
+- The contract does not impose the eventual upload size limit; that must be set from verified storage/runtime constraints and tested before an upload route is added.
