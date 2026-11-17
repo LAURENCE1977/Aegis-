@@ -2485,7 +2485,7 @@
           read.type = 'button';
           read.textContent = 'Read pinned source';
           read.addEventListener('click', () => readForgeBlob(file));
-          const isCode = /\\.(?:js|jsx|mjs|cjs|ts|tsx)$/i.test(file.path) && file.size <= 32 * 1024;
+          const isCode = /\.(?:js|jsx|mjs|cjs|ts|tsx)$/i.test(file.path) && file.size <= 32 * 1024;
           if (isCode) {
             const label = document.createElement('label');
             const checkbox = document.createElement('input');
