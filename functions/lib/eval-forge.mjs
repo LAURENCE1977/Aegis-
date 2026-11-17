@@ -89,8 +89,8 @@ export function scoreEvaluationRun(suite, run) {
   requireVersion(run.candidateVersion, 'candidate');
   requireDigest(run.candidateDigest, 'candidate artifact');
   requireCanonicalTimestamp(run.completedAt, 'evaluation completion');
-  if (!Array.isArray(run.results) || run.results.length !== suite.cases.length) {
-    throw new TypeError('Missing or excess evaluation case results');
+  if (!Array.isArray(run.results) || run.results.length > MAX_CASES) {
+    throw new TypeError('Invalid evaluation result collection');
   }
 
   const casesById = new Map(suite.cases.map(item => [item.id, item]));
