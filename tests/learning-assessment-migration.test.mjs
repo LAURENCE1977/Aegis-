@@ -9,6 +9,9 @@ test('Learning Assessment migration binds immutable assessments to exact learnin
   assert.match(sql, /FOREIGN KEY\s*\(owner_id, path_id, path_version\)\s*REFERENCES learning_paths/i);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS learning_assessment_events/);
   assert.match(sql, /trg_learning_assessment_registered/);
+  assert.match(sql, /trg_learning_assessment_node_binding/);
+  assert.match(sql, /json_extract\(assessment_json, '\$\.id'\) = assessment_id/i);
+  assert.match(sql, /json_extract\(assessment_json, '\$\.pathVersion'\) = path_version/i);
   assert.match(sql, /trg_learning_assessments_no_update/);
   assert.match(sql, /trg_learning_assessments_no_delete/);
   assert.match(sql, /trg_learning_assessment_events_no_update/);
