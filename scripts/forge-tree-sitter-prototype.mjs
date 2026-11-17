@@ -184,6 +184,7 @@ export async function parseModuleImports(inputFiles) {
   const files = [];
   const imports = [];
   const symbols = [];
+  const calls = [];
   const trees = [];
 
   try {
@@ -194,7 +195,8 @@ export async function parseModuleImports(inputFiles) {
       trees.push(tree);
       files.push({ path: item.path, hasError: tree.rootNode.hasError });
       imports.push(...extract(tree.rootNode, item.path));
-      symbols.push(...extractSymbols(tree.rootNode, item.path));\n      calls.push(...extractCalls(tree.rootNode, item.path));
+      symbols.push(...extractSymbols(tree.rootNode, item.path));
+      calls.push(...extractCalls(tree.rootNode, item.path));
     }
   } finally {
     for (const tree of trees) tree.delete();
@@ -203,6 +205,10 @@ export async function parseModuleImports(inputFiles) {
 
   imports.sort((a, b) => a.path.localeCompare(b.path) ||
     a.specifier.localeCompare(b.specifier) || a.kind.localeCompare(b.kind));
+  calls.sort((a, b) => a.path.localeCompare(b.path) ||
+    a.location.start.line - b.location.start.line ||
+    a.location.start.column - b.location.start.column ||
+    a.caller.localeCompare(b.caller) || a.callee.localeCompare(b.callee));
 
   return {
     parser: 'tree-sitter',
@@ -210,6 +216,7 @@ export async function parseModuleImports(inputFiles) {
     files,
     imports,
     symbols,
+    calls,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
   };
 }
