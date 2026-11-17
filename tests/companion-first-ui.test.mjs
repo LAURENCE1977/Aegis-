@@ -121,3 +121,12 @@ test('companion profile selection is not persisted outside the authenticated own
   assert.match(html, /session only/i);
   assert.doesNotMatch(html, /localStorage\.(?:setItem|getItem)\([^)]*companion/i);
 });
+
+
+test('official companion is presented as Agent AEGIS — Your Personal Guardian', () => {
+  assert.match(html, /<title>Agent AEGIS · Your Personal Guardian<\\/title>/);
+  assert.match(html, /content="Agent AEGIS — Your Personal Guardian/);
+  assert.match(html, /YOUR PERSONAL GUARDIAN/);
+  assert.match(html, /aria-label="Agent AEGIS companion presentation"/);
+  assert.match(html, /Official Agent AEGIS/);
+});
