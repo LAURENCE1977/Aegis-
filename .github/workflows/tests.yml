@@ -265,3 +265,30 @@ jobs:
             echo "Expected owner/path/version uniqueness to reject duplicate Learning Path versions."
             exit 1
           fi
+
+      - name: Verify Learning Forge progress transitions and append-only learner history
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-progress-smoke.sql
+          initial_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
+          echo "$initial_events"
+          grep -q "1" <<< "$initial_events"
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_progress SET status = 'self_reported_complete', updated_at = '2026-11-17T12:02:00.000Z' WHERE owner_id = 'owner' AND path_id = 'javascript-foundations' AND path_version = '1.0.0' AND node_id = 'javascript-basics'"
+          completed_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status FROM learning_progress WHERE node_id = 'javascript-basics'")
+          echo "$completed_state"
+          grep -q "self_reported_complete" <<< "$completed_state"
+          progress_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
+          echo "$progress_events"
+          grep -q "2" <<< "$progress_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_progress WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress history to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_progress_events SET to_status = 'in_progress' WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_progress_events WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress events to reject deletion."
+            exit 1
+          fi
