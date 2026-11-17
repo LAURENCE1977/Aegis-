@@ -34,8 +34,10 @@ test('scores exact answers with weighted scoring and enforces the declared thres
   const passed = scoreLearningAttempt(assessment, { q1: 'b', q2: 'a', q3: 'c' });
   assert.equal(passed.scorePercent, 100);
   assert.equal(passed.passed, true);
-  const failed = scoreLearningAttempt(assessment, { q1: 'a', q2: 'a', q3: 'b' });
+  const failed = scoreLearningAttempt(assessment, { q1: 'b', q2: 'a', q3: 'b' });
   assert.equal(failed.scorePercent, 50);
+  const lowerScore = scoreLearningAttempt(assessment, { q1: 'a', q2: 'a', q3: 'b' });
+  assert.equal(lowerScore.scorePercent, 25);
   assert.equal(failed.passed, false);
   assert.equal(passed.masteryVerified, false);
 });
