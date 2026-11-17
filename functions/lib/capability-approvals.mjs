@@ -198,6 +198,26 @@ export async function loadApprovedApprovalById(db, id, {
   return mapApproval(row);
 }
 
+/**
+ * Loads an already-consumed approval for safe recovery of the same idempotent
+ * runtime authorisation request. Callers must revalidate every immutable
+ * binding and re-check the live Sentinel grant before retrying.
+ */
+export async function loadConsumedApprovalById(db, id, {
+  principalId, capabilityId,
+} = {}) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Approval database is required');
+  requiredId(id, 'request identifier');
+  requiredId(principalId, 'principal');
+  requiredId(capabilityId, 'capability identifier');
+  const row = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE id = ? AND principal_id = ? AND capability_id = ?
+      AND status = 'consumed' AND consumed_at IS NOT NULL
+  `).bind(id, principalId, capabilityId).first();
+  return mapApproval(row);
+}
+
 export async function consumeApproval(db, {
   id, principalId, capabilityId, capabilityVersion, actionId,
   resourceId, operationSummary, connectionId = null, inputDigest, now = Date.now(),
