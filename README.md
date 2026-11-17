@@ -149,6 +149,8 @@ See [Universal Device and 3D Companion Architecture](docs/AEGIS_UNIVERSAL_DEVICE
 See [AEGIS Capability Roadmap](docs/AEGIS_CAPABILITY_ROADMAP.md) for the build/adapt/connect/reject decisions, delivery gates, acceptance criteria, upstream selection scorecard and honest progress-tracking rules. The roadmap is a plan, not a claim that future capabilities are already implemented.
 
 
+
+
 ## Guardian Intelligence — learning, resources and security research
 
-The current feature branch adds pure validation contracts for Resource Intelligence records, acyclic Learning Graphs and evidence-backed Security Findings. These are source-level foundations only: no new persistence, API, UI, scanner or worker execution is enabled. See [docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md](docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md) and [the 17 November REA batch](docs/REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md). Dynamic security testing remains disabled until Sentinel-backed exact-scope authorisation and isolated-worker enforcement are implemented and tested.
+AEGIS now has pure validators for Resource Intelligence records, acyclic Learning Graphs and evidence-backed Security Findings. The first Resource Catalogue slice also has owner-scoped D1 persistence and authenticated, same-origin `GET/POST /api/guardian/resources`; records are server-identified, idempotent by source revision and created as drafts. Learning graph persistence, the owner-facing catalogue UI, security finding persistence and all scanning/execution remain future work. See [Guardian Intelligence contracts](docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md) and [the 17 November REA batch](docs/REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md). Dynamic security testing remains disabled until Sentinel-backed exact-scope authorisation and isolated-worker enforcement are implemented and tested.
