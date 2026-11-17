@@ -89,7 +89,19 @@ Verification:
 
 Still not implemented:
 - Production Forge API integration or user-facing architecture graph.
-- Symbol declarations/references, call graphs, type resolution or package-manager dependency resolution.
+- General symbol-reference resolution, arrow-function variable call ownership, type resolution or package-manager dependency resolution.
 - Browser visual/accessibility verification, Workers/Pages production WASM packaging, and measured bundle/cold-start/memory/parse-time benchmarks.
+
+### Local direct-call extraction — implementation added, CI verification pending
+
+The isolated prototype now additionally emits a deterministic `calls` collection for direct identifier calls whose callee is a function declaration in the same file. Each edge includes the caller, callee, file path and one-based call-site coordinates.
+
+Conservative exclusions:
+- Member calls such as `service.finish()`.
+- Unresolved identifiers and calls to functions not declared in that file.
+- Call sites without a named enclosing function declaration.
+- No cross-file, alias, dynamic dispatch, type-aware or general call-graph claims.
+
+The regression test first failed as intended on commit `a1eb0b0f953958a66a37acb49120f508f3aedc28` because `result.calls` was not present. The implementation was then added in commits `7541fa63ed86a30d77376047c893b252be7ea449` and `6dedbf130e86b3f8d59f77d23103883643102f96`. The latter corrects the output wiring and deterministic sorting. Full CI for the implementation commit has not yet been confirmed; do not treat this capability as verified until the workflow completes successfully.
 
 The prototype is experimental and is not wired into the production Forge analysis route. It remains read-only and must not be treated as a whole-repository audit.
