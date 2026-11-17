@@ -199,3 +199,17 @@ TDD evidence:
 - Push workflow run 44082589942 and matching PR workflow run 44082599328 both passed all 15 substantive workflow stages, including Node.js/Cloudflare tests, capability/runtime/Forge isolated D1 verification, durable run/Queue integration, licence gates, immutable source identity and Knowledge Library review lifecycle.
 
 This is source-level declaration matching, not proof of runtime binding or successful compilation. The parser remains isolated from production Forge routes.
+
+
+### Function-scoped `var` call resolution — corrected and verified
+
+A regression test now covers a function-valued `var` declared inside a nested block and called later from the enclosing function. JavaScript hoists the binding to the nearest function scope, so a block-only lookup would incorrectly leave the call unresolved.
+
+The first fixture used a literal escaped newline sequence and was corrected before accepting the test evidence. With real line breaks, the red run reproduced the intended failure: the call to `finish` was not resolved (run 44083360686). The resolver was then corrected so its scope walk includes supported function-scope nodes as well as lexical block/program scopes.
+
+Verification:
+- Push workflow 44083450125 passed all substantive stages.
+- Matching PR workflow 44083457668 passed.
+- The new regression asserts the call-site line and the actual `var` declaration line, ensuring the edge is tied to the declaration rather than just the identifier spelling.
+
+This remains a bounded approximation of JavaScript lexical binding. Complex destructuring, eval/with, hoisting interactions beyond the tested cases, TypeScript namespaces and other unsupported binding forms must remain unresolved rather than guessed.
