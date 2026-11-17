@@ -84,6 +84,37 @@ function extractSymbols(root, path) {
   return symbols;
 }
 
+function extractCalls(root, path) {
+  const declaredFunctions = new Set();
+  walk(root, node => {
+    if (node.type !== 'function_declaration' && node.type !== 'generator_function_declaration') return;
+    const name = node.childForFieldName('name');
+    if (name?.type === 'identifier') declaredFunctions.add(name.text);
+  });
+
+  const calls = [];
+  walk(root, node => {
+    if (node.type !== 'call_expression') return;
+    const callee = node.child(0);
+    if (callee?.type !== 'identifier' || !declaredFunctions.has(callee.text)) return;
+
+    let enclosing = node.parent;
+    while (enclosing && !['function_declaration', 'generator_function_declaration'].includes(enclosing.type)) {
+      enclosing = enclosing.parent;
+    }
+    const caller = enclosing?.childForFieldName('name');
+    if (!caller || caller.type !== 'identifier') return;
+
+    calls.push({
+      path,
+      caller: caller.text,
+      callee: callee.text,
+      location: locationOf(node),
+    });
+  });
+  return calls;
+}
+
 function extract(root, path) {
   const imports = [];
   walk(root, node => {
@@ -163,7 +194,7 @@ export async function parseModuleImports(inputFiles) {
       trees.push(tree);
       files.push({ path: item.path, hasError: tree.rootNode.hasError });
       imports.push(...extract(tree.rootNode, item.path));
-      symbols.push(...extractSymbols(tree.rootNode, item.path));
+      symbols.push(...extractSymbols(tree.rootNode, item.path));\n      calls.push(...extractCalls(tree.rootNode, item.path));
     }
   } finally {
     for (const tree of trees) tree.delete();
