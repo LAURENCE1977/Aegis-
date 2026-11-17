@@ -107,7 +107,7 @@ test('attempt persistence stores only an answer digest, never raw learner answer
   const stored = JSON.stringify(db.attempts[0]);
   assert.equal(stored.includes('"q1":"b"'), false);
   assert.equal(stored.includes('"q2":"a"'), false);
-  assert.match(db.attempts[0].attempt_digest, /^[a-f0-9]{64}$/);
+  assert.equal('attempt_digest' in db.attempts[0], false);
 });
 
 test('rejects unregistered versions, missing answers and extra answer fields', async () => {
