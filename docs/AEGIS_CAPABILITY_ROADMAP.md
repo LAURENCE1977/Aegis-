@@ -626,3 +626,15 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - The store-backed candidate builder currently returns insufficient evidence unless separate applied-task and independent human-review evidence sources are available. Those sources are not yet implemented; no mastery certification or capability grant is possible.
 - Regression proof: pre-fix workflow [44198022972](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198022972) reproduced both digest-tampering failures. Full workflow [44198403611](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198403611) passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`: **855 tests, 854 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
 - Next trust work: content-addressed applied-task artifacts with retention controls; authenticated reviewer identity and separation-of-duties; then multi-learner tenancy. Do not expose a mastery API/UI until those are real.
+
+### Agent AEGIS Companion — persistent profiles and immersive text mode (17 November 2026)
+
+- Added immutable owner-scoped Companion Profile revisions, canonical SHA-256 verification, active-profile preferences and append-only profile/selection events.
+- Added authenticated same-origin profile list/create/update/select APIs with optimistic concurrency and exact-version selection. Official Agent AEGIS remains reserved; custom profiles only alter presentation and bounded interaction preferences.
+- Added warmth, humour, directness, initiative, response-detail and visual-preset controls. Profile settings are versioned; a saved profile's verified server-side settings take precedence over client values.
+- Added a safe interaction-directive builder. It consumes only validated numeric/enum fields; free-text profile descriptions never enter model instructions. It explicitly preserves safety, privacy, truthfulness, permissions, memory scope, Sentinel and approval requirements.
+- Added AG-UI validation and session-only style fallback when profile storage is unavailable. Only the five bounded style fields are accepted; arbitrary prompt or authority fields are rejected.
+- Added full-screen responsive Companion Mode using the existing live chat nodes/history, close and Escape handling, focus restoration, reduced-motion support and idle/thinking/responding/error/disconnected presence feedback.
+- The avatar remains a stylised 2D placeholder. Voice and microphone capture remain disabled; no lifelike human or 3D runtime is claimed.
+- Production D1 has not been provisioned. Profile export, deletion/purge and retention controls, multi-user tenancy, full accessibility preference integration, voice and lifelike avatar runtime remain open gates.
+- Full workflow [44202766321](https://github.com/LAURENCE1977/Aegis-/actions/runs/44202766321) passed on code head `44b15b81c9b208e07c3315aba1fa3aac6cf5aa8c`: **885 tests, 884 passed, 0 failed, 1 skipped**, including isolated Companion Profile D1 migration and integrity smoke checks.
