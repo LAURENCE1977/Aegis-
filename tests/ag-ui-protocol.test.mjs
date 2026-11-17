@@ -72,7 +72,7 @@ test('AG-UI tool-call lifecycle preserves real invocation correlation and bounde
   assert.equal(start[1].delta, '{"filter":"active"}');
   assert.equal(result.toolCallId, 'call-123');
   assert.equal(result.messageId, 'run-123');
-  assert.equal(encodeAgUiSse([...start, result]).trim().split('\\n\\n').length, 4);
+  assert.equal(encodeAgUiSse([...start, result]).trim().split('\n\n').length, 4);
   assert.throws(() => createToolCallStartEvents({
     toolCallId: 'call-123', toolCallName: 'x'.repeat(65), argumentsText: '{}',
   }), /tool/i);
