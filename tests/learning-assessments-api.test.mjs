@@ -16,7 +16,7 @@ class EmptyAssessmentD1 {
       bind(...values) { this.values = values; return this; },
       async first() { return null; },
       async all() { return { results: [] }; },
-      async run() { return { meta: { changes: 0 }; },
+      async run() { return { meta: { changes: 0 } }; },
     };
   }
 }
