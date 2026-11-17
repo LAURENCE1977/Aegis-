@@ -11,7 +11,10 @@ import {
 const pathDefinition = {
   id: 'javascript-foundations', version: '1.0.0', title: 'JavaScript foundations',
   description: 'A short path', nodes: [{
-    id: 'javascript-basics', title: 'Basics', prerequisites: [], sources: [],
+    id: 'javascript-basics', title: 'Basics', outcomes: ['Understand values'],
+    prerequisites: [], difficulty: 'beginner',
+    sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript'],
+    contentLicenseStatus: 'link-only',
   }],
 };
 const assessment = {
