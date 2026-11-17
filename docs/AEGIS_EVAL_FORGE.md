@@ -44,14 +44,17 @@ Tests are in `tests/eval-forge.test.mjs` and `tests/eval-evidence.test.mjs`.
 - Evaluation datasets must be versioned, attributable and checked for contamination/leakage. Hold-out sets must not be used for tuning.
 - Candidate promotion remains a separate action requiring fresh Sentinel authorisation, human approval where policy requires it, a known-good rollback target and an auditable decision. No automatic promotion exists.
 
+## Verification
+
+Both push workflow `44152942585` and matching PR workflow `44152958048` passed on code head `c9dd7bd3a9886818d363eb79a67d370091c6eba9`. The Node.js and Cloudflare runtime integration test step passed, as did isolated capability/runtime/Forge D1 migrations, Queue integration and Guardian catalogue smoke checks. No test count is asserted here because the workflow summary available for this checkpoint reports step outcomes rather than the detailed TAP totals.
+
 ## Next implementation sequence
 
-1. Run focused and full Node.js/isolated D1 CI for the byte-verification addition.
-2. Add owner-scoped, immutable D1 suite versions and evaluation-run history with append-only events.
-3. Add authenticated, same-origin read/create APIs with strict bounds and optimistic concurrency where mutable drafts are involved.
-4. Add a read-only owner UI for suites, runs, case evidence digests, score breakdown and regression comparison.
-5. Add a separately isolated execution adapter for deterministic tests; no shell or network by default.
-6. Add a promotion review record that can only request human/Sentinel review, never promote by score alone.
+1. Add owner-scoped, immutable D1 suite versions and evaluation-run history with append-only events.
+2. Add authenticated, same-origin read/create APIs with strict bounds and optimistic concurrency where mutable drafts are involved.
+3. Add a read-only owner UI for suites, runs, case evidence digests, score breakdown and regression comparison.
+4. Add a separately isolated execution adapter for deterministic tests; no shell or network by default.
+5. Add a promotion review record that can only request human/Sentinel review, never promote by score alone.
 
 ## Explicitly not implemented
 
