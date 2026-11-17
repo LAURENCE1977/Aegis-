@@ -99,3 +99,21 @@ test('does not allow callers to supply an evidence identifier or unknown creatio
     source: valid.source,
   }));
 });
+
+
+test('rejects descriptors with non-plain object prototypes', () => {
+  const descriptor = Object.assign(Object.create({ inherited: true }), valid);
+  assert.throws(() => validateEvidenceDescriptor(descriptor));
+});
+
+test('rejects unexpected nested source fields during creation instead of silently discarding them', () => {
+  assert.throws(() => createEvidenceDescriptor({
+    ownerId: valid.ownerId,
+    sha256: valid.sha256,
+    byteLength: valid.byteLength,
+    mediaType: valid.mediaType,
+    displayName: valid.displayName,
+    acquiredAt: valid.acquiredAt,
+    source: { ...valid.source, localPath: '/private/file.bin' },
+  }));
+});
