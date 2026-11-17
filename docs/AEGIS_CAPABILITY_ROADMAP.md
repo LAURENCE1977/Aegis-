@@ -465,7 +465,7 @@ No project code, model, scanner, container or external service was installed, ru
 
 ### Eval Forge — deterministic evaluation and promotion evidence
 
-**Status:** First pure scoring contract implemented on draft PR #103; full CI verification pending. This is implementation progress, not a production evaluation service.
+**Status:** First pure scoring contract implemented and verified on draft PR #103. This is implementation progress, not a production evaluation service.
 
 - Added strict, versioned evaluation-suite contracts and bounded weighted cases.
 - Added deterministic run scoring bound to candidate version and SHA-256 artifact digest, with per-case evidence digests, bounded duration, required-case gates and stable result ordering.
