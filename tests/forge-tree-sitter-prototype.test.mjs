@@ -334,3 +334,17 @@ test('extracts explicit named re-export lineage without flattening it into a dir
   assert.equal(result.symbolEdges.some(edge =>
     edge.source === 'src/consumer.js' && edge.target === 'src/source.js'), false);
 });
+
+
+test('records namespace imports as module-level bindings without inventing symbol edges', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/toolkit.js', content: 'export const run = () => true;' },
+    { path: 'src/consumer.js', content: "import * as toolkit from './toolkit.js'; toolkit.run();" },
+  ]);
+
+  assert.deepEqual(result.namespaceBindings.map(({ path, specifier, local, kind }) =>
+    ({ path, specifier, local, kind })), [
+    { path: 'src/consumer.js', specifier: './toolkit.js', local: 'toolkit', kind: 'namespace' },
+  ]);
+  assert.equal(result.symbolEdges.some(edge => edge.source === 'src/consumer.js'), false);
+});
