@@ -77,6 +77,11 @@ class AttemptD1 {
           const [owner, assessmentId, version] = this.values;
           return db.assessments.get([owner, assessmentId, version].join('|')) ?? null;
         }
+        if (sql.includes('COUNT(*) AS total')) {
+          const [owner, assessmentId, version] = this.values;
+          return { total: db.attempts.filter(row => row.owner_id === owner &&
+            row.assessment_id === assessmentId && row.assessment_version === version).length };
+        }
         if (sql.includes('FROM learning_assessment_attempts')) {
           const [owner, id] = this.values;
           return db.attempts.find(row => row.owner_id === owner && row.id === id) ?? null;
