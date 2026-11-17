@@ -267,3 +267,35 @@ Do not add percentages until a gate has a defined set of measurable acceptance c
 ## 9. Upstream register
 
 See `docs/AEGIS_UPSTREAM_RESEARCH_2026-11-16.md` for repository identities, licence evidence, inspection limits and per-project reuse decisions. See `docs/AEGIS_UNIVERSAL_DEVICE_AND_3D_EXPERIENCE.md` for the detailed companion/device architecture and platform research.
+
+
+## 10. Adaptive System Guardian — proposed capability
+
+**Status:** Architecture accepted for planning; not implemented. This does not change the current delivery-gate completion status.
+
+The Adaptive System Guardian is a core AEGIS capability for permissioned understanding of the host device, evidence-led improvement recommendations, system posture awareness and resource-aware adaptation of AEGIS itself.
+
+### Delivery slices
+
+1. **Device profile contract:** versioned, minimal, revocable profile with source, timestamp, freshness, confidence and explicit supported/unavailable/not-permitted states.
+2. **Read-only PWA discovery:** browser-visible capabilities only; no claims of host-wide application/process/driver inspection.
+3. **AEGIS self-adaptation:** enforce user-defined CPU/memory/concurrency/cache/background budgets and adapt under battery, thermal, network and memory pressure.
+4. **Native endpoint adapter:** one desktop platform at a time, selected only after REA, signed packaging, least privilege and isolated read-only testing.
+5. **Recommendation engine:** rank evidence-linked findings by benefit, risk, confidence, resource/cost impact and reversibility.
+6. **Sentinel-governed actions:** exact versioned allowlisted actions; initially AEGIS-owned reversible settings only, with preconditions, approval, audit, verification and rollback.
+7. **Cross-platform expansion:** ChromeOS, iOS/iPadOS, Android, Windows, macOS, Linux and USB support only to the extent each platform exposes tested APIs.
+
+### Non-negotiable boundaries
+
+- No hidden monitoring, content inspection, keylogging, screenshots, microphone/camera activation or packet payload capture.
+- No unrestricted shell, root/administrator daemon or arbitrary model-generated scripts.
+- No automatic uninstall, third-party cleanup, software/driver installation, system setting change, firewall/DNS/VPN change, firmware/boot/encryption change or deletion of user data.
+- Sentinel remains the sole authority; observations and tool outputs never grant permission.
+- No persistent hardware fingerprinting; use a random, revocable device identifier.
+- Unknown or unsupported checks are not green; show blind spots and freshness.
+- Passive monitoring is opt-in, visible, low-frequency, pausable and budget-aware.
+- Documentation, research and prototypes do not count as implementation progress.
+
+### Exit criteria
+
+The first useful release must demonstrate read-only device profiling on a supported surface, AEGIS resource-budget adaptation, transparent permission/coverage states, privacy and retention controls, hostile-output handling, cancellation and regression tests. Automatic changes remain a later, separately gated capability.
