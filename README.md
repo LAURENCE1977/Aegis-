@@ -4,17 +4,22 @@
 
 AEGIS remains the name of the underlying open-source intelligence platform and architecture. **Agent AEGIS** is the product identity; **Your Personal Guardian** describes its purpose. The companion is designed to feel as natural and human-centred as possible while remaining transparent that it is artificial intelligence, respecting user autonomy, privacy and human relationships.
 
-AEGIS is an evolving project. The current repository is an early Cloudflare Pages prototype. Its larger autonomous assistant, voice, model router, durable knowledge store, managed integrations and full AEGIS Forge workshop are still being developed.
+AEGIS is an evolving, source-verified prototype with a growing set of tested foundations across chat, Project Spaces, Guardian Intelligence, Eval Forge, Learning Forge, governed runtime and the first Companion experience. It is not yet a production deployment: Cloudflare D1/Queue resources, encrypted runtime secrets, production migrations and external provider connections remain separately gated. Voice, lifelike avatar runtime, multi-user tenancy and the full autonomous assistant remain under development.
 
 ## Product identity and experience
 
 Agent AEGIS is intended to combine capable independent reasoning with a consistent, customisable, human-like companion presence. Its design references include the curiosity and learning of Data from *Star Trek*, the embodied personality of Rommie from *Andromeda*, and the protective pattern-recognition concept of the Machine from *Person of Interest*—without copying fictional claims or behaviours. The goal is natural conversation, social understanding, user-approved memory, expressive voice and avatar interaction, ingenuity and proportionate protection. It must not claim human consciousness, infer private mental states as facts, manipulate users or replace human relationships.
 
-The companion is a first-class presentation layer over one shared AEGIS intelligence core. Users should be able to choose the official Agent AEGIS identity or create and customise their own companion identity, with continuity across supported devices. This remains a roadmap direction unless a capability is explicitly listed as implemented below.
+The companion is a first-class presentation layer over one shared AEGIS intelligence core. Users should be able to choose the official Agent AEGIS identity or create and customise their own companion identity, with continuity across supported devices. The first companion slice is now implemented: owner-scoped versioned custom profiles, bounded interaction settings, an immersive text workspace and conversation-aware presence feedback. A lifelike human avatar, 3D rig, voice and multi-user identity are still roadmap work; see the companion status below.
 
 ## Current foundation
 
 - Mobile-friendly chat interface for iPhone, iPad and Chromebook browsers
+- Full-screen Companion Mode that reuses the live chat history and controls, with responsive layout, Escape/close handling and reduced-motion support
+- Owner-scoped custom Companion Profiles with immutable revisions, SHA-256 integrity, active-profile selection and append-only events (source implementation; production D1 not provisioned)
+- Bounded warmth, humour, directness, initiative, response-detail and visual-preset settings; verified persisted profiles shape chat tone through a strict style-only prompt directive
+- Session-only companion profiles and style preferences when the optional profile store is unavailable
+- Text-turn presence feedback (thinking/responding/error); no microphone capture, voice runtime or lifelike avatar is enabled
 - Cloudflare Pages Functions API
 - Cloudflare Workers AI binding for the current chat model
 - Optional Cloudflare KV binding for simple notes
@@ -30,6 +35,16 @@ The companion is a first-class presentation layer over one shared AEGIS intellig
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 - Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
+
+## Agent AEGIS Companion — current implementation
+
+Companion profiles are presentation preferences over one shared AEGIS intelligence, memory and Sentinel authority model. The official Agent AEGIS identity is reserved. Custom profiles cannot create permissions, tools, system prompts or privileged memory access.
+
+The profile API is authenticated and same-origin. D1 stores immutable profile revisions with SHA-256 digests, an active selection and append-only events. Profile settings influence chat only through bounded numeric/enum tone preferences; free-text descriptions are never inserted into model instructions. If account storage is unavailable, the interface uses session-only profiles and sends only the validated style fields with chat turns.
+
+Companion Mode is a full-screen text workspace that reuses the existing conversation. Its current avatar is stylised 2D artwork, not a lifelike human or 3D model. Voice and microphone capture remain disabled. Production D1 is not provisioned, and profile export/deletion/retention controls and multi-user tenancy remain open gates.
+
+See [docs/AEGIS_COMPANION.md](docs/AEGIS_COMPANION.md) for the data model, APIs, security boundaries, CI evidence and remaining production gates.
 
 ## Security setup
 
