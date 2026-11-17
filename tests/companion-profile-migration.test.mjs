@@ -16,4 +16,10 @@ test('Companion Profile migration stores immutable owner-scoped profile revision
   assert.match(sql, /trg_companion_profiles_no_delete/);
   assert.match(sql, /trg_companion_profile_events_no_update/);
   assert.match(sql, /trg_companion_profile_events_no_delete/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS companion_profile_purge_authorizations/);
+  assert.match(sql, /expires_at > strftime\('%Y-%m-%dT%H:%M:%fZ', 'now'\)/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS companion_profile_purge_events/);
+  assert.match(sql, /purged_profiles_count INTEGER NOT NULL CHECK/);
+  assert.match(sql, /trg_companion_profile_purge_events_no_update/);
+  assert.match(sql, /trg_companion_profile_purge_events_no_delete/);
 });
