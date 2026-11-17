@@ -561,3 +561,17 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Architecture: AEGIS control plane → Sentinel-authenticated private inference gateway → optional LitServe worker → pinned local model. AEGIS retains model routing, identity, memory, permissions, audit and decisions.
 - Requires worker isolation, no public unauthenticated endpoints, strict request/queue/resource limits, cancellation/backpressure, pinned dependencies, SBOM, model-weight licence review and workload-specific benchmarking.
 - No installation, model download, server launch or managed service activation. Compare against a minimal FastAPI worker before adoption.
+
+
+### Learning Forge — immutable assessment registry (17 November 2026)
+
+**Status:** Implementation committed to draft PR #103; CI verification pending.
+
+- Added `migrations/forge/0012_learning_assessments.sql` for owner-scoped immutable assessment versions tied by composite foreign key to an exact registered Learning Path version.
+- Registration emits one append-only event; database triggers reject assessment/event update and delete.
+- Added `functions/lib/learning-assessment-store.mjs` with canonical JSON SHA-256 identity, idempotent registration, conflict rejection and bounded owner-scoped listing.
+- Registration verifies that the exact path version exists and that the target node belongs to that version; it never silently resolves a moving "latest" path.
+- Added authenticated same-origin `GET/POST /api/learning/assessments`. POST returns metadata only; GET uses the explicit learner projection and omits both answer keys and pass thresholds.
+- Added store and migration contract tests. The first test commit preceded the implementation commit; CI has not yet confirmed the RED/GREEN sequence or the full suite.
+- This is a trusted assessment catalogue, not yet a learner attempt endpoint or verified mastery system. Attempt persistence, rate/cooldown policy, server-side answer submission, revocation/supersession, and independent mastery verification remain future work.
+- Passing an assessment does not grant permissions, tool access, agent autonomy, or any other capability.
