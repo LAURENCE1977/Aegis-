@@ -1726,6 +1726,12 @@
       companionModeState.textContent = message;
     }
 
+    function getActiveCompanionInteraction() {
+      const profile = companionProfiles.find(item => item.id === activeCompanionProfileId);
+      const defaults = { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' };
+      return { ...defaults, ...(profile?.interaction || {}) };
+    }
+
     function renderCompanionProfile(profile, persistent = companionProfilePersistenceAvailable) {
       companionTitle.textContent = profile.kind === 'official' ? 'Here with you.' : 'Meet ' + profile.displayName + '.';
       companionModeProfileTitle.textContent = profile.displayName;
@@ -3764,6 +3770,7 @@
             tools: [],
             context: [],
             projectId: chatProjectSelect.value || undefined,
+            companionInteraction: getActiveCompanionInteraction(),
           })
         });
         if (res.status === 401) {
