@@ -461,3 +461,17 @@ Architecture decisions:
 - Supabase remains optional; no migration from current D1/SQLite Guardian persistence without a measured requirement.
 
 No project code, model, scanner, container or external service was installed, run, connected or deployed. No model training, SQL injection scan, account connection or user-data upload occurred.
+
+
+### Eval Forge — deterministic evaluation and promotion evidence
+
+**Status:** First pure scoring contract implemented on draft PR #103; full CI verification pending. This is implementation progress, not a production evaluation service.
+
+- Added strict, versioned evaluation-suite contracts and bounded weighted cases.
+- Added deterministic run scoring bound to candidate version and SHA-256 artifact digest, with per-case evidence digests, bounded duration, required-case gates and stable result ordering.
+- Required cases must pass regardless of aggregate score; skipped cases contribute no score.
+- No raw prompts, model responses, file contents or user data are stored in the scoring result.
+- The scorer does not execute tests, verify evidence bytes, authenticate runners or prove candidate safety. A future runner must produce a trusted isolated execution receipt.
+- Evaluation score cannot grant permissions or promote a candidate. Human review, fresh Sentinel authorisation, rollback target and append-only audit remain separate requirements.
+
+See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery sequence.
