@@ -17,8 +17,8 @@ test('resolves namespace member references to directly exported declarations', a
 
   assert.deepEqual(result.namespaceMemberEdges.map(({ source, target, namespace, imported, local, usage }) =>
     ({ source, target, namespace, imported, local, usage })), [
-    { source: 'src/consumer.js', target: 'src/toolkit.js', namespace: 'toolkit', imported: 'Config', local: 'toolkit', usage: 'member' },
     { source: 'src/consumer.js', target: 'src/toolkit.js', namespace: 'toolkit', imported: 'run', local: 'toolkit', usage: 'call' },
+    { source: 'src/consumer.js', target: 'src/toolkit.js', namespace: 'toolkit', imported: 'Config', local: 'toolkit', usage: 'member' },
   ]);
   assert.ok(result.namespaceMemberEdges.every(edge =>
     edge.location.start.line > 0 && edge.targetLocation.start.line > 0));
