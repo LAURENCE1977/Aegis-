@@ -111,20 +111,72 @@ function functionOwnerName(callNode) {
   return null;
 }
 
+const LEXICAL_SCOPE_TYPES = new Set([
+  'program',
+  'statement_block',
+  'switch_body',
+  'catch_clause',
+  'for_statement',
+  'for_in_statement',
+]);
+
+const FUNCTION_SCOPE_TYPES = new Set([
+  'program',
+  'function_declaration',
+  'generator_function_declaration',
+  'function_expression',
+  'generator_function',
+  'arrow_function',
+  'method_definition',
+]);
+
+function nearestScope(node, allowedTypes) {
+  let current = node.parent;
+  while (current) {
+    if (allowedTypes.has(current.type)) return current;
+    current = current.parent;
+  }
+  return null;
+}
+
+function declarationScope(node) {
+  let current = node.parent;
+  while (current && current.type !== 'lexical_declaration' && current.type !== 'variable_declaration') {
+    current = current.parent;
+  }
+  const isVar = current?.children.some(child => child.text === 'var');
+  return nearestScope(node, isVar ? FUNCTION_SCOPE_TYPES : LEXICAL_SCOPE_TYPES);
+}
+
+function lexicalScopeChain(node) {
+  const scopes = [];
+  let current = node.parent;
+  while (current) {
+    if (LEXICAL_SCOPE_TYPES.has(current.type)) scopes.push(current);
+    current = current.parent;
+  }
+  return scopes;
+}
+
 function extractCalls(root, path) {
-  const declaredFunctions = new Set();
+  const declarations = [];
   walk(root, node => {
     if (node.type === 'function_declaration' || node.type === 'generator_function_declaration') {
       const name = node.childForFieldName('name');
-      if (name?.type === 'identifier') declaredFunctions.add(name.text);
+      const scope = nearestScope(node, LEXICAL_SCOPE_TYPES);
+      if (name?.type === 'identifier' && scope) {
+        declarations.push({ name: name.text, scope, node, kind: 'function' });
+      }
       return;
     }
+
     if (node.type === 'variable_declarator') {
       const value = node.childForFieldName('value');
       const name = node.childForFieldName('name');
       if (name?.type === 'identifier' &&
           ['arrow_function', 'function_expression', 'generator_function'].includes(value?.type)) {
-        declaredFunctions.add(name.text);
+        const scope = declarationScope(node);
+        if (scope) declarations.push({ name: name.text, scope, node, kind: 'function-variable' });
       }
     }
   });
@@ -133,7 +185,20 @@ function extractCalls(root, path) {
   walk(root, node => {
     if (node.type !== 'call_expression') return;
     const callee = node.child(0);
-    if (callee?.type !== 'identifier' || !declaredFunctions.has(callee.text)) return;
+    if (callee?.type !== 'identifier') return;
+
+    const scopes = lexicalScopeChain(node);
+    let target = null;
+    for (const scope of scopes) {
+      const matches = declarations.filter(declaration =>
+        declaration.scope === scope && declaration.name === callee.text);
+      if (matches.length > 1) return;
+      if (matches.length === 1) {
+        target = matches[0];
+        break;
+      }
+    }
+    if (!target) return;
 
     const caller = functionOwnerName(node);
     if (!caller) return;
@@ -143,6 +208,8 @@ function extractCalls(root, path) {
       caller,
       callee: callee.text,
       location: locationOf(node),
+      calleeLocation: locationOf(target.node),
+      calleeKind: target.kind,
     });
   });
   return calls;
