@@ -219,3 +219,47 @@ test('does not treat a nested same-name declaration as the target of an outer-sc
     { caller: 'nested', callee: 'finish', line: 6, declarationLine: 5 },
   ]);
 });
+
+
+test('resolves relative module imports only against files present in the supplied source bundle', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/main.js', content: [
+      "import { run } from './lib/worker';",
+      "export { helper } from './lib/helper.js';",
+      "import external from 'external-package';",
+    ].join('\\n') },
+    { path: 'src/lib/worker.ts', content: 'export function run() {}' },
+    { path: 'src/lib/helper.js', content: 'export const helper = true;' },
+  ]);
+  assert.deepEqual(result.moduleEdges.map(({ source, target, kind, specifier }) =>
+    ({ source, target, kind, specifier })), [
+    { source: 'src/main.js', target: 'src/lib/helper.js', kind: 're-export', specifier: './lib/helper.js' },
+    { source: 'src/main.js', target: 'src/lib/worker.ts', kind: 'static', specifier: './lib/worker' },
+  ]);
+});
+
+test('does not guess when a relative module specifier matches multiple supplied files', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/main.js', content: "import './worker';" },
+    { path: 'src/worker.js', content: 'export const a = 1;' },
+    { path: 'src/worker.ts', content: 'export const b = 2;' },
+  ]);
+  assert.deepEqual(result.moduleEdges, []);
+  assert.deepEqual(result.unresolvedImports.map(({ path, specifier, reason }) =>
+    ({ path, specifier, reason })), [
+    { path: 'src/main.js', specifier: './worker', reason: 'ambiguous-local-target' },
+  ]);
+});
+
+test('classifies package imports and missing relative targets without claiming a local edge', async () => {
+  const result = await parseModuleImports([{
+    path: 'src/main.js',
+    content: "import React from 'react'; import './missing.js'; import '../outside.js';",
+  }]);
+  assert.deepEqual(result.moduleEdges, []);
+  assert.deepEqual(result.unresolvedImports.map(({ specifier, reason }) => ({ specifier, reason })), [
+    { specifier: '../outside.js', reason: 'outside-source-bundle' },
+    { specifier: 'react', reason: 'external-package' },
+    { specifier: './missing.js', reason: 'missing-local-target' },
+  ]);
+});
