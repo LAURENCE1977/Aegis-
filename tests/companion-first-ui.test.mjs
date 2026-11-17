@@ -138,3 +138,22 @@ test('companion profiles load and persist through the authenticated owner-scoped
   assert.match(html, /session only/i);
   assert.match(html, /persistent profile storage is unavailable/i);
 });
+
+test('companion mode provides a full-screen conversation workspace using the existing live chat controls', () => {
+  for (const id of ['openCompanionMode', 'companionModeOverlay', 'closeCompanionMode', 'companionModeChatSlot']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /moveChatToCompanionMode/);
+  assert.match(html, /restoreChatFromCompanionMode/);
+  assert.match(html, /companionModeOverlay\.hidden = panel !== 'companion'/);
+  assert.match(html, /companion-mode-active/);
+  assert.match(html, /event\.key === 'Escape'/);
+  assert.match(html, /VOICE NOT CONNECTED/);
+});
+
+test('full-screen companion mode remains responsive and honours reduced motion', () => {
+  assert.match(html, /\.companion-mode-overlay[\s\S]*?position:\s*fixed/);
+  assert.match(html, /\.companion-mode-layout[\s\S]*?grid-template-columns/);
+  assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?\.companion-mode-layout/);
+  assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+});
