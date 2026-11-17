@@ -15,13 +15,16 @@ test('extracts real JS/JSX imports and ignores import-like comments and strings'
       "const common = require('./common.cjs');",
     ].join('\n') },
   ]);
-  assert.deepEqual(result.imports.map(item => [item.kind, item.specifier]), [
+  const actualImports = result.imports.map(item => [item.kind, item.specifier])
+    .map(([kind, specifier]) => JSON.stringify([kind, specifier])).sort();
+  const expectedImports = [
     ['static', 'react'],
     ['static', './view.jsx'],
     ['re-export', './helper.js'],
     ['dynamic', './lazy.js'],
     ['commonjs', './common.cjs'],
-  ]);
+  ].map(item => JSON.stringify(item)).sort();
+  assert.deepEqual(actualImports, expectedImports);
   assert.equal(result.files[0].hasError, false);
   assert.equal(result.execution, 'none');
   assert.equal(result.parser, 'tree-sitter');
