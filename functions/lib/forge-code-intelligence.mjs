@@ -5,7 +5,7 @@ const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 
 function validatePath(value) {
   if (typeof value !== 'string' || !value || value.length > 240 ||
-      value.startsWith('/') || value.includes('\\\\') ||
+      value.startsWith('/') || value.includes('\\') ||
       value.split('/').some(part => !part || part === '.' || part === '..')) {
     throw new TypeError('Invalid source file path');
   }
