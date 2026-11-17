@@ -99,7 +99,8 @@ No production route or automatic scan is added until all applicable gates pass:
 
 ## Current status
 
-- Multi-hop named re-export adapter: full workflow `44095169702` succeeded.\n- Architecture graph, knowledge chunking/retrieval/compiler and static mobile-report normalizer: Node.js/Cloudflare runtime tests and all isolated capability, runtime and Forge D1 checks passed in full workflow `44100779738` (completed/success).
+- Multi-hop named re-export adapter: full workflow `44095169702` succeeded.
+- Architecture graph, knowledge chunking/retrieval/compiler and static mobile-report normalizer: Node.js/Cloudflare runtime tests and all isolated capability, runtime and Forge D1 checks passed in full workflow `44100779738` (completed/success).
 - Architecture graph serializer and tests: Node.js/Cloudflare runtime test stage and all isolated D1 checks passed in workflow `44099632898` (completed/success). It remains isolated from production routes/UI.
 - AG-UI: live text streaming and bounded terminal replay are implemented; full event-family conformance, persisted event semantics and TOOL_CALL_* visibility remain future work.
 - RAGFlow: native foundations now include Markdown chunking, lexical BM25 retrieval and evidence-bound compilation; upload/extraction/storage integration and semantic retrieval remain future work. No heavyweight dependency installed.
