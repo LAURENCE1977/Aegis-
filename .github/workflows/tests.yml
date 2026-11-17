@@ -210,3 +210,30 @@ jobs:
             echo "Expected owner/suite/version uniqueness to reject duplicate suite versions."
             exit 1
           fi
+
+      - name: Verify Eval Forge immutable run history and evidence-integrity marker
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-eval-run-smoke.sql
+          run_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM eval_run_events WHERE run_id = 'run-smoke'")
+          echo "$run_events"
+          grep -q "1" <<< "$run_events"
+          run_evidence=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT evidence_verified || ':' || status FROM eval_runs WHERE run_id = 'run-smoke'")
+          echo "$run_evidence"
+          grep -q "1:passed" <<< "$run_evidence"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_runs SET score_percent = 0 WHERE run_id = 'run-smoke'"; then
+            echo "Expected persisted evaluation results to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_runs WHERE run_id = 'run-smoke'"; then
+            echo "Expected persisted evaluation results to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_run_events SET event_type = 'tampered' WHERE run_id = 'run-smoke'"; then
+            echo "Expected evaluation run events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_run_events WHERE run_id = 'run-smoke'"; then
+            echo "Expected evaluation run events to reject deletion."
+            exit 1
+          fi
