@@ -309,7 +309,7 @@ test('resolves function-valued var declarations through their enclosing function
       '  }',
       '  finish();',
       '}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee, location, calleeLocation }) => ({
     caller, callee, line: location.start.line, declarationLine: calleeLocation.start.line,
