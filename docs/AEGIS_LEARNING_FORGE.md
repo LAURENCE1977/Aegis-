@@ -20,11 +20,11 @@ A learning path is a versioned graph:
 - Authenticated same-origin `POST /api/learning/paths` registers a path; authenticated `GET /api/learning/paths` lists owner-scoped paths with bounded page size.
 - Owner identity is server-derived. Caller-supplied owner fields and unknown graph/node fields are rejected.
 
-## Not yet implemented
+## Scope boundary
 
-This slice is a catalogue and graph registry, not a complete adaptive tutor or mastery engine. It does not yet persist node progress, practice attempts, mastery evidence, spaced-repetition schedules, learning recommendations or adaptive sequencing. It does not ingest or copy course content, scrape source sites, assess user skill automatically or send learning data to external providers.
+The Learning Forge now includes owner-scoped progress, server-scored assessment attempts, explainable next actions, a non-certifying mastery-evidence candidate policy and local spaced-review suggestions (see the implementation slices below). It is still not a complete adaptive tutor or verified mastery system: authoritative evidence provenance, independent reviewer identity, learner tenancy, learner UI, persistent recommendations/schedules and a supervised tutor workflow remain outstanding.
 
-The next slice should add owner-scoped progress events, prerequisite-gated transitions, explicit learner corrections and evidence-backed mastery without turning time-on-task or completion clicks into proof of mastery.
+It does not ingest or copy course content, scrape source sites, infer skill from time-on-task, or send learning data to external providers. Self-reported completion, assessment passes and scheduler suggestions remain distinct from verified mastery.
 
 
 ## Learner progress and prerequisite gates
@@ -36,7 +36,7 @@ A second slice adds owner-scoped learner progress:
 - `functions/lib/learning-progress.mjs` enforces optimistic concurrency, allowed transitions, exact path/node identity and prerequisite completion before a learner can start or self-report completion of a downstream node.
 - D1 triggers independently enforce the prerequisite rule on insert and update, preventing direct database writes from bypassing the graph gate.
 - Authenticated `GET/PATCH /api/learning/paths/:id/progress` lists and records progress with same-origin write protection and bounded request bodies.
-- No assessment engine, mastery certification, spaced-repetition scheduler or automatic skill inference is enabled.
+- Assessment attempts, local review suggestions and a non-certifying mastery candidate policy are implemented in later slices; none certifies mastery or enables automatic skill inference.
 
 
 ## Deterministic assessment contract — first slice (17 November 2026)
@@ -141,13 +141,13 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 
 ## Adaptive spaced review — local schedule suggestions (17 November 2026)
 
-**Status:** Pure deterministic review scheduler added; full CI passed on code commit `8cd71ef048574c5eda7868f8e8b065ff9e161fd3` (workflow `44188619578`). No notification or reminder service is connected.
+**Status:** Pure deterministic review scheduler implemented and full CI passed on code commit `3ee155670cce21e1504a1a6ba45ff36305633061` (workflow `44189175803`). No notification or reminder service is connected.
 
 - Added `functions/lib/learning-spaced-repetition.mjs` and six focused tests.
 - Uses the latest attempt per UTC day for each node, so multiple attempts on one day cannot inflate the review streak.
 - Failed checks reset the successful-review sequence and suggest a one-day revisit. Successful review days expand the interval through 1, 3, 7, 14 and 30 days, capped at 30.
-- Schedules are bound to the exact immutable learning-path version and node. Attempts from other path versions are ignored; malformed or duplicate attempts are rejected.
+- Schedules are bound to the exact immutable learning-path version and node. Attempts from other path versions are ignored; malformed, duplicate and future-dated attempts are rejected.
 - Output includes the due date, interval, overdue state and explanation. It explicitly returns `masteryVerified: false` and `notificationScheduled: false`.
 - This is a suggestion engine only: it does not write progress, persist schedules, send notifications or grant mastery. Any future reminder delivery must be user-controlled and separately consented.
-- Full workflow `44188619578` passed: **857 tests, 856 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
-- The same run verifies that a human review must occur strictly after every evidence item it approves; premature reviews remain insufficient evidence.
+- Full workflow `44189175803` passed: **850 tests, 849 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+- The preceding full run `44188619578` also verified that a human review must occur strictly after every evidence item it approves; premature reviews remain insufficient evidence.
