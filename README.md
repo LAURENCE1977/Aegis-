@@ -163,3 +163,8 @@ Guardian Resources now have an owner-scoped review transition API. Records start
 ## UI ecosystem research
 
 AEGIS maintains a researched, framework-neutral UI direction: AEGIS-owned design tokens, semantic primitives, accessibility and motion contracts, with optional React and Vue adapters. The current research intake covers shadcn/ui, Magic UI, Aceternity UI, HyperUI, Material UI, React, Vue, Tailwind CSS and the Awesome React/Vue/Frontend/Tailwind discovery lists. These are research candidates, not blanket dependencies or blanket code-reuse approvals. See [AEGIS UI ecosystem research](docs/AEGIS_UI_ECOSYSTEM_RESEARCH_2026-11-17.md).
+
+
+## Workspace, knowledge and coding-agent research
+
+The 17 November 2026 ecosystem review covers ToolJet, Mattermost, Outline, Plausible, Continue, Roo Code, SWE-agent, Plandex, GPT Pilot, Tabby and Goose. AEGIS will own its Workbench, Knowledge Forge, collaboration/task model, privacy-preserving observability and governed coding-agent workforce; upstream projects remain research references or optional adapters. GPT Pilot is excluded from execution/adoption due to its disclosed supply-chain credential-stealing incident and discontinued maintenance. Licence and maintenance status vary by project; see [the full research and security assessment](docs/AEGIS_WORKSPACE_KNOWLEDGE_CODING_AGENTS_2026-11-17.md).
