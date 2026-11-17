@@ -44,7 +44,7 @@ function validateLearningPath(path) {
   }
   validateLearningGraph(path.nodes);
 }
-function mapPathRow(row) {
+async function mapPathRow(row) {
   if (!row || typeof row.owner_id !== 'string' || typeof row.path_id !== 'string' ||
       typeof row.version !== 'string' || typeof row.graph_digest !== 'string' ||
       typeof row.graph_json !== 'string' || typeof row.created_at !== 'string') {
@@ -54,6 +54,10 @@ function mapPathRow(row) {
   try { path = JSON.parse(row.graph_json); }
   catch { throw new TypeError('Stored Learning Path JSON is corrupt'); }
   validateLearningPath(path);
+  if (!/^[a-f0-9]{64}$/.test(row.graph_digest) ||
+      await sha256Hex(canonicalJson(path)) !== row.graph_digest) {
+    throw new TypeError('Stored Learning Path digest does not match its content');
+  }
   if (path.id !== row.path_id || path.version !== row.version) {
     throw new TypeError('Stored Learning Path identity does not match its record');
   }
@@ -89,7 +93,7 @@ export async function registerLearningPath(db, ownerId, path, now = Date.now()) 
     LIMIT 1
   `).bind(ownerId, path.id, path.version).first();
   if (!row) throw new Error('Learning Path could not be persisted');
-  const stored = mapPathRow(row);
+  const stored = await mapPathRow(row);
   if (stored.digest !== digest) throw new LearningPathConflictError();
   return { ...stored, created: row.id === id };
 }
@@ -106,5 +110,5 @@ export async function listLearningPaths(db, ownerId, limit = 50) {
     ORDER BY created_at DESC, path_id ASC, version DESC
     LIMIT ?
   `).bind(ownerId, limit).all();
-  return (result?.results ?? []).map(mapPathRow);
+  return Promise.all((result?.results ?? []).map(mapPathRow));
 }
