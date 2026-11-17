@@ -415,6 +415,20 @@
     .companion-mode-presence { width: 100%; max-width: 560px; min-height: clamp(300px, 54vh, 570px); flex: 0 0 auto; }
     .companion-mode-presence .companion-orbit { width: min(90%, 440px); }
     .companion-mode-presence .companion-avatar { transform: scale(1.55); }
+    @keyframes companion-presence-pulse {
+      0%, 100% { opacity: .68; transform: scale(.94); }
+      50% { opacity: 1; transform: scale(1.12); }
+    }
+    .companion-mode-presence[data-presence="thinking"] .avatar-light,
+    .companion-stage[data-presence="thinking"] .avatar-light,
+    .companion-mode-presence[data-presence="responding"] .avatar-light,
+    .companion-stage[data-presence="responding"] .avatar-light {
+      animation: companion-presence-pulse 1.8s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .companion-mode-presence .avatar-light,
+      .companion-stage .avatar-light { animation: none !important; }
+    }
     .companion-mode-profile-copy { width: min(100%, 440px); text-align: center; }
     .companion-mode-profile-copy h3 { margin: 0 0 7px; font-size: 1.35rem; letter-spacing: -.035em; }
     .companion-mode-profile-copy p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
@@ -1668,6 +1682,7 @@
     const companionModeChatSlot = document.getElementById('companionModeChatSlot');
     const companionModeProfileTitle = document.getElementById('companionModeProfileTitle');
     const companionModeProfileDescription = document.getElementById('companionModeProfileDescription');
+    const companionModeState = document.getElementById('companionModeState');
     const companionStage = document.getElementById('companionStage');
     const companionModeVisual = document.getElementById('companionModeVisual');
     const companionWarmth = document.getElementById('companionWarmth');
@@ -1701,6 +1716,14 @@
         companionProfileSelect.append(option);
       });
       companionProfileSelect.value = activeCompanionProfileId;
+    }
+
+    function setCompanionModePresence(state, message) {
+      const allowed = ['idle', 'thinking', 'responding', 'error', 'disconnected'];
+      const safeState = allowed.includes(state) ? state : 'idle';
+      companionStage.dataset.presence = safeState;
+      companionModeVisual.dataset.presence = safeState;
+      companionModeState.textContent = message;
     }
 
     function renderCompanionProfile(profile, persistent = companionProfilePersistenceAvailable) {
@@ -1939,6 +1962,7 @@
     openCompanionMode.addEventListener('click', () => {
       moveChatToCompanionMode();
       showPanel('companion');
+      if (!busy) setCompanionModePresence('idle', 'Text companion ready. Microphone capture and spoken responses are not connected.');
       userInput.focus();
     });
     closeCompanionMode.addEventListener('click', () => {
@@ -3710,10 +3734,12 @@
       addMessage(text, 'user');
       userInput.value = '';
       status.textContent = 'Thinking…';
+      setCompanionModePresence('thinking', 'Thinking through your message…');
 
       try {
         if (await handleCommand(text)) {
           status.textContent = 'Ready';
+          setCompanionModePresence('idle', 'Ready when you are.');
           return;
         }
 
@@ -3741,6 +3767,7 @@
           })
         });
         if (res.status === 401) {
+          setCompanionModePresence('disconnected', 'Your AEGIS session has ended. Sign in again to continue.');
           showLogin('Your session has expired. Sign in again.');
           return;
         }
@@ -3755,6 +3782,7 @@
         }
         const assistantMessage = addMessage('', 'assistant');
         const assistantText = assistantMessage.lastChild;
+        setCompanionModePresence('responding', 'Putting a reply together…');
         const reply = await readAgUiReply(res, delta => {
           assistantText.textContent += delta;
           chatBox.scrollTop = chatBox.scrollHeight;
@@ -3762,9 +3790,11 @@
         history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
         saveHistory();
         status.textContent = 'Ready';
+        setCompanionModePresence('idle', 'Here when you need me.');
       } catch (err) {
         addMessage('Sorry, something went wrong: ' + err.message, 'assistant');
         status.textContent = 'Error';
+        setCompanionModePresence('error', 'The last message could not be completed. You can try again.');
       } finally {
         busy = false;
         sendBtn.disabled = false;
