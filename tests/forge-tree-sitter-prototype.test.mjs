@@ -133,7 +133,7 @@ test('attributes direct calls inside arrow-function variables to their local sym
       '  finish();',
       '};',
       'function finish() {}',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee }) => ({ caller, callee })), [
     { caller: 'start', callee: 'finish' },
