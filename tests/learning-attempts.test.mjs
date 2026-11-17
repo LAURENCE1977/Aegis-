@@ -1,0 +1,142 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { registerLearningAssessment } from '../functions/lib/learning-assessment-store.mjs';
+import {
+  submitLearningAttempt,
+  listLearningAttempts,
+} from '../functions/lib/learning-attempts.mjs';
+
+const pathDefinition = {
+  id: 'javascript-foundations', version: '1.0.0', title: 'JavaScript foundations',
+  description: 'A short path', nodes: [{
+    id: 'javascript-basics', title: 'Basics', prerequisites: [], sources: [],
+  }],
+};
+const assessment = {
+  id: 'javascript-basics-check', version: '1.0.0', pathId: pathDefinition.id,
+  pathVersion: pathDefinition.version, nodeId: 'javascript-basics',
+  title: 'Basics check', passPercent: 80,
+  questions: [
+    { id: 'q1', prompt: 'Which keyword declares a block-scoped variable?',
+      options: ['var', 'let', 'goto', 'define'], points: 2, correctOption: 'b' },
+    { id: 'q2', prompt: 'Which value is boolean true?',
+      options: ['0', 'false', 'true', 'null'], points: 1, correctOption: 'c' },
+  ],
+};
+
+class AttemptD1 {
+  constructor() { this.paths = new Map(); this.assessments = new Map(); this.attempts = []; }
+  prepare(sql) {
+    const db = this;
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        if (sql.includes('INSERT INTO learning_assessment_attempts')) {
+          const [id, owner, assessmentId, version, pathId, pathVersion, nodeId,
+            assessmentDigest, attemptDigest, resultJson, occurredAt] = this.values;
+          const recent = db.attempts.filter(row => row.owner_id === owner &&
+            row.assessment_id === assessmentId && row.assessment_version === version);
+          if (recent.some(row => Date.parse(row.occurred_at) > Date.parse(occurredAt) - 30000) ||
+              recent.filter(row => Date.parse(row.occurred_at) > Date.parse(occurredAt) - 900000).length >= 5) {
+            throw new Error('Learning Assessment attempt rate limit exceeded');
+          }
+          db.attempts.push({ id, owner_id: owner, assessment_id: assessmentId,
+            assessment_version: version, path_id: pathId, path_version: pathVersion,
+            node_id: nodeId, assessment_digest: assessmentDigest,
+            attempt_digest: attemptDigest, result_json: resultJson, occurred_at: occurredAt });
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 0 } };
+      },
+      async first() {
+        if (sql.includes('FROM learning_assessments')) {
+          const [owner, assessmentId, version] = this.values;
+          return db.assessments.get([owner, assessmentId, version].join('|')) ?? null;
+        }
+        if (sql.includes('FROM learning_assessment_attempts')) {
+          const [owner, id] = this.values;
+          return db.attempts.find(row => row.owner_id === owner && row.id === id) ?? null;
+        }
+        return null;
+      },
+      async all() {
+        const [owner, assessmentId, version, limit] = this.values;
+        return { results: db.attempts.filter(row => row.owner_id === owner &&
+          row.assessment_id === assessmentId && row.assessment_version === version)
+          .sort((a,b) => b.occurred_at.localeCompare(a.occurred_at)).slice(0,limit) };
+      },
+    };
+  }
+}
+
+async function setup() {
+  const db = new AttemptD1();
+  db.paths.set(['owner', pathDefinition.id, pathDefinition.version].join('|'), {
+    owner_id: 'owner', path_id: pathDefinition.id, version: pathDefinition.version,
+    graph_json: JSON.stringify(pathDefinition),
+  });
+  await registerLearningAssessment(db, 'owner', assessment);
+  return db;
+}
+
+test('submits a server-scored attempt against an immutable registered assessment', async () => {
+  const db = await setup();
+  const result = await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, Date.parse('2026-11-17T12:00:00.000Z'));
+  assert.equal(result.scorePercent, 100);
+  assert.equal(result.passed, true);
+  assert.equal(result.masteryVerified, false);
+  assert.match(result.attemptId, /^learning-attempt-/);
+  assert.equal(db.attempts.length, 1);
+});
+
+test('attempt persistence stores only an answer digest, never raw learner answers', async () => {
+  const db = await setup();
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'a' }, Date.parse('2026-11-17T12:00:00.000Z'));
+  const stored = JSON.stringify(db.attempts[0]);
+  assert.equal(stored.includes('"q1":"b"'), false);
+  assert.equal(stored.includes('"q2":"a"'), false);
+  assert.match(db.attempts[0].attempt_digest, /^[a-f0-9]{64}$/);
+});
+
+test('rejects unregistered versions, missing answers and extra answer fields', async () => {
+  const db = await setup();
+  await assert.rejects(submitLearningAttempt(db, 'owner', assessment.id, '2.0.0',
+    { q1: 'b', q2: 'c' }), /not found/i);
+  await assert.rejects(submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b' }), /exactly one answer/i);
+  await assert.rejects(submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c', injected: 'a' }), /exactly one answer/i);
+  assert.equal(db.attempts.length, 0);
+});
+
+test('enforces cooldown and rolling attempt limits per owner and assessment version', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  await assert.rejects(submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base + 10000), /rate limit/i);
+  for (let i = 1; i < 5; i++) {
+    await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+      { q1: 'b', q2: 'c' }, base + i * 31000);
+  }
+  await assert.rejects(submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base + 5 * 31000), /rate limit/i);
+});
+
+test('lists private attempt history without answers or answer digests', async () => {
+  const db = await setup();
+  const base = Date.parse('2026-11-17T12:00:00.000Z');
+  await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
+    { q1: 'b', q2: 'c' }, base);
+  const records = await listLearningAttempts(db, 'owner', assessment.id, assessment.version, 10);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].scorePercent, 100);
+  assert.equal(records[0].masteryVerified, false);
+  assert.equal('attemptDigest' in records[0], false);
+  assert.equal(JSON.stringify(records).includes('correctOption'), false);
+  await assert.rejects(listLearningAttempts(db, 'owner', assessment.id, assessment.version, 101), /limit/i);
+});
