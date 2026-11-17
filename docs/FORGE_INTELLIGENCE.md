@@ -297,3 +297,150 @@ Build one defensive security intelligence workflow over existing AEGIS ownership
 - Initial source-level inspection completed for Dissect, capa, capa-rules, Sigma, Hayabusa, Hayabusa rules and Binwalk README/licence or package metadata surfaces. Sigma's specification is public domain but SigmaHQ's rules are DRL 1.1; capa and its standard rules are Apache-2.0. Pinned inspected README/package blobs: Dissect `b37677ee75af3d2ca062eae094a6374949f657e4`; Dissect package metadata `aeb03728d366a426163fd969c45bce572284abbc`; capa `b75190372c257abfc3822cba33ca58ef2867ce23`; capa licence `d645695673349e3947e8e5ae42332d0ac3164cd7`; Hayabusa `db98b16fa332a575d24fc55762e8b4d9f15bb9a9`; Hayabusa licence `6124431c92e08d215913c110cc1f69336f77394c`; Hayabusa rules `d6c19871a388ab8b96ea30f80f66020631cbfd28`; DRL 1.1 `6475b1511fb96c2d3ac9fd9c1d8340032cc30488`; Binwalk `fb517d90d1fae4cb2ffad1e0347c0843204b6d1b`; Binwalk Cargo metadata `8f42ce8244a98900012ea8d60bbc5fa3b571130c`.
 - No code has been copied, installed or executed; no AEGIS security capability is marked implemented. This is still not a complete source-level REA: tests, full dependency trees, security advisories, parser boundaries and performance have not yet been audited.
 - Next sequence: inspect Sigma's specification and individual rule corpus, assess a small Dissect parser subset versus a native parser, and benchmark capa/Binwalk as isolated workers against lightweight alternatives. Keep FACT as a high-resource specialist candidate rather than a default dependency.
+
+
+## Source-level REA — Evidence Intelligence mechanisms (17 Nov 2026)
+
+This is a focused source inspection of selected files at immutable upstream revisions, not a complete REA or adoption approval. It extends the defensive-security intake above.
+
+### Binwalk v3 — signature mapping as a general evidence primitive
+
+Inspected upstream revision: `ReFirmLabs/binwalk@26713972e3f9f52dc37d4a421c4554b0bd9e82ef`.
+
+Pinned inspected blobs:
+- `src/lib.rs`: `c5151dd78c5c2a0b1aa03c25f0f29dca5e49a006`
+- `src/binwalk.rs`: `1c02eb83a5989a1d687d80def91d68d6eded2d5f`
+- `src/extractors/common.rs`: `f3c372c44f449e0780f548d061e763df65a682f6`
+- `Cargo.toml`: `8f42ce8244a98900012ea8d60bbc5fa3b571130c`
+
+Mechanisms observed:
+- The Rust library exposes a direct `Binwalk::scan(&[u8])` interface and returns typed signature results with offsets and descriptions. The library also separates signature definitions, parsing and extractors.
+- Signature setup supports built-in and caller-provided patterns, include/exclude filters and a distinction between short signatures and broader searches.
+- The extractor model distinguishes internal functions from external commands and carries output/recursion metadata. The source also models child processes. The path helper describes chroot-like output confinement, but this is not evidence of a complete hostile-input sandbox.
+- The inspected Cargo manifest includes a Git-sourced `delink` dependency and a broad set of compression, parsing, threading and plotting crates. Review the lockfile, build features and transitive graph before considering adoption.
+
+AEGIS decision: **native rebuild of the bounded scan/result contract first; optional isolated adapter only if benchmarks show a clear advantage.** Do not enable extraction or external extractor execution in the control plane. AEGIS should initially identify file signatures, offsets, overlaps, embedded-region candidates and entropy summaries without writing extracted content. The inspected public scan interface consumes a byte slice; a bounded upload/read strategy and memory ceiling are required.
+
+Repurposing opportunities:
+- Unknown-file and nested-container mapping for user-supplied archives, backups, installers and firmware.
+- Digital archaeology: identify appended data, format transitions and unusual regions in opaque files.
+- Software/package inventory and compatibility investigations, where a file map is useful even when the subject is not firmware.
+
+Required follow-up: inspect signature parser boundaries, offset arithmetic, recursion, extraction path handling, symlink behaviour, external process invocation, fuzz tests and decompression/resource limits. No safety conclusion is inferred from the presence of a chroot-like helper.
+
+### capa — hierarchical, explainable capability inference
+
+Inspected upstream revision: `mandiant/capa@74114afae97392e1fc08f9ed41acbc88882b645c`.
+
+Pinned inspected blobs:
+- `capa/capabilities/common.py`: `c785522d47507583165059603ee44aaf5cdbad37`
+- `capa/capabilities/static.py`: `68b5245c2d9087131da21264849017ecbe9474e9`
+- `capa/rules/__init__.py`: `86da32ddb5665c86b88699878393f01a834149c6`
+- `capa/render/result_document.py`: `d1b8005eb84d5f3a8443b592c295c194c6ab0cda`
+
+Mechanisms observed:
+- A feature extractor converts binary observations into typed features; rules match at explicit scopes, including instruction, basic block, function and file for static analysis, and call/thread/process scopes for dynamic traces.
+- RuleSet validates uniqueness and dependencies, extracts subscope rules, optimises them, groups rules by scope and builds feature indexes. Rules are topologically ordered so dependent matches can be reused at larger scopes.
+- Match results preserve feature locations and captures. The result-document layer uses typed models; several models are frozen and reject unexpected fields. This is a useful model for evidence-linked, schema-validated findings.
+- capa's own documentation warns that packing/obfuscation can make static results incomplete or misleading. A rule match is a capability hypothesis supported by features, not proof of malicious intent.
+
+AEGIS decision: **adapt the mechanism, not the full framework by default.** AEGIS can build a small native rule/evidence engine over normalized observations: atomic evidence → scoped features → composable conditions → matched rule → source locations → limitations/confidence. Preserve the exact rule version, rule source, rule author, rule ID, match scope and evidence references. Avoid translating capa scores into a probability unless calibrated against a representative corpus.
+
+Repurposing opportunities:
+- Explainable software capability inventory, not just malware classification.
+- Identify what a component appears able to do (network access, persistence, file modification, credential-store access) from static metadata or trusted analysis outputs.
+- Compare two software versions by capability delta and highlight newly introduced behaviour for review.
+- Reuse the hierarchical matching model for non-security AEGIS diagnostics, provided each domain defines its own validated rules and evidence semantics.
+
+Licence: the inspected capa source and standard rule corpus are Apache-2.0 according to their repository metadata; preserve notices and check individual rule provenance. Rule-version compatibility is important: capa's rule documentation requires matching the major version of the engine and rule set.
+
+### Sigma and pySigma — portable event-detection language
+
+Inspected revisions:
+- Specification: `SigmaHQ/sigma-specification@ba9251aa834b11a70dbf80836b453dba99c5159e`
+- Rule repository: `SigmaHQ/sigma@088855f00b65a19e345b09c1619272b44f92fea4`
+- Parser/converter: `SigmaHQ/pySigma@e5221881d5f3d69033b34882fad83864d80db826`
+
+Pinned inspected blobs:
+- Specification rule document: `dbda1f850a7cc40697cd6c76e3c63396a113a4ab`
+- Specification licence: `f5cac7ae30d4f144c37660e54e1993279c8004ad`
+- SigmaHQ rule-repository licence: `f816b6993cc0d9564fd4629823cbaac8bccaff17`
+- Example detection rule: `0620e94659500dc0af04b8c6146b1bb406e9567f`
+- pySigma rule model: `a9c3cd4781285141a89828c0761d29c03cbc1b98`
+- pySigma validator base: `daee62778f9964fc07307fcdd5ab7e9cc096a355`
+- pySigma package metadata: `ccd5981cfbe619037efdec837bb67174cbd8820e`
+
+Mechanisms observed:
+- Sigma's specification separates log source, detection selections, condition logic, metadata, status, severity level, tags, references and rule relationships. It also defines correlation rules and filters.
+- pySigma turns parsed rule dictionaries into typed rule/detection objects and exposes validators with per-rule and whole-collection finalisation. Validation issues have explicit severity and can be accumulated across a rule set.
+- pySigma is deliberately vendor-neutral; backends and processing pipelines are separate projects. This is a useful separation between a canonical detection language and target-specific execution/query adapters.
+
+Licence boundary:
+- The Sigma specification and logo are public domain.
+- The SigmaHQ rule content is licensed under DRL 1.1, not public domain.
+- pySigma itself is LGPL-2.1-only. It is not a default AEGIS core dependency; any bundled/linked use requires a separate compatibility and distribution review under the AEGIS free/open-source policy.
+
+AEGIS decision: **use the public specification as a design reference; prototype a minimal AEGIS-native event-rule subset before considering pySigma as an optional isolated adapter.** Do not import the full SigmaHQ rule corpus as though its rules were public domain. Every rule must retain its own source, licence, author, ID, version, status, references and false-positive notes.
+
+Repurposing opportunities:
+- One event vocabulary across operating systems and device adapters, with explicit field mappings.
+- Rule-based monitoring of AEGIS's own security events and Forge supply-chain events.
+- Correlation rules that combine several weak signals into a reviewable finding rather than triggering a high-impact action from one event.
+- Rule validation as a quality gate for community-contributed detection knowledge.
+
+### Dissect — universal target abstraction and modular parsers
+
+Inspected upstream revision: `fox-it/dissect.target@91465f3d32d25e99913b8c57f8e993a930db95c4`.
+
+Pinned inspected blobs:
+- `dissect/target/target.py`: `51e8086af3a86fa1d9e141f51dfae38fda419f12`
+- `dissect/target/plugin.py`: `d0327fe8bac2c38e52713fe0450ab8e8886487d0`
+- `pyproject.toml`: `01293bf344c7db7caade651f88e0fed9b44ecfe0`
+
+Mechanisms observed:
+- Dissect separates containers, loaders, volumes, filesystems and higher-level artefact plugins. A common Target abstraction lets analysis operate across different underlying evidence formats.
+- Its architecture puts single-purpose libraries first, then builds tools over those APIs. Plugins consume a common target interface rather than needing to know whether an artefact came from an E01, VMDK, filesystem or archive.
+- The inspected plugin system maintains descriptors/registries and supports exported methods, output types, caching and target compatibility. The implementation also uses dynamic Python module loading; AEGIS must not load untrusted third-party plugins.
+
+Licence and dependency boundary:
+- `dissect.target` is AGPL-3.0-or-later. The Dissect meta-package declares many separate parser dependencies; component licences must be checked independently.
+- Do not copy Dissect code into AEGIS or make the AGPL meta-package a core dependency without a documented compatibility/distribution decision.
+
+AEGIS decision: **native architecture pattern; selected parsers only after individual licence and security review.** Create a narrow read-only EvidenceTarget contract that can represent a supplied file, archive, disk image, VM image or firmware bundle without requiring the whole Dissect framework. Add format-specific parsers as independently bounded modules. Keep parser discovery static/allowlisted; no runtime plugin import from user content.
+
+Repurposing opportunities:
+- A universal "open this evidence source" interface for digital forensics, backups, migration and compatibility analysis.
+- Compare two system snapshots or software images through the same logical artefact queries.
+- Provide a common query surface over different data containers, including read-only virtualised views that avoid unnecessary extraction or mounting.
+
+### Combined AEGIS design direction
+
+The strongest combined mechanism is a layered evidence pipeline, not four separate products:
+
+`supplied source → immutable evidence identity → format/region map → bounded parsers → normalized observations → scoped rule evaluation → correlated finding → evidence-linked report`
+
+Ownership:
+- Forge continues to own upstream source inspection, REA, provenance and candidate admission.
+- AEGIS core should own case-scoped evidence identity, investigation state, canonical observations, findings and user-facing reports. Do not repurpose Forge's accepted Knowledge Library as a raw case-evidence store.
+- Sentinel remains the only authority for any consequential action. Detection results and parser output are untrusted data and cannot grant permissions or trigger remediation.
+- Security rules remain versioned knowledge with source/licence metadata; rule matches link to evidence and never become proof by themselves.
+
+First implementation candidate (design only): **Evidence Intake Contract v1**. Define immutable source identity (SHA-256, byte length, media/format hints, acquisition time/method, owner/case reference), parser-run identity (tool/version/config, limits, start/end, outcome), and normalized observation identity (source offsets/paths, observation type/value, provenance, confidence/limitations). Keep original bytes immutable and separate from derived outputs. Add explicit statuses for complete, partial, unsupported, rejected and failed analysis.
+
+Acceptance gates before implementation:
+1. Inspect current migrations and data ownership to avoid a duplicate evidence ledger.
+2. Define exact byte, count, recursion, CPU, memory, wall-clock and output limits for the first supported formats.
+3. Write tests first for malformed/truncated files, oversized inputs, nested archives, path traversal, symlink escape, duplicate hashes, parser timeout/failure and partial results.
+4. Prove the pipeline with synthetic benign fixtures; do not use live malware samples or execute payloads.
+5. Compare a native signature/metadata scanner against an isolated Binwalk scan-only adapter; measure precision, recall on the fixture corpus, latency, peak memory and dependency footprint.
+6. Only after the above, decide whether to add a bounded file upload/storage adapter. No production data migration or deployment is implied.
+
+### Current REA limits and next work
+
+- This pass inspected selected source files and package metadata at pinned upstream revisions. It did not run upstream code, install dependencies, inspect every parser/extractor, audit all transitive dependencies, review advisories, fuzz inputs or benchmark runtime behaviour.
+- Binwalk extraction security and resource controls remain unverified; scan-only is the only proposed initial use.
+- capa rule-engine architecture and output schema were inspected, but its full extractor/parser attack surface and rule corpus were not audited.
+- Sigma specification and one example rule were inspected; the full rule corpus, DRL obligations and pySigma backend ecosystem were not audited.
+- Dissect target abstraction and plugin loader were inspected; no individual parser has been approved for reuse.
+- No source code, rules, package, binary or dataset has been copied, installed or executed. No AEGIS Evidence Intelligence feature is marked implemented.
+- Next: inspect current AEGIS persistence migrations and upload constraints; review Binwalk parser/extractor tests and fuzz coverage; inspect capa parser/test boundaries; identify one small Dissect parser with a permissive licence or design a clean-room equivalent; and benchmark only in a disposable, isolated environment.
