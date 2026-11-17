@@ -1,6 +1,7 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
 import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
+import { validateCompanionInteractionSettings } from "../lib/companion-contracts.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import {
   executeAgentToolCall,
@@ -87,7 +88,10 @@ export async function onRequestPost(context) {
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
-    promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
+    promptMessages = await buildAskMessages(env, latest.content, history, {
+      projectId,
+      companionInteraction: input.companionInteraction,
+    });
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
@@ -419,7 +423,11 @@ function boundedToolResult(result) {
 
 function validateRunInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return "Invalid AG-UI request.";
-  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId"].includes(key))) return "Unsupported AG-UI request fields.";
+  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId", "companionInteraction"].includes(key))) return "Unsupported AG-UI request fields.";
+  if (input.companionInteraction !== undefined) {
+    try { validateCompanionInteractionSettings(input.companionInteraction); }
+    catch { return "Invalid companion interaction preferences."; }
+  }
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
   const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
