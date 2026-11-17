@@ -374,3 +374,18 @@ The architectural direction is an AEGIS-owned design system:
 - no paid templates, hosted registries, proprietary components or external APIs as mandatory foundations.
 
 shadcn/ui's copy-source/registry model, Magic UI and Aceternity's motion patterns, HyperUI's lightweight Tailwind layouts, and Material UI's mature control/accessibility contracts are learning sources. Aceternity's free and paid material must remain explicitly separated. Awesome lists are discovery indexes, never licence or security endorsements. See [AEGIS UI ecosystem research](AEGIS_UI_ECOSYSTEM_RESEARCH_2026-11-17.md).
+
+
+## Developer operations and integration ecosystem
+
+The 17 November 2026 research batch records HTTPie, DevToys, Gitignore templates, Docker/Moby, Terraform, Awesome DevOps/DevOps Exercises, Postman Collection format, Appwrite, Strapi, Novu and an unresolved Toolset candidate. See [Developer Operations & Integration Ecosystem](AEGIS_DEVOPS_INTEGRATION_ECOSYSTEM_2026-11-17.md).
+
+The AEGIS direction is to own the contracts and policy while keeping tools and providers replaceable:
+- offline-first local developer utilities;
+- an API Workbench with versioned collection import/export, runtime secret injection and script execution disabled by default;
+- container and IaC plan inspection with pinned provenance, isolation, policy checks and explicit human approval;
+- backend, CMS and notification adapters that do not become mandatory core dependencies;
+- provider-neutral notification preferences, quiet hours, deduplication and delivery audit;
+- curated project templates with provenance and secret-safe defaults.
+
+No container execution, Terraform apply/destroy, imported collection script execution, or provider installation is enabled by this research batch. Toolset remains unresolved until the exact upstream URL is supplied.
