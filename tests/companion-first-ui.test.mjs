@@ -130,3 +130,11 @@ test('official companion is presented as Agent AEGIS — Your Personal Guardian'
   assert.match(html, /aria-label="Agent AEGIS companion presentation"/);
   assert.match(html, /Official Agent AEGIS/);
 });
+
+test('companion profiles load and persist through the authenticated owner-scoped API when storage is available', () => {
+  assert.match(html, /controlApi\('\/api\/companion\/profiles'/);
+  assert.match(html, /controlApi\('\/api\/companion\/profile-selection'/);
+  assert.match(html, /companionProfilePersistenceAvailable/);
+  assert.match(html, /session only/i);
+  assert.match(html, /persistent profile storage is unavailable/i);
+});
