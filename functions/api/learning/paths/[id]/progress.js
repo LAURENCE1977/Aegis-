@@ -1,5 +1,5 @@
-import { authorizeOwner, isOwnerWriteRequest, jsonResponse, readJsonRequest } from '../../../lib/owner-api.mjs';
-import { listLearningProgress, updateLearningProgress } from '../../../lib/learning-progress.mjs';
+import { authorizeOwner, isOwnerWriteRequest, jsonResponse, readJsonRequest } from '../../../../lib/owner-api.mjs';
+import { listLearningProgress, updateLearningProgress } from '../../../../lib/learning-progress.mjs';
 
 const OWNER_ID = 'owner';
 const MAX_BODY_BYTES = 8 * 1024;
