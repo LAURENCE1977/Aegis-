@@ -498,3 +498,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Identical retries are idempotent; conflicting reuse of a run ID is rejected. Results and audit events cannot be updated or deleted.
 - No public run-submission API is exposed until an authenticated isolated runner can supply a trusted execution receipt. Digest integrity alone does not prove runner identity or honest execution.
 - Scores remain evidence for human review only; they never grant capabilities, bypass Sentinel or trigger promotion.
+
+
+- Added authenticated read-only `GET /api/eval/runs` for owner-scoped bounded result inspection. No public run-creation route exists before trusted runner attestation.
+- Database constraints bind the stored result JSON to run/suite/candidate/status/score columns and require the evidence-integrity marker; readers reject missing markers.
