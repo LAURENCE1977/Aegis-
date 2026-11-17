@@ -30,15 +30,15 @@ function githubFetch({ changedTree = false } = {}) {
     if (String(url).endsWith('/git/trees/main?recursive=1')) return response({
       sha: changedTree ? '2'.repeat(40) : treeSha, truncated: false,
       tree: [
-        { path: 'src/main.ts', type: 'blob', sha: mainSha, size: 23 },
-        { path: 'src/core.ts', type: 'blob', sha: depSha, size: 24 },
+        { path: 'src/main.ts', type: 'blob', sha: mainSha, size: 27 },
+        { path: 'src/core.ts', type: 'blob', sha: depSha, size: 25 },
       ],
     });
     if (String(url).endsWith('/git/blobs/' + mainSha)) return response({
-      sha: mainSha, size: 23, encoding: 'base64', content: btoa("import './core';\nexport {};"),
+      sha: mainSha, size: 27, encoding: 'base64', content: btoa("import './core';\nexport {};"),
     });
     if (String(url).endsWith('/git/blobs/' + depSha)) return response({
-      sha: depSha, size: 24, encoding: 'base64', content: btoa('export const core = true;'),
+      sha: depSha, size: 25, encoding: 'base64', content: btoa('export const core = true;'),
     });
     throw new Error('Unexpected GitHub request: ' + url);
   };
