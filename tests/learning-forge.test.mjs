@@ -103,3 +103,20 @@ test('lists only the authenticated owner paths with a bounded page size', async 
   assert.equal(listed[0].ownerId, 'owner');
   await assert.rejects(listLearningPaths(db, 'owner', 101), /limit/i);
 });
+
+
+test('learning path catalogue rejects stored graph content whose digest no longer matches', async () => {
+  const db = new LearningPathD1();
+  await registerLearningPath(db, 'owner', path());
+  const row = [...db.rows.values()][0];
+  row.graph_json = JSON.stringify({ ...path(), description: 'Tampered after registration' });
+  await assert.rejects(listLearningPaths(db, 'owner', 10), /digest/i);
+});
+
+test('learning path catalogue rejects malformed stored graph digests', async () => {
+  const db = new LearningPathD1();
+  await registerLearningPath(db, 'owner', path());
+  const row = [...db.rows.values()][0];
+  row.graph_digest = 'not-a-sha256';
+  await assert.rejects(listLearningPaths(db, 'owner', 10), /digest/i);
+});
