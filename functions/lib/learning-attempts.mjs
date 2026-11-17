@@ -63,6 +63,7 @@ function mapAssessment(row) {
 function mapAttempt(row) {
   if (!row || typeof row.id !== 'string' || typeof row.owner_id !== 'string' ||
       typeof row.assessment_id !== 'string' || typeof row.assessment_version !== 'string' ||
+      typeof row.assessment_digest !== 'string' || !/^[a-f0-9]{64}$/.test(row.assessment_digest) ||
       typeof row.occurred_at !== 'string' || typeof row.result_json !== 'string') {
     throw new TypeError('Stored Learning Attempt metadata is invalid');
   }
@@ -158,11 +159,26 @@ export async function listLearningAttempts(db, ownerId, assessmentId, version, l
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
     throw new TypeError('Learning Attempt limit must be between 1 and 100');
   }
+  const assessmentRow = await db.prepare(`
+    SELECT * FROM learning_assessments
+    WHERE owner_id = ? AND assessment_id = ? AND version = ? LIMIT 1
+  `).bind(ownerId, assessmentId, version).first();
+  if (!assessmentRow) throw new LearningAttemptNotFoundError();
+  const assessment = mapAssessment(assessmentRow);
+  if (await sha256Hex(canonicalJson(assessment)) !== assessmentRow.assessment_digest) {
+    throw new TypeError('Stored Learning Assessment digest does not match its content');
+  }
+
   const result = await db.prepare(`
     SELECT * FROM learning_assessment_attempts
     WHERE owner_id = ? AND assessment_id = ? AND assessment_version = ?
     ORDER BY occurred_at DESC, id DESC
     LIMIT ?
   `).bind(ownerId, assessmentId, version, limit).all();
-  return (result?.results ?? []).map(mapAttempt);
+  return (result?.results ?? []).map(row => {
+    if (row.assessment_digest !== assessmentRow.assessment_digest) {
+      throw new TypeError('Stored Learning Attempt assessment digest does not match its registered version');
+    }
+    return mapAttempt(row);
+  });
 }
