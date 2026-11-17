@@ -125,3 +125,10 @@ Verification: GitHub Actions run 44034848114 completed successfully for commit b
 - The Forge UI exposes checkboxes only for eligible JS/TS entries from the inspected repository and submits only selected path/SHA pairs.
 - This is a selected-file analysis, not a whole-repository audit. The inspector's tree listing is bounded and may be truncated; missing files are not proof of absence.
 - Repository content remains untrusted data. No source is executed, installed, built or automatically accepted as knowledge.
+
+
+## Tree-sitter parser REA
+
+A source-level REA is recorded in docs/REA_TREE_SITTER_2026-11-17.md. The parser runtime/web binding and JavaScript/JSX and TypeScript/TSX grammars were inspected at immutable commits; all reviewed licence files are MIT. The official web binding documents WASM usage and precompiled WASM modules in Cloudflare Workers-style environments.
+
+Decision: prototype/adapt, but do not add a production dependency yet. The next gate is an isolated, pinned WASM prototype with runtime compatibility, bundle size, memory, cold-start and parse-time measurements plus regression fixtures. No grammar package or WASM binary has been installed or copied into AEGIS.
