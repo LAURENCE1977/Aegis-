@@ -55,6 +55,13 @@ test('rejects impossible resource values and storage free space greater than cap
   }));
 });
 
+test('rejects positive free storage when reported total capacity is zero', () => {
+  const profile = structuredClone(valid);
+  profile.system.storageBytes = { ...profile.system.storageBytes, value: 0 };
+  profile.system.storageFreeBytes = { ...profile.system.storageFreeBytes, value: 1 };
+  assert.throws(() => validateDeviceProfile(profile), /Free storage cannot exceed total storage/);
+});
+
 test('creates profiles with a random revocable identifier and never grants host mutation authority', () => {
   const profile = createDeviceProfile({ platform: 'web', deviceClass: 'desktop', observedAt: now, system: valid.system, aegis: valid.aegis, permissions: valid.permissions });
   assert.match(profile.deviceId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
