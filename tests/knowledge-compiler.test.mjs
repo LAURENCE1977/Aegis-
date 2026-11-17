@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { compileKnowledgeDocument } from '../functions/lib/knowledge-compiler.mjs';
 
-test('compiles a source document into chunks carrying immutable source identity and exact offsets', () => {
+test('compiles a source document into chunks carrying immutable source identity and exact offsets', async () => {
   const document = {
     sourceId: 'evidence-123',
     sourcePath: 'docs/security.md',
     content: '# Security\n\nSentinel is the sole permission authority.\n\n## Grants\n\nEvery grant is scoped.',
     status: 'accepted',
   };
-  const compiled = compileKnowledgeDocument(document, { maxChars: 80 });
+  const compiled = await compileKnowledgeDocument(document, { maxChars: 80 });
 
   assert.equal(compiled.sourceId, document.sourceId);
   assert.equal(compiled.sourcePath, document.sourcePath);
@@ -26,8 +26,8 @@ test('compiles a source document into chunks carrying immutable source identity 
   ]);
 });
 
-test('draft source material stays draft and cannot become accepted through compilation options', () => {
-  const compiled = compileKnowledgeDocument({
+test('draft source material stays draft and cannot become accepted through compilation options', async () => {
+  const compiled = await compileKnowledgeDocument({
     sourceId: 'evidence-draft',
     content: 'Unreviewed content.',
     status: 'draft',
