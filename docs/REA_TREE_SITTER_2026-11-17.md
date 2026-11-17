@@ -67,3 +67,29 @@ High-value, narrow fit for Forge's read-only code intelligence:
 - https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/README.md
 
 No source code, package, grammar or WASM binary has been copied, installed or executed as part of this REA.
+
+
+## Prototype progress — 17 November 2026
+
+The isolated prototype now exists at `scripts/forge-tree-sitter-prototype.mjs`, with regression coverage in `tests/forge-tree-sitter-prototype.test.mjs`.
+
+Implemented:
+- JavaScript, JSX, TypeScript and TSX grammar selection using pinned test dependencies.
+- Static imports, re-exports, literal dynamic imports and literal CommonJS `require()` extraction.
+- Syntax-error reporting per file without attempting to repair or execute source.
+- One-based source line/column coordinates on every extracted relationship; end coordinates are exclusive.
+- Deterministic relationship ordering.
+- Input boundaries: at most 50 files, 32 KiB per file, 1 MiB aggregate source, supported extensions only, relative normalized paths only, and duplicate path rejection.
+- Parser trees are released in a `finally` block.
+
+Verification:
+- The source-location regression was first run without implementation and failed in the Node.js test stage as expected (run 44073893286).
+- The implementation then passed the Node.js and Cloudflare runtime integration test stage in run 44074021649.
+- At the time of this update, the remaining isolated D1 and Forge verification stages in run 44074021649 are still running; do not describe the full workflow as passed until its terminal conclusion is successful.
+
+Still not implemented:
+- Production Forge API integration or user-facing architecture graph.
+- Symbol declarations/references, call graphs, type resolution or package-manager dependency resolution.
+- Browser visual/accessibility verification, Workers/Pages production WASM packaging, and measured bundle/cold-start/memory/parse-time benchmarks.
+
+The prototype is experimental and is not wired into the production Forge analysis route. It remains read-only and must not be treated as a whole-repository audit.
