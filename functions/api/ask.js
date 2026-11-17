@@ -2,7 +2,7 @@ import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/a
 import { buildSkillContext } from "../lib/skills.mjs";
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { listWorkspaceEvents } from "../lib/project-spaces.mjs";
-import { createDefaultAegisCompanionProfile } from "../lib/companion-contracts.mjs";
+import { createDefaultAegisCompanionProfile, validateCompanionInteractionSettings } from "../lib/companion-contracts.mjs";
 import { getActiveCompanionProfile } from "../lib/companion-profile-store.mjs";
 import { buildCompanionInteractionDirective } from "../lib/companion-interaction.mjs";
 
@@ -41,7 +41,7 @@ export async function onRequestPost(context) {
 }
 
 
-export async function buildAskMessages(env, question, history = [], { projectId = null } = {}) {
+export async function buildAskMessages(env, question, history = [], { projectId = null, companionInteraction } = {}) {
   const safeHistory = Array.isArray(history)
     ? history
       .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
