@@ -40,7 +40,7 @@ class EvalRunD1 {
             id, owner_id: owner, run_id: runId, suite_id: suiteId, suite_version: suiteVersion,
             suite_digest: suiteDigest, candidate_id: candidateId, candidate_version: candidateVersion,
             candidate_digest: candidateDigest, status, score_percent: scorePercent,
-            result_digest: resultDigest, result_json: resultJson, completed_at: completedAt,
+            evidence_verified: 1, result_digest: resultDigest, result_json: resultJson, completed_at: completedAt,
             recorded_at: recordedAt,
           });
           db.events.push({ owner_id: owner, run_id: runId, event_type: 'recorded' });
