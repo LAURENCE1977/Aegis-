@@ -325,6 +325,29 @@ function extractImportBindings(root, path) {
   return bindings;
 }
 
+function extractNamespaceBindings(root, path) {
+  const bindings = [];
+  walk(root, node => {
+    if (node.type !== 'import_statement') return;
+    const specifier = literal(node.childForFieldName('source'));
+    if (specifier === null) return;
+    const clause = node.namedChildren.find(child => child.type === 'import_clause');
+    const namespace = clause?.namedChildren.find(child => child.type === 'namespace_import');
+    if (!namespace) return;
+    const localNode = namespace.childForFieldName('name') ||
+      namespace.namedChildren.find(child => child.type === 'identifier');
+    if (!localNode) return;
+    bindings.push({
+      path,
+      specifier,
+      local: localNode.text,
+      kind: 'namespace',
+      location: locationOf(node),
+    });
+  });
+  return bindings;
+}
+
 function resolveSymbolEdges(importBindings, moduleEdges, symbols) {
   const symbolEdges = [];
   const unresolvedSymbolImports = [];
@@ -550,6 +573,7 @@ export async function parseModuleImports(inputFiles) {
   const symbols = [];
   const calls = [];
   const importBindings = [];
+  const namespaceBindings = [];
   const reExports = [];
   const unresolvedReExportSyntax = [];
   const trees = [];
@@ -565,6 +589,7 @@ export async function parseModuleImports(inputFiles) {
       symbols.push(...extractSymbols(tree.rootNode, item.path));
       calls.push(...extractCalls(tree.rootNode, item.path));
       importBindings.push(...extractImportBindings(tree.rootNode, item.path));
+      namespaceBindings.push(...extractNamespaceBindings(tree.rootNode, item.path));
       const extractedReExports = extractReExports(tree.rootNode, item.path);
       reExports.push(...extractedReExports.reExports);
       unresolvedReExportSyntax.push(...extractedReExports.unresolvedReExports);
@@ -598,6 +623,8 @@ export async function parseModuleImports(inputFiles) {
     unresolvedImports,
     symbolEdges,
     unresolvedSymbolImports,
+    namespaceBindings: namespaceBindings.sort((a, b) => a.path.localeCompare(b.path) ||
+      a.local.localeCompare(b.local) || a.specifier.localeCompare(b.specifier)),
     reExportEdges,
     unresolvedReExports,
     limits: { maxFiles: MAX_FILES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES },
