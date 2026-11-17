@@ -322,3 +322,24 @@ Proposed native capability families:
 - Governed Security Research Engine: exact authorised scope, evidence-backed findings, isolated workers and Sentinel approval.
 
 Delivery is gated on typed contracts and tests first. Security-agent research must not introduce ambient shell, Docker socket access, arbitrary network egress, C2, persistence or autonomous remediation. ARTEX, Cairn and CyberStrikeAI remain identity/provenance holds until exact upstreams and licences are independently verified. No external code was imported or executed.
+
+
+## 12. Guardian Intelligence contracts — implementation checkpoint
+
+**Status:** Pure validation contracts implemented on the stacked draft PR #103; full CI passed on 17 November 2026. This does not complete the Resource Intelligence, Learning & Mastery or Security Research capability families.
+
+Implemented in `functions/lib/guardian-intelligence.mjs`:
+- Resource record validation: canonical HTTPS provenance, source revision, explicit licence review/evidence, pricing evidence and limits, hosting requirements and strict field allowlists.
+- Learning graph validation: unique nodes, attributable HTTPS sources, existing prerequisites and cycle rejection.
+- Security finding validation: exact target scope digest, enumerated risk/confidence/status/method, digest-only evidence references and dynamic-test approval/grant lineage bound to the same scope digest.
+
+Test-first evidence:
+- RED: workflow `44127001100` failed on the new contract test module because the implementation module did not yet exist; 721 existing tests passed and one was skipped.
+- GREEN/full CI: workflow `44127291884` completed successfully on implementation/documentation head `56b40e1d1939d44d7a3948c63092e570c7e74280`. The Node.js suite and all isolated capability, runtime, Queue/Miniflare and Forge D1 checks passed.
+- The full test count is recorded in the workflow log; no test failure is hidden or waived.
+
+Boundaries:
+- Validators are pure structural checks, not an authorisation service, licence opinion, security certification or source-safety verdict.
+- No new database migration, endpoint, UI, package, scanner or active security test was added.
+- Dynamic testing remains disabled. A future server route must load trusted Sentinel grant/approval state and must reject caller-supplied authorisation lineage.
+- PR #103 is draft, stacked on PR #101, unmerged and not production-deployed.
