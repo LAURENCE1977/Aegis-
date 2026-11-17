@@ -141,7 +141,7 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 
 ## Adaptive spaced review — local schedule suggestions (17 November 2026)
 
-**Status:** Pure deterministic review scheduler added; full CI is running. No notification or reminder service is connected.
+**Status:** Pure deterministic review scheduler added; full CI passed on code commit `8cd71ef048574c5eda7868f8e8b065ff9e161fd3` (workflow `44188619578`). No notification or reminder service is connected.
 
 - Added `functions/lib/learning-spaced-repetition.mjs` and six focused tests.
 - Uses the latest attempt per UTC day for each node, so multiple attempts on one day cannot inflate the review streak.
@@ -149,3 +149,5 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 - Schedules are bound to the exact immutable learning-path version and node. Attempts from other path versions are ignored; malformed or duplicate attempts are rejected.
 - Output includes the due date, interval, overdue state and explanation. It explicitly returns `masteryVerified: false` and `notificationScheduled: false`.
 - This is a suggestion engine only: it does not write progress, persist schedules, send notifications or grant mastery. Any future reminder delivery must be user-controlled and separately consented.
+- Full workflow `44188619578` passed: **857 tests, 856 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+- The same run verifies that a human review must occur strictly after every evidence item it approves; premature reviews remain insufficient evidence.
