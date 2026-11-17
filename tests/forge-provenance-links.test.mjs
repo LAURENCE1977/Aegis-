@@ -17,7 +17,7 @@ class LinkD1 {
     if(sql.includes('FROM forge_source_provenance WHERE id = ? AND owner_id = ?')){
      const row=db.provenance.get(v[0]);return row?.owner_id===v[1]?{...row}:null;
     }
-    if(sql.includes('FROM forge_candidate_provenance_links WHERE owner_id = ? AND candidate_id = ? AND provenance_id = ?')){
+    if(/FROM\\s+forge_candidate_provenance_links\\s+WHERE\\s+owner_id\\s*=\\s*\\?\\s+AND\\s+candidate_id\\s*=\\s*\\?\\s+AND\\s+provenance_id\\s*=\\s*\\?/i.test(sql)){
      return [...db.links.values()].find(x=>x.owner_id===v[0]&&x.candidate_id===v[1]&&x.provenance_id===v[2])||null;
     }
     return null;
