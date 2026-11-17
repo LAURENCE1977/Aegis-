@@ -13,6 +13,13 @@ test('follows multi-hop named barrel exports to the original declaration with fu
   assert.deepEqual(result.reExportLineage.map(({ source, target, imported, exported, chain }) =>
     ({ source, target, imported, exported, chain: chain.map(edge => [edge.source, edge.target, edge.imported, edge.exported]) })), [
     {
+      source: 'src/inner.js',
+      target: 'src/origin.js',
+      imported: 'run',
+      exported: 'renamed',
+      chain: [['src/inner.js', 'src/origin.js', 'run', 'renamed']],
+    },
+    {
       source: 'src/outer.js',
       target: 'src/origin.js',
       imported: 'run',
