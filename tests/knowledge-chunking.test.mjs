@@ -22,9 +22,9 @@ test('chunks markdown by section while retaining exact source offsets and headin
 });
 
 test('splits oversized paragraphs without losing, duplicating or reordering source text', () => {
-  const source = 'alpha beta gamma delta epsilon zeta';
-  const chunks = chunkMarkdownDocument(source, { maxChars: 12 });
-  assert.ok(chunks.every(chunk => chunk.text.length <= 12));
+  const source = Array.from({ length: 30 }, (_, index) => 'word' + index).join(' ');
+  const chunks = chunkMarkdownDocument(source, { maxChars: 64 });
+  assert.ok(chunks.every(chunk => chunk.text.length <= 64));
   assert.equal(chunks.map(chunk => chunk.text).join(' '), source);
   for (const chunk of chunks) {
     assert.equal(source.slice(chunk.startOffset, chunk.endOffset), chunk.text);
