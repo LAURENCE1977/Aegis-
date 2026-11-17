@@ -39,7 +39,7 @@ function validateLearningPath(path) {
     throw new TypeError('Invalid Learning Path title');
   }
   if (typeof path.description !== 'string' || path.description.length > 1000 ||
-      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(path.description)) {
+      /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(path.description)) {
     throw new TypeError('Invalid Learning Path description');
   }
   validateLearningGraph(path.nodes);
