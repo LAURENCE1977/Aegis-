@@ -1,5 +1,5 @@
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SEMVER_PATTERN = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/;
+const SEMVER_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const TASK_TYPES = new Set(['simple', 'chat', 'coding', 'research', 'reasoning', 'security']);
 const RESULT_STATUSES = new Set(['passed', 'failed', 'skipped']);
@@ -36,7 +36,7 @@ function requireDigest(value, label) {
 }
 
 function requireCanonicalTimestamp(value, label) {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(value)) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
     throw new TypeError('Invalid ' + label + ' timestamp');
   }
   const date = new Date(value);
@@ -95,7 +95,7 @@ export function scoreEvaluationRun(suite, run) {
 
   const casesById = new Map(suite.cases.map(item => [item.id, item]));
   const seen = new Set();
-  const results = [];
+  const resultsById = new Map();
   let passedWeight = 0;
   let totalWeight = 0;
   const requiredFailures = [];
@@ -117,7 +117,7 @@ export function scoreEvaluationRun(suite, run) {
     totalWeight += evaluationCase.weight;
     if (result.status === 'passed') passedWeight += evaluationCase.weight;
     if (evaluationCase.required && result.status !== 'passed') requiredFailures.push(result.caseId);
-    results.push(Object.freeze({
+    resultsById.set(result.caseId, Object.freeze({
       caseId: result.caseId,
       status: result.status,
       evidenceDigest: result.evidenceDigest,
@@ -132,6 +132,7 @@ export function scoreEvaluationRun(suite, run) {
   const status = requiredFailures.length === 0 && scorePercent >= suite.minimumScore
     ? 'passed'
     : 'failed';
+  const results = suite.cases.map(item => resultsById.get(item.id));
 
   return Object.freeze({
     id: run.id,
