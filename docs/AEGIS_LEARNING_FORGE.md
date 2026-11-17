@@ -1,6 +1,6 @@
 # AEGIS Learning Forge
 
-**Status:** Immutable, owner-scoped learning-path registry implemented on draft PR #103; full CI verification pending.
+**Status:** Immutable, owner-scoped learning-path registry implemented and full CI verified on draft PR #103 (17 November 2026).
 
 ## Contract
 
