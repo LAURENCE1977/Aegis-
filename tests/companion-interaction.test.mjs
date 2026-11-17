@@ -20,7 +20,7 @@ test('companion interaction directive translates bounded user preferences into p
   const directive = buildCompanionInteractionDirective(custom());
   assert.match(directive, /warm and emotionally attentive/i);
   assert.match(directive, /minimal humour/i);
-  assert.match(directive, /clear and direct/i);
+  assert.match(directive, /very direct and concise/i);
   assert.match(directive, /listen-first/i);
   assert.match(directive, /concise/i);
 });
