@@ -137,3 +137,15 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 2. Decide a privacy-preserving attempt retention/deletion policy; the current append-only attempt store needs a governed retention design rather than an unreviewed delete path.
 3. Add spaced repetition only after user-controlled scheduling and notification consent are designed.
 4. Resolve learner identity and tenancy before building a multi-user UI.
+
+
+## Adaptive spaced review — local schedule suggestions (17 November 2026)
+
+**Status:** Pure deterministic review scheduler added; full CI is running. No notification or reminder service is connected.
+
+- Added `functions/lib/learning-spaced-repetition.mjs` and six focused tests.
+- Uses the latest attempt per UTC day for each node, so multiple attempts on one day cannot inflate the review streak.
+- Failed checks reset the successful-review sequence and suggest a one-day revisit. Successful review days expand the interval through 1, 3, 7, 14 and 30 days, capped at 30.
+- Schedules are bound to the exact immutable learning-path version and node. Attempts from other path versions are ignored; malformed or duplicate attempts are rejected.
+- Output includes the due date, interval, overdue state and explanation. It explicitly returns `masteryVerified: false` and `notificationScheduled: false`.
+- This is a suggestion engine only: it does not write progress, persist schedules, send notifications or grant mastery. Any future reminder delivery must be user-controlled and separately consented.
