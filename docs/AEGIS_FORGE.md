@@ -110,6 +110,18 @@ Forge now includes a bounded, non-executing module-relationship analyser for sup
 
 **Accuracy boundary:** this first slice is a heuristic scanner, not a full JavaScript/TypeScript parser. It can miss syntax forms and may misread import-like text in comments or strings. It reports only relationships it can resolve from the supplied file set; unresolved and external references are not evidence that a dependency is absent. It does not yet fetch an entire repository, inspect package manifests/lockfiles, build a complete dependency graph, map symbols/call graphs, or provide a UI.
 
-The Forge panel now includes a multi-file/folder selector and an explicit Analyse action. Selected text is read in the browser and sent only after the owner starts the analysis; the API repeats all server-side limits and path checks. The panel displays counts and the raw relationship graph. Browser-level runtime/accessibility verification is still outstanding. The next engineering stages are: connect the analyser to Forge's existing pinned GitHub file selection flow; add parser-backed analysis (Tree-sitter REA first); then expand the review UI with source/revision, coverage and confidence indicators. No source is executed and no findings are automatically accepted into Agent context.
+The Forge panel now includes a multi-file/folder selector and an explicit Analyse action. It also supports selecting JavaScript/TypeScript files from the already-inspected public GitHub tree. The repository analysis endpoint re-fetches the tree, requires the exact pinned tree SHA, verifies every selected path/blob SHA against that tree, reads only those pinned blobs, and caps a selection at 50 source files. A changed tree returns a conflict and requires re-inspection; source content is not accepted from the browser for this repository-backed route. Selected text is read in the browser and sent only after the owner starts the analysis; the API repeats all server-side limits and path checks. The panel displays counts and the raw relationship graph. Browser-level runtime/accessibility verification is still outstanding. The next engineering stages are: connect the analyser to Forge's existing pinned GitHub file selection flow; add parser-backed analysis (Tree-sitter REA first); then expand the review UI with source/revision, coverage and confidence indicators. No source is executed and no findings are automatically accepted into Agent context.
 
 Verification: GitHub Actions run 44034848114 completed successfully for commit b81030236da5d3566c2d0df86592d4efd9f3feb7. It includes the full Node.js suite, Miniflare runtime integration, isolated capability/runtime/Forge D1 migrations and safeguards. No preview/production D1 migration or deployment was performed.
+
+
+### Pinned GitHub repository analysis
+
+- Endpoint: POST /api/forge/repository-code-intelligence.
+- Accepts only sourceUrl, treeSha and a selected files array of path/blob-SHA pairs.
+- Re-inspects the public repository and requires the current recursive tree SHA to equal the user's pinned tree SHA. A changed tree returns HTTP 409 before any blob is read.
+- Every selected path and blob SHA must exactly match the current inspectable tree entry; duplicate paths, non-JS/TS files, blobs over 32 KiB and selections over 50 files are rejected.
+- The endpoint reads each selected blob by its Git object SHA and verifies returned SHA and byte size before analysis.
+- The Forge UI exposes checkboxes only for eligible JS/TS entries from the inspected repository and submits only selected path/SHA pairs.
+- This is a selected-file analysis, not a whole-repository audit. The inspector's tree listing is bounded and may be truncated; missing files are not proof of absence.
+- Repository content remains untrusted data. No source is executed, installed, built or automatically accepted as knowledge.
