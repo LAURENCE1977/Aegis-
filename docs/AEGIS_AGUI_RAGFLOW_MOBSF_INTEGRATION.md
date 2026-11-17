@@ -38,7 +38,7 @@ Implementation status:
 3. Event arrival order is preserved; timestamps remain metadata.
 4. Tool execution continues through the server registry and Sentinel invocation boundary; protocol events do not grant permission.
 5. Durable state/activity/subagent replay, reconnect cursors and snapshot/delta support remain future work and must be backed by persisted, owner-scoped records before UI integration.
-6. Latest tool-call event byte-limit and full-workflow verification is pending CI; do not mark this increment complete until the run is green.
+6. Verification: the full `AEGIS tests` workflow `44124205670` completed successfully on 17 November 2026. It includes Node.js/Cloudflare runtime tests, the successful tool-call lifecycle, the denied-without-grant Sentinel regression, multibyte payload limits, isolated capability/runtime/Forge D1 migrations, append-only audit and run-event checks, Miniflare D1/Queue integration, and Knowledge Library review lifecycle verification.
 
 The protocol's broader event vocabulary is not a requirement to emit every event immediately. Unsupported or unpersisted event families remain absent.
 
