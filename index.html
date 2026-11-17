@@ -1496,42 +1496,128 @@
       finally { saveMemoryBtn.disabled = false; }
     });
 
-    // Profile controls alter presentation only. They do not create identities,
-    // permissions, memory stores or Sentinel policy. Until owner-scoped persistence
-    // is implemented, custom profiles intentionally live only in this page session.
+    // Companion profiles are owner-scoped presentation preferences. They never create
+    // a second security identity, grant tools, alter Sentinel policy or widen memory access.
     const companionProfileSelect = document.getElementById('companionProfileSelect');
     const customCompanionName = document.getElementById('customCompanionName');
     const createCompanionProfile = document.getElementById('createCompanionProfile');
     const companionProfileStatus = document.getElementById('companionProfileStatus');
     const companionTitle = document.getElementById('companionTitle');
-    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS' }];
-    const customIdPattern = /^custom-[a-z0-9-]+$/;
+    let companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS', version: null }];
+    let companionProfilePersistenceAvailable = false;
+    let activeCompanionProfileId = 'aegis';
+    let suppressCompanionProfileChange = false;
 
-    companionProfileSelect.addEventListener('change', () => {
+    function renderCompanionProfileOptions() {
+      companionProfileSelect.replaceChildren();
+      companionProfiles.forEach(profile => {
+        const option = document.createElement('option');
+        option.value = profile.id;
+        option.dataset.version = profile.version === null ? '' : String(profile.version);
+        option.textContent = profile.displayName;
+        companionProfileSelect.append(option);
+      });
+      companionProfileSelect.value = activeCompanionProfileId;
+    }
+
+    function renderCompanionProfile(profile, persistent = companionProfilePersistenceAvailable) {
+      companionTitle.textContent = profile.kind === 'official' ? 'Here with you.' : 'Meet ' + profile.displayName + '.';
+      if (profile.kind === 'official') {
+        companionProfileStatus.textContent = persistent
+          ? 'Agent AEGIS · Your Personal Guardian · official identity, one shared intelligence and security system.'
+          : 'Agent AEGIS · Your Personal Guardian · persistent profile storage is unavailable; the official companion remains available.';
+      } else {
+        companionProfileStatus.textContent = persistent
+          ? profile.displayName + ' · saved to your AEGIS account · presentation preferences only, with no separate permissions or memory.'
+          : profile.displayName + ' · session only because persistent profile storage is unavailable · no separate permissions or memory.';
+      }
+    }
+
+    async function loadCompanionProfiles() {
+      try {
+        const data = await controlApi('/api/companion/profiles');
+        if (!Array.isArray(data.profiles) || !data.activeProfile || !data.activeProfile.profile) {
+          throw new Error('Companion Profile response is invalid.');
+        }
+        companionProfiles = data.profiles.map(entry => ({
+          ...entry.profile,
+          version: entry.version === null ? null : entry.version,
+        }));
+        activeCompanionProfileId = data.activeProfile.profile.id;
+        companionProfilePersistenceAvailable = true;
+        suppressCompanionProfileChange = true;
+        renderCompanionProfileOptions();
+        const active = companionProfiles.find(profile => profile.id === activeCompanionProfileId);
+        if (active) renderCompanionProfile(active, true);
+        suppressCompanionProfileChange = false;
+      } catch (error) {
+        companionProfilePersistenceAvailable = false;
+        suppressCompanionProfileChange = true;
+        renderCompanionProfileOptions();
+        const active = companionProfiles.find(profile => profile.id === activeCompanionProfileId) || companionProfiles[0];
+        companionProfileSelect.value = active.id;
+        renderCompanionProfile(active, false);
+        suppressCompanionProfileChange = false;
+        companionProfileStatus.textContent = 'Persistent profile storage is unavailable. Custom profiles will remain session only until account storage is configured.';
+      }
+    }
+
+    companionProfileSelect.addEventListener('change', async () => {
+      if (suppressCompanionProfileChange) return;
       const selected = companionProfiles.find(profile => profile.id === companionProfileSelect.value);
       if (!selected) {
-        companionProfileSelect.value = 'aegis';
-        companionProfileStatus.textContent = 'Unknown profile. Returned to official AEGIS.';
+        companionProfileSelect.value = activeCompanionProfileId;
+        companionProfileStatus.textContent = 'Unknown profile. Restored the last active companion.';
         return;
       }
-      companionTitle.textContent = selected.kind === 'official' ? 'Here with you.' : 'Meet ' + selected.displayName + '.';
-      companionProfileStatus.textContent = selected.kind === 'official'
-        ? 'Agent AEGIS · Your Personal Guardian · one shared intelligence and security system.'
-        : selected.displayName + ' is a custom presentation profile · session only, with no separate permissions or memory.';
+      if (companionProfilePersistenceAvailable) {
+        companionProfileStatus.textContent = 'Saving companion selection…';
+        try {
+          const selection = await controlApi('/api/companion/profile-selection', {
+            method: 'POST',
+            body: JSON.stringify({
+              profileId: selected.kind === 'official' ? null : selected.id,
+              version: selected.kind === 'official' ? null : selected.version,
+            }),
+          });
+          activeCompanionProfileId = selection.activeProfile.profile.id;
+          renderCompanionProfile(selection.activeProfile.profile, true);
+        } catch (error) {
+          companionProfileSelect.value = activeCompanionProfileId;
+          companionProfileStatus.textContent = 'Selection could not be saved: ' + error.message;
+        }
+        return;
+      }
+      activeCompanionProfileId = selected.id;
+      renderCompanionProfile(selected, false);
     });
 
-    createCompanionProfile.addEventListener('click', () => {
+    createCompanionProfile.addEventListener('click', async () => {
       const displayName = customCompanionName.value.trim();
       if (displayName.length < 2 || displayName.length > 48 || /[\\u0000-\\u001f\\u007f]/.test(displayName)) {
         companionProfileStatus.textContent = 'Choose a name between 2 and 48 characters.';
         customCompanionName.focus();
         return;
       }
+      if (companionProfilePersistenceAvailable) {
+        try {
+          await controlApi('/api/companion/profiles', {
+            method: 'POST',
+            body: JSON.stringify({ displayName }),
+          });
+          customCompanionName.value = '';
+          await loadCompanionProfiles();
+          companionProfileStatus.textContent = displayName + ' saved to your AEGIS account. It changes presentation only.';
+        } catch (error) {
+          companionProfileStatus.textContent = 'Profile could not be saved: ' + error.message;
+        }
+        return;
+      }
       const slug = displayName.toLowerCase().normalize('NFKD')
         .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/g, '');
       const profileId = 'custom-' + (slug || 'companion');
-      if (!customIdPattern.test(profileId) || profileId === 'custom-aegis') {
+      if (!/^custom-[a-z0-9-]+$/.test(profileId) || profileId === 'custom-aegis') {
         companionProfileStatus.textContent = 'That name cannot be used. Try another.';
         return;
       }
@@ -1539,16 +1625,12 @@
         companionProfileStatus.textContent = 'A companion with that name already exists in this session.';
         return;
       }
-      const profile = { id: profileId, kind: 'custom', displayName };
+      const profile = { id: profileId, kind: 'custom', displayName, version: null };
       companionProfiles.push(profile);
-      const option = document.createElement('option');
-      option.value = profile.id;
-      option.dataset.companionProfile = profile.id;
-      option.textContent = profile.displayName;
-      companionProfileSelect.appendChild(option);
-      companionProfileSelect.value = profile.id;
-      companionProfileSelect.dispatchEvent(new Event('change'));
-      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account saving is not connected yet.';
+      activeCompanionProfileId = profile.id;
+      renderCompanionProfileOptions();
+      renderCompanionProfile(profile, false);
+      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account storage is not available.';
       customCompanionName.value = '';
     });
 
