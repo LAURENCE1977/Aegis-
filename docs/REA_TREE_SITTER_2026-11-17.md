@@ -213,3 +213,22 @@ Verification:
 - The new regression asserts the call-site line and the actual `var` declaration line, ensuring the edge is tied to the declaration rather than just the identifier spelling.
 
 This remains a bounded approximation of JavaScript lexical binding. Complex destructuring, eval/with, hoisting interactions beyond the tested cases, TypeScript namespaces and other unsupported binding forms must remain unresolved rather than guessed.
+
+
+### Explicit named re-export lineage — implemented and verified
+
+The prototype now extracts explicit named re-exports from source files and resolves their immediate source declaration when that declaration is present in the selected source bundle.
+
+Each resolved edge records:
+- Re-exporting module (source) and directly referenced module (target).
+- Original exported name (imported) and public alias (exported).
+- Re-export source coordinates and the original declaration coordinates.
+
+Unresolved cases are retained in unresolvedReExports with a reason rather than guessed. Star/namespace re-exports are explicitly marked unsupported by this pass. Re-export edges are not flattened into direct consumer-to-origin symbol edges; multi-hop barrel forwarding and export-star conflict resolution remain future work.
+
+TDD evidence:
+- Added a consumer-facing regression test before implementation. The first run failed in the Node.js test stage on commit 53b5aa4b7dfe8dfd5d08ffb21db1712a5ac9d0ee (workflow 44087327369), establishing the missing re-export result.
+- Implemented syntax extraction and direct declaration resolution in commits 06f95e38d9009c46930bb17c8467eff892f442b3 and 808ad678e263a52ddf75d77481c5d043320dfdda.
+- Full workflow 44087455235 passed on 808ad678e263a52ddf75d77481c5d043320dfdda, including Node.js tests, Cloudflare/Miniflare integration and all isolated capability, runtime and Forge D1 safeguards.
+
+The parser remains an isolated prototype: no production Forge route integration, no source execution, no dynamic package resolution, and no production WASM adoption.
