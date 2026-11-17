@@ -154,3 +154,12 @@ See [AEGIS Capability Roadmap](docs/AEGIS_CAPABILITY_ROADMAP.md) for the build/a
 ## Guardian Intelligence — learning, resources and security research
 
 AEGIS now has pure validators for Resource Intelligence records, acyclic Learning Graphs and evidence-backed Security Findings. The first Resource Catalogue slice also has owner-scoped D1 persistence and authenticated, same-origin `GET/POST /api/guardian/resources`; records are server-identified, idempotent by source revision and created as drafts. Learning graph persistence, the owner-facing catalogue UI, security finding persistence and all scanning/execution remain future work. See [Guardian Intelligence contracts](docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md) and [the 17 November REA batch](docs/REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md). Dynamic security testing remains disabled until Sentinel-backed exact-scope authorisation and isolated-worker enforcement are implemented and tested.
+
+
+## Guardian Resource review lifecycle
+
+Guardian Resources now have an owner-scoped review transition API. Records start as drafts; review transitions use optimistic concurrency, bounded reviewer notes and server-derived reviewer identity. Source content and source identity are immutable after intake. Acceptance is blocked unless the licence is marked verified and has an HTTPS evidence reference. D1 triggers enforce the transition rules and append-only review events. This is a source-level feature on draft PR #103, not yet deployed.
+
+## UI ecosystem research
+
+AEGIS maintains a researched, framework-neutral UI direction: AEGIS-owned design tokens, semantic primitives, accessibility and motion contracts, with optional React and Vue adapters. The current research intake covers shadcn/ui, Magic UI, Aceternity UI, HyperUI, Material UI, React, Vue, Tailwind CSS and the Awesome React/Vue/Frontend/Tailwind discovery lists. These are research candidates, not blanket dependencies or blanket code-reuse approvals. See [AEGIS UI ecosystem research](docs/AEGIS_UI_ECOSYSTEM_RESEARCH_2026-11-17.md).
