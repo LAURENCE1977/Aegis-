@@ -64,6 +64,14 @@ test('ignores attempts from other path versions and rejects malformed evidence',
   assert.throws(() => buildLearningReviewSchedule(path, [{ ...attempt('attempt-bad', '10', true), scorePercent: 101 }]), /attempt/i);
 });
 
+test('rejects future-dated attempts relative to the scheduler clock', () => {
+  const future = attempt('attempt-future', '18', true);
+  assert.throws(
+    () => buildLearningReviewSchedule(path, [future], Date.parse('2026-11-17T00:00:00.000Z')),
+    /future/i,
+  );
+});
+
 test('returns stable node ordering and never schedules notifications', () => {
   const schedule = buildLearningReviewSchedule(path, [
     { ...attempt('attempt-2', '12', true), nodeId: 'functions' },
