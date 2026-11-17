@@ -1668,11 +1668,28 @@
     const companionModeChatSlot = document.getElementById('companionModeChatSlot');
     const companionModeProfileTitle = document.getElementById('companionModeProfileTitle');
     const companionModeProfileDescription = document.getElementById('companionModeProfileDescription');
+    const companionStage = document.getElementById('companionStage');
+    const companionModeVisual = document.getElementById('companionModeVisual');
+    const companionWarmth = document.getElementById('companionWarmth');
+    const companionHumour = document.getElementById('companionHumour');
+    const companionDirectness = document.getElementById('companionDirectness');
+    const companionInitiative = document.getElementById('companionInitiative');
+    const companionVerbosity = document.getElementById('companionVerbosity');
+    const companionVisualPreset = document.getElementById('companionVisualPreset');
+    const saveCompanionSettings = document.getElementById('saveCompanionSettings');
+    const companionSettingsStatus = document.getElementById('companionSettingsStatus');
+    const companionSettingOutputs = {
+      companionWarmth: document.getElementById('companionWarmthValue'),
+      companionHumour: document.getElementById('companionHumourValue'),
+      companionDirectness: document.getElementById('companionDirectnessValue'),
+      companionInitiative: document.getElementById('companionInitiativeValue'),
+    };
     const chatComposer = chatSection.querySelector('.input-area');
     let companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS', version: null }];
     let companionProfilePersistenceAvailable = false;
     let activeCompanionProfileId = 'aegis';
     let suppressCompanionProfileChange = false;
+    let hasLoadedCompanionProfiles = false;
 
     function renderCompanionProfileOptions() {
       companionProfileSelect.replaceChildren();
@@ -1692,6 +1709,28 @@
       companionModeProfileDescription.textContent = profile.kind === 'official'
         ? 'Your Personal Guardian · one shared intelligence and security system.'
         : (profile.description || 'A custom companion presentation profile · no separate permissions or memory.');
+      const interaction = profile.interaction || { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' };
+      companionWarmth.value = interaction.warmth;
+      companionHumour.value = interaction.humour;
+      companionDirectness.value = interaction.directness;
+      companionInitiative.value = interaction.initiative;
+      companionVerbosity.value = interaction.verbosity;
+      Object.entries(companionSettingOutputs).forEach(([id, output]) => {
+        output.textContent = String(document.getElementById(id).value);
+      });
+      const visualPreset = profile.appearance?.visualPreset || 'aegis';
+      companionVisualPreset.value = visualPreset;
+      companionStage.dataset.visualPreset = visualPreset;
+      companionModeVisual.dataset.visualPreset = visualPreset;
+      const custom = profile.kind === 'custom';
+      [companionWarmth, companionHumour, companionDirectness, companionInitiative,
+        companionVerbosity, companionVisualPreset].forEach(control => { control.disabled = !custom; });
+      saveCompanionSettings.disabled = !custom;
+      companionSettingsStatus.textContent = !custom
+        ? 'Choose a custom companion to personalise its presentation and interaction style.'
+        : persistent
+          ? 'These preferences are saved to your account and do not change permissions, tools or memory access.'
+          : 'Changes will remain in this browser session only until account storage is configured.';
       if (profile.kind === 'official') {
         companionProfileStatus.textContent = persistent
           ? 'Agent AEGIS · Your Personal Guardian · official identity, one shared intelligence and security system.'
@@ -1715,12 +1754,17 @@
         }));
         activeCompanionProfileId = data.activeProfile.profile.id;
         companionProfilePersistenceAvailable = true;
+        hasLoadedCompanionProfiles = true;
         suppressCompanionProfileChange = true;
         renderCompanionProfileOptions();
         const active = companionProfiles.find(profile => profile.id === activeCompanionProfileId);
         if (active) renderCompanionProfile(active, true);
         suppressCompanionProfileChange = false;
       } catch (error) {
+        if (hasLoadedCompanionProfiles) {
+          companionProfileStatus.textContent = 'Could not refresh saved profiles. Your last loaded account profile remains selected.';
+          return;
+        }
         companionProfilePersistenceAvailable = false;
         suppressCompanionProfileChange = true;
         renderCompanionProfileOptions();
@@ -1795,7 +1839,11 @@
         companionProfileStatus.textContent = 'A companion with that name already exists in this session.';
         return;
       }
-      const profile = { id: profileId, kind: 'custom', displayName, version: null };
+      const profile = {
+        id: profileId, kind: 'custom', displayName, version: null, description: '',
+        appearance: { mode: 'adaptive', visualPreset: 'aegis', assetPackId: null },
+        interaction: { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' },
+      };
       companionProfiles.push(profile);
       activeCompanionProfileId = profile.id;
       renderCompanionProfileOptions();
@@ -1804,7 +1852,52 @@
       customCompanionName.value = '';
     });
 
-    function moveChatToCompanionMode() {
+    Object.entries(companionSettingOutputs).forEach(([id, output]) => {
+      document.getElementById(id).addEventListener('input', event => {
+        output.textContent = String(event.currentTarget.value);
+      });
+    });
+
+    saveCompanionSettings.addEventListener('click', async () => {
+      const selected = companionProfiles.find(profile => profile.id === activeCompanionProfileId);
+      if (!selected || selected.kind !== 'custom') return;
+      const interaction = {
+        warmth: Number(companionWarmth.value),
+        humour: Number(companionHumour.value),
+        directness: Number(companionDirectness.value),
+        initiative: Number(companionInitiative.value),
+        verbosity: companionVerbosity.value,
+      };
+      const appearance = { visualPreset: companionVisualPreset.value };
+      if (companionProfilePersistenceAvailable && Number.isInteger(selected.version)) {
+        saveCompanionSettings.disabled = true;
+        companionSettingsStatus.textContent = 'Saving your companion preferences…';
+        try {
+          const result = await controlApi('/api/companion/profiles/' + encodeURIComponent(selected.id), {
+            method: 'PATCH',
+            body: JSON.stringify({ expectedVersion: selected.version, interaction, appearance }),
+          });
+          const updated = {
+            ...result.profile.profile,
+            version: result.profile.version,
+          };
+          const index = companionProfiles.findIndex(profile => profile.id === selected.id);
+          if (index >= 0) companionProfiles[index] = updated;
+          renderCompanionProfile(updated, true);
+          companionSettingsStatus.textContent = 'Saved to your AEGIS account · profile revision ' + updated.version + '.';
+        } catch (error) {
+          companionSettingsStatus.textContent = 'Preferences could not be saved: ' + error.message;
+          saveCompanionSettings.disabled = false;
+        }
+        return;
+      }
+      selected.interaction = interaction;
+      selected.appearance = { ...(selected.appearance || {}), ...appearance };
+      renderCompanionProfile(selected, false);
+      companionSettingsStatus.textContent = 'Updated for this browser session only. Account storage is unavailable.';
+    });
+
+        function moveChatToCompanionMode() {
       companionModeChatSlot.append(chatProjectSelect, chatBox, chatComposer, status);
     }
 
