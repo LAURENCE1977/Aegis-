@@ -24,7 +24,7 @@ function validateClock(now) {
 }
 function validateAttemptTime(attempt, now) {
   if (typeof attempt.occurredAt !== 'string' ||
-      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(attempt.occurredAt) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(attempt.occurredAt) ||
       !Number.isFinite(Date.parse(attempt.occurredAt)) ||
       new Date(Date.parse(attempt.occurredAt)).toISOString() !== attempt.occurredAt) {
     throw new TypeError('Stored Learning Attempt timestamp is invalid');
