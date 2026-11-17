@@ -444,3 +444,23 @@ Acceptance gates before implementation:
 - Dissect target abstraction and plugin loader were inspected; no individual parser has been approved for reuse.
 - No source code, rules, package, binary or dataset has been copied, installed or executed. No AEGIS Evidence Intelligence feature is marked implemented.
 - Next: inspect current AEGIS persistence migrations and upload constraints; review Binwalk parser/extractor tests and fuzz coverage; inspect capa parser/test boundaries; identify one small Dissect parser with a permissive licence or design a clean-room equivalent; and benchmark only in a disposable, isolated environment.
+
+
+### Existing AEGIS baseline checked before defining evidence storage
+
+The current Forge implementation already provides two related but distinct data domains:
+
+- `forge_source_provenance` stores owner-scoped, immutable upstream source identity using canonical URL and pinned revision. It is for candidate/source provenance, not uploaded user evidence.
+- `forge_knowledge_records` stores owner-reviewed reusable knowledge with attribution, limitations, evidence level and an append-only lifecycle. It is not a case file or raw evidence store.
+- `forge_candidate_provenance_links` links candidate records to immutable source provenance.
+
+The existing repository-code intelligence path is also narrower than the proposed Evidence Intake pipeline:
+- It re-inspects a public GitHub repository and requires the exact inspected tree SHA.
+- Selected file paths and blob SHAs must match the current pinned tree; each returned blob SHA and byte size is checked again.
+- The endpoint accepts 1–50 selected JS/TS files, each no larger than 32 KiB. The underlying heuristic analyser has its own 1,000-file, 512-KiB-per-file and 8-MiB aggregate limits, but the endpoint's tighter limits apply to this route.
+- It produces a static import relationship report only. It does not execute, install or build source.
+- This is a good precedent for immutable source identity, exact-object revalidation and bounded read-only analysis, but it is not a general binary upload, archive parser or evidence custody system.
+
+AEGIS design consequence: do not overload Forge's Knowledge Library or source-provenance tables with case evidence. A future case-scoped evidence domain should reference existing owner/case identity and audit/run lineage where appropriate, while keeping immutable original-source identity separate from parser outputs and analyst conclusions. A dedicated evidence ledger is only proposed; no schema or upload/storage binding has been added in this research pass.
+
+No conclusion about the absence of other repository upload/storage mechanisms is made from these selected paths. The exact Pages/Workers storage configuration and any existing object-storage binding still need a repository-wide inspection before an implementation design is finalised.
