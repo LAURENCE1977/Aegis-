@@ -120,7 +120,7 @@ Forge can persist inspected public repositories as owner-reviewed candidates pin
 
 ## Forge Knowledge Library
 
-The Forge panel includes a searchable owner-only Knowledge Library. New records preserve source URLs and attribution, evidence level, limitations and applicable capability tags. Records start as drafts; owner review is explicit, low/experimental evidence cannot be accepted, reviewed content is immutable, and create/review/accept/supersede history is append-only. Search defaults to accepted records only. The library is not yet automatically injected into Agent Workforce plans; that integration remains gated on the next retrieval stage. See [Forge intelligence](docs/FORGE_INTELLIGENCE.md) and [AEGIS Forge](docs/AEGIS_FORGE.md).
+The Forge panel includes a searchable owner-only Knowledge Library. New records preserve source URLs and attribution, evidence level, limitations and applicable capability tags. Records start as drafts; owner review is explicit, low/experimental evidence cannot be accepted, reviewed content is immutable, and create/review/accept/supersede history is append-only. Search defaults to accepted records only. Accepted high/medium evidence records are now attached to Project Space agent-run context after objective-relevance ranking; retrieved content remains untrusted reference data and never grants permissions. See [Forge intelligence](docs/FORGE_INTELLIGENCE.md) and [AEGIS Forge](docs/AEGIS_FORGE.md).
 
 
 ## First owner-facing invocation route
