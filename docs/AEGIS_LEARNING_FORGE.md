@@ -83,3 +83,36 @@ A second slice adds owner-scoped learner progress:
 - Tests cover exact path/node binding, idempotency, immutable conflicts, owner isolation, page limits and answer-key/pass-threshold omission.
 
 This still does not implement learner attempt submission, retry/cooldown policy, append-only attempt history, revocation/supersession, or mastery certification. A score remains learning evidence only; it cannot confer permissions or authority. CI and D1 runtime verification are pending.
+
+
+## Server-scored attempts and explainable next actions — fourth slice (17 November 2026)
+
+**Status:** Implemented on draft PR #103. Latest push and D1 migration/smoke verification passed.
+
+### Immutable attempt history
+
+- Added `migrations/forge/0013_learning_assessment_attempts.sql` with owner-scoped attempts bound by foreign key and database trigger to an exact registered assessment version and its path/node identity.
+- Attempts persist the deterministic score, pass/fail result, assessment digest and timestamp. **Raw answers are not stored, and no hash of the low-entropy multiple-choice answers is stored either.**
+- The API accepts only assessment ID/version and answers. It never accepts a client score, pass flag, owner ID or mastery claim.
+- Scoring loads the trusted immutable assessment server-side and rejects missing, extra or malformed answers.
+- D1 enforces a 30-second cooldown and a maximum of five attempts per assessment version in a rolling 15-minute window. This is enforced at the database write boundary, not just in application code.
+- Attempt records and submission events are append-only and reject update/delete. Attempt history is private, owner-scoped and bounded.
+- Every result explicitly reports `masteryVerified: false`. Passing an assessment does not issue a credential, alter progress or grant capability/agent authority.
+
+### Adaptive next-action engine
+
+- Added `functions/lib/learning-recommendations.mjs`, a deterministic, local, explainable recommendation function.
+- It considers only the exact path revision, validates progress and attempt projections, and honours prerequisite completion.
+- It prioritises review after a failed check, reinforcement after a pass, continuation of an in-progress node, and starting the next eligible node.
+- Each recommendation includes a plain-language reason, source references, deterministic priority and timestamp.
+- Attempts from another path revision are ignored; malformed evidence is rejected rather than guessed.
+- Recommendations never change progress or certify mastery. This is a pure engine; a persisted recommendation feed/UI and spaced-repetition scheduler are not yet implemented.
+
+### Verification
+
+- GitHub Actions run `44183737666` passed on code head `f50b4bfd9b4faf149cddedd3385bf9d31abe577a`: **838 tests, 837 passed, 0 failed, 1 skipped**, plus all isolated D1 migration/runtime/Forge checks.
+- Follow-up run `44184401063` passed on `8d52871d98768334df4de350731b9728de424714`: **844 tests, 843 passed, 0 failed, 1 skipped**, plus isolated D1 migration/runtime/Forge checks.
+- The first run exposed an SQL column-order syntax defect in migration `0012`; the column definition was moved ahead of table constraints and the subsequent complete migration/smoke run passed.
+- The new attempt-history migration, assessment and attempt integrity checks, invalid-node rejection, append-only triggers and rapid-retry cooldown were exercised by the Forge D1 CI smoke workflow.
+
+Still not implemented: learner-facing identity/accounts beyond the existing owner-auth boundary, a learner UI, independent mastery certification, attempt retention/deletion policy, recommendation persistence, spaced repetition and a supervised tutor conversation. The current owner API is the existing single-owner pattern; it is not presented as a multi-tenant learner platform.
