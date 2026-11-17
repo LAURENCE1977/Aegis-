@@ -607,3 +607,13 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Exact path-version binding, deterministic due dates, overdue state and explanatory reasons are included. Mastery remains false.
 - No schedule persistence, notification dispatch or reminder consent is assumed.
 - Full CI passed on code commit `8cd71ef048574c5eda7868f8e8b065ff9e161fd3` (workflow `44188619578`): **857 tests, 856 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+
+
+### Learning Forge — chronology and review-schedule integrity hardening (17 November 2026)
+
+- Mastery candidate generation now requires the approving human review timestamp to be strictly later than every evidence item it references. A complete but premature review returns `insufficient_evidence` with an explicit missing reason.
+- The local spaced-review scheduler now rejects future-dated attempt projections relative to its supplied clock, in addition to validating canonical timestamps, score consistency, exact path revisions and duplicate attempt IDs.
+- Review suggestions remain deterministic and local: latest attempt per UTC day, failure resets, 1/3/7/14/30-day successful-review intervals, and no progress mutation, mastery certification or notification dispatch.
+- Full workflow [44189175803](https://github.com/LAURENCE1977/Aegis-/actions/runs/44189175803) passed on code head `3ee155670cce21e1504a1a6ba45ff36305633061`: **850 tests, 849 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge D1 migrations and smoke checks all successful.
+- Full workflow [44188619578](https://github.com/LAURENCE1977/Aegis-/actions/runs/44188619578) separately passed the strict evidence-review chronology regression: **857 tests, 856 passed, 0 failed, 1 skipped**.
+- Remaining trust boundary: the mastery candidate policy still consumes structured evidence and does not authenticate its provenance, prove reviewer independence or verify artifact contents. No production API, learner UI, certificate, capability grant, persisted review schedule or reminder service is introduced.
