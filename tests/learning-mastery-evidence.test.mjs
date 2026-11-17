@@ -55,6 +55,16 @@ test('requires assessment attempts on separate UTC dates', () => {
   assert.equal(buildLearningMasteryCandidate(path, 'basics', sameDay).status, 'insufficient_evidence');
 });
 
+test('requires human review to occur strictly after every evidence item it approves', () => {
+  const prematureReview = evidence.map(item => item.kind === 'human_review'
+    ? { ...item, occurredAt: '2026-11-12T09:00:00.000Z' } : item);
+  const candidate = buildLearningMasteryCandidate(
+    path, 'basics', prematureReview, Date.parse('2026-11-15T00:00:00.000Z'),
+  );
+  assert.equal(candidate.status, 'insufficient_evidence');
+  assert.ok(candidate.missing.includes('human_review_after_all_evidence'));
+});
+
 test('requires an applied task and a human review referencing every evidence item', () => {
   assert.equal(buildLearningMasteryCandidate(path, 'basics', evidence.slice(0, 2)).status, 'insufficient_evidence');
   const incompleteReview = evidence.map(item => item.kind === 'human_review'
