@@ -351,6 +351,27 @@
     .companion-profile-create { display: flex; gap: 8px; }
     .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
     .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    .companion-personality-settings {
+      width: 100%; margin-top: 8px; padding: 10px 11px;
+      border: 1px solid rgba(160,180,210,.13); border-radius: 11px;
+      background: rgba(255,255,255,.025);
+    }
+    .companion-personality-settings summary { color: var(--muted-strong); cursor: pointer; font-size: .73rem; font-weight: 700; }
+    .companion-setting-grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px 10px; margin-top: 12px; }
+    .companion-setting-grid label { align-self: center; color: var(--muted); font-size: .68rem; }
+    .companion-setting-grid output { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .companion-setting-grid input[type="range"] { grid-column: 1 / -1; width: 100%; min-width: 0; accent-color: var(--accent-strong); }
+    .companion-setting-grid select { grid-column: 1 / -1; width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 10px; color: var(--text); background: rgba(5,10,18,.72); }
+    .companion-setting-grid button { grid-column: 1 / -1; min-height: 38px; }
+    .companion-setting-grid .companion-profile-note { grid-column: 1 / -1; }
+    .companion-stage[data-visual-preset="neutral"] .avatar-light,
+    .companion-mode-presence[data-visual-preset="neutral"] .avatar-light {
+      background: rgba(226,232,240,.86); box-shadow: 0 0 12px rgba(226,232,240,.55);
+    }
+    .companion-stage[data-visual-preset="custom"] .avatar-light,
+    .companion-mode-presence[data-visual-preset="custom"] .avatar-light {
+      background: rgba(196,181,253,.9); box-shadow: 0 0 15px rgba(167,139,250,.72);
+    }
     .companion-mode-action { width: 100%; max-width: 320px; margin-top: 14px; display: grid; gap: 7px; }
     .companion-mode-action button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .companion-mode-action p { margin: 0; color: var(--muted); font-size: .66rem; line-height: 1.45; }
@@ -837,7 +858,7 @@
         </header>
         <div class="companion-mode-layout">
           <section class="companion-mode-presence-panel" aria-label="Companion presence">
-            <div class="companion-presence companion-mode-presence" role="img" aria-label="Stylised Agent AEGIS avatar presentation. A lifelike avatar runtime is not connected.">
+            <div id="companionModeVisual" class="companion-presence companion-mode-presence" role="img" aria-label="Stylised Agent AEGIS avatar presentation. A lifelike avatar runtime is not connected.">
               <div class="companion-orbit" aria-hidden="true"></div>
               <div class="companion-avatar" aria-hidden="true">
                 <span class="avatar-head"></span>
