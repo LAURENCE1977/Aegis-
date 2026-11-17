@@ -526,3 +526,14 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Progress labels are `in_progress` and `self_reported_complete`, not verified mastery. API responses explicitly set `masteryVerified: false`.
 - Both the service and D1 triggers enforce prerequisites before downstream completion. CI smoke checks attempt a database-level bypass and verify it is rejected.
 - Assessment, evidence-backed mastery, spaced repetition and adaptive sequencing remain future work.
+
+
+### Learning Forge — deterministic assessment contract (17 November 2026)
+
+**Status:** Pure assessment contract implemented on PR #103; full CI pending.
+
+- Added `functions/lib/learning-mastery.mjs` and `tests/learning-mastery.test.mjs`.
+- Validates bounded assessment definitions bound to an exact immutable Learning Path version and node.
+- Deterministic weighted scoring requires exactly one valid answer per question and enforces a declared pass threshold.
+- The scorer explicitly returns `masteryVerified: false`; no persisted mastery, learner-facing delivery API or certification is claimed.
+- Next: immutable assessment registry, private answer-key handling, append-only attempt history and policy-backed mastery verification. No external model-as-judge or automatic skill inference.
