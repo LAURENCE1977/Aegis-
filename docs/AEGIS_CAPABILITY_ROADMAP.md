@@ -307,3 +307,18 @@ The first useful release must demonstrate read-only device profiling on a suppor
 **Gate 0 — owner approval and runtime authorisation:** the plan-only agent-run foundation remains separate from execution. GitHub Actions run `44061929671` (run 2312, completed/success) verified the full Node.js/runtime test step and all isolated capability, runtime and Forge D1 checks. A consumed approval can now be recovered only through its exact owner/capability binding; Sentinel revalidates the persisted plan digest and active exact-resource grant before retrying the same idempotent runtime authorisation. A revoked grant blocks recovery. Regression tests cover transient runtime failure, one-time consumption and revoked-grant denial. This still does not enable specialist execution, queue dispatch or tool invocation.
 
 **Latest verified implementation head at this checkpoint:** `96f313e398b45f2951863116ee7433e062f3eb76`. The PR remains draft, open and unmerged; no production deployment is authorised.
+
+
+## 11. Open-source learning, self-hosting and security research batch
+
+**Status:** Research intake recorded; no new capability is claimed as implemented.
+
+See [docs/REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md](REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md).
+
+Proposed native capability families:
+- Resource Intelligence Catalogue: verified free-tier limits, licence, freshness, self-hosting and operational-cost evidence.
+- Adaptive Learning & Mastery Engine: user-controlled learning graphs, prerequisites, practice and evidence-based mastery.
+- Self-hosted Software Intelligence: provenance, compatibility, maintenance, security and exit-path evaluation.
+- Governed Security Research Engine: exact authorised scope, evidence-backed findings, isolated workers and Sentinel approval.
+
+Delivery is gated on typed contracts and tests first. Security-agent research must not introduce ambient shell, Docker socket access, arbitrary network egress, C2, persistence or autonomous remediation. ARTEX, Cairn and CyberStrikeAI remain identity/provenance holds until exact upstreams and licences are independently verified. No external code was imported or executed.
