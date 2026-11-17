@@ -189,12 +189,12 @@ test('resolves a shadowed call only to the nearest function declaration', async 
       '}',
     ].join('\n'),
   }]);
-  assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
-    caller, callee, line: location.start.line,
+  assert.deepEqual(result.calls.map(({ caller, callee, location, calleeLocation }) => ({
+    caller, callee, line: location.start.line, declarationLine: calleeLocation.start.line,
   })), [
-    { caller: 'inner', callee: 'finish', line: 5 },
-    { caller: 'outer', callee: 'finish', line: 7 },
-    { caller: 'start', callee: 'finish', line: 10 },
+    { caller: 'inner', callee: 'finish', line: 5, declarationLine: 3 },
+    { caller: 'outer', callee: 'finish', line: 7, declarationLine: 3 },
+    { caller: 'start', callee: 'finish', line: 10, declarationLine: 1 },
   ]);
 });
 
@@ -212,10 +212,10 @@ test('does not treat a nested same-name declaration as the target of an outer-sc
       '}',
     ].join('\n'),
   }]);
-  assert.deepEqual(result.calls.map(({ caller, callee, location }) => ({
-    caller, callee, line: location.start.line,
+  assert.deepEqual(result.calls.map(({ caller, callee, location, calleeLocation }) => ({
+    caller, callee, line: location.start.line, declarationLine: calleeLocation.start.line,
   })), [
-    { caller: 'start', callee: 'finish', line: 3 },
-    { caller: 'nested', callee: 'finish', line: 6 },
+    { caller: 'start', callee: 'finish', line: 3, declarationLine: 1 },
+    { caller: 'nested', callee: 'finish', line: 6, declarationLine: 5 },
   ]);
 });
