@@ -487,3 +487,14 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Added store/API/migration tests and D1 smoke checks for uniqueness and immutable suite/event history.
 - A semantic version is immutable once registered; changed suite content requires a new version.
 - Evaluation-run persistence, runner authentication, candidate execution, evidence receipt verification and promotion review remain separate future slices. The API does not accept a caller-supplied verified flag or permit evaluation scores to grant capabilities.
+
+
+### Eval Forge — immutable evidence-verified run history (17 November 2026)
+
+**Status:** Implementation added to draft PR #103; CI verification pending.
+
+- Added Forge migration `0009_eval_runs.sql` with owner-scoped unique run IDs, a foreign key to an exact registered suite version, bounded score/status constraints and append-only run events.
+- Added `functions/lib/eval-forge-runs.mjs`: verifies the registered suite digest, verifies candidate/evidence bytes through the existing verifier, then stores only the result and digests. Raw artifact/evidence bytes and prompts are not retained.
+- Identical retries are idempotent; conflicting reuse of a run ID is rejected. Results and audit events cannot be updated or deleted.
+- No public run-submission API is exposed until an authenticated isolated runner can supply a trusted execution receipt. Digest integrity alone does not prove runner identity or honest execution.
+- Scores remain evidence for human review only; they never grant capabilities, bypass Sentinel or trigger promotion.
