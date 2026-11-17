@@ -361,7 +361,27 @@ jobs:
             echo "Expected Companion Profile events to reject deletion."
             exit 1
           fi
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profiles WHERE profile_id = 'custom-smoke'"; then
+            echo "Expected Companion Profile revisions to require an authorized owner purge."
+            exit 1
+          fi
           if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_preferences (owner_id, active_profile_id, active_profile_version, updated_at) VALUES ('other-owner', 'custom-smoke', 1, '2026-11-17T12:01:00.000Z')"; then
             echo "Expected Companion Profile selection to reject another owner's profile."
+            exit 1
+          fi
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_authorizations (owner_id, nonce, expires_at) VALUES ('owner', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2099-01-01T00:00:00.000Z')"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_preferences WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_events WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profiles WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_purge_authorizations WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_events (id, owner_id, purged_profiles_count, occurred_at) VALUES ('purge-smoke', 'owner', 1, '2026-11-17T12:02:00.000Z')"
+          purged_count=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT COUNT(*) AS count FROM companion_profiles WHERE owner_id = 'owner'")
+          echo "$purged_count"
+          grep -q '"count":0' <<< "$purged_count"
+          purge_audit=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT purged_profiles_count FROM companion_profile_purge_events WHERE owner_id = 'owner'")
+          echo "$purge_audit"
+          grep -q '1' <<< "$purge_audit"
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_purge_events WHERE id = 'purge-smoke'"; then
+            echo "Expected Companion Profile purge audit to remain append-only."
             exit 1
           fi
