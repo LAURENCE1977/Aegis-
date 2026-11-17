@@ -20,7 +20,7 @@ Its intended contract is:
 
 The graph is an evidence-backed view of the selected source bundle, not a complete semantic model, package graph, build graph or runtime call graph. No source is executed.
 
-The serializer is not yet integrated into production Forge routes or the UI. It must pass the full test workflow before promotion. Next work: graph schema validation, namespace-member edge integration, disconnected-component tests, and an interactive viewer whose edges open the exact source evidence.
+The serializer remains an isolated Forge analysis module, not wired into production repository routes or the UI. Its architecture-graph tests passed in the Node.js/Cloudflare runtime stage of workflow `44099632898`; the full workflow, including isolated D1 checks, completed successfully. Next work: schema validation, namespace-member edges, richer type/reference edges, and an interactive viewer whose edges open exact source evidence.
 
 ### 2. AG-UI — protocol compatibility, not authority
 
@@ -30,7 +30,7 @@ Upstream:
 - Licence: MIT.
 - The 1.0 specification defines 31 event types across eight families and uses a versioned event schema.
 
-AEGIS already has a live streaming endpoint and a bounded, owner-only terminal-run replay endpoint. The current replay intentionally emits only lifecycle and custom audit-reference events because persisted run history does not establish assistant message content, tool-call arguments/results or specialist execution. Do not fabricate richer protocol events from incomplete records.
+AEGIS already has a live text-streaming endpoint and a bounded, owner-only terminal-run replay endpoint. The live endpoint emits actual assistant text deltas and can execute at most one server-registered tool per run through the existing Sentinel-enforced tool boundary. The terminal replay intentionally emits lifecycle and custom audit-reference events because persisted run history does not establish assistant message content, tool-call arguments/results or specialist execution. The live tool invocation is not yet surfaced as AG-UI TOOL_CALL_* events; do not fabricate replay content from incomplete records.
 
 Implementation sequence:
 1. Keep the existing endpoint and replay path; do not create a second transport.
@@ -100,8 +100,8 @@ No production route or automatic scan is added until all applicable gates pass:
 ## Current status
 
 - Multi-hop named re-export adapter: full workflow 44095169702 succeeded.
-- Architecture graph serializer and tests: implementation is committed; latest workflow verification is pending/being reconciled. Do not describe it as CI-green until the matching run completes successfully.
-- AG-UI live streaming and bounded replay: existing implementation remains in place; full 1.0 conformance expansion is future work.
-- RAGFlow: native design direction recorded; no heavyweight dependency installed.
+- Architecture graph serializer and tests: Node.js/Cloudflare runtime test stage and all isolated D1 checks passed in workflow `44099632898` (completed/success). It remains isolated from production routes/UI.
+- AG-UI: live text streaming and bounded terminal replay are implemented; full event-family conformance, persisted event semantics and TOOL_CALL_* visibility remain future work.
+- RAGFlow: native foundations now include Markdown chunking, lexical BM25 retrieval and evidence-bound compilation; upload/extraction/storage integration and semantic retrieval remain future work. No heavyweight dependency installed.
 - MobSF: isolated adapter design recorded; no worker or dynamic analysis activated.
 - No PR merge, production deployment, device scan, source execution or paid service activation.
