@@ -26,3 +26,23 @@ INSERT INTO forge_knowledge_records (
   '["benchmark.compare","code.test"]',
   '2026-11-16T00:00:00.000Z', '2026-11-16T00:00:00.000Z'
 );
+
+INSERT INTO guardian_resources (
+  id, owner_id, canonical_url, source_revision, record_json,
+  review_status, created_at, updated_at
+) VALUES (
+  'guardian-resource-smoke', 'owner', 'https://example.org/self-hosted-service',
+  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  json_object(
+    'id', 'guardian-resource-smoke',
+    'name', 'Guardian D1 smoke resource',
+    'canonicalUrl', 'https://example.org/self-hosted-service',
+    'category', 'self-hosted-service',
+    'sourceRevision', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'licence', json_object('identifier', 'MIT', 'review', 'review-required', 'evidenceUrl', NULL),
+    'pricing', json_object('model', 'free', 'limits', json_array(), 'evidenceUrl', 'https://example.org/pricing', 'checkedAt', '2026-11-17T12:00:00.000Z'),
+    'hosting', json_object('mode', 'self-hosted', 'requirements', json_array('Linux host')),
+    'limitations', json_array('Operator maintenance required')
+  ),
+  'draft', '2026-11-17T12:00:00.000Z', '2026-11-17T12:00:00.000Z'
+);
