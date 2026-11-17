@@ -198,3 +198,68 @@ Every optional module must declare supported platforms, privileges, CPU/RAM/stor
 5. Keep all work on the existing feature branch/PR workflow. No production provisioning, secrets, paid services, VPN installation, scanning of third-party targets or PR merge without explicit approval.
 
 **Current implementation status:** accepted design baseline only. No Security Suite feature completion is claimed by this document.
+
+
+## 8. Protective Intelligence, personal safety and duress
+
+**Status:** Accepted architectural direction; design only. No continuous environmental monitoring, biometric authentication, duress workflow, evidence recorder or emergency-response feature is claimed as implemented.
+
+AEGIS may take inspiration from the fictional Machine in *Person of Interest* in its ability to correlate authorised signals, recognise patterns, anticipate risks and proactively assist. It must not reproduce mass surveillance, covert observation, indiscriminate person profiling or unaccountable automated control.
+
+### 8.1 AEGIS Protective Intelligence
+
+A single AEGIS-owned intelligence layer may coordinate:
+- predictive security analysis across explicitly authorised AEGIS assets and data sources;
+- device, account, network, software and service health monitoring;
+- pattern and anomaly detection with evidence, confidence, freshness and coverage limits;
+- proactive, proportionate recommendations and user-approved protective actions;
+- learning from confirmed outcomes and user feedback, with provenance, correction and retention controls.
+
+The intelligence layer is not a new permission authority. Sentinel remains the sole authority for identity-bound access, sensor permissions, scopes, approvals, revocation and consequential actions. Models and external tool outputs are untrusted evidence, never instructions or authority.
+
+### 8.2 Personal safety and duress protection
+
+Provide an optional, user-configured Duress & Coercion Protection workflow across supported editions:
+- discreet activation through an explicitly configured trigger, including a duress credential where platform design safely supports it;
+- local protective restrictions on Vault, credentials, sensitive memories, exports and privileged actions;
+- safe operation when offline, with no dependency on a remote model or service;
+- no destructive wiping, evidence destruction or irreversible action as a duress response;
+- no automatic police, emergency-service or trusted-contact notification unless a separate, explicit, tested user safety plan authorises that exact action;
+- clear limitations: no software can guarantee protection when an attacker has physical control of the device or can compel every available authentication factor.
+
+A duress state must not be represented as a guarantee of safety. Its activation, visibility and recovery behaviour must be threat-modelled against the possibility that an observer is watching the screen or device.
+
+### 8.3 Biometric and multi-factor authentication
+
+Use platform-native passkeys/WebAuthn and secure hardware-backed credentials as the cross-platform foundation. Face, fingerprint and voice checks are optional platform capabilities and signals, not portable universal primitives:
+- biometric matching stays within the platform's trusted authenticator where possible; AEGIS must not collect or centrally store raw facial or fingerprint templates;
+- voice recognition is supplementary only; voice recordings, synthesis and replay make voice unsuitable as a sole authentication factor;
+- require phishing-resistant cryptographic proof for account/device authentication and sensitive operations;
+- provide secure recovery, device revocation and re-enrolment; no insecure bypass or support override;
+- adapt to real platform capabilities and report unsupported checks honestly.
+
+A camera or microphone cannot be assumed to exist on a USB device. USB edition authentication must use host capabilities or an optional compatible external authenticator and retain a secure recovery path.
+
+### 8.4 Environmental safety checks and evidence
+
+Optional camera-based wide-view checks may be offered only as an explicit, visible, purpose-limited user action. No covert activation, continuous background recording, hidden camera/microphone use, or automatic upload is permitted.
+
+The system may report limited observable facts (for example, that additional people appear in the frame) but must not infer coercion, intent, relationship or threat from presence alone. Do not identify or profile bystanders. Do not claim a still image proves coercion or establishes what happened outside its frame.
+
+Evidence capture is a separate, explicit user-controlled feature subject to applicable law and platform policy. Where enabled, preserve only necessary material with encryption, timestamps, provenance, tamper-evident integrity metadata, strict access controls, retention limits and deletion/export controls. Do not silently record bystanders or create a general-purpose surveillance archive. The user must be told what is captured, where it is stored and who can access it.
+
+### 8.5 Proactive operation and safety boundaries
+
+- Monitoring is opt-in, scoped to the user's own devices, accounts, services and data, and visible in the Security Centre.
+- Distinguish observed facts, inferred risk and confirmed events. Show confidence, evidence, data freshness and blind spots.
+- Use multiple independent signals before high-impact conclusions; never treat a nearby person, unusual voice, missed check-in or single anomaly as proof of danger.
+- Default to recommendations and reversible protective restrictions. Consequential external actions require explicit, scoped Sentinel approval or a separately configured safety plan.
+- Respect quiet hours, accessibility, battery, data and compute budgets; support pause, disable, inspect and revoke.
+- No mass surveillance, covert tracking, face identification of strangers, emotion recognition, behavioural scoring of bystanders, or unauthorised collection from public/private cameras.
+- Do not promise prediction of crimes or guaranteed prevention. Describe capabilities as risk detection and decision support, with false positives and missed events acknowledged.
+
+### 8.6 Acceptance gates
+
+Before implementation, define platform-specific sensor and biometric capability matrices, data-flow and retention maps, consent UX, duress threat scenarios, false-positive handling, offline behaviour, abuse cases, accessibility and recovery. Tests must cover sensor permission denial/revocation, no camera/microphone, spoof/replay attempts, coercion-state activation, hostile physical access, offline operation, evidence integrity, retention expiry and safe recovery.
+
+This direction is architectural only. Research, design and documentation do not increase feature-completion percentage. Implement one narrow, testable capability at a time under the REA and TDD standards.
