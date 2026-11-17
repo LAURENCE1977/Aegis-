@@ -38,14 +38,32 @@ function extract(root, path) {
   walk(root, node => {
     if (node.type === 'import_statement' || node.type === 'export_statement') {
       const specifier = literal(node.namedChildren.find(child => child.type === 'string'));
-      if (specifier !== null) imports.push({ path, kind: node.type === 'import_statement' ? 'static' : 're-export', specifier });
+      if (specifier !== null) imports.push({
+        path,
+        kind: node.type === 'import_statement' ? 'static' : 're-export',
+        specifier,
+        // Human-readable, one-based coordinates; end is exclusive.
+        location: {
+          start: { line: node.startPosition.row + 1, column: node.startPosition.column + 1 },
+          end: { line: node.endPosition.row + 1, column: node.endPosition.column + 1 },
+        },
+      });
     }
     if (node.type === 'call_expression') {
       const callee = node.child(0);
       const args = node.namedChildren.find(child => child.type === 'arguments');
       const specifier = literal(args?.namedChildren.find(child => child.type === 'string'));
-      if (specifier !== null && callee?.type === 'import') imports.push({ path, kind: 'dynamic', specifier });
-      if (specifier !== null && callee?.type === 'identifier' && callee.text === 'require') imports.push({ path, kind: 'commonjs', specifier });
+      if (specifier !== null && (callee?.type === 'import' || (callee?.type === 'identifier' && callee.text === 'require'))) {
+        imports.push({
+          path,
+          kind: callee.type === 'import' ? 'dynamic' : 'commonjs',
+          specifier,
+          location: {
+            start: { line: node.startPosition.row + 1, column: node.startPosition.column + 1 },
+            end: { line: node.endPosition.row + 1, column: node.endPosition.column + 1 },
+          },
+        });
+      }
     }
   });
   return imports;
