@@ -12,12 +12,12 @@ class GuardianResourceD1 {
       async run() {
         const v = this.values;
         if (sql.includes('INSERT INTO guardian_resources')) {
-          const [id, ownerId, canonicalUrl, revision, recordJson, status, createdAt, updatedAt] = v;
+          const [id, ownerId, canonicalUrl, revision, recordJson, createdAt, updatedAt] = v;
           const key = ownerId + '|' + canonicalUrl + '|' + revision;
           if ([...db.rows.values()].some(row => row.uniqueKey === key)) return { meta: { changes: 0 } };
           const row = {
             id, owner_id: ownerId, canonical_url: canonicalUrl, source_revision: revision,
-            record_json: recordJson, review_status: status, created_at: createdAt,
+            record_json: recordJson, review_status: 'draft', created_at: createdAt,
             updated_at: updatedAt, uniqueKey: key,
           };
           db.rows.set(id, row);
@@ -68,7 +68,7 @@ test('creates an owner-scoped draft resource with server-generated identity and 
   assert.equal(result.created, true);
   assert.match(result.resource.id, /^resource-[a-f0-9]{32}$/);
   assert.equal(result.resource.name, 'Example self-hosted service');
-  assert.equal(result.status, 'draft');
+  assert.equal(result.resource.status, 'draft');
   assert.equal(db.events.length, 1);
   assert.equal(db.events[0].event_type, 'created');
 });
