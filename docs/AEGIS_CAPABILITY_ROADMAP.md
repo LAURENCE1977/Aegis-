@@ -518,7 +518,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 ### Learning Forge — prerequisite-gated learner progress (17 November 2026)
 
-**Status:** Implementation added on draft PR #103; full CI verification pending.
+**Status:** Implemented and full PR CI verified on draft PR #103 (17 November 2026).
 
 - Added `migrations/forge/0011_learning_progress.sql` for owner/path-version/node progress and append-only events; progress history cannot be deleted.
 - Added `functions/lib/learning-progress.mjs` with exact path/node binding, optimistic concurrency and prerequisite-gated transitions.
