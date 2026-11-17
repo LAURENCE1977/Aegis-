@@ -1,7 +1,7 @@
 import { validateLearningGraph } from './guardian-intelligence.mjs';
 
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const VERSION_PATTERN = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/;
+const VERSION_PATTERN = /^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/;
 const OWNER_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const MAX_PAGE_SIZE = 100;
 
