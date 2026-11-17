@@ -205,6 +205,6 @@ test('corrupt active companion profile falls back to official safe defaults', as
   const messages = await buildAskMessages({ AEGIS_DB: db }, 'What now?', []);
   const system = messages[0].content;
   assert.match(system, /User-selected companion interaction preferences/);
-  assert.match(system, /balanced warmth/i);
+  assert.match(system, /warm and considerate/i);
   assert.doesNotMatch(system, /warm and emotionally attentive/i);
 });
