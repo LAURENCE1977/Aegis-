@@ -575,3 +575,16 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Added store and migration contract tests. The first test commit preceded the implementation commit; CI has not yet confirmed the RED/GREEN sequence or the full suite.
 - This is a trusted assessment catalogue, not yet a learner attempt endpoint or verified mastery system. Attempt persistence, rate/cooldown policy, server-side answer submission, revocation/supersession, and independent mastery verification remain future work.
 - Passing an assessment does not grant permissions, tool access, agent autonomy, or any other capability.
+
+
+### Learning Forge — server-scored attempts and adaptive next actions (17 November 2026)
+
+- Added `migrations/forge/0013_learning_assessment_attempts.sql`: owner-scoped attempts bound to exact immutable assessment versions, append-only submission events, database-enforced cooldown and rolling rate limits, and immutable history.
+- Added `functions/lib/learning-attempts.mjs` and authenticated same-origin `POST/GET /api/learning/assessments/attempts`.
+- Server loads the trusted assessment and scores answers deterministically. Client-supplied score/pass/mastery fields are rejected. Attempts persist scores and assessment provenance only: no raw answers and no low-entropy answer digest.
+- D1 enforces a 30-second cooldown and at most five attempts per assessment version in a rolling 15-minute window. Updates/deletes are rejected.
+- Added `functions/lib/learning-recommendations.mjs`: explainable prerequisite-aware next actions prioritising review, reinforcement, continuation and eligible starts. It is pure and local; it does not mutate progress or certify mastery.
+- Results and recommendations explicitly keep `masteryVerified: false`; no permissions, capabilities or autonomy follow from a score.
+- CI run `44183737666` passed: 838 tests, 837 passed, zero failed, one skipped, with D1 migration/runtime/Forge checks.
+- Follow-up CI run `44184401063` passed: 844 tests, 843 passed, zero failed, one skipped, with D1 migration/runtime/Forge checks.
+- Remaining: independent mastery policy/certification, learner-specific identity, learner UI, attempt retention/deletion controls, persisted recommendations and spaced repetition.
