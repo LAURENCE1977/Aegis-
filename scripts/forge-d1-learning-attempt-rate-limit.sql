@@ -1,11 +1,11 @@
 INSERT INTO learning_assessment_attempts (
   id, owner_id, assessment_id, assessment_version, path_id, path_version,
-  node_id, assessment_digest, attempt_digest, result_json, score_percent,
+  node_id, assessment_digest, result_json, score_percent,
   passed, mastery_verified, occurred_at
 ) VALUES (
   'learning-attempt-too-soon', 'owner', 'assessment-smoke-check', '1.0.0',
   'assessment-smoke-path', '1.0.0', 'assessment-smoke-node',
-  'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   json_object(
     'attemptId', 'learning-attempt-too-soon',
     'assessmentId', 'assessment-smoke-check',
