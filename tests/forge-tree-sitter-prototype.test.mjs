@@ -148,7 +148,7 @@ test('links calls to locally declared arrow-function variables', async () => {
     content: [
       'const start = () => finish();',
       'const finish = () => true;',
-    ].join('\\n'),
+    ].join('\n'),
   }]);
   assert.deepEqual(result.calls.map(({ caller, callee }) => ({ caller, callee })), [
     { caller: 'start', callee: 'finish' },
