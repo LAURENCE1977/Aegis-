@@ -173,3 +173,8 @@ The 17 November 2026 ecosystem review covers ToolJet, Mattermost, Outline, Plaus
 ## AEGIS Forge — 80-idea audit additions
 
 The 17 November 2026 Forge audit adds four research tracks: privacy-preserving MediaPipe camera/gesture interaction, optional FastMCP local sidecars, and native scam/phishing/document-clause risk protection. These are not yet implemented. Face landmarks are not proof of liveness, hand landmarks are not full sign-language translation, OpenPhish's free feed is non-commercial, and suspicious destinations must never be fetched during checks. Passkeys remain the preferred authentication mechanism. See [the full capability and safety assessment](docs/AEGIS_FORGE_80_IDEA_AUDIT_ADDITIONS_2026-11-17.md).
+
+
+## Eval Forge
+
+AEGIS now has a first deterministic evaluation contract: versioned suites, bounded weighted cases, candidate artifact digests, per-case evidence digests and required-case gates. This scorer does not execute tests or verify evidence provenance; persistence, isolated evaluation workers, the owner-facing UI and promotion review remain future work. Scores never grant permissions or deploy candidates. See [AEGIS Eval Forge](docs/AEGIS_EVAL_FORGE.md).
