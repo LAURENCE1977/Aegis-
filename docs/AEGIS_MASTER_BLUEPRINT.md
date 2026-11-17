@@ -821,3 +821,22 @@ The suite covers the Security Centre, account/session protection, device posture
 - All external tools undergo the mandatory REA standard; all code changes follow TDD and require tests, resource measurements and rollback evidence.
 
 **Status:** architecture accepted and documented. No VPN, endpoint agent, scanner or Security Guardian feature is claimed as implemented. Research and documentation do not increase feature-completion percentage.
+
+
+## 17. Protective Intelligence and Personal Safety
+
+The owner has accepted a direction to combine Machine-inspired predictive intelligence (from *Person of Interest*) with the AEGIS Security Suite. This is an AEGIS-owned protective intelligence capability, not a mass-surveillance system.
+
+The detailed requirements and threat boundaries are recorded in [AEGIS Security Suite — Architecture and Threat Model](AEGIS_SECURITY_SUITE.md), section 8.
+
+**Accepted direction:**
+- One intelligence layer correlates only authorised AEGIS-owned/user-authorised signals, recognises patterns, identifies risks and proactively recommends proportionate help.
+- Security intelligence, personal safety and duress protection share the AEGIS core; Sentinel remains the sole permission/approval/revocation authority.
+- Cross-platform authentication uses passkeys/WebAuthn and hardware-backed credentials where available. Face/fingerprint checks are platform-native; voice is supplementary only. AEGIS must not centrally store raw biometric templates.
+- Optional duress protection restricts sensitive access, works offline where feasible and never destroys data or silently triggers external emergency actions.
+- Optional wide-view camera checks must be visible, explicit and purpose-limited. No covert or continuous recording, bystander identification or inference that another person's presence proves coercion.
+- Evidence preservation is separate, user-authorised, encrypted, access-controlled, tamper-evident and retention-limited.
+- Predictive findings must distinguish observations from inferences, show confidence and coverage limitations, and avoid promises of crime prediction or guaranteed prevention.
+- No mass surveillance, covert tracking, stranger profiling, emotion recognition or unauthorised camera/network collection.
+
+**Implementation status:** accepted architectural direction only. No new protective-intelligence, biometric, duress, environmental-awareness or evidence-capture feature is claimed as implemented. This documentation update does not increase feature-completion percentage. Next engineering work must inspect existing Sentinel, Vault, Security Centre and authentication contracts, then select one narrow capability for test-first implementation.
