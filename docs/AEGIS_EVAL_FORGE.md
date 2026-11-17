@@ -56,6 +56,21 @@ Both push workflow `44152942585` and matching PR workflow `44152958048` passed o
 4. Add a separately isolated execution adapter for deterministic tests; no shell or network by default.
 5. Add a promotion review record that can only request human/Sentinel review, never promote by score alone.
 
+
+
+## Immutable suite registry — implementation slice
+
+Added on draft PR #103:
+
+- `migrations/forge/0008_eval_suites.sql` creates owner-scoped immutable suite versions with a unique owner/suite/version key, canonical content digest, JSON validity constraint and append-only registration event.
+- Database triggers reject suite update/delete and event update/delete. A suite version is a permanent revision; changing its content requires a new semantic version.
+- `functions/lib/eval-forge-store.mjs` validates suites before persistence, canonicalises JSON independent of object-key order, computes SHA-256, supports idempotent registration and rejects attempts to reuse a version with different content.
+- `functions/api/eval/suites.js` exposes authenticated, same-origin POST and authenticated GET with bounded JSON bodies and page size. Owner identity is server-derived; caller-supplied owner fields are rejected by the suite contract.
+- Tests cover immutable version registration, canonical digest stability, idempotency, conflicting content, owner isolation, authentication, cross-origin writes, invalid payloads and repeated query parameters.
+- CI applies the new Forge migration and smoke-tests unique version keys, immutable suites and append-only audit events.
+
+**Boundary:** This registers and lists suite definitions only. It does not yet persist evaluation runs, store raw prompts/evidence, execute candidates, authenticate a runner or approve promotion. Evaluation-run persistence is the next slice and must accept only server-verified evidence receipts, never a caller-supplied `evidenceVerified` flag.
+
 ## Explicitly not implemented
 
 No model-as-judge, DSPy optimiser, external Braintrust service, automatic training, live user experimentation, online reinforcement learning, arbitrary code runner, scanner, model deployment or production promotion is enabled.
