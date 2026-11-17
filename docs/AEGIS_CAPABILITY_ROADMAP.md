@@ -389,3 +389,28 @@ The AEGIS direction is to own the contracts and policy while keeping tools and p
 - curated project templates with provenance and secret-safe defaults.
 
 No container execution, Terraform apply/destroy, imported collection script execution, or provider installation is enabled by this research batch. Toolset remains unresolved until the exact upstream URL is supplied.
+
+
+## Workspace, knowledge and coding-agent ecosystem (17 November 2026)
+
+The research intake covers ToolJet, Mattermost, Outline, Plausible, Continue, Roo Code, SWE-agent, Plandex, GPT Pilot, Tabby and Goose. See [Workspace, Knowledge & Coding-Agent Ecosystem Research](AEGIS_WORKSPACE_KNOWLEDGE_CODING_AGENTS_2026-11-17.md).
+
+Architecture direction:
+- AEGIS Workbench: typed visual internal-app contracts, versioned definitions, scoped data connectors and reviewable agent-generated drafts.
+- Shared collaboration: channels, threads, task-linked discussion and incident rooms; canonical task/audit state remains in AEGIS.
+- Knowledge Forge: Markdown-first, permission-aware knowledge with provenance, confidence, temporal validity, supersession and retraction.
+- Privacy-preserving observability: opt-in aggregate metrics, separated from security audit and without covert fingerprinting or raw prompt capture.
+- AEGIS Forge: specialised Architect, Researcher, Implementer, Debugger, Test Engineer, Reviewer and Orchestrator profiles over one shared agent contract.
+- Portable recipes and MCP/ACP adapters remain subordinate to Sentinel and AEGIS-owned task, permission and audit contracts.
+
+Important upstream status and licence findings:
+- ToolJet AGPL-3.0; Mattermost Team Edition core MIT with separately licensed add-ons/Enterprise features.
+- Outline 1.10.1 is BSL 1.1, not OSI open source; commercial Document Service use is excluded by its additional grant.
+- Plausible Community Edition AGPL-3.0; its tracker is MIT.
+- Continue's repository is read-only/no longer actively maintained; Roo Code repository was archived 15 May 2026.
+- SWE-agent upstream recommends mini-SWE-agent for current development.
+- Plandex Cloud was winding down from 3 October 2025; local operation requires a user-supplied model provider.
+- GPT Pilot has a disclosed supply-chain credential-stealing incident (24 Aug 2025–11 Jun 2026) and is not maintained: hard exclusion from installation/execution/adoption.
+- Goose's canonical repository moved to aaif-goose/goose under the Agentic AI Foundation; Apache-2.0.
+
+No upstream source was imported or executed. No agent execution, external service, analytics tracker or workspace platform was enabled. Coding agents must use isolated scoped workspaces, deny-by-default egress, bounded resources, secret redaction, cancellation, test/review gates and fresh Sentinel authorisation. No agent may merge or deploy autonomously.
