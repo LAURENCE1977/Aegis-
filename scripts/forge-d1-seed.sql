@@ -46,3 +46,53 @@ INSERT INTO guardian_resources (
   ),
   'draft', '2026-11-17T12:00:00.000Z', '2026-11-17T12:00:00.000Z'
 );
+
+
+INSERT INTO learning_paths (
+  id, owner_id, path_id, version, graph_digest, graph_json, created_at
+) VALUES (
+  'learning-path-assessment-smoke', 'owner', 'assessment-smoke-path', '1.0.0',
+  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  json_object(
+    'id', 'assessment-smoke-path',
+    'version', '1.0.0',
+    'title', 'Assessment smoke path',
+    'description', 'A minimal D1 integrity test path.',
+    'nodes', json_array(json_object(
+      'id', 'assessment-smoke-node',
+      'title', 'Smoke node',
+      'outcomes', json_array('Verify assessment integrity'),
+      'prerequisites', json_array(),
+      'difficulty', 'beginner',
+      'sourceRefs', json_array('https://example.org/learning'),
+      'contentLicenseStatus', 'link-only'
+    ))
+  ),
+  '2026-11-17T12:00:00.000Z'
+);
+
+INSERT INTO learning_assessments (
+  id, owner_id, assessment_id, version, path_id, path_version,
+  node_id, assessment_digest, assessment_json, created_at
+) VALUES (
+  'learning-assessment-smoke', 'owner', 'assessment-smoke-check', '1.0.0',
+  'assessment-smoke-path', '1.0.0', 'assessment-smoke-node',
+  'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  json_object(
+    'id', 'assessment-smoke-check',
+    'version', '1.0.0',
+    'pathId', 'assessment-smoke-path',
+    'pathVersion', '1.0.0',
+    'nodeId', 'assessment-smoke-node',
+    'title', 'Assessment smoke check',
+    'passPercent', 80,
+    'questions', json_array(json_object(
+      'id', 'q1',
+      'prompt', 'Which option is correct?',
+      'options', json_array('A', 'B', 'C', 'D'),
+      'points', 1,
+      'correctOption', 'b'
+    ))
+  ),
+  '2026-11-17T12:01:00.000Z'
+);
