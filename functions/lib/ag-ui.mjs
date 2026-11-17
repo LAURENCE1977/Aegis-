@@ -72,7 +72,7 @@ export function createToolCallStartEvents({ toolCallId, toolCallName, argumentsT
   if (typeof toolCallName !== 'string' || !/^[A-Za-z0-9_.-]{1,64}$/.test(toolCallName)) {
     throw new TypeError('Invalid AG-UI tool name');
   }
-  if (typeof argumentsText !== 'string' || argumentsText.length > 4096) {
+  if (typeof argumentsText !== 'string' || argumentsText.length > 4096 ||\n      new TextEncoder().encode(argumentsText).byteLength > 8000) {
     throw new TypeError('Invalid AG-UI tool arguments');
   }
   if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
@@ -86,7 +86,7 @@ export function createToolCallStartEvents({ toolCallId, toolCallName, argumentsT
 export function createToolCallResultEvent({ messageId, toolCallId, content, now = Date.now() }) {
   requireIdentifier(messageId, 'message ID');
   requireIdentifier(toolCallId, 'tool call ID');
-  if (typeof content !== 'string' || content.length > 4000) {
+  if (typeof content !== 'string' || content.length > 4000 ||\n      new TextEncoder().encode(content).byteLength > 8000) {
     throw new TypeError('Invalid AG-UI tool result');
   }
   if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
