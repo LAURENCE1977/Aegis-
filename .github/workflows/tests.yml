@@ -237,3 +237,31 @@ jobs:
             echo "Expected evaluation run events to reject deletion."
             exit 1
           fi
+
+      - name: Verify Learning Forge immutable path registry and audit events
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-smoke.sql
+          learning_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_path_events WHERE path_id = 'javascript-foundations' AND version = '1.0.0'")
+          echo "$learning_events"
+          grep -q "1" <<< "$learning_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_paths SET graph_json = '{}' WHERE id = 'learning-path-smoke'"; then
+            echo "Expected registered Learning Path versions to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_paths WHERE id = 'learning-path-smoke'"; then
+            echo "Expected registered Learning Path versions to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_path_events SET event_type = 'tampered' WHERE id = 'registered:learning-path-smoke'"; then
+            echo "Expected Learning Path events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_path_events WHERE id = 'registered:learning-path-smoke'"; then
+            echo "Expected Learning Path events to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_paths (id, owner_id, path_id, version, graph_digest, graph_json, created_at) VALUES ('learning-path-bypass', 'owner', 'javascript-foundations', '1.0.0', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '{}', '2026-11-17T12:01:00.000Z')"; then
+            echo "Expected owner/path/version uniqueness to reject duplicate Learning Path versions."
+            exit 1
+          fi
