@@ -7,7 +7,7 @@ test('compiles a source document into chunks carrying immutable source identity 
     sourceId: 'evidence-123',
     sourcePath: 'docs/security.md',
     content: '# Security\n\nSentinel is the sole permission authority.\n\n## Grants\n\nEvery grant is scoped.',
-    status: 'accepted',
+    status: 'draft',
   };
   const compiled = await compileKnowledgeDocument(document, { maxChars: 80 });
 
@@ -17,7 +17,7 @@ test('compiles a source document into chunks carrying immutable source identity 
   for (const chunk of compiled.chunks) {
     assert.equal(chunk.sourceId, document.sourceId);
     assert.equal(chunk.sourcePath, document.sourcePath);
-    assert.equal(chunk.status, 'accepted');
+    assert.equal(chunk.status, 'draft');
     assert.equal(document.content.slice(chunk.startOffset, chunk.endOffset), chunk.text);
   }
   assert.deepEqual(compiled.chunks.map(chunk => chunk.headingPath), [
