@@ -102,7 +102,7 @@ test('requires exact optimistic concurrency and advances only allowed progress t
   assert.equal(completed.masteryVerified, false);
   await assert.rejects(
     updateLearningProgress(db, 'owner', path.id, path.version, 'javascript-basics', 'not_started', completed.updatedAt, Date.parse('2026-11-17T12:03:00.000Z')),
-    /transition/i,
+    /status/i,
   );
 });
 
