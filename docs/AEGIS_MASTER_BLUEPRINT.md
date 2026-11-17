@@ -1014,11 +1014,11 @@ The Evidence Intelligence Engine is intended to turn explicitly supplied files, 
 ### Implemented first slice
 
 - `functions/lib/evidence-intake.mjs`: metadata-only Evidence Identity Contract v1.
-- `tests/evidence-intake.test.mjs`: nine focused tests.
+- `tests/evidence-intake.test.mjs`: eleven focused tests.
 - Records schema version, server-derived owner ID, generated evidence UUID, SHA-256, byte length, media type, path-free display name, acquisition timestamp and typed source provenance.
 - Rejects unknown fields, path-like names and unsupported source references; does not accept file bytes or storage paths.
 
-This is not an upload, storage, D1 persistence, parser, extraction or UI implementation. The focused nine-test suite passed locally; full CI verification is pending. No production migration, deployment or merge is implied.
+This is not an upload, storage, D1 persistence, parser, extraction or UI implementation. The focused eleven-test suite passed locally; full CI verification is pending. No production migration, deployment or merge is implied.
 
 ### Hard boundaries and next gates
 
