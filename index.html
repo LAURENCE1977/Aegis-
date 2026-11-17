@@ -755,7 +755,7 @@
         <h3>Saved source candidates</h3>
         <div id="forgeCandidateList" aria-live="polite"></div>
         <h3>Knowledge Library</h3>
-        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Only owner-reviewed high/medium evidence can be accepted; accepted records are not yet automatically injected into agent plans.</p>
+        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Accepted high/medium evidence is ranked against each Project Space agent objective and attached as untrusted reference data; it never grants permissions.</p>
         <form class="memory-form" id="forgeKnowledgeForm">
           <label for="forgeKnowledgeTitle">Knowledge title</label>
           <input id="forgeKnowledgeTitle" maxlength="200" required placeholder="A clear, reusable finding" />
@@ -802,6 +802,69 @@
         <textarea id="forgeKnowledgeReviewNote" rows="2" maxlength="1000" placeholder="Explain what you checked, evidence quality and remaining limitations."></textarea>
         <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
         <div id="forgeKnowledgeList" aria-live="polite"></div>
+        <h3>Guardian Resource Intelligence</h3>
+        <p class="memory-help">Catalogue tools, models, datasets and learning resources with pinned source revisions, licence evidence, pricing limits and hosting requirements. New records are drafts. Acceptance requires an explicit review and verified HTTPS licence evidence.</p>
+        <form class="memory-form" id="guardianResourceForm">
+          <label for="guardianResourceName">Resource name</label>
+          <input id="guardianResourceName" maxlength="200" required placeholder="Project or resource name" />
+          <label for="guardianResourceUrl">Canonical HTTPS source URL</label>
+          <input id="guardianResourceUrl" type="url" inputmode="url" maxlength="2048" required placeholder="https://github.com/owner/project" />
+          <label for="guardianResourceCategory">Category</label>
+          <select id="guardianResourceCategory" required>
+            <option value="developer-tool">Developer tool</option>
+            <option value="self-hosted-service">Self-hosted service</option>
+            <option value="model">Model</option>
+            <option value="dataset">Dataset</option>
+            <option value="learning-resource">Learning resource</option>
+            <option value="api">API</option>
+            <option value="framework">Framework</option>
+            <option value="security-tool">Security tool</option>
+          </select>
+          <label for="guardianResourceRevision">Pinned source revision (commit, tag or version)</label>
+          <input id="guardianResourceRevision" maxlength="128" required placeholder="Exact revision reviewed" />
+          <label for="guardianResourceLicence">Licence identifier</label>
+          <input id="guardianResourceLicence" maxlength="100" required placeholder="MIT, Apache-2.0, AGPL-3.0…" />
+          <label for="guardianResourceLicenceReview">Licence review state</label>
+          <select id="guardianResourceLicenceReview" required>
+            <option value="review-required">Review required</option>
+            <option value="unknown">Unknown</option>
+            <option value="incompatible">Incompatible</option>
+            <option value="verified">Verified (requires evidence URL)</option>
+          </select>
+          <label for="guardianResourceLicenceEvidence">HTTPS licence evidence URL (required when verified)</label>
+          <input id="guardianResourceLicenceEvidence" type="url" inputmode="url" maxlength="2048" placeholder="https://…/LICENSE" />
+          <label for="guardianResourcePricing">Pricing model</label>
+          <select id="guardianResourcePricing" required>
+            <option value="free">Free</option>
+            <option value="free-tier">Free tier</option>
+            <option value="trial">Trial</option>
+            <option value="paid">Paid</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <label for="guardianResourcePricingLimits">Pricing limits (one per line; required for free-tier/trial)</label>
+          <textarea id="guardianResourcePricingLimits" rows="2" maxlength="3000" placeholder="Requests, storage, seats, usage or expiry limits"></textarea>
+          <label for="guardianResourcePricingEvidence">HTTPS pricing evidence URL</label>
+          <input id="guardianResourcePricingEvidence" type="url" inputmode="url" maxlength="2048" required placeholder="https://…/pricing" />
+          <label for="guardianResourceHosting">Hosting mode</label>
+          <select id="guardianResourceHosting" required>
+            <option value="self-hosted">Self-hosted</option>
+            <option value="hosted">Hosted</option>
+            <option value="both">Both</option>
+            <option value="none">No hosting</option>
+          </select>
+          <label for="guardianResourceHostingRequirements">Hosting requirements (one per line)</label>
+          <textarea id="guardianResourceHostingRequirements" rows="2" maxlength="3000" placeholder="Runtime, hardware, operating system, dependencies"></textarea>
+          <label for="guardianResourceLimitations">Known limitations (one per line)</label>
+          <textarea id="guardianResourceLimitations" rows="3" maxlength="3000" placeholder="Maintenance, platform, licence, security or feature limitations"></textarea>
+          <button id="guardianResourceSaveBtn" type="submit">Save Guardian resource as draft</button>
+        </form>
+        <div class="memory-actions">
+          <button id="guardianResourceRefreshBtn" class="secondary" type="button">Refresh Guardian catalogue</button>
+        </div>
+        <label for="guardianResourceReviewNote">Owner review note (at least one character before a transition)</label>
+        <textarea id="guardianResourceReviewNote" rows="2" maxlength="2000" placeholder="What did you verify? Include remaining limitations or reasons for archiving."></textarea>
+        <p class="status" id="guardianResourceStatus" role="status" aria-live="polite">Guardian Resource catalogue not loaded.</p>
+        <div id="guardianResourceList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
@@ -1050,6 +1113,25 @@
     const forgeKnowledgeReviewNote = document.getElementById('forgeKnowledgeReviewNote');
     const forgeKnowledgeStatus = document.getElementById('forgeKnowledgeStatus');
     const forgeKnowledgeList = document.getElementById('forgeKnowledgeList');
+    const guardianResourceForm = document.getElementById('guardianResourceForm');
+    const guardianResourceName = document.getElementById('guardianResourceName');
+    const guardianResourceUrl = document.getElementById('guardianResourceUrl');
+    const guardianResourceCategory = document.getElementById('guardianResourceCategory');
+    const guardianResourceRevision = document.getElementById('guardianResourceRevision');
+    const guardianResourceLicence = document.getElementById('guardianResourceLicence');
+    const guardianResourceLicenceReview = document.getElementById('guardianResourceLicenceReview');
+    const guardianResourceLicenceEvidence = document.getElementById('guardianResourceLicenceEvidence');
+    const guardianResourcePricing = document.getElementById('guardianResourcePricing');
+    const guardianResourcePricingLimits = document.getElementById('guardianResourcePricingLimits');
+    const guardianResourcePricingEvidence = document.getElementById('guardianResourcePricingEvidence');
+    const guardianResourceHosting = document.getElementById('guardianResourceHosting');
+    const guardianResourceHostingRequirements = document.getElementById('guardianResourceHostingRequirements');
+    const guardianResourceLimitations = document.getElementById('guardianResourceLimitations');
+    const guardianResourceSaveBtn = document.getElementById('guardianResourceSaveBtn');
+    const guardianResourceRefreshBtn = document.getElementById('guardianResourceRefreshBtn');
+    const guardianResourceReviewNote = document.getElementById('guardianResourceReviewNote');
+    const guardianResourceStatus = document.getElementById('guardianResourceStatus');
+    const guardianResourceList = document.getElementById('guardianResourceList');
 
     const forgeFilePreview = document.getElementById('forgeFilePreview');
     const forgePreviewTitle = document.getElementById('forgePreviewTitle');
@@ -1487,7 +1569,7 @@
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
-      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); }
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadGuardianResources(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
@@ -2863,6 +2945,138 @@
         loadForgeKnowledge();
       }
     });
+
+
+    async function loadGuardianResources() {
+      guardianResourceList.replaceChildren();
+      guardianResourceStatus.textContent = 'Loading Guardian Resource catalogue…';
+      try {
+        const data = await controlApi('/api/guardian/resources?limit=100');
+        const resources = Array.isArray(data.resources) ? data.resources : [];
+        guardianResourceStatus.textContent = resources.length + ' resource(s) · owner-scoped catalogue.';
+        if (!resources.length) {
+          guardianResourceList.textContent = 'No Guardian Resources yet. Add a pinned source above; it will start as a draft.';
+          guardianResourceList.className = 'memory-empty';
+          return;
+        }
+        guardianResourceList.className = '';
+        resources.forEach(resource => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const heading = document.createElement('h4');
+          heading.textContent = resource.name;
+          const meta = document.createElement('p');
+          meta.textContent = resource.status + ' · ' + resource.category + ' · licence: ' +
+            resource.licence.identifier + ' (' + resource.licence.review + ') · pricing: ' +
+            resource.pricing.model + ' · hosting: ' + resource.hosting.mode;
+          const source = document.createElement('a');
+          source.href = resource.canonicalUrl;
+          source.target = '_blank';
+          source.rel = 'noopener noreferrer';
+          source.textContent = 'Open canonical source · revision ' + resource.sourceRevision;
+          const detail = document.createElement('p');
+          detail.textContent = 'Pricing limits: ' + (resource.pricing.limits || []).join(' · ') +
+            ' · Hosting requirements: ' + (resource.hosting.requirements || []).join(' · ');
+          const limits = document.createElement('p');
+          limits.textContent = 'Limitations: ' + (resource.limitations || []).join(' · ');
+          const evidence = document.createElement('p');
+          evidence.textContent = 'Licence evidence: ' + (resource.licence.evidenceUrl || 'not supplied') +
+            ' · Pricing evidence: ' + resource.pricing.evidenceUrl;
+          item.append(heading, meta, source, detail, limits, evidence);
+
+          let nextStatus = null;
+          if (resource.status === 'draft') nextStatus = 'reviewed';
+          else if (resource.status === 'reviewed') nextStatus = 'accepted';
+          else if (resource.status === 'accepted') nextStatus = 'archived';
+          if (resource.status !== 'archived') {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed'
+              : nextStatus === 'accepted' ? 'Accept resource'
+              : 'Archive resource';
+            reviewButton.addEventListener('click', async () => {
+              const note = guardianResourceReviewNote.value.trim();
+              if (!note) {
+                guardianResourceStatus.textContent = 'Add an owner review note before changing the resource status.';
+                guardianResourceReviewNote.focus();
+                return;
+              }
+              if (nextStatus === 'accepted' &&
+                  (resource.licence.review !== 'verified' || !resource.licence.evidenceUrl)) {
+                guardianResourceStatus.textContent = 'Acceptance is blocked: licence state must be verified with an HTTPS evidence URL.';
+                return;
+              }
+              reviewButton.disabled = true;
+              try {
+                await controlApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: nextStatus,
+                    note,
+                    expectedUpdatedAt: resource.updatedAt,
+                  }),
+                });
+                guardianResourceReviewNote.value = '';
+                await loadGuardianResources();
+              } catch (error) {
+                guardianResourceStatus.textContent = error.message;
+                reviewButton.disabled = false;
+              }
+            });
+            item.append(reviewButton);
+          }
+          guardianResourceList.append(item);
+        });
+      } catch (error) {
+        guardianResourceStatus.textContent = error.message.includes('not configured')
+          ? 'Guardian Resource storage is not active yet. The Forge D1 migration and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        guardianResourceList.className = 'memory-empty';
+      }
+    }
+
+    guardianResourceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      guardianResourceSaveBtn.disabled = true;
+      guardianResourceStatus.textContent = 'Saving Guardian Resource as a draft…';
+      try {
+        await controlApi('/api/guardian/resources', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: guardianResourceName.value.trim(),
+            canonicalUrl: guardianResourceUrl.value.trim(),
+            category: guardianResourceCategory.value,
+            sourceRevision: guardianResourceRevision.value.trim(),
+            licence: {
+              identifier: guardianResourceLicence.value.trim(),
+              review: guardianResourceLicenceReview.value,
+              evidenceUrl: guardianResourceLicenceEvidence.value.trim() || null,
+            },
+            pricing: {
+              model: guardianResourcePricing.value,
+              limits: splitLines(guardianResourcePricingLimits.value),
+              evidenceUrl: guardianResourcePricingEvidence.value.trim(),
+              checkedAt: new Date().toISOString(),
+            },
+            hosting: {
+              mode: guardianResourceHosting.value,
+              requirements: splitLines(guardianResourceHostingRequirements.value),
+            },
+            limitations: splitLines(guardianResourceLimitations.value),
+          }),
+        });
+        guardianResourceForm.reset();
+        await loadGuardianResources();
+        guardianResourceStatus.textContent = 'Draft saved. It is not approved for installation or execution.';
+      } catch (error) {
+        guardianResourceStatus.textContent = error.message;
+      } finally {
+        guardianResourceSaveBtn.disabled = false;
+      }
+    });
+
+    guardianResourceRefreshBtn.addEventListener('click', loadGuardianResources);
 
     async function saveForgeCandidate() {
       if (!forgeRepository) return;
