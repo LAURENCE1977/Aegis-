@@ -50,3 +50,15 @@ A second slice adds owner-scoped learner progress:
 - Correct answers are part of the trusted assessment definition and must not be exposed by a future learner-facing assessment-delivery API.
 - This slice does not yet persist assessments or attempts, provide a learner UI, enforce retry/cooldown rules, or issue verified mastery. Those require immutable assessment registration, server-side answer handling, append-only attempt evidence, and an independently tested mastery policy.
 - No learning data is sent to an external model or provider; no model-as-judge is used.
+
+
+## Learner-safe assessment delivery contract — second slice (17 November 2026)
+
+**Status:** Pure validation, learner projection and deterministic scoring implemented; persistence and CI verification remain pending.
+
+- Assessment questions now carry bounded prompts and exactly four unique answer options.
+- `projectLearnerAssessment` creates an explicit allowlisted learner-facing projection. It omits the answer key and pass threshold rather than serialising the trusted assessment object directly.
+- Scoring remains server-side and deterministic; malformed, missing and extra answers are rejected.
+- Results continue to state `masteryVerified: false`. A passing score alone is not a durable mastery credential.
+- The learner projection is a pure contract, not yet an HTTP endpoint. A future endpoint must load trusted registered assessment versions server-side and must never accept an assessment definition or answer key supplied by the learner.
+- Still required: immutable assessment persistence, attempt-rate policy, append-only attempts, authenticated learner endpoints, assessment version revocation/supersession policy, and independent mastery verification.
