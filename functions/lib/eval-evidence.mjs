@@ -52,9 +52,11 @@ export async function verifyEvaluationRunEvidence(suite, run, input) {
   }
   const expectedIds = new Set(suite.cases.map(item => item.id));
   const suppliedIds = Object.keys(evidenceByCase);
-  if (suppliedIds.length !== expectedIds.size ||
-      suppliedIds.some(id => !expectedIds.has(id))) {
-    throw new TypeError('Missing or unexpected evaluation evidence payload');
+  if (suppliedIds.length < expectedIds.size) {
+    throw new TypeError('Missing evaluation evidence payload');
+  }
+  if (suppliedIds.some(id => !expectedIds.has(id))) {
+    throw new TypeError('Unexpected evaluation evidence payload');
   }
 
   let totalEvidenceBytes = 0;
