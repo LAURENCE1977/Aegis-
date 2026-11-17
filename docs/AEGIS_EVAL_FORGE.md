@@ -71,6 +71,21 @@ Added on draft PR #103:
 
 **Boundary:** This registers and lists suite definitions only. It does not yet persist evaluation runs, store raw prompts/evidence, execute candidates, authenticate a runner or approve promotion. Evaluation-run persistence is the next slice and must accept only server-verified evidence receipts, never a caller-supplied `evidenceVerified` flag.
 
+
+
+## Immutable evaluation-run history — implementation slice
+
+Added alongside the suite registry:
+
+- `migrations/forge/0009_eval_runs.sql` stores owner-scoped run results linked by foreign key to an exact registered suite version. Run IDs are unique per owner; result status, score and digest fields are constrained.
+- Database triggers append one registration event per run and reject update/delete of run results and audit events.
+- `functions/lib/eval-forge-runs.mjs` requires the exact registered suite version and matching canonical suite digest, then calls the byte verifier before persisting a result.
+- Only the deterministic score/result and evidence digests are stored; candidate/evidence bytes and raw prompts are not persisted.
+- Duplicate identical run IDs are idempotent; reusing a run ID for a different result returns a conflict.
+- Owner-scoped run listing is bounded. No public route accepts caller-supplied `evidenceVerified`; the run persistence module derives that marker only after byte verification.
+
+**Important trust limitation:** A digest proves byte equality, not runner identity or truthful execution. This slice has no authenticated isolated runner or attestation receipt and is not exposed as a public run-submission endpoint. Do not treat a stored result as a production safety certification or promotion authorisation.
+
 ## Explicitly not implemented
 
 No model-as-judge, DSPy optimiser, external Braintrust service, automatic training, live user experimentation, online reinforcement learning, arbitrary code runner, scanner, model deployment or production promotion is enabled.
