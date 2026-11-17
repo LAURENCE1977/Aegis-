@@ -137,7 +137,7 @@ Decision: prototype/adapt, but do not add a production dependency yet. The next 
 ### Isolated Tree-sitter WASM parser prototype
 
 - Added scripts/forge-tree-sitter-prototype.mjs and focused tests in tests/forge-tree-sitter-prototype.test.mjs.
-- Prototype uses pinned web-tree-sitter 0.28.0, tree-sitter-javascript 0.25.0 and tree-sitter-typescript 0.23.2 packages. CI installs these with scripts disabled; the parser consumes only grammar WASM and does not invoke native grammar build scripts.
+- Prototype uses pinned web-tree-sitter 0.27.2, tree-sitter-javascript 0.25.0 and tree-sitter-typescript 0.23.2 packages. CI installs these with scripts disabled; the parser consumes only grammar WASM and does not invoke native grammar build scripts.
 - First extraction scope is syntax-node-backed static imports, re-exports, literal dynamic imports and literal CommonJS require calls. Import-like text in comments/strings and non-literal dynamic imports are excluded.
 - Records per-file syntax-error presence; malformed syntax does not cause a false claim of complete parsing.
 - Limits: 50 files and 32 KiB per file. Source is parsed as text and never evaluated.
