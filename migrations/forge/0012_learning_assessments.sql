@@ -8,12 +8,12 @@ CREATE TABLE IF NOT EXISTS learning_assessments (
   node_id TEXT NOT NULL,
   assessment_digest TEXT NOT NULL CHECK (length(assessment_digest) = 64),
   assessment_json TEXT NOT NULL CHECK (json_valid(assessment_json)),
+  created_at TEXT NOT NULL,
   CHECK (json_extract(assessment_json, '$.id') = assessment_id),
   CHECK (json_extract(assessment_json, '$.version') = version),
   CHECK (json_extract(assessment_json, '$.pathId') = path_id),
   CHECK (json_extract(assessment_json, '$.pathVersion') = path_version),
   CHECK (json_extract(assessment_json, '$.nodeId') = node_id),
-  created_at TEXT NOT NULL,
   UNIQUE (owner_id, assessment_id, version),
   FOREIGN KEY (owner_id, path_id, path_version)
     REFERENCES learning_paths(owner_id, path_id, version)
