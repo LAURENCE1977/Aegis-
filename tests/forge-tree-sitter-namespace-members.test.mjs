@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseModuleImports } from '../scripts/forge-tree-sitter-prototype.mjs';
+import { parseModuleImports } from '../scripts/forge-tree-sitter-namespace-members.mjs';
 
 test('resolves namespace member references to directly exported declarations', async () => {
   const result = await parseModuleImports([
