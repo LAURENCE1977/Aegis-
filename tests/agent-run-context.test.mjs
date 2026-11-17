@@ -183,6 +183,7 @@ test('ranks accepted Forge knowledge against the submitted agent objective befor
     domain: 'companion',
     summary: 'Use visemes, facial animation and adaptive level of detail for real-time avatar rendering.',
     sources: [{ url: 'https://example.org/avatar', title: 'Avatar design', attribution: 'AEGIS research' }],
+    limitations: ['Requires a compatible renderer and rig.'],
     applicableCapabilities: ['companion.render'],
   };
   const builder = makeBuilder({
