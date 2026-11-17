@@ -133,7 +133,7 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 
 ### Next controls
 
-1. Add authoritative evidence loading and reviewer independence checks before exposing candidate generation.
+1. Extend store-backed evidence loading with authoritative applied-task artifact records and authenticated, independent human-review records before exposing candidate generation.
 2. Decide a privacy-preserving attempt retention/deletion policy; the current append-only attempt store needs a governed retention design rather than an unreviewed delete path.
 3. Keep schedule persistence and notification delivery disabled until user-controlled scheduling and explicit reminder consent are designed.
 4. Resolve learner identity and tenancy before building a multi-user UI.
@@ -151,3 +151,20 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 - This is a suggestion engine only: it does not write progress, persist schedules, send notifications or grant mastery. Any future reminder delivery must be user-controlled and separately consented.
 - Full workflow `44189175803` passed: **850 tests, 849 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
 - The preceding full run `44188619578` also verified that a human review must occur strictly after every evidence item it approves; premature reviews remain insufficient evidence.
+
+## Store-backed mastery evidence ingestion — assessment source (17 November 2026)
+
+**Status:** Internal, owner-scoped evidence loader implemented; full workflow `44198403611` passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`.
+
+- Added `getLearningPath` for exact owner/path/version retrieval through the existing immutable registry mapper, including graph JSON and SHA-256 digest verification.
+- Added `functions/lib/learning-mastery-evidence-store.mjs`. It loads the exact path, enumerates assessments bound to the target path revision/node, counts attempts with a hard bound, and loads server-scored attempts through the integrity-checking attempt store.
+- Each attempt is projected into a minimal assessment evidence record; raw learner answers, answer hashes and assessment answer keys are not exposed.
+- Attempt history retrieval now revalidates the registered assessment content digest and checks each attempt's stored assessment digest against the exact immutable assessment version. Tampered assessment content or mismatched attempt digest is rejected.
+- The loader rejects cross-owner/path/node records, malformed or future-dated attempts and evidence sets exceeding bounded assessment/attempt limits.
+- Added a store-backed candidate builder. It cannot accept caller-injected task or reviewer claims; with only assessment evidence available it remains `insufficient_evidence`, `masteryVerified: false`.
+- Applied-task and human-review evidence are explicitly reported as unavailable. No candidate API, learner UI, certification, capability grant or reviewer identity is fabricated.
+- RED/GREEN regression evidence: workflow `44198022972` failed on the two new digest-tampering tests with “Missing expected rejection”; the implementation was added, then full workflow `44198403611` passed: **855 tests, 854 passed, 0 failed, 1 skipped**, including all capability/runtime/Queue/Forge D1 migrations and smoke checks.
+
+### Remaining trust boundary
+
+The existing owner session is still a single-owner identity boundary, not a multi-learner identity model. Applied-task evidence needs a durable artifact store with content-addressed verification and retention controls. Human review needs authenticated reviewer identities, separation-of-duties rules and auditable decisions. Until both exist, mastery remains a non-certifying candidate policy only.
