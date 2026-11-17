@@ -60,7 +60,7 @@ test('rejects unsafe paths, duplicate files and aggregate source beyond the boun
     { path: '/absolute.js', content: 'export {};' },
   ]), /path/i);
   await assert.rejects(() => parseModuleImports([
-    { path: 'src\\\\outside.js', content: 'export {};' },
+    { path: 'src\\outside.js', content: 'export {};' },
   ]), /path/i);
   await assert.rejects(() => parseModuleImports([
     { path: 'src/same.js', content: 'export {};' },
