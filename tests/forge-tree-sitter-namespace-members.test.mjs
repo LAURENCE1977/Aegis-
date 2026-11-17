@@ -43,6 +43,24 @@ test('does not mistake a locally shadowed namespace name for an imported namespa
   ]);
 });
 
+test('does not mistake a shadowing function parameter for an imported namespace', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/toolkit.js', content: 'export function run() {}' },
+    { path: 'src/consumer.js', content: [
+      "import * as toolkit from './toolkit.js';",
+      'function local(toolkit) {',
+      '  toolkit.fake();',
+      '}',
+      'toolkit.run();',
+    ].join('\n') },
+  ]);
+
+  assert.deepEqual(result.namespaceMemberEdges.map(({ imported, location }) =>
+    ({ imported, line: location.start.line })), [
+    { imported: 'run', line: 5 },
+  ]);
+});
+
 test('reports missing namespace exports without fabricating a member edge', async () => {
   const result = await parseModuleImports([
     { path: 'src/toolkit.js', content: 'export function run() {}' },
