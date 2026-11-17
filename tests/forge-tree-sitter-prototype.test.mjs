@@ -32,7 +32,7 @@ test('parses TypeScript and TSX and reports syntax errors without executing sour
     { path: 'src/broken.ts', content: 'import { value } from \"./value\"; const = ;' },
   ]);
   assert.equal(result.files.length, 2);
-  assert.ok(result.files.some(file => file.path.endsWith('.broken.ts') && file.hasError));
+  assert.ok(result.files.some(file => file.path === 'src/broken.ts' && file.hasError));
   assert.ok(result.imports.some(item => item.specifier === './types'));
   assert.equal(result.execution, 'none');
 });
