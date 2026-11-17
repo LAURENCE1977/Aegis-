@@ -89,3 +89,10 @@ Added alongside the suite registry:
 ## Explicitly not implemented
 
 No model-as-judge, DSPy optimiser, external Braintrust service, automatic training, live user experimentation, online reinforcement learning, arbitrary code runner, scanner, model deployment or production promotion is enabled.
+
+
+### Read-only run history API
+
+- Added authenticated `GET /api/eval/runs` with owner scoping and bounded page size.
+- It exposes persisted result summaries for inspection only; there is deliberately no public run-creation endpoint until AEGIS has an authenticated isolated runner and trustworthy execution receipts.
+- The database now binds key result JSON fields (run ID, suite revision, candidate identity/digest, status and score) to their indexed columns and requires the evidence-integrity marker. The reader also rejects rows missing that marker.
