@@ -79,4 +79,7 @@ test('AG-UI tool-call lifecycle preserves real invocation correlation and bounde
   assert.throws(() => createToolCallResultEvent({
     messageId: 'run-123', toolCallId: 'call-123', content: 'x'.repeat(4001),
   }), /result/i);
+  assert.throws(() => createToolCallStartEvents({
+    toolCallId: 'call-123', toolCallName: 'tool', argumentsText: '😀'.repeat(2048),
+  }), /arguments/i);
 });
