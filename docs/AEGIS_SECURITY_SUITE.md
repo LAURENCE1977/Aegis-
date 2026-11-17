@@ -263,3 +263,58 @@ Evidence capture is a separate, explicit user-controlled feature subject to appl
 Before implementation, define platform-specific sensor and biometric capability matrices, data-flow and retention maps, consent UX, duress threat scenarios, false-positive handling, offline behaviour, abuse cases, accessibility and recovery. Tests must cover sensor permission denial/revocation, no camera/microphone, spoof/replay attempts, coercion-state activation, hostile physical access, offline operation, evidence integrity, retention expiry and safe recovery.
 
 This direction is architectural only. Research, design and documentation do not increase feature-completion percentage. Implement one narrow, testable capability at a time under the REA and TDD standards.
+
+
+## 9. Behavioural, observational and investigative intelligence
+
+**Status:** Accepted research and architecture direction; not implemented. No behavioural profiler, facial micro-expression detector, deception detector or investigative agent is claimed as operational.
+
+The owner wants AEGIS to develop disciplined behavioural analysis, master-detective-style reasoning, ingenuity and careful observation inspired by *Person of Interest*, detective fiction and *Lie to Me*. AEGIS should adopt the useful analytical methods, not fictional claims that facial movements reveal truth.
+
+### 9.1 Evidence-led behavioural analysis
+
+AEGIS may analyse patterns only within an explicitly authorised context, such as the user's own device/security telemetry, a user-provided case file, or a clearly scoped investigation the user is authorised to conduct. It should:
+- establish what data was supplied, by whom, when, for what purpose and with what permission;
+- distinguish direct observation, source-reported fact, inference, hypothesis and unknown;
+- compare events over time only where a valid, relevant baseline exists;
+- identify changes, repeated patterns, contradictions, missing context and alternative explanations;
+- account for situational factors and data quality; avoid treating differences from a baseline as suspicious by themselves;
+- minimise collection, retention and sensitive inference; allow correction, contest and deletion subject to legitimate evidence-preservation requirements.
+
+Do not create covert dossiers, personality scores, trustworthiness scores or risk profiles of strangers, bystanders, employees, applicants, partners or other people. Do not infer protected or highly sensitive traits.
+
+### 9.2 Detective reasoning and ingenuity
+
+An investigative reasoning workflow should:
+1. Clarify the question, authority, scope and potential harm.
+2. Build a source-linked timeline and evidence inventory.
+3. Separate facts, claims, assumptions, inferences and gaps.
+4. Generate multiple competing hypotheses, including benign explanations.
+5. Seek disconfirming evidence and test what would change each hypothesis.
+6. Track provenance, reliability, uncertainty and contradictions.
+7. Recommend proportionate next steps; require Sentinel approval for consequential actions.
+8. Record the reasoning summary and allow human review and correction.
+
+Ingenuity means finding safe, lawful, resource-efficient ways to solve problems—not bypassing permissions, improvising covert surveillance or escalating access.
+
+### 9.3 Facial movement and non-verbal observation
+
+If a user explicitly supplies or authorises analysis of an image/video for a legitimate purpose, AEGIS may describe observable, non-sensitive features such as visible facial movement, posture, gaze direction or changes in expression, subject to platform capability and consent.
+
+Hard boundaries:
+- A micro-expression or facial movement is not proof of lying, guilt, intent, fear, aggression, attraction or any other internal mental state.
+- Do not present facial analysis as a lie detector or use it to determine credibility, honesty, criminality, employment suitability, eligibility, or access to services.
+- Do not identify people in footage, perform covert face recognition, infer emotion/personality/mental health, or build persistent biometric/behavioural profiles.
+- Consider image quality, camera angle, lighting, culture, disability, neurodiversity, context and ordinary variation; state uncertainty and alternative explanations.
+- Prefer a neutral description of what is visibly observable. Do not turn an observation into a psychological conclusion.
+- Voice stress, pauses, gaze, posture and speech patterns are similarly ambiguous and must not be treated as deception evidence.
+
+### 9.4 Security and personal-safety use
+
+Behavioural analysis may help detect changes in the user's own authorised device/account patterns or identify inconsistencies in a user-provided evidence timeline. It must not automatically label another person a threat or coercer based on facial expression, voice, proximity or behaviour. High-impact safety decisions require corroborated evidence, confidence limits and human judgement.
+
+### 9.5 Acceptance gates
+
+Before implementation, complete a focused evidence review of scientific validity, bias, false-positive rates, accessibility, privacy law, platform constraints and misuse risks. Define approved use cases and prohibited uses, data minimisation and retention, provenance, uncertainty display, user correction, red-team tests and Sentinel boundaries. No model or vendor claim is accepted without independent validation on the intended task and population.
+
+This is a design direction only. Research, documentation and model demos do not increase feature-completion percentage.
