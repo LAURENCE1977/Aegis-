@@ -132,6 +132,24 @@ jobs:
             echo "Expected Learning Assessment node binding trigger to reject an unknown node."
             exit 1
           fi
+          attempt_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_attempts WHERE id = 'learning-attempt-smoke'")
+          echo "$attempt_count"
+          grep -q "1" <<< "$attempt_count"
+          attempt_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_attempt_events WHERE attempt_id = 'learning-attempt-smoke'")
+          echo "$attempt_events"
+          grep -q "1" <<< "$attempt_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_assessment_attempts SET score_percent = 0 WHERE id = 'learning-attempt-smoke'"; then
+            echo "Expected immutable Learning Attempt trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_assessment_attempt_events WHERE attempt_id = 'learning-attempt-smoke'"; then
+            echo "Expected append-only Learning Attempt event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-attempt-rate-limit.sql; then
+            echo "Expected Learning Attempt cooldown trigger to reject a rapid retry."
+            exit 1
+          fi
           guardian_resource_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT review_status FROM guardian_resources WHERE id = 'guardian-resource-smoke'")
           echo "$guardian_resource_state"
           grep -q "draft" <<< "$guardian_resource_state"
