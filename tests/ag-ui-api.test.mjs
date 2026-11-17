@@ -394,18 +394,18 @@ test('AG-UI reports a denied tool proposal without bypassing Sentinel grant chec
             index: 0, id: 'call_denied', type: 'function',
             function: { name: 'aegis_list_modules', arguments: '{}' },
           }] }),
-          'data: [DONE]\\n\\n',
+          'data: [DONE]\n\n',
         ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
       }
       return new Response(modelSseStream([
         qwenToolDelta({ content: 'The request was not authorised.' }),
-        'data: [DONE]\\n\\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
 
   assert.equal(response.status, 200);
-  const events = (await response.text()).trim().split('\\n\\n')
+  const events = (await response.text()).trim().split('\n\n')
     .map(frame => JSON.parse(frame.slice(6)));
   const toolEvents = events.filter(event => event.type.startsWith('TOOL_CALL_'));
   assert.deepEqual(toolEvents.map(event => event.type), [
