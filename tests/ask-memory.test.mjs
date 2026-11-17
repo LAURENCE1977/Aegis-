@@ -209,3 +209,26 @@ test('corrupt active companion profile falls back to official safe defaults', as
   assert.match(system, /warm and considerate/i);
   assert.doesNotMatch(system, /warm and emotionally attentive/i);
 });
+
+test('session-only companion preferences apply when no profile database is configured', async () => {
+  const interaction = { warmth: 5, humour: 95, directness: 10, initiative: 95, verbosity: 'detailed' };
+  const messages = await buildAskMessages({}, 'Give me a hand.', [], { companionInteraction: interaction });
+  const system = messages[0].content;
+  assert.match(system, /reserved and composed/i);
+  assert.match(system, /expressive humour/i);
+  assert.match(system, /highly proactive/i);
+  assert.match(system, /thorough explanations/i);
+});
+
+test('a verified persisted companion profile takes precedence over client style overrides', async () => {
+  const db = await activeProfileDb();
+  const clientOverride = { warmth: 0, humour: 100, directness: 0, initiative: 100, verbosity: 'detailed' };
+  const messages = await buildAskMessages(
+    { AEGIS_DB: db }, 'Give me a hand.', [], { companionInteraction: clientOverride },
+  );
+  const system = messages[0].content;
+  assert.match(system, /warm and emotionally attentive/i);
+  assert.match(system, /minimal humour/i);
+  assert.match(system, /listen-first/i);
+  assert.doesNotMatch(system, /reserved and composed|expressive humour|highly proactive/i);
+});
