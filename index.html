@@ -2430,6 +2430,52 @@
         saveCandidate.textContent = 'Save pinned source as candidate';
         saveCandidate.addEventListener('click', saveForgeCandidate);
         forgeFileList.append(saveCandidate);
+        const analyseSelected = document.createElement('button');
+        analyseSelected.type = 'button';
+        analyseSelected.className = 'secondary';
+        analyseSelected.textContent = 'Analyse selected JS/TS files with Forge';
+        analyseSelected.disabled = true;
+        analyseSelected.addEventListener('click', async () => {
+          const selected = Array.from(forgeFileList.querySelectorAll('[data-forge-code-file]:checked'))
+            .map(input => ({ path: input.dataset.path, sha: input.dataset.sha }));
+          if (!forgeRepository?.treeSha || !selected.length) return;
+          analyseSelected.disabled = true;
+          forgeStatus.textContent = 'Reading selected pinned blobs and analysing relationships…';
+          try {
+            const result = await controlApi('/api/forge/repository-code-intelligence', {
+              method: 'POST',
+              body: JSON.stringify({
+                sourceUrl: forgeRepository.sourceUrl,
+                treeSha: forgeRepository.treeSha,
+                files: selected,
+              }),
+            });
+            const graph = result.graph;
+            const report = document.createElement('article');
+            report.className = 'workspace-card';
+            const heading = document.createElement('h3');
+            heading.textContent = 'Pinned source relationship report';
+            const detail = document.createElement('p');
+            detail.className = 'memory-meta';
+            detail.textContent = result.repository.fullName + ' · tree ' +
+              result.repository.treeSha.slice(0, 12) + ' · ' + graph.nodes.length +
+              ' files · ' + graph.edges.length + ' resolved links · ' +
+              graph.unresolved.length + ' unresolved local imports · ' +
+              graph.externalImports.length + ' external references · execution: none';
+            const output = document.createElement('pre');
+            output.className = 'forge-preview';
+            output.textContent = JSON.stringify(graph, null, 2);
+            report.append(heading, detail, output);
+            forgeCodeResults.replaceChildren(report);
+            forgeCodeStatus.textContent = 'Pinned GitHub analysis complete. This is a heuristic JS/TS scan, not a complete dependency audit.';
+            forgeStatus.textContent = 'Analysed ' + selected.length + ' pinned source file(s) from ' + result.repository.fullName + '.';
+          } catch (error) {
+            forgeStatus.textContent = error.message;
+          } finally {
+            analyseSelected.disabled = false;
+          }
+        });
+        forgeFileList.append(analyseSelected);
         (repo.files || []).forEach(file => {
           const item = document.createElement('article');
           item.className = 'workspace-card';
@@ -2439,7 +2485,26 @@
           read.type = 'button';
           read.textContent = 'Read pinned source';
           read.addEventListener('click', () => readForgeBlob(file));
-          item.append(path, read);
+          const isCode = /\\.(?:js|jsx|mjs|cjs|ts|tsx)$/i.test(file.path) && file.size <= 32 * 1024;
+          if (isCode) {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.dataset.forgeCodeFile = 'true';
+            checkbox.dataset.path = file.path;
+            checkbox.dataset.sha = file.sha;
+            checkbox.addEventListener('change', () => {
+              const count = forgeFileList.querySelectorAll('[data-forge-code-file]:checked').length;
+              analyseSelected.disabled = count < 1 || count > 50;
+              analyseSelected.textContent = count > 50
+                ? 'Select no more than 50 source files'
+                : 'Analyse ' + count + ' selected JS/TS file(s) with Forge';
+            });
+            label.append(checkbox, document.createTextNode(' Include in code analysis'));
+            item.append(path, label, read);
+          } else {
+            item.append(path, read);
+          }
           forgeFileList.append(item);
         });
         if (!repo.files?.length) forgeFileList.append(document.createTextNode('No supported text files were found.'));
