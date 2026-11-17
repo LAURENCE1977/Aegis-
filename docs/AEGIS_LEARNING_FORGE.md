@@ -120,7 +120,7 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 
 ## Independent mastery evidence — candidate policy (17 November 2026)
 
-**Status:** Pure deterministic policy added; CI is running. This is not a mastery certificate or an active learner-facing workflow.
+**Status:** Pure deterministic policy added; full CI passed on code commit `37be686edb42e9f482a936d4c8d46914448e890a` (workflow `44187738206`). This is not a mastery certificate or an active learner-facing workflow.
 
 - Added `functions/lib/learning-mastery-evidence.mjs` and `tests/learning-mastery-evidence.test.mjs`.
 - A candidate requires at least two distinct passed assessment attempts on separate UTC dates, an applied-task artifact identified by SHA-256 digest, and an approving human review that explicitly references every qualifying evidence record.
@@ -128,6 +128,7 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 - A single assessment pass, repeated attempts on one day, a missing applied task, incomplete review references or AI-only review cannot produce a candidate.
 - The output is `candidate_for_human_confirmation` with `masteryVerified: false`; insufficient evidence returns explicit missing-evidence reasons. No capability, autonomy, credential or permission follows.
 - **Trust boundary:** this pure policy validates structure and relationships, not the truth or provenance of the evidence. Before production use, a trusted service must load attempt records and artifact-review records from their authoritative stores, authenticate reviewer identity and independence, and bind artifact digests to retained or independently verifiable evidence. Caller-supplied JSON must never be treated as authoritative.
+- Full workflow `44187738206` passed: **850 tests, 849 passed, 0 failed, 1 skipped**; capability/runtime/Queue/Forge D1 migrations and smoke checks all passed.
 - No learner identity expansion, automatic certification, AI-as-reviewer, public API or UI is introduced.
 
 ### Next controls
