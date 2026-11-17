@@ -130,6 +130,10 @@ const FUNCTION_SCOPE_TYPES = new Set([
   'method_definition',
 ]);
 
+function scopeIdentity(node) {
+  return `${node.type}:${node.startIndex}:${node.endIndex}`;
+}
+
 function nearestScope(node, allowedTypes) {
   let current = node.parent;
   while (current) {
@@ -165,7 +169,7 @@ function extractCalls(root, path) {
       const name = node.childForFieldName('name');
       const scope = nearestScope(node, LEXICAL_SCOPE_TYPES);
       if (name?.type === 'identifier' && scope) {
-        declarations.push({ name: name.text, scope, node, kind: 'function' });
+        declarations.push({ name: name.text, scope: scopeIdentity(scope), node, kind: 'function' });
       }
       return;
     }
@@ -176,7 +180,7 @@ function extractCalls(root, path) {
       if (name?.type === 'identifier' &&
           ['arrow_function', 'function_expression', 'generator_function'].includes(value?.type)) {
         const scope = declarationScope(node);
-        if (scope) declarations.push({ name: name.text, scope, node, kind: 'function-variable' });
+        if (scope) declarations.push({ name: name.text, scope: scopeIdentity(scope), node, kind: 'function-variable' });
       }
     }
   });
@@ -190,8 +194,9 @@ function extractCalls(root, path) {
     const scopes = lexicalScopeChain(node);
     let target = null;
     for (const scope of scopes) {
+      const scopeId = scopeIdentity(scope);
       const matches = declarations.filter(declaration =>
-        declaration.scope === scope && declaration.name === callee.text);
+        declaration.scope === scopeId && declaration.name === callee.text);
       if (matches.length > 1) return;
       if (matches.length === 1) {
         target = matches[0];
