@@ -317,3 +317,20 @@ test('resolves function-valued var declarations through their enclosing function
     { caller: 'start', callee: 'finish', line: 5, declarationLine: 3 },
   ]);
 });
+
+
+test('extracts explicit named re-export lineage without flattening it into a direct import', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/source.js', content: 'export function original() {}' },
+    { path: 'src/barrel.js', content: "export { original as renamed } from './source.js';" },
+    { path: 'src/consumer.js', content: "import { renamed as localName } from './barrel.js';" },
+  ]);
+
+  assert.deepEqual(result.reExportEdges.map(({ source, target, imported, exported }) =>
+    ({ source, target, imported, exported })), [
+    { source: 'src/barrel.js', target: 'src/source.js', imported: 'original', exported: 'renamed' },
+  ]);
+  assert.deepEqual(result.unresolvedReExports, []);
+  assert.equal(result.symbolEdges.some(edge =>
+    edge.source === 'src/consumer.js' && edge.target === 'src/source.js'), false);
+});
