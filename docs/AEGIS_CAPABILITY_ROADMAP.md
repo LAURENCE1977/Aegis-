@@ -475,3 +475,15 @@ No project code, model, scanner, container or external service was installed, ru
 - Evaluation score cannot grant permissions or promote a candidate. Human review, fresh Sentinel authorisation, rollback target and append-only audit remain separate requirements.
 
 See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery sequence.
+
+
+### Eval Forge — immutable suite registry (17 November 2026)
+
+**Status:** Implemented on stacked draft PR #103; CI verification pending.
+
+- Added Forge migration `0008_eval_suites.sql` for owner-scoped, immutable suite versions, canonical SHA-256 content digests and append-only registration events.
+- Added `functions/lib/eval-forge-store.mjs` with strict validation, canonical JSON hashing, idempotent registration, conflict rejection and bounded owner-scoped listing.
+- Added authenticated same-origin `GET/POST /api/eval/suites`; owner identity is server-derived and writes are bounded.
+- Added store/API/migration tests and D1 smoke checks for uniqueness and immutable suite/event history.
+- A semantic version is immutable once registered; changed suite content requires a new version.
+- Evaluation-run persistence, runner authentication, candidate execution, evidence receipt verification and promotion review remain separate future slices. The API does not accept a caller-supplied verified flag or permit evaluation scores to grant capabilities.
