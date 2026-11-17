@@ -8,7 +8,7 @@
 
 ## 1. Mission
 
-AEGIS is Laurence's personal, open, modular, mobile-first AI operating system. It should combine ChatGPT's reasoning and conversational strengths with AEGIS's persistent memory, specialist agents, controlled tools, execution, monitoring and durable background work.
+**Product identity: Agent AEGIS — Your Personal Guardian.** AEGIS is Laurence's personal, open, modular, mobile-first AI operating system. It should combine ChatGPT's reasoning and conversational strengths with AEGIS's persistent memory, specialist agents, controlled tools, execution, monitoring and durable background work.
 
 The intended system is a two-way ecosystem:
 - ChatGPT handles conversation, reasoning, planning, research and creative collaboration.
@@ -16,6 +16,18 @@ The intended system is a two-way ecosystem:
 - A shared intelligence layer provides approved project context, skills, knowledge, capability schemas, provenance and audit.
 - ChatGPT can call approved AEGIS capabilities through a standards-based bridge.
 - AEGIS can call available OpenAI models through the API and other providers through adapters. API use is separate from a ChatGPT subscription and may incur separate charges.
+
+### 1.1 Agent AEGIS — Your Personal Guardian
+
+Agent AEGIS is the user-facing product identity and promise: a human-centred artificial intelligence that combines an intelligent agent, a natural-feeling personal companion and a protective guardian. AEGIS remains the underlying platform, shared intelligence core and open architecture; the name change does not rename or fragment internal subsystems.
+
+The companion is a first-class experience layer over the shared intelligence core, not a separate chatbot or second brain. The intended experience is as human as technology can responsibly make it: natural conversation, contextual listening, humour and curiosity, consistent personality, user-approved memory, expressive voice and avatar, social awareness, creative ingenuity and independent reasoning within Sentinel's authority boundaries. AEGIS must remain transparent that it is artificial intelligence; it must not claim consciousness, manipulate users, pretend certainty about emotions or replace human relationships.
+
+The official Agent AEGIS identity should be recognisable and consistent, while users may create and customise their own companion appearances, voices and interaction styles. Identity and authorised continuity should travel across supported devices through the shared core. Device-specific interfaces and capabilities remain adapters; no platform is promised until tested.
+
+Design inspirations may include Data from *Star Trek* for curiosity and learning, Rommie from *Andromeda* for embodied personality and presence, and the Machine from *Person of Interest* for protective pattern recognition. These are creative references, not claims that fictional capabilities are scientifically or technically achievable. The protective guardian role must always respect user autonomy, privacy, consent, safety and human oversight.
+
+**Status:** Product identity and accepted design direction. The full human-like companion, advanced social intelligence, lifelike avatar, voice embodiment and guardian capabilities are not thereby declared implemented. Progress remains governed by acceptance tests and verified implementation, not branding or documentation.
 
 This does not copy ChatGPT's private infrastructure, alter GPT-6 weights or inject knowledge into model weights. It builds an interoperable, provider-agnostic counterpart using open standards.
 
