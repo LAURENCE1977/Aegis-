@@ -44,7 +44,7 @@ class AttemptD1 {
           db.attempts.push({ id, owner_id: owner, assessment_id: assessmentId,
             assessment_version: version, path_id: pathId, path_version: pathVersion,
             node_id: nodeId, assessment_digest: assessmentDigest,
-            attempt_digest: attemptDigest, result_json: resultJson, occurred_at: occurredAt });
+            attempt_digest: attemptDigest, result_json: resultJson, score_percent: scorePercent, passed, mastery_verified: 0, occurred_at: occurredAt });
           return { meta: { changes: 1 } };
         }
         return { meta: { changes: 0 } };
