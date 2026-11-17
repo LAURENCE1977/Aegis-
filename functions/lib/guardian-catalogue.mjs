@@ -89,3 +89,80 @@ export async function listGuardianResources(db, ownerId, limit = 50) {
   `).bind(ownerId, limit).all();
   return (result?.results ?? []).map(mapResourceRow);
 }
+
+
+export class GuardianResourceConflictError extends Error {
+  constructor(message = 'Guardian Resource review conflict') {
+    super(message);
+    this.name = 'GuardianResourceConflictError';
+    this.status = 409;
+  }
+}
+
+export async function updateGuardianResourceReview(db, ownerId, resourceId, input, now = Date.now()) {
+  requireDatabase(db);
+  requireOwner(ownerId);
+  if (typeof resourceId !== 'string' || !/^resource-[a-f0-9]{32}$/.test(resourceId)) {
+    throw new TypeError('Invalid Guardian Resource identifier');
+  }
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      Object.keys(input).some((key) => !['status', 'note', 'expectedUpdatedAt'].includes(key))) {
+    throw new TypeError('Guardian Resource review contains unexpected fields');
+  }
+  if (!['reviewed', 'accepted', 'archived'].includes(input.status)) {
+    throw new TypeError('Invalid Guardian Resource review status');
+  }
+  if (typeof input.note !== 'string' || input.note.trim().length < 1 || input.note.trim().length > 2000) {
+    throw new TypeError('Guardian Resource review note must contain 1 to 2000 characters');
+  }
+  if (typeof input.expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(input.expectedUpdatedAt))) {
+    throw new TypeError('Guardian Resource expectedUpdatedAt must be a valid timestamp');
+  }
+  if (!Number.isFinite(now)) throw new TypeError('Invalid Guardian Resource clock');
+
+  const currentRow = await db.prepare(`
+    SELECT * FROM guardian_resources WHERE owner_id = ? AND id = ? LIMIT 1
+  `).bind(ownerId, resourceId).first();
+  if (!currentRow) {
+    const error = new Error('Guardian Resource not found');
+    error.status = 404;
+    throw error;
+  }
+  const current = mapResourceRow(currentRow);
+  if (current.updatedAt !== input.expectedUpdatedAt) throw new GuardianResourceConflictError();
+  const transitions = {
+    draft: ['reviewed', 'archived'],
+    reviewed: ['accepted', 'archived'],
+    accepted: ['archived'],
+    archived: [],
+  };
+  if (!transitions[current.status]?.includes(input.status)) {
+    throw new TypeError(`Invalid Guardian Resource review transition: ${current.status} to ${input.status}`);
+  }
+  if (input.status === 'accepted') {
+    const evidence = current.licence?.evidenceUrl;
+    let evidenceIsHttps = false;
+    try { evidenceIsHttps = typeof evidence === 'string' && new URL(evidence).protocol === 'https:'; } catch {}
+    if (current.licence?.review !== 'verified' || !evidenceIsHttps) {
+      throw new TypeError('Acceptance requires verified licence evidence with an HTTPS evidence URL');
+    }
+  }
+
+  const timestamp = new Date(now).toISOString();
+  if (timestamp <= current.updatedAt) throw new TypeError('Guardian Resource review timestamp must advance');
+  const result = await db.prepare(`
+    UPDATE guardian_resources
+    SET review_status = ?, review_note = ?, reviewer_id = ?, updated_at = ?
+    WHERE id = ? AND owner_id = ? AND updated_at = ?
+  `).bind(
+    input.status, input.note.trim(), ownerId, timestamp,
+    resourceId, ownerId, input.expectedUpdatedAt,
+  ).run();
+  if (result?.meta?.changes !== 1) throw new GuardianResourceConflictError();
+
+  const updatedRow = await db.prepare(`
+    SELECT * FROM guardian_resources WHERE owner_id = ? AND id = ? LIMIT 1
+  `).bind(ownerId, resourceId).first();
+  if (!updatedRow) throw new Error('Guardian Resource disappeared after review update');
+  return mapResourceRow(updatedRow);
+}
