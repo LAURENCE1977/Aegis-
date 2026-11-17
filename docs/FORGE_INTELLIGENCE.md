@@ -464,3 +464,33 @@ The existing repository-code intelligence path is also narrower than the propose
 AEGIS design consequence: do not overload Forge's Knowledge Library or source-provenance tables with case evidence. A future case-scoped evidence domain should reference existing owner/case identity and audit/run lineage where appropriate, while keeping immutable original-source identity separate from parser outputs and analyst conclusions. A dedicated evidence ledger is only proposed; no schema or upload/storage binding has been added in this research pass.
 
 No conclusion about the absence of other repository upload/storage mechanisms is made from these selected paths. The exact Pages/Workers storage configuration and any existing object-storage binding still need a repository-wide inspection before an implementation design is finalised.
+
+
+### Hostile-input and deserialisation findings
+
+A focused inspection of capa's loader and regression tests surfaced a particularly important reusable security pattern.
+
+Inspected at `mandiant/capa@74114afae97392e1fc08f9ed41acbc88882b645c`:
+- `capa/loader.py`: `bfa2a7298347db39a4fd3afc738c1dc2ee27b598`
+- `tests/test_loader_segfault.py`: `e4c06edeff859b3d89f4fb8c2b1081814a1f9dd3`
+- `capa/rules/__init__.py`: `86da32ddb5665c86b88699878393f01a834149c6`
+- `CHANGELOG.md`: `cffabcef551ac3235500c1857e2cd297cc389bb4`
+
+Observed safeguards:
+- capa's YAML rule loader selects PyYAML's `CSafeLoader` and falls back to `SafeLoader`, rather than the unsafe general-purpose YAML loader. The changelog records a prior insecure-deserialisation fix in YAML loading.
+- Existing Vivisect `.viv` workspaces are ignored by default because loading them uses Python pickle deserialisation. The opt-in environment variable is explicit, and tests create a malicious pickle whose reduction function would mark execution; the regression asserts that the payload does not run by default.
+- Tests cover malformed ELF handling, conversion of a parser segmentation violation into a controlled `CorruptFile` error, early rejection of PE files with unrealistic section sizes, and rejection of serialized workspace input.
+- The loader also disables a symbolic switch-case analysis stage because it had pathological worst-case performance. This is a useful example of deliberately trading some analysis depth for bounded runtime.
+
+AEGIS requirements derived from this:
+1. Never deserialize user-supplied Python pickle or other executable object formats. Do not add a hidden or environment-only bypass to the ordinary evidence path.
+2. Parse YAML only with a safe loader; prefer a small, schema-validated JSON/YAML data contract for community rules. Rule content is data, never executable code.
+3. Treat parser crashes, invalid offsets, impossible lengths and unsupported architectures as typed partial/failure outcomes, not server crashes.
+4. Reject or short-circuit obviously pathological structures before expensive parsing; enforce per-file and aggregate byte, recursion, CPU, memory, wall-clock and output limits.
+5. Keep cached analysis state in non-executable, versioned formats with strict schemas and integrity checks. A cache is untrusted input too.
+6. Add adversarial fixtures for YAML object-construction tags, pickle payloads, malformed ELF/PE headers, oversized section lengths, truncated archives, nested recursion and parser timeout.
+7. No parser result, cached workspace, rule file or extracted string may invoke shell commands, load modules, alter policy or change Sentinel permissions.
+
+Binwalk's inspected fuzzing manifest exists at `ReFirmLabs/binwalk@26713972e3f9f52dc37d4a421c4554b0bd9e82ef`, blob `3e5dd2965b8675e376dc0930ed66c8e4b12a6a60`; it declares an AFL dependency using a wildcard version. This establishes a fuzzing-related project surface, but not the coverage or quality of its fuzz targets. Inspect the actual harnesses and pin the fuzz toolchain before drawing conclusions. Fuzzing is not a substitute for AEGIS-specific bounds and isolation.
+
+This is a design lesson, not a claim that capa or Binwalk is vulnerability-free. No upstream test suite or fuzz campaign was run during this review.
