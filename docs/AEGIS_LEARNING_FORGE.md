@@ -37,3 +37,16 @@ A second slice adds owner-scoped learner progress:
 - D1 triggers independently enforce the prerequisite rule on insert and update, preventing direct database writes from bypassing the graph gate.
 - Authenticated `GET/PATCH /api/learning/paths/:id/progress` lists and records progress with same-origin write protection and bounded request bodies.
 - No assessment engine, mastery certification, spaced-repetition scheduler or automatic skill inference is enabled.
+
+
+## Deterministic assessment contract — first slice (17 November 2026)
+
+**Status:** Pure assessment validation and scoring contract implemented; CI verification pending.
+
+- Added `functions/lib/learning-mastery.mjs` with immutable-shape, semantic-version-bound assessment validation.
+- Assessments bind to an exact Learning Path version and node, contain 1–50 uniquely identified questions, bounded point weights and a 1–100% pass threshold.
+- The scorer requires exactly one bounded answer for every question, rejects missing/extra/malformed answers, and calculates a deterministic weighted percentage.
+- The result includes the exact assessment/path/node identity and earned/possible points. It explicitly returns `masteryVerified: false`: pure scoring is not yet a persisted, authenticated mastery record.
+- Correct answers are part of the trusted assessment definition and must not be exposed by a future learner-facing assessment-delivery API.
+- This slice does not yet persist assessments or attempts, provide a learner UI, enforce retry/cooldown rules, or issue verified mastery. Those require immutable assessment registration, server-side answer handling, append-only attempt evidence, and an independently tested mastery policy.
+- No learning data is sent to an external model or provider; no model-as-judge is used.
