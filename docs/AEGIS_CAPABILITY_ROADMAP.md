@@ -549,3 +549,15 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Licence/lifecycle gates: AutoScraper MIT; Crawlee Python Apache-2.0; Scrapy BSD-3-Clause; curl-impersonate MIT but explicitly excluded for stealth/anti-bot evasion; yt-dlp Unlicense repo with dependency licences and copyright/platform terms still applicable; FireRed-OpenStoryline Apache-2.0; AutoClip and Herk Edit Kit MIT reported pending exact identity pin; AutoSubs MIT code with optional MMS CC BY-NC 4.0 weights; StoryToolkitAI GPL-3.0 and lifecycle caution; FunClip/NarratoAI MIT reported; BackgroundRemover MIT; LatentSync Apache-2.0 code with separate model-weight restrictions.
 - No authentication/paywall/CAPTCHA/access-control bypass, browser fingerprint spoofing, proxy rotation, cookie/session extraction, arbitrary URL crawling, unattended publishing or paid API dependency. SSRF protection, DNS/redirect validation, per-host rate limits, untrusted-content isolation, user consent, copyright and model-weight licence review are mandatory.
 - No packages, models, binaries, media, external services or accounts were installed, executed, connected, uploaded or deployed.
+
+
+### LitServe — optional local inference adapter (17 November 2026)
+
+**Status:** Research only. Detailed assessment appended to `AEGIS_FORGE_WEB_INTELLIGENCE_MEDIA_PRODUCTION_INTAKE_2026-11-17.md`.
+
+- Reviewed `Lightning-AI/LitServe`, Apache-2.0; upstream release v0.2.19 dated 9 September 2026.
+- Candidate for Python model-serving workers with custom setup/prediction, batching, streaming, async handling, multi-model composition and optional OpenAI-compatible/MCP interfaces.
+- Not a model runtime or drop-in Ollama/vLLM replacement. Self-managed authentication is DIY; managed autoscaling, multi-node, load balancing, scale-to-zero and managed observability must not be assumed free/self-hosted capabilities.
+- Architecture: AEGIS control plane → Sentinel-authenticated private inference gateway → optional LitServe worker → pinned local model. AEGIS retains model routing, identity, memory, permissions, audit and decisions.
+- Requires worker isolation, no public unauthenticated endpoints, strict request/queue/resource limits, cancellation/backpressure, pinned dependencies, SBOM, model-weight licence review and workload-specific benchmarking.
+- No installation, model download, server launch or managed service activation. Compare against a minimal FastAPI worker before adoption.
