@@ -15,8 +15,8 @@ test('serializes files, declarations and relationships with deterministic source
     'file:src/a.js',
     'file:src/b.js',
     'file:src/unused.js',
-    'symbol:src/a.js#finish@2:1',
     'symbol:src/a.js#start@1:8',
+    'symbol:src/a.js#finish@2:1',
     'symbol:src/unused.js#unused@1:14',
   ]);
   assert.ok(result.edges.some(edge =>
