@@ -75,8 +75,10 @@ export function createAgentRunProjectContextBuilder({
       throw new TypeError('Invalid Project Space identifier');
     }
     if (!Number.isFinite(now)) throw new TypeError('Invalid Project Space context clock');
-    if (typeof objective !== 'string' || objective.length > 2000 ||
-        /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(objective)) {
+    if (typeof objective !== 'string' || objective.length > 2000 || objective.split('').some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 8 || (code >= 11 && code <= 12) || (code >= 14 && code <= 31) || code === 127;
+    })) {
       throw new TypeError('Invalid agent objective for knowledge retrieval');
     }
 
