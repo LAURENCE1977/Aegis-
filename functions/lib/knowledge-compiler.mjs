@@ -41,7 +41,9 @@ export async function compileKnowledgeDocument(document, options = {}) {
   }
   const sourcePath = validateSourcePath(document.sourcePath);
   const status = document.status === undefined ? 'draft' : document.status;
-  if (!STATUSES.has(status)) throw new TypeError('Invalid knowledge document status');
+  if (!STATUSES.has(status) || status !== 'draft') {
+    throw new TypeError('Knowledge compilation must start as a draft');
+  }
   if (!options || typeof options !== 'object' || Array.isArray(options) ||
       Object.keys(options).some(key => key !== 'maxChars')) {
     throw new TypeError('Invalid knowledge compilation options');
