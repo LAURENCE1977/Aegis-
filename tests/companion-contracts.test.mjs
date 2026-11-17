@@ -30,7 +30,8 @@ test('official AEGIS companion profile has a stable identity and safe free-first
   const profile = createDefaultAegisCompanionProfile();
   assert.equal(profile.id, 'aegis');
   assert.equal(profile.kind, 'official');
-  assert.equal(profile.displayName, 'AEGIS');
+  assert.equal(profile.displayName, 'Agent AEGIS');
+  assert.equal(profile.description, 'Your Personal Guardian — a human-centred artificial intelligence companion.');
   assert.equal(profile.voice.enabled, false);
   assert.equal(profile.voice.provider, 'none');
   assert.equal(profile.memoryScope, 'user-governed');
