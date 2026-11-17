@@ -28,7 +28,7 @@ function normaliseRelative(fromPath, specifier) {
 }
 
 function candidates(base) {
-  const hasExtension = /\\.[a-z0-9]+$/i.test(base);
+  const hasExtension = /\.[a-z0-9]+$/i.test(base);
   const result = [base];
   if (!hasExtension) {
     for (const extension of SUPPORTED_EXTENSIONS) result.push(base + extension);
@@ -44,10 +44,10 @@ function candidates(base) {
 function extractImports(source) {
   const imports = [];
   const patterns = [
-    { kind: 'static', regex: /(?:^|[;\\n])\\s*import\\s+(?:[^'";\\n]*?\\s+from\\s+)?['"]([^'"]+)['"]/g },
-    { kind: 're-export', regex: /(?:^|[;\\n])\\s*export\\s+[^'";\\n]*?\\s+from\\s+['"]([^'"]+)['"]/g },
-    { kind: 'dynamic', regex: /\\bimport\\(\\s*['"]([^'"]+)['"]\\s*\\)/g },
-    { kind: 'commonjs', regex: /\\brequire\\(\\s*['"]([^'"]+)['"]\\s*\\)/g },
+    { kind: 'static', regex: /(?:^|[;\n])\s*import\s+(?:[^'";\n]*?\s+from\s+)?['"]([^'"]+)['"]/g },
+    { kind: 're-export', regex: /(?:^|[;\n])\s*export\s+[^'";\n]*?\s+from\s+['"]([^'"]+)['"]/g },
+    { kind: 'dynamic', regex: /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g },
+    { kind: 'commonjs', regex: /\brequire\(\s*['"]([^'"]+)['"]\s*\)/g },
   ];
   for (const pattern of patterns) {
     for (const match of source.matchAll(pattern.regex)) {
