@@ -343,3 +343,18 @@ Boundaries:
 - No new database migration, endpoint, UI, package, scanner or active security test was added.
 - Dynamic testing remains disabled. A future server route must load trusted Sentinel grant/approval state and must reject caller-supplied authorisation lineage.
 - PR #103 is draft, stacked on PR #101, unmerged and not production-deployed.
+
+
+## 13. Guardian Resource Catalogue — first persistence slice
+
+**Status:** Implemented and full CI verified on stacked draft PR #103; not production deployed.
+
+- Added pure Resource, Learning Graph and Security Finding validators in `functions/lib/guardian-intelligence.mjs`.
+- Added owner-scoped Resource Catalogue create/list storage in `functions/lib/guardian-catalogue.mjs`.
+- Added `guardian_resources` and append-only `guardian_resource_events` in Forge migration `0006_guardian_resources.sql`.
+- Added authenticated, same-origin, bounded `GET/POST /api/guardian/resources`. IDs are server-generated; new records remain drafts; duplicate owner/source/revision submissions are idempotent.
+- Added CI D1 smoke evidence for resource creation, exactly one created event and rejection of event update/delete.
+
+**Test-first and verification:** RED run `44127986972` confirmed the missing catalogue module/API/migration. The initial implementation run exposed a test-fixture parameter-binding mismatch; the fake D1 fixtures were corrected. Full CI run `44128806884` passed on `eda95b240b19392a12e42c74d7546f805120cbd9`: 745 tests, 744 passed, zero failed, one skipped, plus isolated capability/runtime/Queue/Forge D1 checks and the new Guardian Resource audit smoke checks.
+
+**Not implemented:** resource review/acceptance, resource UI, learning graph persistence/progress, security finding persistence, scanners or active security testing. Dynamic tests remain disabled and must be Sentinel-authorised and isolated before implementation.
