@@ -4,7 +4,7 @@ const STATUSES = new Set(['draft', 'reviewed', 'accepted', 'superseded']);
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_SOURCE_PATH = 240;
 
-function validateSourcePath(value) {
+function hasControlCharacters(value) {\n  return [...value].some(character => {\n    const code = character.charCodeAt(0);\n    return code <= 0x1f || code === 0x7f;\n  });\n}\n\nfunction validateSourcePath(value) {
   if (value === undefined) return undefined;
   if (typeof value !== 'string' || !value || value.length > MAX_SOURCE_PATH ||
       value.startsWith('/') || value.includes('\\') ||
