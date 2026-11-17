@@ -430,3 +430,14 @@ Delivery decisions and safety gates:
 - Cloudflare KV/Workers have usage and CPU limits; edge deployment is optional, not an unlimited or mandatory dependency.
 
 No camera feature, model, sidecar, threat feed or document upload integration has been installed or enabled by this research.
+
+
+## AEGIS Forge — ecosystem intake (17 November 2026)
+
+**Status:** Research intake only; no implementation or new dependency adoption is claimed. See [AEGIS Forge Ecosystem Intake](AEGIS_FORGE_ECOSYSTEM_INTAKE_2026-11-17.md) for exact identities, licence findings, safety holds and delivery order.
+
+The batch covers faster-whisper, Repomix, FLUX, Qwen3-TTS, UniCloud, TrailBase, Certimate, OpenPanel, the Cloudflare Workers Docker registry proxy, n8n-MCP, BuildingAI and IDA Pro MCP, plus unresolved `vibe-coding-prompt-t` and generic SaaS boilerplate candidates. `AI-Goldfish-Monitor` was interpreted as `Usagi-org/ai-goofish-monitor` and is restricted to generic scheduling/notification patterns; no account-cookie import, scraping or proxy-rotation adoption.
+
+Key decisions: benchmark faster-whisper against existing Whisper.cpp; consider Qwen3-TTS only as an optional consent-governed local TTS adapter; use Repomix only to fill a measured repository-context gap; FLUX licences are variant-specific (schnell Apache-2.0, dev non-commercial); TrailBase OSL-3.0 is a code-reuse hold; OpenPanel's GitHub AGPL label and separate website EULA require reconciliation; Certimate is a possible read-only certificate-posture pattern; n8n and IDA MCP remain tightly scoped optional adapters; registry proxying is rejected for the build supply chain.
+
+No package, model, container, MCP server, account or external service was installed, run, connected or deployed. No secrets or user content were uploaded, and no production state changed.
