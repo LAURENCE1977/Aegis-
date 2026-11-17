@@ -12,7 +12,7 @@ const packageRoot = name => dirname(dirname(dirname(require.resolve(name))));
 
 function validatePath(value) {
   if (typeof value !== 'string' || value.length === 0 || value.length > 240 ||
-      value.startsWith('/') || value.includes('\\\\') ||
+      value.startsWith('/') || value.includes('\\') ||
       value.split('/').some(part => !part || part === '.' || part === '..')) {
     throw new TypeError('Invalid Tree-sitter source file path');
   }
