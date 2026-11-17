@@ -35,6 +35,6 @@ test('Guardian Resource cards render source text safely and expose only valid li
 });
 
 test('Knowledge Library copy reflects objective-relevant retrieval while preserving untrusted-data boundary', () => {
-  assert.match(html, /objective-relevance ranking/i);
+  assert.match(html, /ranked against each Project Space agent objective/i);
   assert.match(html, /untrusted reference data/i);
 });
