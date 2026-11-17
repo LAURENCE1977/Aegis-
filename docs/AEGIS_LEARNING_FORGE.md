@@ -1,6 +1,6 @@
 # AEGIS Learning Forge
 
-**Status:** Immutable learning-path registry and prerequisite-gated self-reported progress implemented on draft PR #103; full CI for the progress slice is pending.
+**Status:** Immutable learning-path registry and prerequisite-gated self-reported progress implemented and full PR CI verified on draft PR #103 (17 November 2026).
 
 ## Contract
 
