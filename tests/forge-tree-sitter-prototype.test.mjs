@@ -348,3 +348,18 @@ test('records namespace imports as module-level bindings without inventing symbo
   ]);
   assert.equal(result.symbolEdges.some(edge => edge.source === 'src/consumer.js'), false);
 });
+
+
+test('reports deterministic module dependency cycles using resolved local edges only', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/a.js', content: "import './b.js';" },
+    { path: 'src/b.js', content: "import './a.js';" },
+    { path: 'src/isolated.js', content: "import 'external-package';" },
+    { path: 'src/self.js', content: "import './self.js';" },
+  ]);
+
+  assert.deepEqual(result.moduleCycles, [
+    ['src/a.js', 'src/b.js'],
+    ['src/self.js'],
+  ]);
+});
