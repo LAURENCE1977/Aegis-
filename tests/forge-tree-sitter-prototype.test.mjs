@@ -263,3 +263,37 @@ test('classifies package imports and missing relative targets without claiming a
     { specifier: 'react', reason: 'external-package' },
   ]);
 });
+
+
+test('links named, aliased and default imports to matching exported declarations', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/main.ts', content: [
+      "import { run as start, Config } from './worker';",
+      "import Worker from './default-worker.js';",
+    ].join('\\n') },
+    { path: 'src/worker.ts', content: [
+      'export function run() {}',
+      'export interface Config {}',
+    ].join('\\n') },
+    { path: 'src/default-worker.js', content: 'export default class Worker {}' },
+  ]);
+  assert.deepEqual(result.symbolEdges.map(({ source, target, imported, local, kind }) =>
+    ({ source, target, imported, local, kind })), [
+    { source: 'src/main.ts', target: 'src/default-worker.js', imported: 'default', local: 'Worker', kind: 'default' },
+    { source: 'src/main.ts', target: 'src/worker.ts', imported: 'Config', local: 'Config', kind: 'named' },
+    { source: 'src/main.ts', target: 'src/worker.ts', imported: 'run', local: 'start', kind: 'named' },
+  ]);
+  assert.ok(result.symbolEdges.every(edge => edge.location.start.line > 0 && edge.targetLocation.start.line > 0));
+});
+
+test('reports missing exported names rather than inventing symbol edges', async () => {
+  const result = await parseModuleImports([
+    { path: 'src/main.js', content: "import { missing } from './worker.js';" },
+    { path: 'src/worker.js', content: 'export function present() {}' },
+  ]);
+  assert.deepEqual(result.symbolEdges, []);
+  assert.deepEqual(result.unresolvedSymbolImports.map(({ imported, local, reason }) =>
+    ({ imported, local, reason })), [
+    { imported: 'missing', local: 'missing', reason: 'missing-export' },
+  ]);
+});
