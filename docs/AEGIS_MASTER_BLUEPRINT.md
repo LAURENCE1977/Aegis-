@@ -1060,3 +1060,18 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - Tests cover objective relevance, irrelevant-record ordering, owner/status/evidence filtering, UTF-8 byte budgets and digest shape.
 - Verification: GitHub Actions run [44149968192](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149968192) passed on commit `0ae3e8f45b0492750e24320532982603052783c0`: **760 tests, 759 passed, 0 failed, 1 skipped**; runtime D1/Queue integration and Forge D1 migrations/smoke checks passed. Matching PR run [44149981505](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149981505) passed.
 - This does not enable specialist execution, external vector stores, model-as-judge, tool invocation or permission escalation. Retrieved content remains untrusted reference data.
+
+
+## Guardian Resource owner-facing catalogue — 17 November 2026
+
+**Status:** Implemented and verified on draft PR #103; source-level UI and API only, not deployed.
+
+- Added a Guardian Resource intake form and catalogue to the existing Forge panel.
+- Captures canonical HTTPS source, pinned source revision, category, licence state/evidence, pricing model/limits/evidence, hosting mode/requirements and limitations.
+- Submissions go through the authenticated same-origin API and start as drafts. The UI explicitly states that draft resources are not approved for installation or execution.
+- Catalogue cards display provenance, licence, pricing, hosting and limitations through text-safe DOM construction. Canonical source links open separately with noopener/noreferrer protections.
+- Owner review uses the existing optimistic-concurrency API. The UI supports draft → reviewed → accepted where verified HTTPS licence evidence is present, plus archive from every active state. Archived records are terminal.
+- An explicit archive action remains available when acceptance is blocked by missing licence evidence.
+- Accessibility: live status region, labelled controls and visible review notes. No repository content is installed, fetched or executed by this UI.
+- Verification: GitHub Actions run [44151172821](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151172821) passed on commit `d2e260f649b55014eca2ba8a1342d6cd2e1f4588`: **764 tests, 763 passed, 0 failed, 1 skipped**; isolated runtime D1/Queue and Forge D1 migration/smoke checks passed. Matching PR run [44151188778](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151188778) passed.
+- Production deployment and production D1 provisioning remain separate and have not been performed.
