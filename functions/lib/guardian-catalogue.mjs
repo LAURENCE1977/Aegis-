@@ -33,6 +33,8 @@ function mapResourceRow(row) {
     status: row.review_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    reviewNote: row.review_note ?? '',
+    reviewerId: row.reviewer_id ?? null,
   };
 }
 
