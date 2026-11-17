@@ -254,7 +254,7 @@ test('does not guess when a relative module specifier matches multiple supplied 
 test('classifies package imports and missing relative targets without claiming a local edge', async () => {
   const result = await parseModuleImports([{
     path: 'src/main.js',
-    content: "import React from 'react'; import './missing.js'; import '../outside.js';",
+    content: "import React from 'react'; import './missing.js'; import '../../outside.js';",
   }]);
   assert.deepEqual(result.moduleEdges, []);
   assert.deepEqual(result.unresolvedImports.map(({ specifier, reason }) => ({ specifier, reason })), [
