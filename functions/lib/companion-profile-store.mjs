@@ -172,14 +172,15 @@ export async function listCompanionProfiles(db, ownerId, limit = MAX_PROFILES) {
     const mapped = await mapProfileRow(row);
     if (!latest.has(mapped.profileId)) latest.set(mapped.profileId, mapped);
   }
+  if (latest.size > limit) throw new TypeError('Companion Profile count exceeds its bounded list limit');
   const profiles = [
-    createDefaultAegisCompanionProfile(),
-    ...[...latest.values()].map(item => item.profile),
+    Object.freeze({ profile: createDefaultAegisCompanionProfile(), version: null }),
+    ...[...latest.values()].map(item => Object.freeze({ profile: item.profile, version: item.version })),
   ];
   const preferences = await db.prepare(`
     SELECT * FROM companion_profile_preferences WHERE owner_id = ? LIMIT 1
   `).bind(ownerId).first();
-  let activeProfile = createDefaultAegisCompanionProfile();
+  let activeProfile = Object.freeze({ profile: createDefaultAegisCompanionProfile(), version: null });
   let activeProfileId = null;
   let activeProfileVersion = null;
   if (preferences?.active_profile_id !== null && preferences?.active_profile_id !== undefined) {
@@ -187,7 +188,7 @@ export async function listCompanionProfiles(db, ownerId, limit = MAX_PROFILES) {
       db, ownerId, preferences.active_profile_id, preferences.active_profile_version,
     );
     if (!active) throw new TypeError('Stored active Companion Profile selection is invalid');
-    activeProfile = active.profile;
+    activeProfile = Object.freeze({ profile: active.profile, version: active.version });
     activeProfileId = active.profileId;
     activeProfileVersion = active.version;
   }
@@ -253,7 +254,7 @@ export async function selectCompanionProfile(db, ownerId, profileId, version, no
     await appendSelectionEvent(db, ownerId, null, null, 'reset', null, timestamp);
     return Object.freeze({
       activeProfileId: null,
-      activeProfile: createDefaultAegisCompanionProfile(),
+      activeProfile: Object.freeze({ profile: createDefaultAegisCompanionProfile(), version: null }),
     });
   }
   requireProfileId(profileId);
@@ -264,6 +265,6 @@ export async function selectCompanionProfile(db, ownerId, profileId, version, no
   await appendSelectionEvent(db, ownerId, profileId, version, 'selected', profile.digest, timestamp);
   return Object.freeze({
     activeProfileId: profileId,
-    activeProfile: profile.profile,
+    activeProfile: Object.freeze({ profile: profile.profile, version: profile.version }),
   });
 }
