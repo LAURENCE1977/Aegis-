@@ -104,7 +104,7 @@ test('submits a server-scored attempt against an immutable registered assessment
   assert.equal(db.attempts.length, 1);
 });
 
-test('attempt persistence stores only an answer digest, never raw learner answers', async () => {
+test('attempt persistence stores neither raw learner answers nor reversible answer digests', async () => {
   const db = await setup();
   await submitLearningAttempt(db, 'owner', assessment.id, assessment.version,
     { q1: 'b', q2: 'a' }, Date.parse('2026-11-17T12:00:00.000Z'));
