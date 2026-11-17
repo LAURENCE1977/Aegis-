@@ -68,6 +68,16 @@ export function createDefaultAegisCompanionProfile() {
   return structuredClone(DEFAULT_PROFILE);
 }
 
+export function validateCompanionInteractionSettings(settings) {
+  if (!exactKeys(settings, INTERACTION_KEYS) ||
+      ['warmth', 'humour', 'directness', 'initiative'].some((key) =>
+        !Number.isInteger(settings[key]) || settings[key] < 0 || settings[key] > 100) ||
+      !['concise', 'balanced', 'detailed'].includes(settings.verbosity)) {
+    throw new TypeError('Invalid companion interaction settings.');
+  }
+  return { ...settings };
+}
+
 /**
  * Validates a provider-neutral presentation profile. Profiles can tune
  * appearance and interaction, but cannot define permissions, tools, policy,
@@ -123,12 +133,7 @@ export function validateCompanionProfile(profile) {
     throw new TypeError('External voice opt-in is only valid for an external provider.');
   }
 
-  if (!exactKeys(profile.interaction, INTERACTION_KEYS) ||
-      ['warmth', 'humour', 'directness', 'initiative'].some((key) =>
-        !Number.isInteger(profile.interaction[key]) || profile.interaction[key] < 0 || profile.interaction[key] > 100) ||
-      !['concise', 'balanced', 'detailed'].includes(profile.interaction.verbosity)) {
-    throw new TypeError('Invalid companion interaction settings.');
-  }
+  const interaction = validateCompanionInteractionSettings(profile.interaction);
   validateBooleanRecord(profile.accessibility, ACCESSIBILITY_KEYS, 'accessibility');
   if (!['user-governed', 'session-only'].includes(profile.memoryScope)) {
     throw new TypeError('Invalid companion memory scope.');
@@ -142,7 +147,7 @@ export function validateCompanionProfile(profile) {
     description,
     appearance: { ...profile.appearance },
     voice: { ...profile.voice },
-    interaction: { ...profile.interaction },
+    interaction,
     accessibility: { ...profile.accessibility },
     memoryScope: profile.memoryScope,
   };
