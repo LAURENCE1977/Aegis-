@@ -1,7 +1,7 @@
 import { verifyEvaluationRunEvidence } from './eval-evidence.mjs';
+import { validateEvaluationSuite } from './eval-forge.mjs';
 
 const OWNER_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-const RUN_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_PAGE_SIZE = 100;
 
 function requireDatabase(db) {
@@ -68,6 +68,7 @@ export class EvaluationRunConflictError extends Error {
 export async function persistEvaluationRun(db, ownerId, suite, run, evidenceInput, now = Date.now()) {
   requireDatabase(db);
   requireOwner(ownerId);
+  validateEvaluationSuite(suite);
   if (!Number.isFinite(now)) throw new TypeError('Invalid Eval Forge clock');
 
   const suiteRow = await db.prepare(`
