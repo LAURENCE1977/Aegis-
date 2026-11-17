@@ -441,3 +441,23 @@ The batch covers faster-whisper, Repomix, FLUX, Qwen3-TTS, UniCloud, TrailBase, 
 Key decisions: benchmark faster-whisper against existing Whisper.cpp; consider Qwen3-TTS only as an optional consent-governed local TTS adapter; use Repomix only to fill a measured repository-context gap; FLUX licences are variant-specific (schnell Apache-2.0, dev non-commercial); TrailBase OSL-3.0 is a code-reuse hold; OpenPanel's GitHub AGPL label and separate website EULA require reconciliation; Certimate is a possible read-only certificate-posture pattern; n8n and IDA MCP remain tightly scoped optional adapters; registry proxying is rejected for the build supply chain.
 
 No package, model, container, MCP server, account or external service was installed, run, connected or deployed. No secrets or user content were uploaded, and no production state changed.
+
+
+## AEGIS Forge — agent, knowledge, model engineering and infrastructure intake (17 November 2026)
+
+**Status:** Research only. See [Agent, Knowledge, Model Engineering Intake](AEGIS_FORGE_AGENT_KNOWLEDGE_MODEL_ENGINEERING_INTAKE_2026-11-17.md) for project identities, licence/lifecycle flags, boundaries and delivery sequence.
+
+Candidates reviewed: Prime Agent, Palantir Foundry/AIP, Google Agent Skills, celld, Code-Graph-RAG, LiteLLM, system-design-101, sqlmap, Weaviate, Chroma, Agno, smolagents, SuperAGI, DSPy, Guidance, possible Promotion Agent matches, Braintrust, Unsloth, Axolotl, LLaMA-Factory, TRL, torchtune, BentoML, Ray Serve, NVIDIA Triton, LoRAX and Supabase.
+
+Architecture decisions:
+- AEGIS remains the control plane; agent frameworks cannot own canonical memory, decisions, approvals or audit.
+- Code-Graph-RAG informs possible graph enrichment only; existing Tree-sitter/code intelligence remains canonical until a measured gap is proven.
+- Chroma is a local retrieval benchmark; Weaviate is scale-out only. No competing knowledge stores without evidence.
+- DSPy/Guidance/Braintrust-style evals inform a native, versioned Eval Forge with held-out regression tests and approval-gated promotion.
+- LiteLLM is optional protocol compatibility, never a mandatory proxy or policy owner.
+- Fine-tuning stacks (Unsloth, Axolotl, LLaMA-Factory, TRL, torchtune) are deferred until a consented dataset, defined objective and feasible compute plan exist.
+- BentoML is a possible light serving adapter; Ray/Triton are large-scale options. TGI and LoRAX are archived upstreams and are not selected as new defaults.
+- sqlmap remains outside runtime; any later security-test use requires explicit target authorisation, isolated bounded tests and legal review of GPL/commercial embedding terms.
+- Supabase remains optional; no migration from current D1/SQLite Guardian persistence without a measured requirement.
+
+No project code, model, scanner, container or external service was installed, run, connected or deployed. No model training, SQL injection scan, account connection or user-data upload occurred.
