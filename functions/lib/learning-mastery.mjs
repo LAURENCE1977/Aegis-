@@ -2,6 +2,7 @@ const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION_PATTERN = /^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/;
 const ANSWER_PATTERN = /^[a-d]$/;
 const MAX_QUESTIONS = 50;
+const MAX_TEXT = 500;
 
 function exactObject(value, keys, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -13,7 +14,7 @@ function exactObject(value, keys, label) {
 
 export function validateLearningAssessment(assessment) {
   exactObject(assessment, [
-    'id', 'version', 'pathId', 'pathVersion', 'nodeId', 'passPercent', 'questions',
+    'id', 'version', 'pathId', 'pathVersion', 'nodeId', 'title', 'passPercent', 'questions',
   ], 'Learning Assessment');
   for (const field of ['id', 'pathId', 'nodeId']) {
     if (typeof assessment[field] !== 'string' || !ID_PATTERN.test(assessment[field])) {
@@ -25,6 +26,9 @@ export function validateLearningAssessment(assessment) {
       throw new TypeError('Invalid Learning Assessment ' + field);
     }
   }
+  if (typeof assessment.title !== 'string' || !assessment.title.trim() || assessment.title.length > MAX_TEXT) {
+    throw new TypeError('Invalid Learning Assessment title');
+  }
   if (!Number.isInteger(assessment.passPercent) || assessment.passPercent < 1 || assessment.passPercent > 100) {
     throw new TypeError('Invalid Learning Assessment pass threshold');
   }
@@ -34,11 +38,21 @@ export function validateLearningAssessment(assessment) {
   }
   const ids = new Set();
   for (const question of assessment.questions) {
-    exactObject(question, ['id', 'points', 'correctOption'], 'Learning Assessment question');
+    exactObject(question, ['id', 'prompt', 'options', 'points', 'correctOption'], 'Learning Assessment question');
     if (typeof question.id !== 'string' || !ID_PATTERN.test(question.id) || ids.has(question.id)) {
       throw new TypeError('Invalid or duplicate Learning Assessment question identifier');
     }
     ids.add(question.id);
+    if (typeof question.prompt !== 'string' || !question.prompt.trim() || question.prompt.length > MAX_TEXT) {
+      throw new TypeError('Invalid Learning Assessment question prompt');
+    }
+    if (!Array.isArray(question.options) || question.options.length !== 4 ||
+        question.options.some(option => typeof option !== 'string' || !option.trim() || option.length > MAX_TEXT)) {
+      throw new TypeError('Learning Assessment questions require exactly four bounded options');
+    }
+    if (new Set(question.options).size !== question.options.length) {
+      throw new TypeError('Learning Assessment question options must be unique');
+    }
     if (!Number.isInteger(question.points) || question.points < 1 || question.points > 10) {
       throw new TypeError('Invalid Learning Assessment question points');
     }
@@ -47,6 +61,24 @@ export function validateLearningAssessment(assessment) {
     }
   }
   return true;
+}
+
+export function projectLearnerAssessment(assessment) {
+  validateLearningAssessment(assessment);
+  return Object.freeze({
+    id: assessment.id,
+    version: assessment.version,
+    pathId: assessment.pathId,
+    pathVersion: assessment.pathVersion,
+    nodeId: assessment.nodeId,
+    title: assessment.title,
+    questions: assessment.questions.map(question => Object.freeze({
+      id: question.id,
+      prompt: question.prompt,
+      options: [...question.options],
+      points: question.points,
+    })),
+  });
 }
 
 export function scoreLearningAttempt(assessment, answers) {
