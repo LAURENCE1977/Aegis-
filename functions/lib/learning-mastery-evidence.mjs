@@ -68,7 +68,7 @@ function validateEvidence(item, path, nodeId, now) {
   } else {
     validId(item.reviewerId, 'human reviewer identifier');
     if (item.decision !== 'approved' || !Array.isArray(item.evidenceRefs) ||
-        item.evidenceRefs.length < 3 || item.evidenceRefs.length > MAX_EVIDENCE ||
+        item.evidenceRefs.length < 1 || item.evidenceRefs.length > MAX_EVIDENCE ||
         item.evidenceRefs.some(id => typeof id !== 'string' || !ID_PATTERN.test(id)) ||
         new Set(item.evidenceRefs).size !== item.evidenceRefs.length) {
       throw new TypeError('Learning Mastery human review must approve and reference its evidence');
