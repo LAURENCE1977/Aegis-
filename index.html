@@ -686,7 +686,11 @@
               <input id="customCompanionName" type="text" maxlength="48" autocomplete="off" placeholder="Give your companion a name" />
               <button id="createCompanionProfile" type="button">Create</button>
             </div>
-            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Custom profiles stay in this browser session only. Secure account saving is not connected yet.</p>
+            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Loading saved companion profiles…</p>
+          </div>
+          <div class="companion-mode-action">
+            <button id="openCompanionMode" type="button">Enter full-screen companion mode <span aria-hidden="true">↗</span></button>
+            <p>Immersive text conversation · voice and lifelike avatar runtime are not connected yet.</p>
           </div>
         </div>
       </section>
@@ -717,6 +721,38 @@
             </button>
           </div>
         </section>
+      </section>
+      <section id="companionModeOverlay" class="companion-mode-overlay" hidden aria-labelledby="companionModeTitle">
+        <header class="companion-mode-header">
+          <div>
+            <p class="companion-mode-kicker">AGENT AEGIS / YOUR PERSONAL GUARDIAN</p>
+            <h2 id="companionModeTitle">Here with you.</h2>
+          </div>
+          <div class="companion-mode-header-actions">
+            <span class="companion-mode-indicator">TEXT MODE · VOICE NOT CONNECTED</span>
+            <button id="closeCompanionMode" class="secondary" type="button">Close companion</button>
+          </div>
+        </header>
+        <div class="companion-mode-layout">
+          <section class="companion-mode-presence-panel" aria-label="Companion presence">
+            <div class="companion-presence companion-mode-presence" role="img" aria-label="Stylised Agent AEGIS avatar presentation. A lifelike avatar runtime is not connected.">
+              <div class="companion-orbit" aria-hidden="true"></div>
+              <div class="companion-avatar" aria-hidden="true">
+                <span class="avatar-head"></span>
+                <span class="avatar-body"></span>
+                <span class="avatar-light"></span>
+              </div>
+            </div>
+            <div class="companion-mode-profile-copy">
+              <h3 id="companionModeProfileTitle">Agent AEGIS</h3>
+              <p id="companionModeProfileDescription">Your Personal Guardian · one shared intelligence and security system.</p>
+              <p id="companionModeState" role="status" aria-live="polite">Text companion ready. Microphone capture and spoken responses are not connected.</p>
+            </div>
+          </section>
+          <section class="companion-mode-chat-panel" aria-label="Live companion conversation">
+            <div id="companionModeChatSlot"></div>
+          </section>
+        </div>
       </section>
       <section id="chatSection">
 
