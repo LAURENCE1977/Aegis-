@@ -506,7 +506,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 ### Learning Forge — immutable learning-path registry (17 November 2026)
 
-**Status:** Implementation added on draft PR #103; full CI verification pending.
+**Status:** Implemented and full CI verified on draft PR #103 (17 November 2026).
 
 - Added `migrations/forge/0010_learning_paths.sql` for owner-scoped immutable graph versions, canonical SHA-256 digest and append-only registration events.
 - Added `functions/lib/learning-forge.mjs` to validate learning graph prerequisites, HTTPS source attribution and licence status; canonicalise JSON; register idempotently; reject conflicting content under an existing version; and list owner-scoped paths.
