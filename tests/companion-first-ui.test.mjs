@@ -180,3 +180,8 @@ test('companion presence responds to live text conversation states without imply
   assert.match(html, /@keyframes companion-presence-pulse/);
   assert.match(html, /Microphone capture and spoken responses are not connected/);
 });
+
+test('chat sends only the active companion numeric and enum style settings to the server', () => {
+  assert.match(html, /function getActiveCompanionInteraction/);
+  assert.match(html, /companionInteraction:\s*getActiveCompanionInteraction\(\)/);
+});
