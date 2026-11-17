@@ -30,15 +30,15 @@ Upstream:
 - Licence: MIT.
 - The 1.0 specification defines 31 event types across eight families and uses a versioned event schema.
 
-AEGIS already has a live text-streaming endpoint and a bounded, owner-only terminal-run replay endpoint. The live endpoint emits actual assistant text deltas and can execute at most one server-registered tool per run through the existing Sentinel-enforced tool boundary. The terminal replay intentionally emits lifecycle and custom audit-reference events because persisted run history does not establish assistant message content, tool-call arguments/results or specialist execution. The live tool invocation is not yet surfaced as AG-UI TOOL_CALL_* events; do not fabricate replay content from incomplete records.
+AEGIS already has a live text-streaming endpoint and a bounded, owner-only terminal-run replay endpoint. The live endpoint emits actual assistant text deltas and can execute at most one server-registered tool per run through the existing Sentinel-enforced tool boundary. The terminal replay intentionally emits lifecycle and custom audit-reference events because persisted run history does not establish assistant message content, tool-call arguments/results or specialist execution. The live endpoint now emits TOOL_CALL_START, TOOL_CALL_ARGS, TOOL_CALL_END and TOOL_CALL_RESULT around actual server-registered tool execution. Tool-call arguments/results are size-bounded and correlated by the provider call ID and live run message ID. The start/args/end events describe the proposal; the result is emitted only after the Sentinel-mediated execution function returns. This does not grant authority or bypass capability approval. Persisted terminal replay remains lifecycle/audit-reference only; it does not fabricate missing assistant messages or tool history.
 
-Implementation sequence:
-1. Keep the existing endpoint and replay path; do not create a second transport.
-2. Add a pinned AG-UI 1.0 schema fixture and conformance tests for each event AEGIS actually emits.
-3. Preserve arrival order; timestamps are metadata, not a substitute for event ordering.
-4. Add durable message/tool/state/activity/subagent events only when the underlying AEGIS runtime actually persists those records with provenance and owner visibility.
-5. Validate tool-call events against the Sentinel-approved invocation and append-only audit record. A protocol event is never an approval or permission grant.
-6. Add reconnect/replay cursor and bounded snapshot/delta tests before UI integration.
+Implementation status:
+1. Existing live endpoint and terminal replay path retained; no second transport.
+2. Live text and tool-call lifecycle events are implemented with focused protocol/API regression tests.
+3. Event arrival order is preserved; timestamps remain metadata.
+4. Tool execution continues through the server registry and Sentinel invocation boundary; protocol events do not grant permission.
+5. Durable state/activity/subagent replay, reconnect cursors and snapshot/delta support remain future work and must be backed by persisted, owner-scoped records before UI integration.
+6. Latest tool-call event byte-limit and full-workflow verification is pending CI; do not mark this increment complete until the run is green.
 
 The protocol's broader event vocabulary is not a requirement to emit every event immediately. Unsupported or unpersisted event families remain absent.
 
