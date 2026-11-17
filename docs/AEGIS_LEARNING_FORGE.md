@@ -69,3 +69,17 @@ A second slice adds owner-scoped learner progress:
 - Corrected the fixture to test a genuine 50% case (the two one-point questions correct) and added a separate 25% assertion.
 - The failed run 44176407237 executed 815 tests: 813 passed, one failed, one skipped. D1/runtime steps were skipped because the Node.js step failed.
 - Corrected test commit: 415d06067c0695a4351be7dd272d72825c4890a6. Fresh CI is pending; no pass is claimed.
+
+
+## Immutable assessment registry — third slice (17 November 2026)
+
+**Status:** Implementation committed to draft PR #103; CI verification pending.
+
+- Migration `0012_learning_assessments.sql` stores immutable, owner-scoped assessment versions and append-only registration events, bound to the exact path version through a composite foreign key.
+- The store validates the assessment, verifies the exact path version and node, hashes canonical assessment JSON, treats identical registration as idempotent and rejects content changes under an existing version.
+- Authenticated same-origin `GET/POST /api/learning/assessments` is bounded and owner-scoped. POST returns metadata only; GET returns `projectLearnerAssessment` projections, not trusted assessment definitions.
+- The learner projection excludes `correctOption` and `passPercent`. Trusted answer keys remain in the server-side assessment record and must never be returned to learner clients.
+- Database triggers prevent update/delete of assessment versions and audit events.
+- Tests cover exact path/node binding, idempotency, immutable conflicts, owner isolation, page limits and answer-key/pass-threshold omission.
+
+This still does not implement learner attempt submission, retry/cooldown policy, append-only attempt history, revocation/supersession, or mastery certification. A score remains learning evidence only; it cannot confer permissions or authority. CI and D1 runtime verification are pending.
