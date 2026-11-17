@@ -1,8 +1,16 @@
-# AEGIS
+# AGENT AEGIS — Your Personal Guardian
 
-Your personal AI workspace — open-source, mobile-first, and designed to run on your own hosting.
+**A human-centred artificial intelligence: an intelligent agent, personal companion and protective guardian.**
+
+AEGIS remains the name of the underlying open-source intelligence platform and architecture. **Agent AEGIS** is the product identity; **Your Personal Guardian** describes its purpose. The companion is designed to feel as natural and human-centred as possible while remaining transparent that it is artificial intelligence, respecting user autonomy, privacy and human relationships.
 
 AEGIS is an evolving project. The current repository is an early Cloudflare Pages prototype. Its larger autonomous assistant, voice, model router, durable knowledge store, managed integrations and full AEGIS Forge workshop are still being developed.
+
+## Product identity and experience
+
+Agent AEGIS is intended to combine capable independent reasoning with a consistent, customisable, human-like companion presence. Its design references include the curiosity and learning of Data from *Star Trek*, the embodied personality of Rommie from *Andromeda*, and the protective pattern-recognition concept of the Machine from *Person of Interest*—without copying fictional claims or behaviours. The goal is natural conversation, social understanding, user-approved memory, expressive voice and avatar interaction, ingenuity and proportionate protection. It must not claim human consciousness, infer private mental states as facts, manipulate users or replace human relationships.
+
+The companion is a first-class presentation layer over one shared AEGIS intelligence core. Users should be able to choose the official Agent AEGIS identity or create and customise their own companion identity, with continuity across supported devices. This remains a roadmap direction unless a capability is explicitly listed as implemented below.
 
 ## Current foundation
 
