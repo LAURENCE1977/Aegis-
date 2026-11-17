@@ -1,10 +1,16 @@
-# AEGIS Universal Device and 3D Companion Architecture
+# Agent AEGIS — Your Personal Guardian: Universal Companion Architecture
 
 **Status:** Proposed core product requirement; architecture baseline for implementation planning  
 **Scope:** AEGIS core, companion experience, web client, native adapters, local runtime, packaging and future platform ports  
 **Principles:** Open source first, privacy by default, capability-based adaptation, graceful degradation, one shared identity and intelligence core.
 
 ## 1. Product requirement
+
+**Product identity:** Agent AEGIS — Your Personal Guardian. AEGIS is the shared platform and intelligence core; Agent AEGIS is its recognisable human-centred agent and companion experience.
+
+The target is a believable, natural and highly customisable artificial companion—not merely a chatbot with a face. It should develop a consistent conversational personality, demonstrate curiosity and ingenuity, understand social context cautiously, listen before solving, and communicate through natural voice, timing, expression and movement where devices permit. It must remain honest that it is AI, avoid claims of consciousness or certainty about another person's inner state, and never use simulated intimacy to manipulate or foster dependency.
+
+The official Agent AEGIS identity should coexist with user-created companion identities. Each identity has portable, versioned appearance, voice, interaction and accessibility preferences, while the shared intelligence core remains the single source of reasoning, memory policy and authority. Users retain control over identity, customisation, memory and continuity.
 
 AEGIS must be designed as one device-independent assistant and companion experience that can adapt its presentation and available capabilities to the device on which it is running.
 
@@ -84,6 +90,8 @@ Adopt a progressive rendering strategy:
 Shortlist **Babylon.js and Three.js** for a measured proof-of-concept rather than selecting an engine by popularity. Babylon.js is a particularly strong first candidate because its official specifications describe WebGL 2 and WebGPU support, native hosts and a broad scene/animation feature set; its repository is Apache-2.0. Three.js is also a serious candidate: its WebGPURenderer can fall back to WebGL 2, but its documentation currently describes that renderer as still experimental. Benchmark bundle size, mobile thermals, avatar rigging, facial animation, accessibility integration, WebXR, asset pipeline, native reuse and licence obligations on actual target devices before deciding. Evaluate native engines/frameworks only where they provide clear platform value and can preserve the shared asset and behaviour contracts.
 
 ## 6. Natural, lifelike interaction
+
+The design target is human-centred presence inspired by fictional android companions such as Data from *Star Trek* and Rommie from *Andromeda*, while keeping real capabilities and limitations explicit. Human-likeness means natural, contextual and respectful interaction—not pretending to be human or claiming consciousness.
 
 The companion should support a coherent state model across 2D and 3D:
 
