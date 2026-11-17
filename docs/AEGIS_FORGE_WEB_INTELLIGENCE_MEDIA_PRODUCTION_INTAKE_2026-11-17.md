@@ -119,3 +119,52 @@ For Laurence's music workflow, this could later support lyric-video and music-vi
 ## Explicit non-claims
 
 This intake does not mean any candidate is installed, trusted, integrated or production-ready. No crawler was run, no website was accessed through an impersonating client, no media was downloaded, no user footage was uploaded, no model was downloaded and no video was generated.
+
+
+## Additional candidate — LitServe (17 November 2026)
+
+**Repository:** [Lightning-AI/LitServe](https://github.com/Lightning-AI/LitServe)  
+**Licence:** Apache-2.0.  
+**Current upstream release observed:** v0.2.19 (9 September 2026); repository showed active maintenance and a substantial test suite at time of review.
+
+### What it provides
+
+LitServe is a Python inference-server framework built on FastAPI. It provides a programmable `LitAPI` / `LitServer` abstraction where the developer controls model setup and prediction logic. Its feature set includes batching, streaming, asynchronous handling, multi-worker and per-API worker configuration, multi-model/pipeline composition, OpenAI-compatible API patterns, health/info endpoints and optional MCP server support. It can wrap PyTorch and other model/runtime stacks; it is not itself a model runtime or a drop-in replacement for Ollama/vLLM.
+
+### AEGIS fit
+
+**Decision: strong optional inference-adapter candidate; do not make it the AEGIS core or a mandatory dependency.**
+
+Potential uses:
+- Serve local transcription, embedding, reranking, image, speech and other specialist models behind a consistent private HTTP boundary.
+- Group related models into a controlled pipeline where resource sharing is beneficial.
+- Add batching and streaming to model calls without coupling the AEGIS intelligence/control plane to a particular model framework.
+- Provide a Python-side worker service for GPU-capable hosts while AEGIS remains the policy, task, memory, provenance and user-facing authority.
+
+### Important limitations and guardrails
+
+- In self-managed mode, authentication is DIY; the upstream feature matrix distinguishes self-managed capabilities from Lightning-managed hosting. AEGIS must place any LitServe worker behind its own authenticated gateway, private network boundary and Sentinel policy. Never expose an unauthenticated inference endpoint to the public internet.
+- Managed autoscaling, multi-node deployment, load balancing, managed observability, scale-to-zero and hosted GPU conveniences are Lightning platform capabilities, not assumptions about the free self-hosted package. Do not make them part of AEGIS's free baseline.
+- Benchmark the actual workload. Upstream's headline performance comparisons are workload-specific and must not be treated as a universal guarantee.
+- Pin LitServe and all transitive dependencies; review the FastAPI/Starlette/Uvicorn and model-runtime supply chain; produce an SBOM; scan and update dependencies; keep model weights separately licensed and hashed.
+- Enforce request-size, queue-depth, concurrency, timeout, memory and GPU limits. Add cancellation, backpressure and graceful shutdown. Do not allow model endpoints to access arbitrary files, secrets, shell commands or unrestricted network egress.
+- Keep model selection and routing in AEGIS. LitServe is a replaceable serving adapter; it must not own user identity, memory, tool permissions, agent autonomy, capability grants or audit truth.
+- No model or server should be auto-installed or launched from untrusted catalogue content. Worker registration and activation require explicit policy and operator approval.
+
+### Recommended architecture
+
+`AEGIS control plane → Sentinel-authenticated inference gateway → optional LitServe worker → pinned local model/runtime`
+
+The gateway owns authentication, authorisation, quotas, request redaction, audit lineage and cancellation. The LitServe worker receives only the minimum scoped inference payload and returns a typed result with model/version and timing metadata. AEGIS stores provenance and decides what to do with the result.
+
+### Priority
+
+Place LitServe in the **optional local model-serving adapter** tier, after native inference contracts, worker isolation, resource quotas and Eval Forge integration are in place. Compare it against a minimal FastAPI worker and existing runtimes before adoption; retain the simpler option if LitServe adds more operational weight than value.
+
+### Sources
+
+- Repository and README: https://github.com/Lightning-AI/LitServe
+- Releases: https://github.com/Lightning-AI/LitServe/releases
+- Feature documentation: https://api.lightning.ai/docs/litserve/features/
+
+**Review boundary:** research only. No LitServe package was installed, no model was downloaded, and no server or Lightning-managed service was launched.
