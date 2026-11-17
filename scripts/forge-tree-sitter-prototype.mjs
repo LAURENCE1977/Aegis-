@@ -4,7 +4,7 @@ import { Parser, Language } from 'web-tree-sitter';
 const require = createRequire(import.meta.url);
 const MAX_FILES = 50, MAX_FILE_BYTES = 32 * 1024;
 const EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']);
-const packageRoot = name => dirname(require.resolve(name));
+const packageRoot = name => dirname(dirname(require.resolve(name)));
 function literal(node) {
   if (!node || node.type !== 'string') return null;
   const raw = node.text;
