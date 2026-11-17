@@ -989,3 +989,7 @@ Use a shared versioned device-profile contract with separate web/PWA, ChromeOS, 
 7. Cross-platform validation, update/rollback and user controls.
 
 **Status rule:** no scanner, passive monitor, optimiser, native endpoint agent or automatic remediation is claimed as implemented. Documentation is not implementation progress. Each gate needs tests and platform evidence.
+
+### First implementation slice — device profile contract
+
+The feature branch now contains a pure validation/creation module at `functions/lib/device-profile.mjs` and focused tests at `tests/device-profile.test.mjs`. The schema uses a random revocable device UUID, read-only mode, provenance-labelled observations and explicit unsupported/not-permitted states. It intentionally excludes hardware serials and broad installed-application inventories. CI verification is pending; this contract does not yet scan a device or adapt runtime behaviour.
