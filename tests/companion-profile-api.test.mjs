@@ -11,6 +11,12 @@ import {
 import {
   onRequestPost as selectProfile,
 } from '../functions/api/companion/profile-selection.js';
+import {
+  onRequestGet as exportProfiles,
+} from '../functions/api/companion/profiles/export.js';
+import {
+  onRequestPost as purgeProfiles,
+} from '../functions/api/companion/profiles/purge.js';
 
 const secret = 'companion-profile-api-test-session-secret-long-enough';
 const envBase = { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: secret };
@@ -95,4 +101,45 @@ test('Companion Profile selection requires exact fields and rejects malformed id
     env: { ...envBase, AEGIS_DB: dummyDb },
   });
   assert.equal(unknown.status, 400);
+});
+
+test('Companion Profile export requires owner authentication and configured storage', async () => {
+  const denied = await exportProfiles({
+    request: await request('/api/companion/profiles/export', { authenticated: false }),
+    env: envBase,
+  });
+  assert.equal(denied.status, 401);
+
+  const unavailable = await exportProfiles({
+    request: await request('/api/companion/profiles/export'),
+    env: envBase,
+  });
+  assert.equal(unavailable.status, 503);
+});
+
+test('Companion Profile purge requires same-origin owner confirmation and atomic storage', async () => {
+  const crossOrigin = await purgeProfiles({
+    request: await request('/api/companion/profiles/purge', {
+      method: 'POST', origin: 'https://attacker.example',
+      body: { confirmation: 'DELETE MY COMPANION PROFILES' },
+    }),
+    env: { ...envBase, AEGIS_DB: { ...dummyDb, batch() {} } },
+  });
+  assert.equal(crossOrigin.status, 403);
+
+  const invalid = await purgeProfiles({
+    request: await request('/api/companion/profiles/purge', {
+      method: 'POST', body: { confirmation: 'DELETE SOMETHING' },
+    }),
+    env: { ...envBase, AEGIS_DB: { ...dummyDb, batch() {} } },
+  });
+  assert.equal(invalid.status, 400);
+
+  const unavailable = await purgeProfiles({
+    request: await request('/api/companion/profiles/purge', {
+      method: 'POST', body: { confirmation: 'DELETE MY COMPANION PROFILES' },
+    }),
+    env: { ...envBase, AEGIS_DB: dummyDb },
+  });
+  assert.equal(unavailable.status, 503);
 });
