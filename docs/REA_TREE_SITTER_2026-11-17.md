@@ -104,4 +104,11 @@ Conservative exclusions:
 
 The regression test first failed as intended on commit `a1eb0b0f953958a66a37acb49120f508f3aedc28` because `result.calls` was not present. The implementation was added in commits `7541fa63ed86a30d77376047c893b252be7ea449` and `6dedbf130e86b3f8d59f77d23103883643102f96`. CI then exposed a fixture issue: the test used literal backslash-n text rather than actual line breaks, so its source-location expectation was invalid. The fixture was corrected in `38cf6fad55b975fc532cf093cefbb1e678e9f41c`. Full PR workflow run `44076185636` passed on that commit, including all 15 stages: the 683-test Node.js suite, Cloudflare/Miniflare integration, isolated capability/runtime/Forge D1 migrations and safeguards. The direct-call test now verifies `start() -> finish()` at line 2, column 3 and excludes unresolved/member calls.
 
+### Arrow-function caller ownership — implemented and verified
+
+The prototype now also identifies the caller when a direct call is nested inside a named arrow function or named function expression assigned to a variable (for example, `const start = () => finish()`). The nearest enclosing supported function is used, so nested function bodies are attributed to their nearest owner. Anonymous callbacks and unsupported ownership shapes remain omitted rather than guessed.
+
+The regression test was added first and failed as intended because the call edge had no caller. Its fixture was corrected to contain actual line breaks, then the implementation was committed in `f94ac07c5eb456c52ef0699584603a308048274d`. Push workflow run `44077462518` passed all 15 stages, including 684 Node.js tests (683 passed, zero failed, one skipped), Cloudflare/Miniflare runtime checks and isolated capability/runtime/Forge D1 verification. The matching PR workflow was still completing at the time of this documentation update.
+
+
 The prototype is experimental and is not wired into the production Forge analysis route. It remains read-only and must not be treated as a whole-repository audit.
