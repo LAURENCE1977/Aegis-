@@ -605,4 +605,5 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Added a pure local scheduler using latest-per-UTC-day assessment attempts; same-day retries do not inflate successful review history.
 - Failed checks reset the review sequence and suggest a one-day revisit; successful review days expand suggested intervals through 1, 3, 7, 14 and 30 days.
 - Exact path-version binding, deterministic due dates, overdue state and explanatory reasons are included. Mastery remains false.
-- No schedule persistence, notification dispatch or reminder consent is assumed. Full CI is running on code commit `1633b089f2145b3a8adc97d0689cc98b1e703d7c`.
+- No schedule persistence, notification dispatch or reminder consent is assumed.
+- Full CI passed on code commit `8cd71ef048574c5eda7868f8e8b065ff9e161fd3` (workflow `44188619578`): **857 tests, 856 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
