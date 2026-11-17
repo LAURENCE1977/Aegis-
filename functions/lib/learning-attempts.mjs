@@ -119,7 +119,6 @@ export async function submitLearningAttempt(db, ownerId, assessmentId, version, 
   }
 
   const scored = scoreLearningAttempt(assessment, answers);
-  const attemptDigest = await sha256Hex(canonicalJson(answers));
   const occurredAt = new Date(now).toISOString();
   const attemptId = 'learning-attempt-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
   const result = { attemptId, ...scored };
@@ -130,11 +129,11 @@ export async function submitLearningAttempt(db, ownerId, assessmentId, version, 
     write = await db.prepare(`
       INSERT INTO learning_assessment_attempts (
         id, owner_id, assessment_id, assessment_version, path_id, path_version,
-        node_id, assessment_digest, attempt_digest, result_json,
+        node_id, assessment_digest, result_json,
         score_percent, passed, mastery_verified, occurred_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `).bind(attemptId, ownerId, assessment.id, assessment.version, assessment.pathId,
-      assessment.pathVersion, assessment.nodeId, row.assessment_digest, attemptDigest,
+      assessment.pathVersion, assessment.nodeId, row.assessment_digest,
       resultJson, scored.scorePercent, scored.passed ? 1 : 0, occurredAt).run();
   } catch (error) {
     if (/attempt rate limit|attempt cooldown/i.test(String(error?.message || error))) {
