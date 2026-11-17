@@ -993,3 +993,40 @@ Use a shared versioned device-profile contract with separate web/PWA, ChromeOS, 
 ### First implementation slice — device profile contract
 
 The feature branch now contains a pure validation/creation module at `functions/lib/device-profile.mjs` and focused tests at `tests/device-profile.test.mjs`. The schema uses a random revocable device UUID, read-only mode, provenance-labelled observations and explicit unsupported/not-permitted states. It intentionally excludes hardware serials and broad installed-application inventories. CI verification is pending; this contract does not yet scan a device or adapt runtime behaviour.
+
+
+## 22. Defensive Evidence Intelligence Engine
+
+**Architecture direction accepted; first metadata-only contract implemented.** Detailed research and source pins are recorded in [Forge Intelligence — Defensive Security REA](FORGE_INTELLIGENCE.md).
+
+The Evidence Intelligence Engine is intended to turn explicitly supplied files, logs, firmware and other digital artefacts into traceable, explainable observations and findings. It is not a live malware execution service or an unrestricted scanner.
+
+### Ownership and pipeline
+
+`supplied source → immutable evidence identity → bounded format/region mapping → allowlisted parsers → normalized observations → scoped rule evaluation → correlated finding → evidence-linked report`
+
+- Forge owns upstream source discovery, REA, licensing, provenance and candidate admission.
+- AEGIS core owns case-scoped evidence, analysis-run state, normalized observations, findings and investigation reports.
+- The Forge Knowledge Library remains reusable, owner-reviewed knowledge; it is not a raw evidence or case-file store.
+- Sentinel remains the sole authority for any consequential action. Parser output, rules and findings are untrusted data and cannot grant permissions or trigger remediation.
+- External analysis tools are optional, replaceable workers. AEGIS retains canonical evidence identity, investigation state, policy and audit.
+
+### Implemented first slice
+
+- `functions/lib/evidence-intake.mjs`: metadata-only Evidence Identity Contract v1.
+- `tests/evidence-intake.test.mjs`: nine focused tests.
+- Records schema version, server-derived owner ID, generated evidence UUID, SHA-256, byte length, media type, path-free display name, acquisition timestamp and typed source provenance.
+- Rejects unknown fields, path-like names and unsupported source references; does not accept file bytes or storage paths.
+
+This is not an upload, storage, D1 persistence, parser, extraction or UI implementation. The focused nine-test suite passed locally; full CI verification is pending. No production migration, deployment or merge is implied.
+
+### Hard boundaries and next gates
+
+- Preserve original bytes separately from derived parser output. Never use a display name as a storage path.
+- Never deserialize untrusted pickle or execute supplied source, payloads, macros or extracted content.
+- Static-first, read-only processing with explicit byte, recursion, CPU, memory, time and output ceilings.
+- Use safe data deserializers and strict versioned schemas. Treat caches, rules and parser output as untrusted input.
+- Report observed facts separately from inferred relationships and analyst hypotheses. Preserve parser/rule version, evidence offsets, provenance, confidence and limitations.
+- Before storage work, inspect all current persistence and object-storage bindings to avoid duplicate ledgers and to establish real runtime limits.
+- Next implementation slices: parser-run contract; normalized observation contract; safe synthetic fixtures; then a bounded storage/upload design after runtime and security review.
+- Any dynamic analysis remains a separate, disposable, isolated, no-secrets, restricted-egress capability requiring explicit approval.
