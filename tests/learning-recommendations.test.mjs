@@ -17,8 +17,9 @@ const learningPath = {
   ],
 };
 const completedBasics = [{
-  pathId: learningPath.id, pathVersion: learningPath.version, nodeId: 'basics',
-  status: 'self_reported_complete',
+  ownerId: 'owner', pathId: learningPath.id, pathVersion: learningPath.version, nodeId: 'basics',
+  status: 'self_reported_complete', masteryVerified: false,
+  createdAt: '2026-11-17T10:00:00.000Z', updatedAt: '2026-11-17T10:00:00.000Z',
 }];
 
 test('recommends only the next prerequisite-eligible node and explains the reason', () => {
@@ -38,13 +39,14 @@ test('never recommends a node whose prerequisites are not self-reported complete
 
 test('prioritises review after a failed assessment without changing learner progress', () => {
   const progress = [...completedBasics, {
-    pathId: learningPath.id, pathVersion: learningPath.version,
-    nodeId: 'functions', status: 'in_progress',
+    ownerId: 'owner', pathId: learningPath.id, pathVersion: learningPath.version,
+    nodeId: 'functions', status: 'in_progress', masteryVerified: false,
+    createdAt: '2026-11-17T10:30:00.000Z', updatedAt: '2026-11-17T10:30:00.000Z',
   }];
   const attempts = [{
     attemptId: 'attempt-1', assessmentId: 'functions-check', assessmentVersion: '1.0.0',
     pathId: learningPath.id, pathVersion: learningPath.version, nodeId: 'functions',
-    scorePercent: 40, passed: false, masteryVerified: false,
+    earnedPoints: 2, possiblePoints: 5, scorePercent: 40, passed: false, masteryVerified: false,
     occurredAt: '2026-11-17T11:00:00.000Z',
   }];
   const actions = recommendLearningNextActions(learningPath, progress, attempts);
@@ -61,7 +63,7 @@ test('a passed assessment recommends reinforcement, never certified mastery', ()
   const attempts = [{
     attemptId: 'attempt-2', assessmentId: 'functions-check', assessmentVersion: '1.0.0',
     pathId: learningPath.id, pathVersion: learningPath.version, nodeId: 'functions',
-    scorePercent: 100, passed: true, masteryVerified: false,
+    earnedPoints: 3, possiblePoints: 3, scorePercent: 100, passed: true, masteryVerified: false,
     occurredAt: '2026-11-17T11:00:00.000Z',
   }];
   const actions = recommendLearningNextActions(learningPath, progress, attempts);
@@ -78,7 +80,7 @@ test('ignores attempts from other path versions and sorts deterministically', ()
   const attempts = [{
     attemptId: 'old-attempt', assessmentId: 'functions-check', assessmentVersion: '1.0.0',
     pathId: learningPath.id, pathVersion: '2.0.0', nodeId: 'functions',
-    scorePercent: 0, passed: false, masteryVerified: false,
+    earnedPoints: 0, possiblePoints: 3, scorePercent: 0, passed: false, masteryVerified: false,
     occurredAt: '2026-11-17T11:00:00.000Z',
   }];
   const actions = recommendLearningNextActions(learningPath, progress, attempts);
