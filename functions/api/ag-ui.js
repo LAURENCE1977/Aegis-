@@ -395,7 +395,7 @@ function agentStreamError(code, publicMessage) {
 
 function boundedToolResult(result) {
   const serialized = JSON.stringify(result);
-  if (serialized.length <= MAX_TOOL_RESULT) return serialized;
+  if (new TextEncoder().encode(serialized).byteLength <= MAX_TOOL_RESULT) return serialized;
   const compact = {
     ok: result?.ok === true,
     reasonCode: result?.reasonCode || "TOOL_RESULT_TOO_LARGE",
