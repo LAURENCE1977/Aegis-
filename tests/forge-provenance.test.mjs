@@ -18,14 +18,14 @@ const source = {
     { kind: 'model', name: 'example-model', identifier: 'model-specific-terms', licenceFileUrl: 'https://example.org/model/LICENSE', review: 'review-required' },
   ],
   capabilities: ['identity.passkeys'],
-  decision: 'adapt',
+  decision: 'rebuild',
   status: 'assessed',
   evidence: [
     { url: 'https://github.com/MasterKale/SimpleWebAuthn/tree/main/packages/server', note: 'Server ceremony implementation inspected.' },
   ],
 };
 
-test('source provenance records accept pinned revisions and separately reviewed component licences', () => {
+test('source provenance records accept pinned revisions and separately reviewed component licences for native rebuild decisions', () => {
   assert.equal(validateSourceProvenanceRecord(source), true);
 });
 
@@ -50,10 +50,12 @@ test('approved candidates require source-level inspection and every component li
 test('reuse and adaptation decisions are blocked when any code, dependency, model or asset licence is unresolved', () => {
   assert.throws(() => validateSourceProvenanceRecord({
     ...source,
+    decision: 'adapt',
     licence: { ...source.licence, review: 'review-required' },
   }));
   assert.throws(() => validateSourceProvenanceRecord({
     ...source,
+    decision: 'adapt',
     components: [{ ...source.components[0], review: 'unknown' }],
   }));
 });
