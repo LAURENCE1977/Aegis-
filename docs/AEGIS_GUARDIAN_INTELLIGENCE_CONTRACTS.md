@@ -1,6 +1,6 @@
 # Guardian Intelligence Contracts and Resource Catalogue
 
-**Status:** Resource validation, owner-scoped D1 persistence and authenticated read/create API implemented on the stacked draft PR #103. Learning Graph and Security Finding remain pure validation contracts. No UI, scanner, active test runner or security-worker execution is implemented.
+**Status:** Resource validation, owner-scoped D1 persistence, authenticated read/create API and guarded review lifecycle implemented on the stacked draft PR #103. Learning Graph and Security Finding remain pure validation contracts. No catalogue UI, scanner, active test runner or security-worker execution is implemented.
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Implemented:
 - `POST /api/guardian/resources` requires an owner session, same-origin request, bounded JSON body and server-generated identity. Unknown fields and client-supplied IDs are rejected.
 - Duplicate owner + canonical URL + source revision submissions return the existing resource rather than creating a second record.
 
-There is deliberately no resource acceptance/review endpoint yet. No external service is installed, connected, scanned or automatically recommended. The current API is a storage/intake foundation, not a complete discovery catalogue or UI.
+Review lifecycle is implemented by `migrations/forge/0007_guardian_resource_review.sql` and `PATCH /api/guardian/resources/:id`. Allowed transitions are draft → reviewed → accepted and draft/reviewed/accepted → archived; archived is terminal. Every transition requires a non-empty bounded reviewer note, server-derived reviewer identity and a strictly advancing timestamp. The expected prior `updatedAt` is required to prevent stale writes. The D1 guard makes source content and identity immutable, prevents review-metadata edits outside a status transition, checks the transition graph and requires verified licence status plus HTTPS evidence before acceptance. A trigger appends a review event with from/to status, reviewer and note. These checks are repeated in application code and database constraints/triggers.
 
 ## 3. Learning graphs
 
@@ -65,12 +65,11 @@ These checks do not establish production D1 migration, production deployment, le
 
 ## 6. Next gates
 
-1. Add a resource review lifecycle with optimistic concurrency, evidence-backed licence attestation and append-only review history; accepted resources must not be silently mutated.
-2. Add resource detail/events endpoints and a simple owner-facing catalogue UI.
-3. Persist learning graphs with owner scoping, versioning and append-only history; add mastery/progress only with user-visible controls.
-4. Add property-based/adversarial tests for URL parsing, graph size/depth, stale evidence and malformed findings.
-5. Add Security Research capability declarations only after exact target registration, Sentinel policy, isolated-worker enforcement, egress/resource controls, cancellation and effect-level audit verification exist.
-6. Keep active scanning disabled; no ambient shell, Docker socket, arbitrary network egress, C2, persistence or autonomous remediation.
+1. Add resource detail/events endpoints and a simple owner-facing catalogue UI.
+2. Persist learning graphs with owner scoping, versioning and append-only history; add mastery/progress only with user-visible controls.
+3. Add property-based/adversarial tests for URL parsing, graph size/depth, stale evidence and malformed findings.
+4. Add Security Research capability declarations only after exact target registration, Sentinel policy, isolated-worker enforcement, egress/resource controls, cancellation and effect-level audit verification exist.
+5. Keep active scanning disabled; no ambient shell, Docker socket, arbitrary network egress, C2, persistence or autonomous remediation.
 
 ## 7. Related research
 
