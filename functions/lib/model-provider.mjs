@@ -176,6 +176,12 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   validateMessages(messages);
   const safeTools = validateTools(tools);
   const provider = env.AEGIS_MODEL_PROVIDER || 'workers-ai';
+  if (env.AEGIS_FREE_ONLY !== undefined && !['true', 'false'].includes(env.AEGIS_FREE_ONLY)) {
+    throw new TypeError('Invalid AEGIS_FREE_ONLY policy setting.');
+  }
+  if (env.AEGIS_FREE_ONLY === 'true' && provider !== 'workers-ai') {
+    throw new Error('The selected external model provider is disabled in free-only mode.');
+  }
 
   if (provider === 'workers-ai') {
     if (safeTools.length) throw new Error('Tool calling is not enabled for this Workers AI model.');
