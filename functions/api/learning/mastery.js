@@ -1,9 +1,9 @@
-import { authorizeOwner, jsonResponse } from '../../../lib/owner-api.mjs';
+import { authorizeOwner, jsonResponse } from '../../lib/owner-api.mjs';
 import {
   LearningMasteryPathNotFoundError,
   loadLearningMasteryEvidence,
-} from '../../../lib/learning-mastery-evidence-store.mjs';
-import { buildLearningMasteryCandidate } from '../../../lib/learning-mastery-evidence.mjs';
+} from '../../lib/learning-mastery-evidence-store.mjs';
+import { buildLearningMasteryCandidate } from '../../lib/learning-mastery-evidence.mjs';
 
 const OWNER_ID = 'owner';
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
