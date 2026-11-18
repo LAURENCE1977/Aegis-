@@ -20,6 +20,7 @@ import {
 import { createDeviceProfile, validateDeviceProfile } from '../functions/lib/device-profile.mjs';
 import { listSkills, validateSkillManifest } from '../functions/lib/skills.mjs';
 import { createAgentPlan } from '../workers/runtime/agents.mjs';
+import { createEvidenceDescriptor, validateEvidenceDescriptor } from '../functions/lib/evidence-intake.mjs';
 
 const NOW = '2026-11-18T12:00:00.000Z';
 const RUN_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -255,5 +256,41 @@ test('execution receipt remains an unsigned structural record, not proof of exec
   assert.throws(() => validateAgentExecutionReceipt({
     ...receipt,
     attestation: 'verified',
+  }));
+});
+
+
+test('evidence descriptors remain owner-bound metadata and cannot inject authority into specialist tasks', () => {
+  const evidence = createEvidenceDescriptor({
+    ownerId: 'owner-1',
+    sha256: 'c'.repeat(64),
+    byteLength: 2048,
+    mediaType: 'application/pdf',
+    displayName: 'architecture-notes.pdf',
+    acquiredAt: NOW,
+    source: { kind: 'user-upload', reference: null },
+  });
+  assert.equal(validateEvidenceDescriptor(evidence), true);
+  assert.equal(evidence.ownerId, 'owner-1');
+  assert.equal(Object.hasOwn(evidence, 'content'), false);
+  assert.equal(Object.hasOwn(evidence, 'storagePath'), false);
+
+  const plan = createAgentPlan({
+    objective: 'Review evidence safely',
+    specialists: ['researcher'],
+  }, { runId: RUN_ID, createdAt: NOW });
+  const metadata = {
+    stepId: plan.steps[0].id,
+    attempt: 1,
+    createdAt: NOW,
+  };
+  const task = createAgentTaskEnvelope(plan, metadata);
+  assert.equal(task.executionMode, 'plan-only');
+  assert.deepEqual(task.capabilityRequests, []);
+  assert.equal(Object.hasOwn(task, 'evidence'), false);
+  assert.equal(Object.hasOwn(task, 'permissions'), false);
+  assert.throws(() => createAgentTaskEnvelope(plan, {
+    ...metadata,
+    evidenceReferences: [evidence],
   }));
 });
