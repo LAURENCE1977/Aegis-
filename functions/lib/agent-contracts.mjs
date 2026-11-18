@@ -123,7 +123,11 @@ export function validateAgentRunIntent(input) {
   if (typeof input.objective !== 'string') throw new TypeError('Objective must be text.');
   const objective = input.objective.trim();
   if (!objective || objective.length > 2000 ||
-      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(objective)) {
+      Array.from(objective).some((character) => {
+        const code = character.charCodeAt(0);
+        return code <= 8 || (code >= 11 && code <= 12) ||
+          (code >= 14 && code <= 31) || code === 127;
+      })) {
     throw new TypeError('Objective must contain 1–2000 safe characters.');
   }
   const specialists = input.specialists === undefined ? [...DEFAULT_AGENT_SPECIALISTS] : input.specialists;
