@@ -2,6 +2,7 @@ import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
 import { getCapabilityManifest } from '../../functions/lib/capability-registry.mjs';
 import { validateAgentPlanContract } from '../../functions/lib/agent-contracts.mjs';
 
+const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_APPROVAL_TTL_MS = 15 * 60 * 1000;
 /**
@@ -14,6 +15,9 @@ export async function buildAgentPlanApprovalBinding(plan, principalId, now = Dat
     throw new TypeError('Invalid approval principal.');
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock.');
+  if (!RUN_ID_PATTERN.test(plan?.runId || '')) {
+    throw new TypeError('Invalid agent run identifier.');
+  }
   validateAgentPlanContract(plan);
 
   const manifest = getCapabilityManifest('aegis-agent-run');
