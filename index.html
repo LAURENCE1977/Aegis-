@@ -1766,70 +1766,6 @@
       companionDirectness.value = interaction.directness;
       companionInitiative.value = interaction.initiative;
       companionVerbosity.value = interaction.verbosity;
-      purgeCompanionConfirmation.addEventListener('input', () => {
-      purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
-        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
-    });
-
-    exportCompanionProfilesButton.addEventListener('click', async () => {
-      if (!companionProfilePersistenceAvailable) {
-        companionDataStatus.textContent = 'Secure account profile storage is unavailable; no export was requested.';
-        return;
-      }
-      exportCompanionProfilesButton.disabled = true;
-      companionDataStatus.textContent = 'Preparing your companion profile and history export…';
-      try {
-        const response = await fetch('/api/companion/profiles/export', { cache: 'no-store' });
-        if (response.status === 401) {
-          showLogin('Your session has expired. Sign in again.');
-          throw new Error('Session expired.');
-        }
-        if (!response.ok) {
-          let data = {};
-          try { data = await response.json(); } catch (error) {}
-          throw new Error(data.error || ('Service error ' + response.status));
-        }
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'aegis-companion-profiles.json';
-        link.hidden = true;
-        document.body.append(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        companionDataStatus.textContent = 'Your custom profiles, revisions and available profile history have been exported.';
-      } catch (error) {
-        companionDataStatus.textContent = 'Export could not be completed: ' + error.message;
-      } finally {
-        exportCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable;
-      }
-    });
-
-    purgeCompanionProfilesButton.addEventListener('click', async () => {
-      if (!companionProfilePersistenceAvailable ||
-          purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION) {
-        companionDataStatus.textContent = 'Type the exact confirmation phrase before deleting saved profiles.';
-        return;
-      }
-      purgeCompanionProfilesButton.disabled = true;
-      companionDataStatus.textContent = 'Deleting custom profiles and their profile history…';
-      try {
-        await controlApi('/api/companion/profiles/purge', {
-          method: 'POST',
-          body: JSON.stringify({ confirmation: COMPANION_PURGE_CONFIRMATION }),
-        });
-        purgeCompanionConfirmation.value = '';
-        await loadCompanionProfiles();
-        companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal content-free purge audit remains.';
-      } catch (error) {
-        companionDataStatus.textContent = 'Deletion could not be completed: ' + error.message;
-        purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
-          purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
-      }
-    });
-
     Object.entries(companionSettingOutputs).forEach(([id, output]) => {
         output.textContent = String(document.getElementById(id).value);
       });
@@ -1967,6 +1903,70 @@
       renderCompanionProfile(profile, false);
       companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account storage is not available.';
       customCompanionName.value = '';
+    });
+
+    purgeCompanionConfirmation.addEventListener('input', () => {
+    purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+      purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+    });
+
+    exportCompanionProfilesButton.addEventListener('click', async () => {
+    if (!companionProfilePersistenceAvailable) {
+      companionDataStatus.textContent = 'Secure account profile storage is unavailable; no export was requested.';
+      return;
+    }
+    exportCompanionProfilesButton.disabled = true;
+    companionDataStatus.textContent = 'Preparing your companion profile and history export…';
+    try {
+      const response = await fetch('/api/companion/profiles/export', { cache: 'no-store' });
+      if (response.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!response.ok) {
+        let data = {};
+        try { data = await response.json(); } catch (error) {}
+        throw new Error(data.error || ('Service error ' + response.status));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'aegis-companion-profiles.json';
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      companionDataStatus.textContent = 'Your custom profiles, revisions and available profile history have been exported.';
+    } catch (error) {
+      companionDataStatus.textContent = 'Export could not be completed: ' + error.message;
+    } finally {
+      exportCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable;
+    }
+    });
+
+    purgeCompanionProfilesButton.addEventListener('click', async () => {
+    if (!companionProfilePersistenceAvailable ||
+        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION) {
+      companionDataStatus.textContent = 'Type the exact confirmation phrase before deleting saved profiles.';
+      return;
+    }
+    purgeCompanionProfilesButton.disabled = true;
+    companionDataStatus.textContent = 'Deleting custom profiles and their profile history…';
+    try {
+      await controlApi('/api/companion/profiles/purge', {
+        method: 'POST',
+        body: JSON.stringify({ confirmation: COMPANION_PURGE_CONFIRMATION }),
+      });
+      purgeCompanionConfirmation.value = '';
+      await loadCompanionProfiles();
+      companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal content-free purge audit remains.';
+    } catch (error) {
+      companionDataStatus.textContent = 'Deletion could not be completed: ' + error.message;
+      purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+    }
     });
 
     Object.entries(companionSettingOutputs).forEach(([id, output]) => {
