@@ -114,5 +114,5 @@ test('canonical run-intent validator rejects unknown fields, duplicate roles and
 
 test('canonical run-intent validator rejects control characters', async () => {
   const { validateAgentRunIntent } = await import('../functions/lib/agent-contracts.mjs');
-  assert.throws(() => validateAgentRunIntent({ objective: 'Review\\u0001runtime' }), /safe characters/i);
+  assert.throws(() => validateAgentRunIntent({ objective: 'Review' + String.fromCharCode(1) + 'runtime' }), /safe characters/i);
 });
