@@ -1,11 +1,79 @@
 // Canonical plan contract shared by plan construction and approval binding.
 export const AGENT_PLAN_SCHEMA_VERSION = '1.0';
-export const AGENT_SPECIALISTS = Object.freeze([
-  'researcher', 'planner', 'engineer', 'security', 'reviewer',
+const SPECIALIST_DEFINITIONS = Object.freeze([
+  Object.freeze({
+    id: 'researcher',
+    order: 10,
+    default: true,
+    description: 'Finds and compares evidence, sources, prior art and relevant constraints.',
+    executionMode: 'plan-only',
+    capabilityRequests: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'planner',
+    order: 20,
+    default: false,
+    description: 'Breaks an objective into bounded, ordered steps and explicit dependencies.',
+    executionMode: 'plan-only',
+    capabilityRequests: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'engineer',
+    order: 30,
+    default: true,
+    description: 'Designs and reviews implementation changes, tests and technical trade-offs.',
+    executionMode: 'plan-only',
+    capabilityRequests: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'security',
+    order: 40,
+    default: false,
+    description: 'Reviews trust boundaries, threat exposure, permissions and failure modes.',
+    executionMode: 'plan-only',
+    capabilityRequests: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'reviewer',
+    order: 50,
+    default: true,
+    description: 'Independently checks completeness, evidence, regressions and acceptance criteria.',
+    executionMode: 'plan-only',
+    capabilityRequests: Object.freeze([]),
+  }),
 ]);
-export const DEFAULT_AGENT_SPECIALISTS = Object.freeze([
-  'researcher', 'engineer', 'reviewer',
-]);
+
+export const AGENT_SPECIALISTS = Object.freeze(
+  SPECIALIST_DEFINITIONS.map((specialist) => specialist.id),
+);
+export const DEFAULT_AGENT_SPECIALISTS = Object.freeze(
+  SPECIALIST_DEFINITIONS.filter((specialist) => specialist.default)
+    .map((specialist) => specialist.id),
+);
+
+export function listAgentSpecialists() {
+  return SPECIALIST_DEFINITIONS.map((specialist) => ({
+    ...specialist,
+    capabilityRequests: [...specialist.capabilityRequests],
+  }));
+}
+
+export function getAgentSpecialist(id) {
+  const specialist = SPECIALIST_DEFINITIONS.find((entry) => entry.id === id);
+  return specialist ? {
+    ...specialist,
+    capabilityRequests: [...specialist.capabilityRequests],
+  } : null;
+}
+
+export function compareAgentSpecialists(left, right) {
+  const leftOrder = SPECIALIST_DEFINITIONS.find((entry) => entry.id === left)?.order;
+  const rightOrder = SPECIALIST_DEFINITIONS.find((entry) => entry.id === right)?.order;
+  if (leftOrder === undefined || rightOrder === undefined) {
+    throw new TypeError('Cannot order an unregistered AEGIS specialist.');
+  }
+  return leftOrder - rightOrder;
+}
 const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
