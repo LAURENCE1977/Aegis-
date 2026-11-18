@@ -7,6 +7,8 @@ import {
   listAgentSpecialists,
   getAgentSpecialist,
   validateAgentSpecialistManifest,
+  AGENT_RUN_RECORD_SCHEMA_VERSION,
+  validateAgentRunRecord,
 } from '../functions/lib/agent-contracts.mjs';
 
 const RUN_ID = '00000000-0000-4000-8000-000000000123';
@@ -144,4 +146,69 @@ test('specialist manifest validator rejects version drift, authority and unbound
     { ...manifest, limits: { ...manifest.limits, maxOutputBytes: 32769 } },
     { ...manifest, unreviewed: true },
   ]) assert.throws(() => validateAgentSpecialistManifest(candidate));
+});
+
+function validRunRecord(overrides = {}) {
+  const plan = validPlan();
+  return {
+    schemaVersion: AGENT_RUN_RECORD_SCHEMA_VERSION,
+    id: RUN_ID,
+    objective: plan.objective,
+    specialists: plan.steps.map((step) => step.specialist),
+    projectId: null,
+    hasProjectContext: false,
+    contextDigest: null,
+    status: 'planned',
+    attempts: 1,
+    createdAt: plan.createdAt,
+    updatedAt: plan.createdAt,
+    cancelledAt: null,
+    executionAuthorized: false,
+    executionAuthorizedAt: null,
+    executionGrantId: null,
+    plan,
+    errorCode: null,
+    ...overrides,
+  };
+}
+
+test('canonical agent run record accepts a plan-only run and exact plan binding', () => {
+  assert.equal(validateAgentRunRecord(validRunRecord()), true);
+});
+
+test('canonical agent run record accepts an exact human-authorised plan without implying execution', () => {
+  const record = validRunRecord({
+    executionAuthorized: true,
+    executionAuthorizedAt: '2026-11-18T08:01:00.000Z',
+    executionGrantId: 'grant-123',
+    updatedAt: '2026-11-18T08:01:00.000Z',
+  });
+  assert.equal(validateAgentRunRecord(record), true);
+});
+
+test('canonical agent run record accepts a cancelled run with a bounded cancellation timestamp', () => {
+  const record = validRunRecord({
+    status: 'cancelled',
+    cancelledAt: '2026-11-18T08:01:00.000Z',
+    updatedAt: '2026-11-18T08:01:00.000Z',
+  });
+  assert.equal(validateAgentRunRecord(record), true);
+});
+
+test('canonical agent run record rejects invalid state, context, plan and authorisation bindings', () => {
+  const base = validRunRecord();
+  const mismatchedPlan = structuredClone(base.plan);
+  mismatchedPlan.runId = 'another-run';
+  for (const overrides of [
+    { unknown: true },
+    { status: 'executing' },
+    { specialists: ['researcher', 'researcher'] },
+    { updatedAt: '2026-11-17T08:00:00.000Z' },
+    { contextDigest: 'sha256:bad' },
+    { cancelledAt: '2026-11-18T08:01:00.000Z' },
+    { plan: mismatchedPlan },
+    { executionAuthorized: true },
+    { executionAuthorizedAt: '2026-11-18T08:01:00.000Z' },
+    { executionGrantId: 'grant-123' },
+  ]) assert.throws(() => validateAgentRunRecord({ ...base, ...overrides }));
 });
