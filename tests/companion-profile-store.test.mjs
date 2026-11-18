@@ -94,6 +94,9 @@ class CompanionD1 {
       },
       async first() {
         const v = this.values;
+        if (sql.includes('COUNT(*) AS total FROM companion_profiles')) {
+          return { total: [...db.profiles.values()].filter(row => row.owner_id === v[0]).length };
+        }
         if (sql.includes('FROM companion_profiles')) {
           const [ownerId, profileId, version] = v;
           if (version !== undefined) {
@@ -103,9 +106,6 @@ class CompanionD1 {
             row.owner_id === ownerId && row.profile_id === profileId,
           ).sort((a, b) => b.version - a.version);
           return rows[0] ?? null;
-        }
-        if (sql.includes('COUNT(*) AS total FROM companion_profiles')) {
-          return { total: [...db.profiles.values()].filter(row => row.owner_id === v[0]).length };
         }
         if (sql.includes('FROM companion_profile_preferences')) {
           return db.preferences.get(v[0]) ?? null;
@@ -241,9 +241,9 @@ test('exports all immutable profile revisions, active selection and append-only 
   assert.equal(exported.profileRevisions.length, 2);
   assert.deepEqual(exported.profileRevisions.map(item => item.version), [1, 2]);
   assert.equal(exported.activeProfile.profile.id, created.profile.id);
-  assert.ok(exported.events.some(event => event.event_type === 'created'));
-  assert.ok(exported.events.some(event => event.event_type === 'updated'));
-  assert.ok(exported.events.some(event => event.event_type === 'selected'));
+  assert.ok(exported.events.some(event => event.eventType === 'created'));
+  assert.ok(exported.events.some(event => event.eventType === 'updated'));
+  assert.ok(exported.events.some(event => event.eventType === 'selected'));
 });
 
 test('profile purge requires the exact owner confirmation phrase and leaves data intact on refusal', async () => {
