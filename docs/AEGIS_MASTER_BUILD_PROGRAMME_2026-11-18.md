@@ -85,16 +85,16 @@ Implement true multi-user identity/tenancy and independent reviewer identity bef
 
 ## Baseline checked 18 November 2026
 
-- PR #103 is open, draft and unmerged; latest verified head at this checkpoint is `3ab7b3c2a960593627255158d0a2d09383c27ac9`.
-- Workflow `44297696530` completed successfully for that head: all 24 workflow steps passed. The Node.js suite reported 932 tests, 931 passed, zero failed and one skipped; the separate Cloudflare runtime integration test passed. Runtime, capability, Forge, Learning and Companion D1 migration/constraint checks also passed.
+- PR #103 is open, draft and unmerged; latest verified code head at this checkpoint is `20e7f9fc546865e1bfd835669a6a011d87a0df62`.
+- Push workflow `44301627378` and matching PR workflow `44301643775` both completed successfully for this head: all 24 workflow steps passed. The Node.js suite reported 936 tests, 935 passed, zero failed and one skipped; the separate Cloudflare runtime integration test passed. Runtime, capability, Forge, Eval, Learning and Companion D1 migration/constraint checks also passed.
 - Current code includes durable agent-run submission/list/detail/timeline/cancellation, plan generation, immutable approval binding and a separate authorisation record.
 - The queue consumer currently creates a plan and step records; it does not execute specialist work. The authorisation endpoint explicitly returns `executionStarted: false`. Keep this honest and do not enable specialist execution until Stage 2 safety and acceptance tests pass.
 - Existing capability manifests, Sentinel mediation, provider registry, model adapters, Memory/Knowledge, Eval/Learning Forge and Companion foundations should be extended rather than duplicated.
-- Stage 1 implementation now has a shared canonical run-intent validator, canonical plan contract and a versioned read-only specialist task-envelope validator. The task envelope binds run/step/specialist/attempt, optional context digest, strict output/time budgets, fixed trust-boundary text and an empty capability-request list. It grants no execution permission.
-- Stage 1 is still in progress: canonical run record, specialist/agent manifest, skill/tool manifest, evidence/context reference and execution receipt contracts plus compatibility tests remain to be completed.
+- Stage 1 implementation now has a shared canonical run-intent validator, canonical plan contract, versioned bounded specialist manifests and a versioned plan-only task-envelope contract. Each specialist manifest declares its schema/manifest versions, task/output contracts, fixed plan-only mode, empty capability-request list and hard input/output/duration limits. The trusted task-envelope factory derives identity and execution mode from a validated plan and registered manifest, binds run/step/specialist/attempt/context digest, enforces bounded output/time budgets and fixed trust-boundary text, and grants no execution permission.
+- Stage 1 is still in progress: canonical run record, skill/tool manifest, evidence/context reference and execution receipt contracts plus compatibility tests remain to be completed.
 - Current single-owner assumptions remain; do not describe the platform as a verified multi-tenant system.
 - No production deployment is implied by CI success.
 
 ## Immediate next action
 
-Stage 0 verification is green. Stage 1 is underway: the shared run-intent, plan and read-only task-envelope contracts are implemented and covered by the full green CI run. Next, add the canonical task-envelope factory and the remaining run/specialist/evidence/receipt schemas with compatibility tests; keep execution disabled. Do not add new model providers or specialist execution as a shortcut.
+Stage 0 verification is green. Stage 1 is underway: shared run-intent and plan contracts, versioned bounded specialist manifests, plan-only task-envelope validation and a trusted task-envelope factory are implemented and covered by full green push/PR CI. Next, add the canonical run record, skill/tool manifest, evidence/context reference and execution-receipt contracts with compatibility tests; keep execution disabled. Do not add new model providers or specialist execution as a shortcut.
