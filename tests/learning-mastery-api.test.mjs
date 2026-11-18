@@ -31,12 +31,12 @@ function canonicalJson(value) {
 }
 
 class MasteryD1 {
-  constructor() {
+  constructor({ corruptDigest = false } = {}) {
     this.pathRow = {
       owner_id: 'owner',
       path_id: path.id,
       version: path.version,
-      graph_digest: createHash('sha256').update(canonicalJson(path)).digest('hex'),
+      graph_digest: corruptDigest ? 'b'.repeat(64) : createHash('sha256').update(canonicalJson(path)).digest('hex'),
       graph_json: canonicalJson(path),
       created_at: '2026-11-18T00:00:00.000Z',
     };
@@ -107,4 +107,14 @@ test('Learning Mastery diagnostic returns evidence gaps without claiming verifie
   assert.ok(body.candidate.missing.includes('two_distinct_passed_attempts'));
   assert.ok(body.unavailableEvidenceKinds.includes('applied_task'));
   assert.ok(body.unavailableEvidenceKinds.includes('human_review'));
+});
+
+
+test('Learning Mastery diagnostic treats corrupted authoritative evidence as a storage failure', async () => {
+  const response = await onRequestGet({
+    request: await makeRequest('?pathId=javascript-foundations&pathVersion=1.0.0&nodeId=javascript-basics'),
+    env: { ...envBase, AEGIS_DB: new MasteryD1({ corruptDigest: true }) },
+  });
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /temporarily unavailable/i);
 });
