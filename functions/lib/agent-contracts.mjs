@@ -506,7 +506,7 @@ export function validateAgentExecutionReceipt(receipt) {
         typeof invocation.invocationId !== 'string' || !RUN_ID_PATTERN.test(invocation.invocationId) ||
         typeof invocation.capabilityId !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(invocation.capabilityId) ||
         typeof invocation.capabilityVersion !== 'string' ||
-        !/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(invocation.capabilityVersion) ||
+        !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(invocation.capabilityVersion) ||
         typeof invocation.actionId !== 'string' || !/^[a-z][a-z0-9-]{0,47}$/.test(invocation.actionId) ||
         typeof invocation.resourceDigest !== 'string' || !DIGEST_PATTERN.test(invocation.resourceDigest) ||
         typeof invocation.inputDigest !== 'string' || !DIGEST_PATTERN.test(invocation.inputDigest) ||
