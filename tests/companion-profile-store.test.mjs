@@ -275,3 +275,29 @@ test('confirmed profile purge deletes custom content and history but retains a m
   assert.equal(active.profile.id, 'aegis');
 });
 
+
+test('profile creation rolls back its revision and audit when active selection persistence fails', async () => {
+  const db = new CompanionD1();
+  db.failPreferenceWrite = true;
+  await assert.rejects(
+    createCompanionProfile(db, 'owner', customInput(), baseTime),
+    /preference write failed/i,
+  );
+  assert.equal(db.profiles.size, 0);
+  assert.equal(db.preferences.size, 0);
+  assert.equal(db.events.length, 0);
+});
+
+test('active profile update rolls back the new revision when its active selection cannot advance', async () => {
+  const db = new CompanionD1();
+  const created = await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  db.failPreferenceWrite = true;
+  await assert.rejects(
+    updateCompanionProfile(db, 'owner', created.profile.id, 1,
+      { displayName: 'Must roll back' }, baseTime + 1000),
+    /preference write failed/i,
+  );
+  assert.equal(db.profiles.size, 1);
+  assert.equal(db.preferences.get('owner').active_profile_version, 1);
+  assert.equal(db.events.filter(event => event.event_type === 'updated').length, 0);
+});
