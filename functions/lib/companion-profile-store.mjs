@@ -436,13 +436,6 @@ export async function purgeCompanionProfiles(db, ownerId, confirmation, now = Da
     throw new TypeError('Atomic D1 batch support is required for Companion Profile deletion');
   }
   const timestamp = validClock(now);
-  const countRow = await db.prepare(`
-    SELECT COUNT(*) AS total FROM companion_profiles WHERE owner_id = ?
-  `).bind(ownerId).first();
-  const purgedProfiles = countRow?.total;
-  if (!Number.isInteger(purgedProfiles) || purgedProfiles < 0 || purgedProfiles >= MAX_REVISIONS) {
-    throw new TypeError('Companion Profile purge count is invalid or exceeds its safety limit');
-  }
   const nonce = crypto.randomUUID().toLowerCase().replaceAll('-', '');
   const expiresAt = new Date(now + 60_000).toISOString();
   const purgeId = 'companion-purge-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
@@ -451,6 +444,12 @@ export async function purgeCompanionProfiles(db, ownerId, confirmation, now = Da
       INSERT INTO companion_profile_purge_authorizations (owner_id, nonce, expires_at)
       VALUES (?, ?, ?)
     `).bind(ownerId, nonce, expiresAt),
+    db.prepare(`
+      INSERT INTO companion_profile_purge_events (
+        id, owner_id, purged_profiles_count, occurred_at
+      )
+      SELECT ?, ?, COUNT(*), ? FROM companion_profiles WHERE owner_id = ?
+    `).bind(purgeId, ownerId, timestamp, ownerId),
     db.prepare('DELETE FROM companion_profile_preferences WHERE owner_id = ?').bind(ownerId),
     db.prepare('DELETE FROM companion_profile_events WHERE owner_id = ?').bind(ownerId),
     db.prepare('DELETE FROM companion_profiles WHERE owner_id = ?').bind(ownerId),
@@ -458,12 +457,15 @@ export async function purgeCompanionProfiles(db, ownerId, confirmation, now = Da
       DELETE FROM companion_profile_purge_authorizations
       WHERE owner_id = ? AND nonce = ?
     `).bind(ownerId, nonce),
-    db.prepare(`
-      INSERT INTO companion_profile_purge_events (
-        id, owner_id, purged_profiles_count, occurred_at
-      ) VALUES (?, ?, ?, ?)
-    `).bind(purgeId, ownerId, purgedProfiles, timestamp),
   ];
   await db.batch(statements);
+  const audit = await db.prepare(`
+    SELECT purged_profiles_count FROM companion_profile_purge_events
+    WHERE id = ? AND owner_id = ? LIMIT 1
+  `).bind(purgeId, ownerId).first();
+  const purgedProfiles = audit?.purged_profiles_count;
+  if (!Number.isInteger(purgedProfiles) || purgedProfiles < 0 || purgedProfiles > MAX_REVISIONS) {
+    throw new Error('Companion Profile purge audit could not be verified');
+  }
   return Object.freeze({ purgedProfiles, activeProfileId: null, purgedAt: timestamp });
 }
