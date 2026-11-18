@@ -19,7 +19,7 @@ This is a policy/planning safeguard only. It does not verify provider invoices, 
 
 ## Explicit free-only provider mode
 
-Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anthropic or Alibaba Qwen. In this mode only the existing Cloudflare Workers AI binding is permitted; no external provider request is made. The setting is opt-in and defaults to the existing provider-selection behavior. Invalid values fail closed. This is a provider-selection guard, not a guarantee of unlimited free usage: Workers AI has account-level quotas and may require a paid Cloudflare plan or billing configuration for usage beyond its free allowance. The setting does not yet provide automatic fallback if Workers AI is unavailable.
+Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anthropic or Alibaba Qwen. In this mode only the existing Cloudflare Workers AI binding is permitted; no external provider request is made. The setting is opt-in and defaults to the existing provider-selection behavior. Invalid values fail closed. This is a provider-selection guard, not a guarantee of unlimited free usage: Workers AI has account-level quotas and may require a paid Cloudflare plan or billing configuration for usage beyond its free allowance. The setting does not yet provide automatic fallback if Workers AI is unavailable. Any future fallback must check provider quota and verified pricing before retrying; it must not silently route to a metered external provider.
 
 ## Design boundaries
 
