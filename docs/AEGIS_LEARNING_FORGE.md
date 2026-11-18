@@ -168,3 +168,16 @@ Still not implemented: learner-facing identity/accounts beyond the existing owne
 ### Remaining trust boundary
 
 The existing owner session is still a single-owner identity boundary, not a multi-learner identity model. Applied-task evidence needs a durable artifact store with content-addressed verification and retention controls. Human review needs authenticated reviewer identities, separation-of-duties rules and auditable decisions. Until both exist, mastery remains a non-certifying candidate policy only.
+
+
+## Authenticated Learning Mastery diagnostics — API slice (18 November 2026)
+
+**Status:** Added to draft PR #103; CI verification pending.
+
+- Added authenticated, read-only `GET /api/learning/mastery?pathId=...&pathVersion=...&nodeId=...`.
+- The endpoint derives the owner from the existing authenticated single-owner boundary, rejects unknown/repeated query parameters and requires an exact semantic path version and node identity.
+- It loads evidence only through the store-backed loader, which verifies the immutable Learning Path and Assessment digests and uses server-scored immutable attempt records. No caller-supplied evidence JSON, score, reviewer identity or owner identifier is accepted.
+- The response exposes evidence counts and explicit unavailable evidence kinds. With the current authoritative sources it cannot produce a qualifying candidate because applied-task artifacts and independent human reviews are not yet backed by trusted stores.
+- Every response includes `certificationGranted: false`; the candidate policy continues to return `masteryVerified: false`. This endpoint is diagnostic only and does not certify skills, alter progress, grant authority or trigger automation.
+- Added API tests for authentication, strict query allowlisting, repeated/missing parameters, unavailable storage and an insufficient-evidence response.
+- This does not close the reviewer-identity or artifact-provenance gap. Do not describe the feature as verified mastery or multi-learner support.
