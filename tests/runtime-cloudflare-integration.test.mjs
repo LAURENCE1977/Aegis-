@@ -264,6 +264,17 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
         ).run(),
       /CHECK constraint failed/,
     );
+    const foreignRunId = randomUUID();
+    await assert.rejects(
+      db.prepare("INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, task_json, checkpoint_json, created_at, updated_at) VALUES (?, ?, 5, 'planner', 'planned', 0, ?, ?, '{}', ?, ?)")
+        .bind(
+          run.id + ':5', run.id,
+          JSON.stringify({ id: run.id + ':5', specialist: 'planner', status: 'planned', tools: [], output: null }),
+          JSON.stringify({ ...JSON.parse(steps.results[0].task_json), runId: foreignRunId, stepId: foreignRunId + ':5', specialist: 'planner' }),
+          new Date().toISOString(), new Date().toISOString(),
+        ).run(),
+      /CHECK constraint failed/,
+    );
     const stepEvents = await db.prepare(
       "SELECT event_type FROM agent_run_step_events WHERE agent_run_id = ? ORDER BY created_at, event_id"
     ).bind(run.id).all();
