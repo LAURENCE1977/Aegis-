@@ -2,9 +2,7 @@ import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
 import { getCapabilityManifest } from '../../functions/lib/capability-registry.mjs';
 import { validateAgentPlanContract } from '../../functions/lib/agent-contracts.mjs';
 
-const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const MAX_APPROVAL_TTL_MS = 15 * 60 * 1000;
 /**
  * Bind a human approval to the complete, canonical plan rather than to a
