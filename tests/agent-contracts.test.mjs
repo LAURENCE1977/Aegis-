@@ -235,6 +235,12 @@ function validContextReference(overrides = {}) {
   };
 }
 
+test('canonical agent plan contract accepts a validated context reference', () => {
+  const plan = validPlan();
+  plan.context = validContextReference();
+  assert.equal(validateAgentPlanContract(plan), true);
+});
+
 test('canonical agent context reference accepts a bounded project evidence summary', () => {
   assert.equal(validateAgentContextReference(validContextReference()), true);
 });
