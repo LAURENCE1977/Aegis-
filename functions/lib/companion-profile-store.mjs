@@ -120,13 +120,14 @@ export class CompanionProfileNotFoundError extends Error {
 }
 
 export async function createCompanionProfile(db, ownerId, input, now = Date.now()) {
-  requireAtomicDatabase(db);
+  requireDatabase(db);
   requireOwner(ownerId);
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).some(key => !PATCH_KEYS.includes(key)) ||
       !Object.hasOwn(input, 'displayName')) {
     throw new TypeError('Invalid Companion Profile creation fields');
   }
+  requireAtomicDatabase(db);
   const timestamp = validClock(now);
   const defaults = createDefaultAegisCompanionProfile();
   const profile = validateCompanionProfile({
@@ -272,10 +273,11 @@ export async function updateCompanionProfile(db, ownerId, profileId, expectedVer
 }
 
 export async function selectCompanionProfile(db, ownerId, profileId, version, now = Date.now()) {
-  requireAtomicDatabase(db);
+  requireDatabase(db);
   requireOwner(ownerId);
   const timestamp = validClock(now);
   if (profileId === null && version === null) {
+    requireAtomicDatabase(db);
     const results = await db.batch([
       preferenceStatement(db, ownerId, null, null, timestamp),
       selectionEventStatement(db, ownerId, null, null, 'reset', null, timestamp),
@@ -292,6 +294,7 @@ export async function selectCompanionProfile(db, ownerId, profileId, version, no
   if (!Number.isInteger(version) || version < 1) throw new TypeError('Invalid Companion Profile version');
   const profile = await readExactProfile(db, ownerId, profileId, version);
   if (!profile) throw new CompanionProfileNotFoundError();
+  requireAtomicDatabase(db);
   const results = await db.batch([
     preferenceStatement(db, ownerId, profileId, version, timestamp),
     selectionEventStatement(db, ownerId, profileId, version, 'selected', profile.digest, timestamp),
