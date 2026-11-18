@@ -198,6 +198,51 @@ export function validateAgentTaskEnvelope(envelope) {
   return true;
 }
 
+/**
+ * Builds an inert, bounded task message from a validated plan.
+ * This is a data-contract factory only: it does not authorise dispatch,
+ * grant capabilities, or start specialist execution.
+ */
+export function createAgentTaskEnvelope(plan, metadata = {}) {
+  validateAgentPlanContract(plan);
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) ||
+      Object.keys(metadata).some((key) => !['stepId', 'attempt', 'createdAt', 'budget'].includes(key))) {
+    throw new TypeError('Agent task metadata is invalid.');
+  }
+  const step = plan.steps.find((candidate) => candidate.id === metadata.stepId);
+  if (!step || step.status !== 'planned' || step.tools.length !== 0 || step.output !== null) {
+    throw new TypeError('Agent task must bind to an unexecuted step in the validated plan.');
+  }
+  const attempt = metadata.attempt;
+  if (!Number.isInteger(attempt) || attempt < 1 || attempt > 5) {
+    throw new TypeError('Agent task attempt is invalid.');
+  }
+  const createdAt = metadata.createdAt;
+  if (typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt)) ||
+      new Date(createdAt).toISOString() !== createdAt) {
+    throw new TypeError('Agent task timestamp is invalid.');
+  }
+  const budget = metadata.budget === undefined
+    ? { maxOutputBytes: 8192, timeoutMs: 15000 }
+    : metadata.budget;
+  const envelope = {
+    schemaVersion: AGENT_TASK_ENVELOPE_SCHEMA_VERSION,
+    runId: plan.runId,
+    stepId: step.id,
+    attempt,
+    specialist: step.specialist,
+    objective: plan.objective,
+    contextDigest: plan.context?.digest ?? null,
+    budget: { ...budget },
+    executionMode: 'read-only',
+    capabilityRequests: [],
+    trustBoundary: TASK_TRUST_BOUNDARY,
+    createdAt,
+  };
+  validateAgentTaskEnvelope(envelope);
+  return envelope;
+}
+
 export function validateAgentPlanContract(plan) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     throw new TypeError('Agent plan must be an object.');
