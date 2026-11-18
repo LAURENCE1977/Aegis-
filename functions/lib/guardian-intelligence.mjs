@@ -56,8 +56,27 @@ function requireHttpsUrl(value, label) {
 
 function requireTimestamp(value, label) {
   requireText(value, label, 40);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value) ||
-      !Number.isFinite(Date.parse(value))) {
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?Z$/.exec(value);
+  if (!match || !Number.isFinite(Date.parse(value))) {
+    throw new TypeError('Invalid ' + label + ' timestamp');
+  }
+
+  // Date.parse normalises impossible dates such as 2026-02-29 into March.
+  // Validate the calendar components before accepting the parsed instant.
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [
+    31, leapYear ? 29 : 28, 31, 30, 31, 30,
+    31, 31, 30, 31, 30, 31,
+  ];
+  if (month < 1 || month > 12 || day < 1 || day > (daysInMonth[month - 1] ?? 0) ||
+      hour > 23 || minute > 59 || second > 59) {
     throw new TypeError('Invalid ' + label + ' timestamp');
   }
 }
