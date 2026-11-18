@@ -81,7 +81,8 @@ function validateCapabilityAction(action) {
 }
 
 export function validateCapabilityManifest(manifest) {
-  requireExactKeys(manifest, ['id', 'version', 'name', 'description', 'provider', 'interface', 'actions', 'data', 'network', 'auth', 'limits', 'provenance', 'licence', 'status'], 'capability manifest');
+  requireExactKeys(manifest, ['schemaVersion', 'id', 'version', 'name', 'description', 'provider', 'interface', 'actions', 'data', 'network', 'auth', 'limits', 'provenance', 'licence', 'status'], 'capability manifest');
+  if (manifest.schemaVersion !== '1.0') throw new TypeError('Unsupported capability manifest schema version');
   requireSlug(manifest.id, 'capability manifest identifier');
   if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) {
     throw new TypeError('Invalid capability manifest version');
@@ -178,6 +179,7 @@ const SOURCE_REVISION = '97df04aa96ea03f0e1efa18653071f1c95e6f7ae';
 
 const CAPABILITY_MANIFESTS = [
   {
+    schemaVersion: '1.0',
     id: 'aegis-github-public-discovery',
     version: '0.1.0',
     name: 'Public GitHub repository discovery',
@@ -201,6 +203,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-module-catalogue',
     version: '0.1.0',
     name: 'AEGIS module catalogue',
@@ -224,6 +227,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-readonly',
     version: '0.1.0',
     name: 'Composio GitHub repository metadata',
@@ -252,6 +256,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-pull-request-readonly',
     version: '0.1.0',
     name: 'Composio GitHub pull request metadata',
@@ -280,6 +285,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-workflow-readonly',
     version: '0.1.0',
     name: 'Composio GitHub workflow run metadata',
@@ -308,6 +314,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-workflow-jobs-readonly',
     version: '0.1.0',
     name: 'Composio GitHub workflow job summaries',
@@ -335,6 +342,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-agent-run',
     version: '0.1.0',
     name: 'AEGIS agent plan execution authorisation',
