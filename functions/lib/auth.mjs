@@ -1,5 +1,9 @@
 const COOKIE_NAME = "__Host-aegis_session";
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
+export const SESSION_CLAIMS_SCHEMA_VERSION = '1.0';
+const SESSION_PRINCIPAL_ID = 'owner';
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SESSION_CLAIM_KEYS = ['schemaVersion', 'principalId', 'sessionId', 'issuedAt', 'expiresAt'];
 const encoder = new TextEncoder();
 
 function toBase64Url(bytes) {
@@ -43,13 +47,56 @@ export function constantTimeEqual(left, right) {
   return difference === 0;
 }
 
+function exactSessionClaimKeys(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).length === SESSION_CLAIM_KEYS.length &&
+    Object.keys(value).every((key) => SESSION_CLAIM_KEYS.includes(key));
+}
+
+function canonicalSessionTimestamp(value) {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value)) &&
+    new Date(value).toISOString() === value;
+}
+
+/**
+ * Validates the signed session identity for the current single-owner install.
+ * This identifies the authenticated principal; it does not imply multi-user
+ * tenancy or replace per-resource authorisation.
+ */
+export function validateSessionClaims(claims, now = Date.now()) {
+  if (!exactSessionClaimKeys(claims) ||
+      claims.schemaVersion !== SESSION_CLAIMS_SCHEMA_VERSION ||
+      claims.principalId !== SESSION_PRINCIPAL_ID ||
+      typeof claims.sessionId !== 'string' || !SESSION_ID_PATTERN.test(claims.sessionId) ||
+      !canonicalSessionTimestamp(claims.issuedAt) ||
+      !canonicalSessionTimestamp(claims.expiresAt) ||
+      !Number.isFinite(now)) {
+    throw new TypeError('Invalid AEGIS session claims.');
+  }
+  const issuedAt = Date.parse(claims.issuedAt);
+  const expiresAt = Date.parse(claims.expiresAt);
+  if (expiresAt - issuedAt !== SESSION_TTL_SECONDS * 1000 ||
+      issuedAt > now || expiresAt <= now) {
+    throw new TypeError('AEGIS session claims are outside their valid lifetime.');
+  }
+  return true;
+}
+
 export async function createSessionToken(secret, now = Date.now()) {
   if (typeof secret !== "string" || secret.length < 32) {
     throw new Error("A session signing secret of at least 32 characters is required.");
   }
-  const payload = toBase64Url(encoder.encode(JSON.stringify({
-    exp: Math.floor(now / 1000) + SESSION_TTL_SECONDS,
-  })));
+  if (!Number.isFinite(now)) throw new TypeError('A valid session creation time is required.');
+  const issuedAt = Math.floor(now / 1000) * 1000;
+  const claims = {
+    schemaVersion: SESSION_CLAIMS_SCHEMA_VERSION,
+    principalId: SESSION_PRINCIPAL_ID,
+    sessionId: crypto.randomUUID(),
+    issuedAt: new Date(issuedAt).toISOString(),
+    expiresAt: new Date(issuedAt + SESSION_TTL_SECONDS * 1000).toISOString(),
+  };
+  validateSessionClaims(claims, now);
+  const payload = toBase64Url(encoder.encode(JSON.stringify(claims)));
   const key = await signingKey(secret);
   const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(payload)));
   return payload + "." + toBase64Url(signature);
@@ -62,7 +109,7 @@ export async function verifySessionToken(token, secret, now = Date.now()) {
 
   try {
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(parts[0])));
-    if (!Number.isSafeInteger(payload.exp) || payload.exp <= Math.floor(now / 1000)) return false;
+    validateSessionClaims(payload, now);
     const key = await signingKey(secret);
     return await crypto.subtle.verify("HMAC", key, fromBase64Url(parts[1]), encoder.encode(parts[0]));
   } catch {
