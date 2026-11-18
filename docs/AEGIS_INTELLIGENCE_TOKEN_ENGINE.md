@@ -16,6 +16,11 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 
 This is a policy/planning safeguard only. It does not verify provider invoices, enforce a durable spend ledger, or activate automatic failover. The planner is still not wired into AG-UI or the live model adapter.
 
+
+## Explicit free-only provider mode
+
+Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anthropic or Alibaba Qwen. In this mode only the existing Cloudflare Workers AI binding is permitted; no external provider request is made. The setting is opt-in and defaults to the existing provider-selection behavior. Invalid values fail closed. This is a provider-selection guard, not a guarantee of unlimited free usage: Workers AI has account-level quotas and may require a paid Cloudflare plan or billing configuration for usage beyond its free allowance. The setting does not yet provide automatic fallback if Workers AI is unavailable.
+
 ## Design boundaries
 
 - The model catalogue is trusted configuration, not data that can supply arbitrary URLs or executable adapter code.
