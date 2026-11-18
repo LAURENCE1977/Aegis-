@@ -177,6 +177,11 @@ function validContext(context) {
     Number.isInteger(budget.omittedMemories) && budget.omittedMemories >= 0;
 }
 
+export function validateAgentContextReference(context) {
+  if (!validContext(context)) throw new TypeError('Agent context reference is invalid.');
+  return true;
+}
+
 export function validateAgentRunIntent(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new TypeError('Agent run intent must be an object.');
@@ -328,7 +333,8 @@ export function validateAgentPlanContract(plan) {
   if (!exactKeys(plan, Object.hasOwn(plan, 'context') ? [...PLAN_KEYS, 'context'] : PLAN_KEYS)) {
     throw new TypeError('Agent plan has unexpected or missing fields.');
   }
-  if (Object.hasOwn(plan, 'context') && !validContext(plan.context)) {
+  if (Object.hasOwn(plan, 'context')) {
+    validateAgentContextReference(plan.context);
     throw new TypeError('Agent plan context is invalid.');
   }
   if (!Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 5) {
