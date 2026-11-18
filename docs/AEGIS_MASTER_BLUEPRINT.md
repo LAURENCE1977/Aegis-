@@ -1154,6 +1154,16 @@ proposals. It cannot self-grant permissions, alter Sentinel, merge changes or de
 - The test-only commit `a1645a8b2b9010c9fadc100762c38bb0a5015d70` produced the expected RED result: 903 passed, 2 failed, 1 skipped. Both failures demonstrated that unknown fields were previously accepted.
 - Implementation commit `aec0df70d864ede93acc945b6f6954d9554029e4` adds strict allowlists for manifest, provider, interface, action, data, network, authentication, limits, provenance and licence objects.
 - The change rejects undeclared fields instead of silently accepting future/foreign authority properties. Existing validation still checks required fields, values, risk and approval policy.
-- Full post-implementation Node/runtime/D1 verification is pending at the time of this update; do not count this slice as verified until the latest workflow completes successfully.
+- Verification: full workflow [44242937812](https://github.com/LAURENCE1977/Aegis-/actions/runs/44242937812) passed on commit `539e1a0f16486d64be6a343c87ac0d682d6c772c`: **914 tests, 913 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including isolated capability/runtime/Queue/Forge/Eval/Learning/Companion D1 migrations and smoke checks.
 
 This is the first step of Stage 1 in the delivery blueprint. The next implementation slice is versioned, closed task/run, agent/skill and execution-receipt contracts with compatibility tests.
+
+
+### Versioned capability manifest contract — 18 November 2026
+
+- Capability manifests now require explicit `schemaVersion: "1.0"`; every built-in manifest declares the same supported schema version.
+- Unsupported schema versions are rejected. The existing semantic `version` remains the capability implementation/version identity and is distinct from the manifest schema version.
+- The closed-field contract remains enforced at the manifest and every nested policy boundary.
+- RED proof: test-only commit `ff6a444a639c81d75d741e3e56de9ab242ca703e` failed as expected because the validator rejected the newly required schema version and built-in manifests had not yet declared it.
+- GREEN verification: workflow [44243395419](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243395419) passed on commit `ee52a4db0c9351e81d9ee23605e474778a9e1cf0`: **908 tests, 907 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including Node/runtime tests and isolated D1/Queue/Forge/Eval/Learning/Companion checks.
+- The next active slice is the same versioned/closed-contract treatment for agent plans and task/run envelopes, followed by execution receipts. Specialist execution remains plan-only and disabled until the isolated worker gate is passed.
