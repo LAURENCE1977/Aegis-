@@ -335,7 +335,6 @@ export function validateAgentPlanContract(plan) {
   }
   if (Object.hasOwn(plan, 'context')) {
     validateAgentContextReference(plan.context);
-    throw new TypeError('Agent plan context is invalid.');
   }
   if (!Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 5) {
     throw new TypeError('Agent plan steps are invalid.');
