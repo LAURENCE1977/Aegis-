@@ -185,10 +185,10 @@ export function validateAgentTaskEnvelope(envelope) {
       envelope.budget.timeoutMs < 1000 || envelope.budget.timeoutMs > 60000) {
     throw new TypeError('Agent task execution budget is invalid.');
   }
-  if (envelope.executionMode !== 'read-only' ||
+  if (envelope.executionMode !== 'plan-only' ||
       !Array.isArray(envelope.capabilityRequests) || envelope.capabilityRequests.length !== 0 ||
       envelope.trustBoundary !== TASK_TRUST_BOUNDARY) {
-    throw new TypeError('Agent task exceeds the initial read-only execution boundary.');
+    throw new TypeError('Agent task exceeds the registered plan-only specialist boundary.');
   }
   if (typeof envelope.createdAt !== 'string' ||
       !Number.isFinite(Date.parse(envelope.createdAt)) ||
@@ -234,7 +234,7 @@ export function createAgentTaskEnvelope(plan, metadata = {}) {
     objective: plan.objective,
     contextDigest: plan.context?.digest ?? null,
     budget: { ...budget },
-    executionMode: 'read-only',
+    executionMode: getAgentSpecialist(step.specialist).executionMode,
     capabilityRequests: [],
     trustBoundary: TASK_TRUST_BOUNDARY,
     createdAt,
