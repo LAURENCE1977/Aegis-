@@ -40,7 +40,7 @@ test('accepts bounded Sentinel invocation metadata without storing tool payloads
       capabilityId: 'project-space',
       capabilityVersion: '1.0.0',
       actionId: 'read-project',
-      resourceId: 'project-a',
+      resourceDigest: 'sha256:' + 'd'.repeat(64),
       inputDigest: 'sha256:' + 'c'.repeat(64),
       decision: 'allowed',
     }],
