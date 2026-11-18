@@ -85,14 +85,16 @@ Implement true multi-user identity/tenancy and independent reviewer identity bef
 
 ## Baseline checked 18 November 2026
 
-- PR #103 is open, draft and unmerged; head observed at `cc537c7072be9792d61bd4ac3c6d36a022a78ae9`.
-- Workflow `44244346215` completed successfully for that head.
+- PR #103 is open, draft and unmerged; latest verified head at this checkpoint is `3ab7b3c2a960593627255158d0a2d09383c27ac9`.
+- Workflow `44297696530` completed successfully for that head: all 24 workflow steps passed. The Node.js suite reported 932 tests, 931 passed, zero failed and one skipped; the separate Cloudflare runtime integration test passed. Runtime, capability, Forge, Learning and Companion D1 migration/constraint checks also passed.
 - Current code includes durable agent-run submission/list/detail/timeline/cancellation, plan generation, immutable approval binding and a separate authorisation record.
 - The queue consumer currently creates a plan and step records; it does not execute specialist work. The authorisation endpoint explicitly returns `executionStarted: false`. Keep this honest and do not enable specialist execution until Stage 2 safety and acceptance tests pass.
 - Existing capability manifests, Sentinel mediation, provider registry, model adapters, Memory/Knowledge, Eval/Learning Forge and Companion foundations should be extended rather than duplicated.
+- Stage 1 implementation now has a shared canonical run-intent validator, canonical plan contract and a versioned read-only specialist task-envelope validator. The task envelope binds run/step/specialist/attempt, optional context digest, strict output/time budgets, fixed trust-boundary text and an empty capability-request list. It grants no execution permission.
+- Stage 1 is still in progress: canonical run record, specialist/agent manifest, skill/tool manifest, evidence/context reference and execution receipt contracts plus compatibility tests remain to be completed.
 - Current single-owner assumptions remain; do not describe the platform as a verified multi-tenant system.
 - No production deployment is implied by CI success.
 
 ## Immediate next action
 
-Stage 0 verification is green for the observed PR head. Begin Stage 1 by auditing existing schemas and registries, then consolidate the canonical specialist/task contract with test-first changes. Do not add new model providers or specialist execution as a shortcut.
+Stage 0 verification is green. Stage 1 is underway: the shared run-intent, plan and read-only task-envelope contracts are implemented and covered by the full green CI run. Next, add the canonical task-envelope factory and the remaining run/specialist/evidence/receipt schemas with compatibility tests; keep execution disabled. Do not add new model providers or specialist execution as a shortcut.
