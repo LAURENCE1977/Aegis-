@@ -41,6 +41,7 @@ class CompanionD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO companion_profile_preferences')) {
+          if (db.failPreferenceWrite) throw new Error('preference write failed');
           const [ownerId, profileId, version, updatedAt] = v;
           if (profileId !== null && !db.profiles.has([ownerId, profileId, version].join('|'))) {
             throw new Error('foreign key constraint failed');
