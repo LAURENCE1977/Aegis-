@@ -49,7 +49,7 @@ export async function onRequestGet({ request, env }) {
     if (error instanceof LearningMasteryPathNotFoundError || error?.status === 404) {
       return jsonResponse({ error: 'Exact registered Learning Path version or node not found.' }, 404);
     }
-    if (error instanceof TypeError) return jsonResponse({ error: error.message }, 400);
+    // Stored-data validation failures are integrity failures, not client errors.
     return jsonResponse({ error: 'Learning Mastery evidence is temporarily unavailable.' }, 503);
   }
 }
