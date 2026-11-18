@@ -159,7 +159,46 @@ export function validateAgentTaskEnvelope(envelope) {
   if (envelope.schemaVersion !== AGENT_TASK_ENVELOPE_SCHEMA_VERSION ||
       typeof envelope.runId !== 'string' || !RUN_ID_PATTERN.test(envelope.runId) ||
       typeof envelope.stepId !== 'string' ||
-      !new RegExp('^' + envelope.runId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\export function validateAgentPlanContract(plan) {') + ':[1-5]
+      !envelope.stepId.startsWith(envelope.runId + ':') ||
+      !/^[1-5]$/.test(envelope.stepId.slice(envelope.runId.length + 1)) ||
+      !Number.isInteger(envelope.attempt) || envelope.attempt < 1 || envelope.attempt > 5 ||
+      !AGENT_SPECIALISTS.includes(envelope.specialist)) {
+    throw new TypeError('Agent task identity or version is invalid.');
+  }
+  if (typeof envelope.objective !== 'string' || !envelope.objective.trim() ||
+      envelope.objective.length > 2000 ||
+      Array.from(envelope.objective).some((character) => {
+        const code = character.charCodeAt(0);
+        return code <= 8 || (code >= 11 && code <= 12) ||
+          (code >= 14 && code <= 31) || code === 127;
+      })) {
+    throw new TypeError('Agent task objective is invalid.');
+  }
+  if (!(envelope.contextDigest === null ||
+      (typeof envelope.contextDigest === 'string' && DIGEST_PATTERN.test(envelope.contextDigest)))) {
+    throw new TypeError('Agent task context digest is invalid.');
+  }
+  if (!exactKeys(envelope.budget, TASK_BUDGET_KEYS) ||
+      !Number.isInteger(envelope.budget.maxOutputBytes) ||
+      envelope.budget.maxOutputBytes < 1 || envelope.budget.maxOutputBytes > 32768 ||
+      !Number.isInteger(envelope.budget.timeoutMs) ||
+      envelope.budget.timeoutMs < 1000 || envelope.budget.timeoutMs > 60000) {
+    throw new TypeError('Agent task execution budget is invalid.');
+  }
+  if (envelope.executionMode !== 'read-only' ||
+      !Array.isArray(envelope.capabilityRequests) || envelope.capabilityRequests.length !== 0 ||
+      envelope.trustBoundary !== TASK_TRUST_BOUNDARY) {
+    throw new TypeError('Agent task exceeds the initial read-only execution boundary.');
+  }
+  if (typeof envelope.createdAt !== 'string' ||
+      !Number.isFinite(Date.parse(envelope.createdAt)) ||
+      new Date(envelope.createdAt).toISOString() !== envelope.createdAt) {
+    throw new TypeError('Agent task timestamp is invalid.');
+  }
+  return true;
+}
+
+export function validateAgentPlanContract(plan) {') + ':[1-5]
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     throw new TypeError('Agent plan must be an object.');
   }
