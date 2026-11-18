@@ -168,6 +168,7 @@ export function createAgentPlan(submission, metadata = {}) {
     budget: validated.projectContext.brief.budget,
   } : null;
   return {
+    schemaVersion: '1.0',
     runId: metadata.runId,
     objective: validated.objective,
     createdAt: new Date(metadata.createdAt).toISOString(),
