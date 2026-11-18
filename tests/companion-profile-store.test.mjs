@@ -17,10 +17,12 @@ class CompanionD1 {
     this.events = [];
     this.purgeAuthorizations = new Map();
     this.purgeEvents = [];
+    this.batchCalls = [];
   }
   prepare(sql) {
     const db = this;
     return {
+      sql,
       values: [],
       bind(...values) { this.values = values; return this; },
       async run() {
@@ -87,7 +89,9 @@ class CompanionD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO companion_profile_purge_events')) {
-          const [id, ownerId, count, occurredAt] = v;
+          const [id, ownerId, occurredAt, countOwnerId] = v;
+          const count = [...db.profiles.values()].filter(row => row.owner_id === countOwnerId).length;
+          if (count > 500) throw new Error('CHECK constraint failed: purged_profiles_count');
           db.purgeEvents.push({ id, owner_id: ownerId, purged_profiles_count: count, occurred_at: occurredAt });
           return { meta: { changes: 1 } };
         }
@@ -97,6 +101,10 @@ class CompanionD1 {
         const v = this.values;
         if (sql.includes('COUNT(*) AS total FROM companion_profiles')) {
           return { total: [...db.profiles.values()].filter(row => row.owner_id === v[0]).length };
+        }
+        if (sql.includes('FROM companion_profile_purge_events')) {
+          const row = db.purgeEvents.find(event => event.id === v[0] && event.owner_id === v[1]);
+          return row ?? null;
         }
         if (sql.includes('FROM companion_profiles')) {
           const [ownerId, profileId, version] = v;
@@ -135,6 +143,7 @@ class CompanionD1 {
     };
   }
   async batch(statements) {
+    this.batchCalls.push(statements.map(statement => statement.sql));
     const snapshot = {
       profiles: new Map([...this.profiles].map(([key, value]) => [key, { ...value }])),
       preferences: new Map([...this.preferences].map(([key, value]) => [key, { ...value }])),
@@ -317,4 +326,18 @@ test('active profile update rolls back the new revision when its active selectio
   assert.equal(db.profiles.size, 1);
   assert.equal(db.preferences.get('owner').active_profile_version, 1);
   assert.equal(db.events.filter(event => event.event_type === 'updated').length, 0);
+});
+
+
+test('purge count is captured inside the same atomic batch before profile deletion', async () => {
+  const db = new CompanionD1();
+  await createCompanionProfile(db, 'owner', customInput(), baseTime);
+  const result = await purgeCompanionProfiles(db, 'owner', 'DELETE MY COMPANION PROFILES', baseTime + 1000);
+  const statements = db.batchCalls.at(-1);
+  const auditIndex = statements.findIndex(sql =>
+    sql.includes('INSERT INTO companion_profile_purge_events') && sql.includes('COUNT(*)'),
+  );
+  const deleteIndex = statements.findIndex(sql => sql.includes('DELETE FROM companion_profiles'));
+  assert.ok(auditIndex >= 0 && deleteIndex > auditIndex);
+  assert.equal(result.purgedProfiles, 1);
 });
