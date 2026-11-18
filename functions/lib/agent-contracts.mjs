@@ -99,4 +99,5 @@ export function validateAgentPlanContract(plan) {
       plan.safety.approvalRequiredForProtectedActions !== true) {
     throw new TypeError('Agent plan safety guarantees are not satisfied.');
   }
+  return true;
 }
