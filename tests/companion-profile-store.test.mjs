@@ -135,9 +135,25 @@ class CompanionD1 {
     };
   }
   async batch(statements) {
-    const results = [];
-    for (const statement of statements) results.push(await statement.run());
-    return results;
+    const snapshot = {
+      profiles: new Map([...this.profiles].map(([key, value]) => [key, { ...value }])),
+      preferences: new Map([...this.preferences].map(([key, value]) => [key, { ...value }])),
+      events: this.events.map(value => ({ ...value })),
+      purgeAuthorizations: new Map([...this.purgeAuthorizations].map(([key, value]) => [key, { ...value }])),
+      purgeEvents: this.purgeEvents.map(value => ({ ...value })),
+    };
+    try {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } catch (error) {
+      this.profiles = snapshot.profiles;
+      this.preferences = snapshot.preferences;
+      this.events = snapshot.events;
+      this.purgeAuthorizations = snapshot.purgeAuthorizations;
+      this.purgeEvents = snapshot.purgeEvents;
+      throw error;
+    }
   }
 }
 
