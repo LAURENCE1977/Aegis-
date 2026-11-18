@@ -1129,3 +1129,31 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - Profile creation, active revision updates, selection and purge now commit through atomic D1 batches. Failure-injection tests verify that a preference-write failure rolls back both profile revisions and audit events. Purge count is inserted into its audit record inside the same batch, before profile deletion, so concurrent changes cannot make the audit count stale.
 - Verification: full workflow [44211655456](https://github.com/LAURENCE1977/Aegis-/actions/runs/44211655456) passed on code head `b8dcebe5ea506a21a84646dc626dbec8b3508d73`: **896 tests, 895 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge/Learning/Companion migrations and smoke checks all green. Regression tests cover privacy listener registration, write rollback and purge chronology. The isolated D1 smoke test executes the production-shaped purge audit `INSERT … SELECT COUNT(*)` statement before the authorised deletes.
 - Still gated: production D1 provisioning, governed retention/expiry policy, multi-user identity/tenancy, full accessibility wiring, voice and lifelike avatar runtime. No merge or production deployment.
+
+
+## Agent AEGIS — delivery schedule and Evolution Engine blueprint (18 November 2026)
+
+The canonical dependency-ordered delivery schedule is now maintained in
+[`docs/AEGIS_DELIVERY_BLUEPRINT_2026-11-18.md`](AEGIS_DELIVERY_BLUEPRINT_2026-11-18.md).
+It defines the target architecture, replaceable framework boundaries, 13 delivery stages,
+acceptance gates, estimated engineering effort, immediate build queue and explicit approval limits.
+
+Key architecture decision: retain Cloudflare as the initial deployment adapter, not as AEGIS's
+permanent framework. AEGIS owns identity, intelligence, memory, task state, Sentinel policy,
+Forge and capability contracts. Local, self-hosted and optional hosted runtimes remain replaceable
+adapters behind those contracts. Composio remains a service connector; OmniRoute remains optional.
+
+The Evolution Engine is prioritised after closed contracts, safe skill lifecycle and isolated
+execution. It will discover capability gaps, research candidate mechanisms, design native
+adaptations, run isolated experiments and Eval Forge suites, and prepare evidence-backed upgrade
+proposals. It cannot self-grant permissions, alter Sentinel, merge changes or deploy.
+
+### First active implementation slice — closed capability manifest contracts
+
+- Regression tests were added first for unknown top-level and nested manifest fields.
+- The test-only commit `a1645a8b2b9010c9fadc100762c38bb0a5015d70` produced the expected RED result: 903 passed, 2 failed, 1 skipped. Both failures demonstrated that unknown fields were previously accepted.
+- Implementation commit `aec0df70d864ede93acc945b6f6954d9554029e4` adds strict allowlists for manifest, provider, interface, action, data, network, authentication, limits, provenance and licence objects.
+- The change rejects undeclared fields instead of silently accepting future/foreign authority properties. Existing validation still checks required fields, values, risk and approval policy.
+- Full post-implementation Node/runtime/D1 verification is pending at the time of this update; do not count this slice as verified until the latest workflow completes successfully.
+
+This is the first step of Stage 1 in the delivery blueprint. The next implementation slice is versioned, closed task/run, agent/skill and execution-receipt contracts with compatibility tests.
