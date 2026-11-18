@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS companion_profiles (
   id TEXT PRIMARY KEY NOT NULL,
   owner_id TEXT NOT NULL,
   profile_id TEXT NOT NULL CHECK (
-    length(profile_id) BETWEEN 8 AND 70 AND substr(profile_id, 1, 7) = 'custom-' AND\n    profile_id NOT GLOB '*[^a-z0-9-]*' AND substr(profile_id, 8, 1) GLOB '[a-z0-9]' AND\n    substr(profile_id, -1, 1) GLOB '[a-z0-9]'
+    length(profile_id) BETWEEN 8 AND 70 AND substr(profile_id, 1, 7) = 'custom-' AND
+    profile_id NOT GLOB '*[^a-z0-9-]*' AND substr(profile_id, 8, 1) GLOB '[a-z0-9]' AND
+    substr(profile_id, -1, 1) GLOB '[a-z0-9]'
   ),
   version INTEGER NOT NULL CHECK (version >= 1),
   profile_digest TEXT NOT NULL CHECK (
