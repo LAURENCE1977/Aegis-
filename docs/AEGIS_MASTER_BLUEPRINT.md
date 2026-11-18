@@ -1156,7 +1156,7 @@ proposals. It cannot self-grant permissions, alter Sentinel, merge changes or de
 - The change rejects undeclared fields instead of silently accepting future/foreign authority properties. Existing validation still checks required fields, values, risk and approval policy.
 - Verification: full workflow [44242937812](https://github.com/LAURENCE1977/Aegis-/actions/runs/44242937812) passed on commit `539e1a0f16486d64be6a343c87ac0d682d6c772c`: **914 tests, 913 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including isolated capability/runtime/Queue/Forge/Eval/Learning/Companion D1 migrations and smoke checks.
 
-This is the first step of Stage 1 in the delivery blueprint. The next implementation slice is versioned, closed task/run, agent/skill and execution-receipt contracts with compatibility tests.
+This is the first step of Stage 1 in the delivery blueprint. The next implementation slice is the versioned task/run envelope and execution-receipt contract, followed by compatibility and replay tests.
 
 
 ### Versioned capability manifest contract — 18 November 2026
@@ -1167,3 +1167,14 @@ This is the first step of Stage 1 in the delivery blueprint. The next implementa
 - RED proof: test-only commit `ff6a444a639c81d75d741e3e56de9ab242ca703e` failed as expected because the validator rejected the newly required schema version and built-in manifests had not yet declared it.
 - GREEN verification: workflow [44243395419](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243395419) passed on commit `ee52a4db0c9351e81d9ee23605e474778a9e1cf0`: **908 tests, 907 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including Node/runtime tests and isolated D1/Queue/Forge/Eval/Learning/Companion checks.
 - The next active slice is the same versioned/closed-contract treatment for agent plans and task/run envelopes, followed by execution receipts. Specialist execution remains plan-only and disabled until the isolated worker gate is passed.
+
+
+### Versioned agent-plan contract — 18 November 2026
+
+- Generated agent plans now carry `schemaVersion: "1.0"`.
+- Approval binding validates the exact supported schema version and includes it in the canonical plan digest, so a schema change cannot be silently treated as the same approved intent.
+- Missing and unsupported schema versions are rejected before an approval binding can be created.
+- API and approval fixtures were migrated to the versioned plan shape.
+- RED proof: commit `df12191c58a1c8dc44d9d60ece165831b3d286d3` exposed missing version metadata and legacy test fixtures. Follow-up test failures identified the two remaining hard-coded plan fixtures, which were updated rather than weakening validation.
+- GREEN verification: workflow [44243985512](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243985512) passed on commit `b6773ab74cc08d8040dcc406e8307458c1f7df9f`: **919 tests, 918 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including local D1 migrations, runtime/Queue integration and Forge/Eval/Learning/Companion checks.
+- This remains a plan/approval contract. It does not enable specialist execution. The next build slice is a versioned task/run envelope and immutable execution-receipt schema, then wire those contracts into the worker lifecycle before any specialist runtime is enabled.
