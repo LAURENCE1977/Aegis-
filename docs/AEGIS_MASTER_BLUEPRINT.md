@@ -1240,3 +1240,11 @@ This is a design direction, not a claim that the 3D avatar or final interface is
 - Stage 1 contract gate passed on code head `38f76f10ebec8804f058db1d352aa259e5944bee`. Push workflow [44350473762](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350473762) and PR workflow [44350489254](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350489254) passed all 24 steps. Node.js: **966 tests, 965 passed, 0 failed, 1 skipped**; runtime/Queue integration and all isolated D1 checks passed.
 - Evidence descriptors are still metadata-only. There is no upload, object-storage or retrieval API yet; implement that as part of Stage 3's unified evidence system. The execution receipt is still an unsigned structural contract and will be emitted/persisted in Stage 2.
 - PR #103 remains open, draft and unmerged. No production deployment.
+
+
+### OsintHunter research decision — 18 November 2026
+
+- Reviewed the public MIT project `letox4/OsintHunter` at its `main` ref. Accepted its case-graph, source-adapter, provenance, alias-candidate, explainable-signal, timeline and report patterns for architectural study only.
+- Rejected wholesale adoption. Static review found a direct arbitrary-URL fetch path with redirects and no visible destination-IP/redirect revalidation, plaintext API-key persistence in local settings, sensitive third-party email-account enumeration, and optional remote AI transfer of case identities/locations/account attributes. Its local desktop bind is a useful default but is not a general network-service security boundary.
+- AEGIS will implement the useful ideas natively over canonical evidence/source contracts, owner-scoped records and Sentinel-governed adapters. Graph edges remain claims, not proof; confidence is uncertainty-aware and never an identity verdict. No upstream code, dependencies, executable or service was imported or run.
+- Full assessment and acceptance gates: [AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md](AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md).
