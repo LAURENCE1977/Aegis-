@@ -1214,3 +1214,15 @@ Product direction to carry through the build:
 - Completion requires a working 3D companion integrated with profile selection and customisation, not merely a 3D mock-up or static render. The page shell must be responsive and verified on mobile and desktop.
 
 This is a design direction, not a claim that the 3D avatar or final interface is implemented. Revisit it as the core architecture and user testing reveal better choices.
+
+
+### Persisted Agent Context Integrity — verified 18 November 2026
+
+- The agent-run queue consumer now verifies that persisted context JSON, its digest and the project ID are present together and remain mutually bound before planning.
+- It verifies that the context document's workspace ID matches the separately persisted project ID, then recomputes the brief and accepted-knowledge digests.
+- Altered context content, removed context with a surviving digest/project binding, malformed context and project-ID substitution become terminal `AGENT_CONTEXT_INTEGRITY_FAILED` outcomes. The worker records an append-only failure event, clears its lease and acknowledges the invalid message; it does not retry deterministic integrity failures or create a plan/steps.
+- Test-first evidence: the regression for altered stored context first failed against the old transient retry path; after the fix it passed. A second regression then reproduced missing-context and project-ID substitution cases; the implementation was extended and both now pass.
+- Latest verified code head: `8c2d07d648c814b12cc4a4023c08970fd78dc5d5`. Push workflow [44346845686](https://github.com/LAURENCE1977/Aegis-/actions/runs/44346845686) and matching PR workflow [44346859793](https://github.com/LAURENCE1977/Aegis-/actions/runs/44346859793) both passed all 24 steps.
+- Node.js suite: **964 tests, 963 passed, 0 failed, 1 skipped**. Runtime/Queue integration and isolated capability, runtime, Forge, Eval Forge, Learning Forge and Companion Profile D1 checks passed.
+- PR #103 remains open, draft and unmerged. No production deployment.
+- Stage 1 remains in progress: actual evidence-intake API boundary and final context/evidence-reference compatibility checks remain. The execution receipt is still unsigned structural metadata, not an emitted/persisted attestation. Specialist execution remains disabled until Stage 2 safety gates are implemented and verified.
