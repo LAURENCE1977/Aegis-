@@ -6,7 +6,7 @@ export const AGENT_SPECIALISTS = Object.freeze([
 export const DEFAULT_AGENT_SPECIALISTS = Object.freeze([
   'researcher', 'engineer', 'reviewer',
 ]);
-const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
 const PLAN_KEYS = ['schemaVersion', 'runId', 'objective', 'createdAt', 'execution',
