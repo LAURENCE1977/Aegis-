@@ -23,3 +23,8 @@ test('Companion Profile migration stores immutable owner-scoped profile revision
   assert.match(sql, /trg_companion_profile_purge_events_no_update/);
   assert.match(sql, /trg_companion_profile_purge_events_no_delete/);
 });
+
+test('Companion Profile migration contains executable SQL line breaks, not escaped newline text', async () => {
+  const sql = await readFile(new URL('../migrations/companion/0001_companion_profiles.sql', import.meta.url), 'utf8');
+  assert.equal(sql.includes('\\n'), false, 'migration must not contain literal backslash-n sequences');
+});
