@@ -198,3 +198,14 @@ test('companion data controls expose authenticated export and explicitly confirm
   assert.match(html, /aegis-companion-profiles\.json/);
   assert.match(html, /companionProfilePersistenceAvailable/);
 });
+
+
+test('companion privacy action listeners are registered once outside profile rendering', () => {
+  const renderStart = html.indexOf('function renderCompanionProfile');
+  const renderEnd = html.indexOf('async function loadCompanionProfiles', renderStart);
+  assert.ok(renderStart >= 0 && renderEnd > renderStart);
+  const renderBody = html.slice(renderStart, renderEnd);
+  assert.doesNotMatch(renderBody, /(?:exportCompanionProfilesButton|purgeCompanionProfilesButton|purgeCompanionConfirmation)\.addEventListener/);
+  assert.equal((html.match(/exportCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
+  assert.equal((html.match(/purgeCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
+});
