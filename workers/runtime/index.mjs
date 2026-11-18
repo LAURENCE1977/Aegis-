@@ -1,7 +1,7 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
 import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
-import { AGENT_RUN_RECORD_SCHEMA_VERSION, validateAgentRunRecord } from '../../functions/lib/agent-contracts.mjs';
+import { AGENT_RUN_RECORD_SCHEMA_VERSION, createAgentTaskEnvelope, validateAgentRunRecord, validateAgentTaskEnvelope } from '../../functions/lib/agent-contracts.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -144,6 +144,14 @@ function parseAgentRunStep(row) {
   const parseJson = (value, fallback) => {
     try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
   };
+  const task = row.task_json ? JSON.parse(row.task_json) : null;
+  if (task !== null) {
+    validateAgentTaskEnvelope(task);
+    if (task.runId !== row.agent_run_id || task.stepId !== row.id ||
+        task.specialist !== row.specialist) {
+      throw new TypeError('Persisted agent task envelope does not match its step.');
+    }
+  }
   return {
     id: row.id,
     stepIndex: row.step_index,
@@ -151,6 +159,7 @@ function parseAgentRunStep(row) {
     status: row.status,
     attempts: row.attempts,
     step: parseJson(row.step_json, null),
+    task,
     checkpoint: parseJson(row.checkpoint_json, {}),
     result: parseJson(row.result_json, null),
     errorCode: row.error_code || null,
@@ -587,9 +596,14 @@ async function processAgentRun(message, env) {
     ).bind(planJson, completedAt, runId, attempt)];
 
     for (const [index, step] of plan.steps.entries()) {
+      const taskEnvelope = createAgentTaskEnvelope(plan, {
+        stepId: step.id,
+        attempt: 1,
+        createdAt: completedAt,
+      });
       statements.push(env.DB.prepare(
-        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
-      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), completedAt, completedAt, runId, attempt, planJson));
+        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, task_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
+      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), JSON.stringify(taskEnvelope), completedAt, completedAt, runId, attempt, planJson));
       statements.push(env.DB.prepare(
         "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, agent_run_id, 'planned', ?, ? FROM agent_run_steps WHERE id = ? AND agent_run_id = ? ON CONFLICT(event_id) DO NOTHING"
       ).bind('planned:' + step.id, JSON.stringify({ stepIndex: index + 1, specialist: step.specialist }), completedAt, step.id, runId));

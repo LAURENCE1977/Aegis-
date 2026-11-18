@@ -120,7 +120,7 @@ class AgentMemoryD1 {
           return { meta: { changes } };
         }
         if (sql.includes('INSERT INTO agent_run_steps')) {
-          const [stepId, stepIndex, specialist, stepJson, createdAt, updatedAt, runId, attempt, planJson] = v;
+          const [stepId, stepIndex, specialist, stepJson, taskJson, createdAt, updatedAt, runId, attempt, planJson] = v;
           const run = db.runs.get(runId);
           if (!run || run.status !== 'planned' || run.attempts !== attempt ||
               run.cancelled_at || run.plan_json !== planJson || db.steps.has(stepId)) {
@@ -128,7 +128,7 @@ class AgentMemoryD1 {
           }
           db.steps.set(stepId, {
             id: stepId, agent_run_id: runId, step_index: stepIndex, specialist,
-            status: 'planned', attempts: 0, step_json: stepJson, task_json: null, checkpoint_json: '{}',
+            status: 'planned', attempts: 0, step_json: stepJson, task_json: taskJson, checkpoint_json: '{}',
             created_at: createdAt, updated_at: updatedAt,
           });
           return { meta: { changes: 1 } };
