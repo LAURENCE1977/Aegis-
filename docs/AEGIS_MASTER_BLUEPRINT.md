@@ -1226,3 +1226,17 @@ This is a design direction, not a claim that the 3D avatar or final interface is
 - Node.js suite: **964 tests, 963 passed, 0 failed, 1 skipped**. Runtime/Queue integration and isolated capability, runtime, Forge, Eval Forge, Learning Forge and Companion Profile D1 checks passed.
 - PR #103 remains open, draft and unmerged. No production deployment.
 - Stage 1 remains in progress: actual evidence-intake API boundary and final context/evidence-reference compatibility checks remain. The execution receipt is still unsigned structural metadata, not an emitted/persisted attestation. Specialist execution remains disabled until Stage 2 safety gates are implemented and verified.
+
+
+### Stage 1 contracts — durable task-envelope integration (18 November 2026)
+
+- Added runtime migration `0009_agent_step_task_envelopes.sql` with a bounded JSON task-envelope column on `agent_run_steps`.
+- The queue consumer now creates a canonical `aegis.agent-task-envelope/1.0` from each validated plan step and persists it with the step. It binds run ID, step ID, specialist, attempt, objective, context digest, output/time budgets, fixed plan-only mode and an empty capability-request list.
+- D1 checks JSON shape, schema version, plan-only mode, empty capability requests and exact task-to-row binding for run ID, step ID and specialist. A trigger makes a populated task envelope immutable.
+- Runtime step reads revalidate the task contract and reject a task whose run, step or specialist no longer matches the persisted row.
+- Real Miniflare/D1/Queue integration now applies migration 0009, consumes a real local Queue message, validates each persisted task envelope, rejects task mutation, rejects an unsafe execution mode and rejects a cross-run task identity.
+- Cross-contract tests compose the evidence descriptor and inert task envelope: evidence remains owner-bound metadata only, with no file bytes/storage path, and cannot be injected into a task as a permission or execution instruction.
+- The task-envelope persistence is **not** specialist execution. Queue output remains plan-only; no model call or tool invocation occurs and no receipt is emitted.
+- Stage 1 contract gate passed on code head `38f76f10ebec8804f058db1d352aa259e5944bee`. Push workflow [44350473762](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350473762) and PR workflow [44350489254](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350489254) passed all 24 steps. Node.js: **966 tests, 965 passed, 0 failed, 1 skipped**; runtime/Queue integration and all isolated D1 checks passed.
+- Evidence descriptors are still metadata-only. There is no upload, object-storage or retrieval API yet; implement that as part of Stage 3's unified evidence system. The execution receipt is still an unsigned structural contract and will be emitted/persisted in Stage 2.
+- PR #103 remains open, draft and unmerged. No production deployment.

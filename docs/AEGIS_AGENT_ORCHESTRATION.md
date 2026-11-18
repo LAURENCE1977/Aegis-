@@ -45,3 +45,14 @@ When an owner submits a plan-only agent run with a Project Space, AEGIS now pass
 The attached records include source attribution, limitations, evidence level, version and update time. They are labelled `untrusted-reference`, included within the existing 4 KiB knowledge / 12 KiB overall context budgets, and covered by a canonical digest. Draft, reviewed, superseded, low/experimental evidence and other-owner records are excluded. Retrieved knowledge remains reference material, never instructions, permission or authoritative task state.
 
 This is context assembly only: the runtime still creates plans, not autonomous specialist execution. It does not call an external vector database, model evaluator or retrieval service.
+
+
+## Persisted task-envelope boundary — 18 November 2026
+
+The plan-only queue now creates one canonical `aegis.agent-task-envelope/1.0` for each specialist step and persists it in `agent_run_steps.task_json`. The envelope binds run ID, step ID, specialist, attempt, objective, context digest, bounded output/time budgets and the fixed plan-only execution mode. Capability requests are always empty.
+
+Migration `0009_agent_step_task_envelopes.sql` enforces valid JSON, schema version, plan-only mode, empty capability requests and exact row binding for run ID, step ID and specialist. Once populated, `task_json` is immutable. When runtime APIs read step records, they validate the stored envelope and verify it matches the parent run and step.
+
+This is task-contract persistence only. It does not start execution, call a model, invoke tools, grant capabilities or create an execution receipt. The real Miniflare/D1/Queue integration test applies the new migration, processes a real local Queue message, checks persisted task envelopes, and verifies D1 rejects altered task definitions, unsafe execution modes and cross-run task identities.
+
+Latest verified code head `38f76f10ebec8804f058db1d352aa259e5944bee`: push workflow [44350473762](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350473762) and matching PR workflow [44350489254](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350489254) passed all 24 steps; Node.js suite **966 tests, 965 passed, 0 failed, 1 skipped**. PR #103 remains open/draft/unmerged; no production deployment.
