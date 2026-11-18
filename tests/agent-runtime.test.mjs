@@ -664,7 +664,7 @@ test('agent run listing exposes cancelled status and returns no next cursor on t
   DB.runs.set(id, {
     id, objective: 'Cancelled task', specialists_json: '["researcher"]',
     status: 'queued', attempts: 0, created_at: '2026-11-16T12:04:00.000Z',
-    updated_at: '2026-11-16T12:04:00.000Z', cancelled_at: '2026-11-16T12:05:00.000Z',
+    updated_at: '2026-11-16T12:05:00.000Z', cancelled_at: '2026-11-16T12:05:00.000Z',
   });
   const response = await handleRuntimeFetch(new Request(
     'https://runtime.example/v1/agent-runs',
