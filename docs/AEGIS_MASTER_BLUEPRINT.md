@@ -1178,3 +1178,8 @@ This is the first step of Stage 1 in the delivery blueprint. The next implementa
 - RED proof: commit `df12191c58a1c8dc44d9d60ece165831b3d286d3` exposed missing version metadata and legacy test fixtures. Follow-up test failures identified the two remaining hard-coded plan fixtures, which were updated rather than weakening validation.
 - GREEN verification: workflow [44243985512](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243985512) passed on commit `b6773ab74cc08d8040dcc406e8307458c1f7df9f`: **919 tests, 918 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including local D1 migrations, runtime/Queue integration and Forge/Eval/Learning/Companion checks.
 - This remains a plan/approval contract. It does not enable specialist execution. The next build slice is a versioned task/run envelope and immutable execution-receipt schema, then wire those contracts into the worker lifecycle before any specialist runtime is enabled.
+
+
+## Master build programme (18 November 2026)
+
+The sequenced delivery schedule, architecture boundaries, stage definitions, acceptance gates and current verified baseline are maintained in [AEGIS Master Build Programme](AEGIS_MASTER_BUILD_PROGRAMME_2026-11-18.md). This programme is part of the canonical handover and must be followed in priority order. It explicitly distinguishes the currently implemented plan-only agent runtime from future Sentinel-governed specialist execution.
