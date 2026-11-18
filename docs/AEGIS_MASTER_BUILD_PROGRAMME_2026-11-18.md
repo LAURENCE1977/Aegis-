@@ -99,4 +99,21 @@ Implement true multi-user identity/tenancy and independent reviewer identity bef
 
 ## Immediate next action
 
-Stage 0 verification is green. Stage 1 is underway: shared run-intent and plan contracts, versioned bounded specialist manifests, plan-only task-envelope validation and factory, canonical run-record enforcement, context-reference validation, versioned guidance-only skill manifests, bounded read-only receipt schema, exact versioned permission requests, canonical signed session claims and cross-contract composition tests are implemented and covered by green push/PR CI. Next, complete the remaining context/evidence/capability/receipt compatibility checks at their actual API/runtime boundaries, including explicit Sentinel manifest-to-invocation binding. Receipt signing/persistence and specialist dispatch remain Stage 2 work; keep execution disabled. Do not add new model providers or specialist execution as a shortcut.
+Stage 0 verification is green. Stage 1 is underway: shared run-intent and plan contracts, versioned bounded specialist manifests, plan-only task-envelope validation and factory, canonical run-record enforcement, context-reference validation, versioned guidance-only skill manifests, bounded read-only receipt schema, exact versioned permission requests, canonical signed session claims and cross-contract composition tests are implemented and covered by green push/PR CI. Next, complete the remaining context/evidence/capability/receipt compatibility checks at their actual API/runtime boundaries, including evidence descriptor and context-reference compatibility at the actual intake and task boundaries. Sentinel canonical-manifest binding now has direct regression coverage: altered descriptions and action scope definitions are rejected before rate reservation or adapter execution. Receipt signing/persistence and specialist dispatch remain Stage 2 work; keep execution disabled. Do not add new model providers or specialist execution as a shortcut.
+
+
+## Companion interface and 3D identity — required product work
+
+The companion experience is a first-class release requirement, not a later cosmetic enhancement. The current page already has a responsive welcome experience, companion-first signed-in home, companion profile selection/custom profile creation and personality controls. Its current avatar is CSS presentation geometry only; it is not a functioning 3D avatar.
+
+Design and implementation acceptance criteria for Stage 7:
+1. Deliver a companion-centred application shell that feels like a personal environment, not a stack of administration tabs. Keep chat, projects, memory, approvals, Forge and security accessible as contextual surfaces without crowding the companion.
+2. Build the official AEGIS identity as a recognisable, full-screen interactive human avatar. A decorative orb, generic robot symbol, static image or CSS-only silhouette does not satisfy this requirement.
+3. Support user-created companion identities and customisation while retaining the shared AEGIS intelligence, memory, safety, permission and Sentinel core.
+4. Evaluate local-first, open-format 3D assets/runtime against mobile Safari and desktop performance, accessibility, asset licensing, offline operation and long-term maintainability. No mandatory paid avatar provider or hosted service.
+5. Add expressive idle states, gaze/head movement and conversation-state feedback; add voice and lip synchronisation only with explicit user control and consent.
+6. Provide reduced-motion, low-power and non-3D fallback modes. Preserve accessibility and usable controls at small screen sizes.
+7. Keep avatar assets, persona settings and optional voice data private, portable and user-governed.
+8. Verify the real integrated experience on mobile and desktop. A render, mock-up or isolated 3D demo is not release completion.
+
+Revisit the design as the intelligence, companion profile contracts, device adaptation and actual usage are built. The current dark interface and restrained cyan/teal accents are a starting language, not an unchangeable visual specification.
