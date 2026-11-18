@@ -37,6 +37,7 @@ All writes require the signed owner session and same-origin protection. The serv
 
 - Profile reads revalidate schema, identity and canonical SHA-256 digest.
 - Profile history and audit events are append-only outside the explicit owner-requested purge workflow.
+- Creation, active-revision updates, selection and purge use D1 batches so profile content, active selection and corresponding audit events commit or roll back together. Purge count is captured in the same batch before deletion, avoiding a stale preflight count under concurrent writes.
 - Export and purge are available in the companion home under **Privacy & saved profile data**. Export downloads a JSON archive; purge requires the exact phrase and removes custom revisions, active selection and profile events. The remaining purge audit records owner scope, count and time only, without profile identifiers, content or digests.
 - These controls are enabled only when the authenticated persistent profile store is available; session-only profiles are not sent to the export/purge endpoints.
 - Free-text profile descriptions are stored as user-authored metadata but are never inserted into model instructions.
@@ -73,7 +74,7 @@ The prompt builder loads the active profile from the verified owner-scoped store
 - D1 test configuration: `wrangler.companion-d1-test.toml`.
 - D1 smoke seed: `scripts/companion-d1-seed.sql`.
 - Store/API/UI tests cover owner isolation, immutable revisions, stale writes, profile digest tampering, strict field validation, session fallback, persisted-profile precedence, live chat continuity and responsive/reduced-motion UI contracts.
-- Full workflow [44210310028](https://github.com/LAURENCE1977/Aegis-/actions/runs/44210310028) passed on code head `db4e15131ae1544c096e43bb8ee9ab446755efb5`: **893 tests, 892 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks. The run includes the regression guard that privacy action listeners register once, outside the profile renderer.
+- Full workflow [44211655456](https://github.com/LAURENCE1977/Aegis-/actions/runs/44211655456) passed on code head `b8dcebe5ea506a21a84646dc626dbec8b3508d73`: **896 tests, 895 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks. Tests cover atomic profile writes, rollback after failed preference persistence, single-registration privacy listeners and purge count capture before deletion.
 
 ## Not yet complete — production gates
 

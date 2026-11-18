@@ -370,11 +370,11 @@ jobs:
             exit 1
           fi
           wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_authorizations (owner_id, nonce, expires_at) VALUES ('owner', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2099-01-01T00:00:00.000Z')"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_events (id, owner_id, purged_profiles_count, occurred_at) SELECT 'purge-smoke', 'owner', COUNT(*), '2026-11-17T12:02:00.000Z' FROM companion_profiles WHERE owner_id = 'owner'"
           wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_preferences WHERE owner_id = 'owner'"
           wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_events WHERE owner_id = 'owner'"
           wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profiles WHERE owner_id = 'owner'"
           wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_purge_authorizations WHERE owner_id = 'owner'"
-          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_events (id, owner_id, purged_profiles_count, occurred_at) VALUES ('purge-smoke', 'owner', 1, '2026-11-17T12:02:00.000Z')"
           purged_count=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT COUNT(*) AS count FROM companion_profiles WHERE owner_id = 'owner'")
           echo "$purged_count"
           grep -Eq '"count"[[:space:]]*:[[:space:]]*0' <<< "$purged_count"
