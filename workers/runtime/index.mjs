@@ -1,6 +1,7 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
 import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
+import { validateAgentRunRecord } from '../../functions/lib/agent-contracts.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -115,7 +116,8 @@ function parseAgentRun(row) {
   try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
   let specialists = [];
   try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
-  return {
+  const record = {
+    schemaVersion: '1.0',
     id: row.id,
     objective: row.objective,
     specialists,
@@ -133,6 +135,8 @@ function parseAgentRun(row) {
     plan,
     errorCode: row.error_code || null,
   };
+  validateAgentRunRecord(record);
+  return record;
 }
 
 function parseAgentRunStep(row) {
