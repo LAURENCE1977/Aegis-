@@ -545,7 +545,17 @@ async function processAgentRun(message, env) {
     const specialists = JSON.parse(row.specialists_json);
     let projectContext;
     try {
-      projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
+      const hasContextJson = typeof row.context_json === 'string' && row.context_json.length > 0;
+      const hasContextDigest = typeof row.context_digest === 'string' && row.context_digest.length > 0;
+      const hasProjectBinding = typeof row.project_id === 'string' && row.project_id.length > 0;
+      if (hasContextJson !== hasContextDigest || hasContextJson !== hasProjectBinding) {
+        throw new Error('Persisted project context binding is incomplete.');
+      }
+      projectContext = hasContextJson ? JSON.parse(row.context_json) : undefined;
+      if (hasContextJson && (!projectContext ||
+          projectContext.brief?.workspace?.id !== row.project_id)) {
+        throw new Error('Persisted project context does not match its project binding.');
+      }
       const expectedContextDigest = projectContext
         ? (projectContext.knowledge === undefined
           ? projectContext.digest
