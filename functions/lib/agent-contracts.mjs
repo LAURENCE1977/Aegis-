@@ -198,7 +198,7 @@ export function validateAgentTaskEnvelope(envelope) {
   return true;
 }
 
-export function validateAgentPlanContract(plan) {') + ':[1-5]
+export function validateAgentPlanContract(plan) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     throw new TypeError('Agent plan must be an object.');
   }
