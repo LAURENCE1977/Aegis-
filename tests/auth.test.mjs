@@ -7,6 +7,7 @@ import {
   isAuthorized,
   sessionCookie,
 } from '../functions/lib/auth.mjs';
+import { authorizeOwner } from '../functions/lib/owner-api.mjs';
 import { onRequestGet as loginGet, onRequestPost as loginPost } from '../functions/api/login.js';
 import { onRequestPost as askPost } from '../functions/api/ask.js';
 import {
