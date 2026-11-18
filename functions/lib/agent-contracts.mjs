@@ -1,6 +1,7 @@
 // Canonical plan contract shared by plan construction and approval binding.
 export const AGENT_PLAN_SCHEMA_VERSION = '1.0';
 export const AGENT_RUN_RECORD_SCHEMA_VERSION = '1.0';
+export const AGENT_EXECUTION_RECEIPT_SCHEMA_VERSION = '1.0';
 const SPECIALIST_LIMITS = Object.freeze({
   maxInputBytes: 16384,
   maxOutputBytes: 32768,
@@ -454,6 +455,66 @@ export function validateAgentRunRecord(record) {
   if (!(record.errorCode === null ||
       (typeof record.errorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(record.errorCode)))) {
     throw new TypeError('Agent run error code is invalid.');
+  }
+  return true;
+}
+
+
+const EXECUTION_RECEIPT_KEYS = [
+  'schemaVersion', 'receiptId', 'runId', 'stepId', 'attempt', 'specialist',
+  'status', 'executionMode', 'startedAt', 'completedAt', 'durationMs',
+  'inputDigest', 'outputDigest', 'outputBytes', 'workerId',
+  'capabilityInvocations', 'externalEffects', 'errorCode', 'attestation',
+];
+const SENTINEL_INVOCATION_KEYS = [
+  'invocationId', 'capabilityId', 'capabilityVersion', 'actionId',
+  'resourceDigest', 'inputDigest', 'decision',
+];
+
+export function validateAgentExecutionReceipt(receipt) {
+  if (!exactKeys(receipt, EXECUTION_RECEIPT_KEYS) ||
+      receipt.schemaVersion !== AGENT_EXECUTION_RECEIPT_SCHEMA_VERSION ||
+      typeof receipt.receiptId !== 'string' || !RUN_ID_PATTERN.test(receipt.receiptId) ||
+      typeof receipt.runId !== 'string' || !RUN_ID_PATTERN.test(receipt.runId) ||
+      typeof receipt.stepId !== 'string' || !new RegExp('^' + receipt.runId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':[1-5]$').test(receipt.stepId) ||
+      !Number.isInteger(receipt.attempt) || receipt.attempt < 1 || receipt.attempt > 5 ||
+      !AGENT_SPECIALISTS.includes(receipt.specialist) ||
+      !['succeeded', 'failed', 'cancelled', 'timed_out'].includes(receipt.status) ||
+      receipt.executionMode !== 'read-only' ||
+      !isCanonicalTimestamp(receipt.startedAt) || !isCanonicalTimestamp(receipt.completedAt) ||
+      !Number.isInteger(receipt.durationMs) || receipt.durationMs < 0 || receipt.durationMs > 60000 ||
+      Date.parse(receipt.completedAt) - Date.parse(receipt.startedAt) !== receipt.durationMs ||
+      typeof receipt.inputDigest !== 'string' || !DIGEST_PATTERN.test(receipt.inputDigest) ||
+      !(receipt.outputDigest === null ||
+        (typeof receipt.outputDigest === 'string' && DIGEST_PATTERN.test(receipt.outputDigest))) ||
+      !Number.isInteger(receipt.outputBytes) || receipt.outputBytes < 0 || receipt.outputBytes > 32768 ||
+      (receipt.outputBytes === 0) !== (receipt.outputDigest === null) ||
+      typeof receipt.workerId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(receipt.workerId) ||
+      !Array.isArray(receipt.capabilityInvocations) || receipt.capabilityInvocations.length > 16 ||
+      receipt.externalEffects !== false ||
+      !(receipt.errorCode === null ||
+        (typeof receipt.errorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(receipt.errorCode))) ||
+      receipt.attestation !== 'unsigned-structural-record') {
+    throw new TypeError('Invalid or unsafe AEGIS execution receipt.');
+  }
+  if ((receipt.status === 'succeeded') !== (receipt.errorCode === null)) {
+    throw new TypeError('Execution receipt outcome and error code are inconsistent.');
+  }
+  const invocationIds = new Set();
+  for (const invocation of receipt.capabilityInvocations) {
+    if (!exactKeys(invocation, SENTINEL_INVOCATION_KEYS) ||
+        typeof invocation.invocationId !== 'string' || !RUN_ID_PATTERN.test(invocation.invocationId) ||
+        typeof invocation.capabilityId !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(invocation.capabilityId) ||
+        typeof invocation.capabilityVersion !== 'string' ||
+        !/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(invocation.capabilityVersion) ||
+        typeof invocation.actionId !== 'string' || !/^[a-z][a-z0-9-]{0,47}$/.test(invocation.actionId) ||
+        typeof invocation.resourceDigest !== 'string' || !DIGEST_PATTERN.test(invocation.resourceDigest) ||
+        typeof invocation.inputDigest !== 'string' || !DIGEST_PATTERN.test(invocation.inputDigest) ||
+        !['allowed', 'denied'].includes(invocation.decision) ||
+        invocationIds.has(invocation.invocationId)) {
+      throw new TypeError('Invalid Sentinel invocation receipt metadata.');
+    }
+    invocationIds.add(invocation.invocationId);
   }
   return true;
 }
