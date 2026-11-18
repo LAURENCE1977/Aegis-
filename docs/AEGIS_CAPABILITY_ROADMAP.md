@@ -642,3 +642,12 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - The companion home now exposes export and purge controls only when the authenticated persistent profile store is available. Session-only profiles are not sent to persistent data endpoints.
 - Production D1 has not been provisioned. Retention/expiry policy, multi-user tenancy, full accessibility preference integration, voice and lifelike avatar runtime remain open gates.
 - Full workflow [44212082804](https://github.com/LAURENCE1977/Aegis-/actions/runs/44212082804) passed on code head `6a39ab246afff2212dbcd84eeab6d4d121a3d36e`: **904 tests, 903 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks. The suite covers atomic profile writes, rollback on preference failure, single-registration privacy listeners and the purge count/delete transaction boundary. Isolated local D1 executes the same audit `INSERT … SELECT COUNT(*)` statement used by the purge store.
+
+
+### OsintHunter — evidence graph and investigation UX patterns (18 November 2026)
+
+- **Study, do not import:** MIT-licensed OsintHunter demonstrates a case-centred graph, modular source registry, alias-family suggestions, reasoned confidence, analyst feedback, timeline and report workflow.
+- AEGIS-native opportunity: a provenance-rich Evidence Graph projection over canonical owner-scoped evidence, sources, claims, entities and events. Preserve observation time separately from event time; allow conflicting and retracted claims; make graph edges non-authoritative.
+- Security holds: no unrestricted URL fetch/redirects, email account enumeration, bulk profile scraping, identity-by-photo, or unreviewed remote AI transfer. Static review found the upstream URL-fetch path lacks visible private-address/redirect enforcement and its API keys are stored in plaintext local settings.
+- Any optional source adapter remains disabled until Sentinel scope, SSRF-safe egress, source policy, budgets, consent, cancellation and audit gates are implemented.
+- Assessment: [AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md](AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md).
