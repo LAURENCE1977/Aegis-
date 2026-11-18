@@ -113,6 +113,31 @@ function validContext(context) {
     Number.isInteger(budget.omittedMemories) && budget.omittedMemories >= 0;
 }
 
+export function validateAgentRunIntent(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('Agent run intent must be an object.');
+  }
+  if (Object.keys(input).some((key) => !['objective', 'specialists'].includes(key))) {
+    throw new TypeError('Unexpected agent run intent fields.');
+  }
+  if (typeof input.objective !== 'string') throw new TypeError('Objective must be text.');
+  const objective = input.objective.trim();
+  if (!objective || objective.length > 2000 ||
+      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(objective)) {
+    throw new TypeError('Objective must contain 1–2000 safe characters.');
+  }
+  const specialists = input.specialists === undefined ? [...DEFAULT_AGENT_SPECIALISTS] : input.specialists;
+  if (!Array.isArray(specialists) || specialists.length < 1 ||
+      specialists.length > AGENT_SPECIALISTS.length) {
+    throw new TypeError('Select between one and five known specialists.');
+  }
+  if (specialists.some((role) => typeof role !== 'string' || !AGENT_SPECIALISTS.includes(role)) ||
+      new Set(specialists).size !== specialists.length) {
+    throw new TypeError('Specialists must be unique known AEGIS roles.');
+  }
+  return { objective, specialists: [...specialists] };
+}
+
 export function validateAgentPlanContract(plan) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     throw new TypeError('Agent plan must be an object.');

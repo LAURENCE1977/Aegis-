@@ -1,9 +1,9 @@
 import { authorizeOwner, isOwnerWriteRequest, jsonResponse, readJsonRequest } from '../lib/owner-api.mjs';
 import { proxyAgentRuntime } from '../lib/agent-runtime-proxy.mjs';
 import { buildAgentRunProjectContext } from '../lib/agent-run-context.mjs';
+import { validateAgentRunIntent } from '../lib/agent-contracts.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024;
-const ALLOWED_SPECIALISTS = new Set(['researcher', 'planner', 'engineer', 'security', 'reviewer']);
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
@@ -12,15 +12,15 @@ function validSubmission(input) {
       Object.keys(input).some((key) => !['objective', 'specialists', 'projectId'].includes(key))) return false;
   if (input.projectId !== undefined &&
       (typeof input.projectId !== 'string' || !PROJECT_ID_PATTERN.test(input.projectId))) return false;
-  if (typeof input.objective !== 'string') return false;
-  const objective = input.objective.trim();
-  if (!objective || objective.length > 2000 ||
-      /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(objective)) return false;
-  if (input.specialists === undefined) return true;
-  return Array.isArray(input.specialists) && input.specialists.length >= 1 &&
-    input.specialists.length <= ALLOWED_SPECIALISTS.size &&
-    input.specialists.every((role) => typeof role === 'string' && ALLOWED_SPECIALISTS.has(role)) &&
-    new Set(input.specialists).size === input.specialists.length;
+  try {
+    validateAgentRunIntent({
+      objective: input.objective,
+      ...(input.specialists === undefined ? {} : { specialists: input.specialists }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function validListQuery(url) {
@@ -72,7 +72,7 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
           return jsonResponse({ error: 'Project Space context is not available.' }, 503);
         }
         try {
-          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId, Date.now(), parsed.body.objective.trim());
+          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId, Date.now(), validateAgentRunIntent({ objective: parsed.body.objective }).objective);
         } catch {
           return jsonResponse({ error: 'Project Space context could not be loaded.' }, 503);
         }
@@ -83,7 +83,10 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
         method: 'POST',
         path: '/v1/agent-runs',
         body: {
-          objective: parsed.body.objective.trim(),
+          objective: validateAgentRunIntent({
+            objective: parsed.body.objective,
+            ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
+          }).objective,
           ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
           ...(projectContext === undefined ? {} : { projectContext }),
         },
