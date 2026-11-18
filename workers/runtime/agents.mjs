@@ -2,6 +2,7 @@ import {
   AGENT_PLAN_SCHEMA_VERSION,
   AGENT_SPECIALISTS as ALLOWED_SPECIALISTS,
   DEFAULT_AGENT_SPECIALISTS,
+  compareAgentSpecialists,
   validateAgentPlanContract,
 } from '../../functions/lib/agent-contracts.mjs';
 
@@ -160,8 +161,7 @@ export function createAgentPlan(submission, metadata = {}) {
       typeof metadata.createdAt !== 'string' || !Number.isFinite(Date.parse(metadata.createdAt))) {
     throw new TypeError('Valid run metadata is required.');
   }
-  const sequence = ['researcher', 'planner', 'engineer', 'security', 'reviewer'];
-  const ordered = validated.specialists.slice().sort((a, b) => sequence.indexOf(a) - sequence.indexOf(b));
+  const ordered = validated.specialists.slice().sort(compareAgentSpecialists);
   const context = validated.projectContext ? {
     projectId: validated.projectContext.brief.workspace.id,
     digest: validated.projectContext.digest,
