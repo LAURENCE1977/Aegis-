@@ -222,3 +222,42 @@ test('Anthropic provider rejects tool calls until its own Sentinel adapter is im
     fetchImpl: async () => { throw new Error('must not fetch'); },
   }), /Anthropic tool calling is not enabled/i);
 });
+
+
+test('free-only mode blocks paid external providers before any network request', async () => {
+  for (const env of [
+    {
+      AEGIS_FREE_ONLY: 'true',
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
+      AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
+    },
+    {
+      AEGIS_FREE_ONLY: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+    },
+  ]) {
+    await assert.rejects(() => createModelStream({
+      env,
+      messages: [{ role: 'user', content: 'hello' }],
+      fetchImpl: async () => { throw new Error('network must not be called'); },
+    }), /disabled in free-only mode/i);
+  }
+});
+
+test('free-only mode keeps the Cloudflare Workers AI path available without external billing credentials', async () => {
+  const stream = new ReadableStream({ start(controller) { controller.close(); } });
+  let called = false;
+  const result = await createModelStream({
+    env: {
+      AEGIS_FREE_ONLY: 'true',
+      AI: { async run(model, payload) { called = true; assert.equal(model, '@cf/meta/llama-3.3-70b-instruct'); assert.equal(payload.stream, true); return stream; } },
+    },
+    messages: [{ role: 'user', content: 'hello' }],
+  });
+  assert.equal(called, true);
+  assert.equal(result, stream);
+});
