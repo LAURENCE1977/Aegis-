@@ -8,6 +8,7 @@ import {
 } from '../functions/lib/capability-registry.mjs';
 
 const manifest = {
+  schemaVersion: '1.0',
   id: 'aegis-github-public-discovery',
   version: '0.1.0',
   name: 'Public GitHub repository discovery',
@@ -216,5 +217,23 @@ test('capability manifests reject unknown fields at every nested trust boundary'
     const candidate = JSON.parse(JSON.stringify(manifest));
     mutate(candidate);
     assert.throws(() => validateCapabilityManifest(candidate), /unexpected|unknown|field|key/i);
+  }
+});
+
+
+test('capability manifests require the supported schema version', () => {
+  assert.equal(validateCapabilityManifest(manifest), true);
+  assert.throws(() => validateCapabilityManifest({
+    ...manifest,
+    schemaVersion: '2.0',
+  }), /schema version/i);
+});
+
+test('every built-in capability manifest declares the supported schema version', () => {
+  const manifests = listCapabilityManifests();
+  assert.ok(manifests.length > 0);
+  for (const item of manifests) {
+    assert.equal(item.schemaVersion, '1.0');
+    assert.equal(validateCapabilityManifest(item), true);
   }
 });
