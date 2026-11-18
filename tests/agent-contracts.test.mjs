@@ -4,6 +4,8 @@ import { createAgentPlan } from '../workers/runtime/agents.mjs';
 import {
   AGENT_PLAN_SCHEMA_VERSION,
   validateAgentPlanContract,
+  listAgentSpecialists,
+  getAgentSpecialist,
 } from '../functions/lib/agent-contracts.mjs';
 
 const RUN_ID = '00000000-0000-4000-8000-000000000123';
@@ -61,4 +63,35 @@ test('canonical agent plan contract rejects unsupported schema versions', () => 
   const plan = validPlan();
   plan.schemaVersion = '99.0';
   assert.throws(() => validateAgentPlanContract(plan), /unsupported agent plan schema version/i);
+});
+
+
+test('canonical specialist registry exposes ordered, descriptive plan-only roles', () => {
+  const specialists = listAgentSpecialists();
+  assert.deepEqual(specialists.map((item) => item.id), [
+    'researcher', 'planner', 'engineer', 'security', 'reviewer',
+  ]);
+  assert.ok(specialists.every((item) =>
+    item.executionMode === 'plan-only' &&
+    Array.isArray(item.capabilityRequests) &&
+    item.capabilityRequests.length === 0 &&
+    typeof item.description === 'string' && item.description.length > 10
+  ));
+});
+
+test('specialist registry returns defensive copies and rejects unknown roles', () => {
+  const first = listAgentSpecialists();
+  first[0].description = 'tampered';
+  first[0].capabilityRequests.push('shell.execute');
+  assert.notEqual(listAgentSpecialists()[0].description, 'tampered');
+  assert.deepEqual(listAgentSpecialists()[0].capabilityRequests, []);
+  assert.equal(getAgentSpecialist('researcher').id, 'researcher');
+  assert.equal(getAgentSpecialist('self-authorising-agent'), null);
+});
+
+test('default specialists are derived from canonical specialist registry defaults', () => {
+  assert.deepEqual(
+    listAgentSpecialists().filter((item) => item.default).map((item) => item.id),
+    ['researcher', 'engineer', 'reviewer'],
+  );
 });
