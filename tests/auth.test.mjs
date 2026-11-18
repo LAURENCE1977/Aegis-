@@ -264,3 +264,37 @@ test('session claim validation rejects identity tampering, unknown fields and in
   ]) assert.throws(() => validateSessionClaims(candidate, fixedNow));
   assert.throws(() => validateSessionClaims({ ...claims, expiresAt: claims.issuedAt }, fixedNow));
 });
+
+test('owner API guard accepts only correctly signed canonical owner-session claims', async () => {
+  const { SESSION_CLAIMS_SCHEMA_VERSION } = await import('../functions/lib/auth.mjs');
+  const ownerToken = await createSessionToken(secret);
+  const ownerRequest = new Request('https://aegis.example/api/memory', {
+    headers: { Cookie: '__Host-aegis_session=' + ownerToken },
+  });
+  assert.equal(await authorizeOwner(ownerRequest, configuredEnv), null);
+
+  const issuedAtMs = Math.floor(Date.now() / 1000) * 1000;
+  const claims = {
+    schemaVersion: SESSION_CLAIMS_SCHEMA_VERSION,
+    principalId: 'administrator',
+    sessionId: crypto.randomUUID(),
+    issuedAt: new Date(issuedAtMs).toISOString(),
+    expiresAt: new Date(issuedAtMs + 12 * 60 * 60 * 1000).toISOString(),
+  };
+  const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    'HMAC', key, new TextEncoder().encode(payload),
+  ));
+  const forgedPrincipalToken = payload + '.' + Buffer.from(signature).toString('base64url');
+  const rejected = await authorizeOwner(new Request('https://aegis.example/api/memory', {
+    headers: { Cookie: '__Host-aegis_session=' + forgedPrincipalToken },
+  }), configuredEnv);
+  assert.equal(rejected.status, 401);
+});
