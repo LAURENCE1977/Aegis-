@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import runtime, { handleRuntimeFetch } from '../workers/runtime/index.mjs';
 import { digestProjectBrief } from '../functions/lib/project-context-digest.mjs';
 import { digestCanonicalInput } from '../functions/lib/canonical-input.mjs';
+import { validateAgentTaskEnvelope } from '../functions/lib/agent-contracts.mjs';
 
 const token = 'agent-runtime-test-token-with-at-least-32-characters';
 
@@ -127,7 +128,7 @@ class AgentMemoryD1 {
           }
           db.steps.set(stepId, {
             id: stepId, agent_run_id: runId, step_index: stepIndex, specialist,
-            status: 'planned', attempts: 0, step_json: stepJson, checkpoint_json: '{}',
+            status: 'planned', attempts: 0, step_json: stepJson, task_json: null, checkpoint_json: '{}',
             created_at: createdAt, updated_at: updatedAt,
           });
           return { meta: { changes: 1 } };
@@ -1027,5 +1028,34 @@ test('persisted Project Space binding cannot be removed or reassigned independen
     assert.equal(DB.steps.size, 0, tamperMode);
     assert.equal(retried, false, tamperMode);
     assert.equal(acked, true, tamperMode);
+  }
+});
+
+
+test('durable queue planning persists a canonical inert task envelope for every specialist step', async () => {
+  const { env, DB } = makeEnv();
+  const submitted = await handleRuntimeFetch(postRun({
+    objective: 'Prepare bounded specialist work',
+    specialists: ['researcher', 'reviewer'],
+  }), env);
+  const { run } = await submitted.json();
+  await runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{ body: { agentRunId: run.id }, ack() {}, retry() { assert.fail('unexpected retry'); } }],
+  }, env);
+
+  const steps = [...DB.steps.values()].sort((left, right) => left.step_index - right.step_index);
+  assert.equal(steps.length, 2);
+  for (const step of steps) {
+    assert.equal(typeof step.task_json, 'string');
+    const task = JSON.parse(step.task_json);
+    assert.equal(validateAgentTaskEnvelope(task), true);
+    assert.equal(task.runId, run.id);
+    assert.equal(task.stepId, step.id);
+    assert.equal(task.specialist, step.specialist);
+    assert.equal(task.attempt, 1);
+    assert.equal(task.executionMode, 'plan-only');
+    assert.deepEqual(task.capabilityRequests, []);
+    assert.equal(task.contextDigest, null);
   }
 });
