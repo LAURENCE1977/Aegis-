@@ -9,6 +9,7 @@ import {
   validateAgentSpecialistManifest,
   AGENT_RUN_RECORD_SCHEMA_VERSION,
   validateAgentRunRecord,
+  validateAgentContextReference,
 } from '../functions/lib/agent-contracts.mjs';
 
 const RUN_ID = '00000000-0000-4000-8000-000000000123';
@@ -211,4 +212,40 @@ test('canonical agent run record rejects invalid state, context, plan and author
     { executionAuthorizedAt: '2026-11-18T08:01:00.000Z' },
     { executionGrantId: 'grant-123' },
   ]) assert.throws(() => validateAgentRunRecord({ ...base, ...overrides }));
+});
+
+function validContextReference(overrides = {}) {
+  return {
+    projectId: 'project-a',
+    digest: 'sha256:' + 'a'.repeat(64),
+    generatedAt: '2026-11-18T08:00:00.000Z',
+    memoryCount: 0,
+    eventCount: 0,
+    knowledgeCount: 0,
+    knowledgeDigest: null,
+    budget: {
+      maxChars: 6000,
+      usedChars: 0,
+      estimatedTokens: 0,
+      truncated: false,
+      omittedEvents: 0,
+      omittedMemories: 0,
+    },
+    ...overrides,
+  };
+}
+
+test('canonical agent context reference accepts a bounded project evidence summary', () => {
+  assert.equal(validateAgentContextReference(validContextReference()), true);
+});
+
+test('canonical agent context reference rejects digest, count, budget and field tampering', () => {
+  const base = validContextReference();
+  for (const candidate of [
+    { ...base, extra: true },
+    { ...base, digest: 'sha256:bad' },
+    { ...base, memoryCount: 51 },
+    { ...base, knowledgeDigest: 'sha256:bad' },
+    { ...base, budget: { ...base.budget, usedChars: 6001 } },
+  ]) assert.throws(() => validateAgentContextReference(candidate));
 });
