@@ -351,6 +351,11 @@
     .companion-profile-create { display: flex; gap: 8px; }
     .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
     .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    .companion-data-controls { width: 100%; margin-top: 7px; padding: 9px 10px; border: 1px solid rgba(160,180,210,.13); border-radius: 11px; background: rgba(255,255,255,.025); }
+    .companion-data-controls summary { color: var(--muted-strong); cursor: pointer; font-size: .72rem; font-weight: 700; }
+    .companion-data-controls-content { display: grid; gap: 8px; margin-top: 10px; }
+    .companion-data-controls-content button { min-height: 38px; }
+    .companion-data-controls-content input { width: 100%; min-width: 0; }
     .companion-personality-settings {
       width: 100%; margin-top: 8px; padding: 10px 11px;
       border: 1px solid rgba(160,180,210,.13); border-radius: 11px;
@@ -822,6 +827,16 @@
                 </select>
                 <button id="saveCompanionSettings" type="button" disabled>Save companion settings</button>
                 <p id="companionSettingsStatus" class="companion-profile-note" role="status" aria-live="polite">Custom presentation settings do not change permissions, tools or memory access.</p>
+              </div>
+            </details>
+            <details class="companion-data-controls">
+              <summary>Privacy &amp; saved profile data</summary>
+              <div class="companion-data-controls-content">
+                <button id="exportCompanionProfiles" type="button" class="secondary" disabled>Export profiles and history</button>
+                <label for="purgeCompanionConfirmation">To permanently delete saved custom profiles and their history, type DELETE MY COMPANION PROFILES.</label>
+                <input id="purgeCompanionConfirmation" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Type the exact confirmation phrase" />
+                <button id="purgeCompanionProfiles" type="button" class="secondary danger" disabled>Delete custom profiles and history</button>
+                <p id="companionDataStatus" class="companion-profile-note" role="status" aria-live="polite">Export and deletion are available when secure account profile storage is connected. The deletion audit retains only a minimal non-identifying event.</p>
               </div>
             </details>
           </div>
@@ -1693,6 +1708,11 @@
     const companionVisualPreset = document.getElementById('companionVisualPreset');
     const saveCompanionSettings = document.getElementById('saveCompanionSettings');
     const companionSettingsStatus = document.getElementById('companionSettingsStatus');
+    const exportCompanionProfilesButton = document.getElementById('exportCompanionProfiles');
+    const purgeCompanionProfilesButton = document.getElementById('purgeCompanionProfiles');
+    const purgeCompanionConfirmation = document.getElementById('purgeCompanionConfirmation');
+    const companionDataStatus = document.getElementById('companionDataStatus');
+    const COMPANION_PURGE_CONFIRMATION = 'DELETE MY COMPANION PROFILES';
     const companionSettingOutputs = {
       companionWarmth: document.getElementById('companionWarmthValue'),
       companionHumour: document.getElementById('companionHumourValue'),
@@ -1744,7 +1764,71 @@
       companionDirectness.value = interaction.directness;
       companionInitiative.value = interaction.initiative;
       companionVerbosity.value = interaction.verbosity;
-      Object.entries(companionSettingOutputs).forEach(([id, output]) => {
+      purgeCompanionConfirmation.addEventListener('input', () => {
+      purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+    });
+
+    exportCompanionProfilesButton.addEventListener('click', async () => {
+      if (!companionProfilePersistenceAvailable) {
+        companionDataStatus.textContent = 'Secure account profile storage is unavailable; no export was requested.';
+        return;
+      }
+      exportCompanionProfilesButton.disabled = true;
+      companionDataStatus.textContent = 'Preparing your companion profile and history export…';
+      try {
+        const response = await fetch('/api/companion/profiles/export', { cache: 'no-store' });
+        if (response.status === 401) {
+          showLogin('Your session has expired. Sign in again.');
+          throw new Error('Session expired.');
+        }
+        if (!response.ok) {
+          let data = {};
+          try { data = await response.json(); } catch (error) {}
+          throw new Error(data.error || ('Service error ' + response.status));
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'aegis-companion-profiles.json';
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        companionDataStatus.textContent = 'Your custom profiles, revisions and available profile history have been exported.';
+      } catch (error) {
+        companionDataStatus.textContent = 'Export could not be completed: ' + error.message;
+      } finally {
+        exportCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable;
+      }
+    });
+
+    purgeCompanionProfilesButton.addEventListener('click', async () => {
+      if (!companionProfilePersistenceAvailable ||
+          purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION) {
+        companionDataStatus.textContent = 'Type the exact confirmation phrase before deleting saved profiles.';
+        return;
+      }
+      purgeCompanionProfilesButton.disabled = true;
+      companionDataStatus.textContent = 'Deleting custom profiles and their profile history…';
+      try {
+        await controlApi('/api/companion/profiles/purge', {
+          method: 'POST',
+          body: JSON.stringify({ confirmation: COMPANION_PURGE_CONFIRMATION }),
+        });
+        purgeCompanionConfirmation.value = '';
+        await loadCompanionProfiles();
+        companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal non-identifying purge audit remains.';
+      } catch (error) {
+        companionDataStatus.textContent = 'Deletion could not be completed: ' + error.message;
+        purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+          purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+      }
+    });
+
+    Object.entries(companionSettingOutputs).forEach(([id, output]) => {
         output.textContent = String(document.getElementById(id).value);
       });
       const visualPreset = profile.appearance?.visualPreset || 'aegis';
@@ -1755,6 +1839,8 @@
       [companionWarmth, companionHumour, companionDirectness, companionInitiative,
         companionVerbosity, companionVisualPreset].forEach(control => { control.disabled = !custom; });
       saveCompanionSettings.disabled = !custom;
+      exportCompanionProfilesButton.disabled = !persistent;
+      purgeCompanionProfilesButton.disabled = !persistent || purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
       companionSettingsStatus.textContent = !custom
         ? 'Choose a custom companion to personalise its presentation and interaction style.'
         : persistent
