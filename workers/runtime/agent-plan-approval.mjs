@@ -6,7 +6,7 @@ const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]
 const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const MAX_APPROVAL_TTL_MS = 15 * 60 * 1000;
-const PLAN_KEYS = ['runId', 'objective', 'createdAt', 'execution',
+const PLAN_KEYS = ['schemaVersion', 'runId', 'objective', 'createdAt', 'execution',
   'requiresHumanApprovalBeforeExecution', 'steps', 'safety'];
 const CONTEXT_KEYS = ['projectId', 'digest', 'generatedAt', 'memoryCount',
   'eventCount', 'knowledgeCount', 'knowledgeDigest', 'budget'];
@@ -45,6 +45,9 @@ function validContext(context) {
 function validatePlan(plan) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     throw new TypeError('Agent plan must be an object.');
+  }
+  if (plan.schemaVersion !== '1.0') {
+    throw new TypeError('Unsupported agent plan schema version.');
   }
   if (typeof plan.runId !== 'string' || !RUN_ID_PATTERN.test(plan.runId)) {
     throw new TypeError('Invalid agent run identifier.');
