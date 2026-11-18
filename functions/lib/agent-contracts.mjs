@@ -1,5 +1,6 @@
 // Canonical plan contract shared by plan construction and approval binding.
 export const AGENT_PLAN_SCHEMA_VERSION = '1.0';
+export const AGENT_RUN_RECORD_SCHEMA_VERSION = '1.0';
 const SPECIALIST_LIMITS = Object.freeze({
   maxInputBytes: 16384,
   maxOutputBytes: 32768,
@@ -359,6 +360,95 @@ export function validateAgentPlanContract(plan) {
       plan.safety.sentinelRequiredForExecution !== true ||
       plan.safety.approvalRequiredForProtectedActions !== true) {
     throw new TypeError('Agent plan safety guarantees are not satisfied.');
+  }
+  return true;
+}
+
+
+const RUN_RECORD_KEYS = [
+  'schemaVersion', 'id', 'objective', 'specialists', 'projectId',
+  'hasProjectContext', 'contextDigest', 'status', 'attempts',
+  'createdAt', 'updatedAt', 'cancelledAt', 'executionAuthorized',
+  'executionAuthorizedAt', 'executionGrantId', 'plan', 'errorCode',
+];
+
+function isCanonicalTimestamp(value) {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value)) &&
+    new Date(value).toISOString() === value;
+}
+
+/**
+ * Validates the public durable run record. Authorisation is represented as
+ * state only; a valid record never means execution has started.
+ */
+export function validateAgentRunRecord(record) {
+  if (!exactKeys(record, RUN_RECORD_KEYS) ||
+      record.schemaVersion !== AGENT_RUN_RECORD_SCHEMA_VERSION ||
+      typeof record.id !== 'string' || !RUN_ID_PATTERN.test(record.id)) {
+    throw new TypeError('Invalid canonical agent run record identity or version.');
+  }
+  const intent = validateAgentRunIntent({
+    objective: record.objective,
+    specialists: record.specialists,
+  });
+  if (intent.objective !== record.objective ||
+      JSON.stringify(intent.specialists) !== JSON.stringify(record.specialists)) {
+    throw new TypeError('Agent run record intent is not canonical.');
+  }
+  if (!(record.projectId === null ||
+      (typeof record.projectId === 'string' && RUN_ID_PATTERN.test(record.projectId))) ||
+      typeof record.hasProjectContext !== 'boolean' ||
+      !(record.contextDigest === null ||
+        (typeof record.contextDigest === 'string' && DIGEST_PATTERN.test(record.contextDigest))) ||
+      record.hasProjectContext !== (record.projectId !== null && record.contextDigest !== null)) {
+    throw new TypeError('Agent run record context binding is invalid.');
+  }
+  if (!['pending_dispatch', 'queued', 'running', 'planned', 'failed', 'cancelled'].includes(record.status) ||
+      !Number.isSafeInteger(record.attempts) || record.attempts < 0 || record.attempts > 1000 ||
+      !isCanonicalTimestamp(record.createdAt) || !isCanonicalTimestamp(record.updatedAt) ||
+      Date.parse(record.updatedAt) < Date.parse(record.createdAt)) {
+    throw new TypeError('Agent run record lifecycle is invalid.');
+  }
+  if (!(record.cancelledAt === null || isCanonicalTimestamp(record.cancelledAt)) ||
+      (record.status === 'cancelled') !== (record.cancelledAt !== null) ||
+      (record.cancelledAt !== null &&
+        (Date.parse(record.cancelledAt) < Date.parse(record.createdAt) ||
+         Date.parse(record.cancelledAt) > Date.parse(record.updatedAt)))) {
+    throw new TypeError('Agent run cancellation state is invalid.');
+  }
+  if (typeof record.executionAuthorized !== 'boolean' ||
+      !(record.executionAuthorizedAt === null || isCanonicalTimestamp(record.executionAuthorizedAt)) ||
+      !(record.executionGrantId === null ||
+        (typeof record.executionGrantId === 'string' && RUN_ID_PATTERN.test(record.executionGrantId)))) {
+    throw new TypeError('Agent run authorisation state is invalid.');
+  }
+  if (record.executionAuthorized) {
+    if (!['planned', 'cancelled'].includes(record.status) || record.plan === null ||
+        record.executionAuthorizedAt === null || record.executionGrantId === null ||
+        Date.parse(record.executionAuthorizedAt) < Date.parse(record.createdAt) ||
+        Date.parse(record.executionAuthorizedAt) > Date.parse(record.updatedAt)) {
+      throw new TypeError('Agent run authorisation binding is incomplete.');
+    }
+  } else if (record.executionAuthorizedAt !== null || record.executionGrantId !== null) {
+    throw new TypeError('Unauthorised agent runs cannot contain authorisation references.');
+  }
+  if (record.plan !== null) {
+    validateAgentPlanContract(record.plan);
+    if (record.plan.runId !== record.id || record.plan.objective !== record.objective ||
+        record.plan.createdAt !== record.createdAt ||
+        record.plan.steps.length !== record.specialists.length ||
+        record.specialists.some((role) =>
+          !record.plan.steps.some((step) => step.specialist === role)) ||
+        Boolean(record.plan.context) !== record.hasProjectContext ||
+        (record.plan.context && record.plan.context.projectId !== record.projectId)) {
+      throw new TypeError('Agent run record plan binding is invalid.');
+    }
+  } else if (record.status === 'planned' || record.executionAuthorized) {
+    throw new TypeError('Planned or authorised agent runs require a validated plan.');
+  }
+  if (!(record.errorCode === null ||
+      (typeof record.errorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(record.errorCode)))) {
+    throw new TypeError('Agent run error code is invalid.');
   }
   return true;
 }
