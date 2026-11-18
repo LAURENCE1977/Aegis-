@@ -1119,3 +1119,12 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 3. Implement user-controlled accessibility preferences and verify them across every companion surface.
 4. Select a privacy-preserving, self-hostable lifelike avatar runtime; evaluate licensing, GPU requirements, mobile performance and static fallback before adoption.
 5. Design explicit voice/microphone consent, local processing options, capture indicators, retention/deletion and provider boundaries before enabling any audio path.
+
+## Companion profile privacy controls — 18 November 2026
+
+- Added authenticated JSON export for all custom Companion Profile revisions, the active selection, append-only profile events and purge audit history.
+- Added an exact-phrase owner-requested purge endpoint and companion-home controls. Purge removes custom profile revisions, active selection preferences and profile events; the retained audit record stores owner scope, count and timestamp only, without profile identifiers, profile content or digests.
+- The UI disables export and purge when authenticated persistent profile storage is unavailable; session-only profiles are not sent to these endpoints.
+- Companion Profile migration SQL now has executable line breaks and is applied in isolated local D1 CI. The D1 smoke checks verify owner-scoped selection, immutable revisions, append-only events, authorised purge and immutable purge audit.
+- Verification: full workflow [44209729903](https://github.com/LAURENCE1977/Aegis-/actions/runs/44209729903) passed on code head `c21531ccf1622c7f37b44746274410e36dee5dec`: **900 tests, 899 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge/Learning/Companion migrations and smoke checks all green.
+- Still gated: production D1 provisioning, governed retention/expiry policy, multi-user identity/tenancy, full accessibility wiring, voice and lifelike avatar runtime. No merge or production deployment.

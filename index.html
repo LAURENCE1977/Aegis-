@@ -355,6 +355,8 @@
     .companion-data-controls summary { color: var(--muted-strong); cursor: pointer; font-size: .72rem; font-weight: 700; }
     .companion-data-controls-content { display: grid; gap: 8px; margin-top: 10px; }
     .companion-data-controls-content button { min-height: 38px; }
+    #purgeCompanionProfiles { border-color: rgba(248,113,113,.42); color: #fecaca; }
+    #purgeCompanionProfiles:disabled { opacity: .55; }
     .companion-data-controls-content input { width: 100%; min-width: 0; }
     .companion-personality-settings {
       width: 100%; margin-top: 8px; padding: 10px 11px;
@@ -836,7 +838,7 @@
                 <label for="purgeCompanionConfirmation">To permanently delete saved custom profiles and their history, type DELETE MY COMPANION PROFILES.</label>
                 <input id="purgeCompanionConfirmation" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Type the exact confirmation phrase" />
                 <button id="purgeCompanionProfiles" type="button" class="secondary danger" disabled>Delete custom profiles and history</button>
-                <p id="companionDataStatus" class="companion-profile-note" role="status" aria-live="polite">Export and deletion are available when secure account profile storage is connected. The deletion audit retains only a minimal non-identifying event.</p>
+                <p id="companionDataStatus" class="companion-profile-note" role="status" aria-live="polite">Export and deletion are available when secure account profile storage is connected. The deletion audit retains only a minimal content-free event.</p>
               </div>
             </details>
           </div>
@@ -1820,7 +1822,7 @@
         });
         purgeCompanionConfirmation.value = '';
         await loadCompanionProfiles();
-        companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal non-identifying purge audit remains.';
+        companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal content-free purge audit remains.';
       } catch (error) {
         companionDataStatus.textContent = 'Deletion could not be completed: ' + error.message;
         purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||

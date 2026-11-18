@@ -42,7 +42,7 @@ Companion profiles are presentation preferences over one shared AEGIS intelligen
 
 The profile API is authenticated and same-origin. D1 stores immutable profile revisions with SHA-256 digests, an active selection and append-only events. Profile settings influence chat only through bounded numeric/enum tone preferences; free-text descriptions are never inserted into model instructions. If account storage is unavailable, the interface uses session-only profiles and sends only the validated style fields with chat turns.
 
-Companion Mode is a full-screen text workspace that reuses the existing conversation. Its current avatar is stylised 2D artwork, not a lifelike human or 3D model. Voice and microphone capture remain disabled. Production D1 is not provisioned, and profile export/deletion/retention controls and multi-user tenancy remain open gates.
+Companion Mode is a full-screen text workspace that reuses the existing conversation. Its current avatar is stylised 2D artwork, not a lifelike human or 3D model. Voice and microphone capture remain disabled. Authenticated JSON export and exact-phrase custom-profile purge controls are implemented; production D1 is not provisioned, and retention policy and multi-user tenancy remain open gates.
 
 See [docs/AEGIS_COMPANION.md](docs/AEGIS_COMPANION.md) for the data model, APIs, security boundaries, CI evidence and remaining production gates.
 

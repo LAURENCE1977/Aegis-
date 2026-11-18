@@ -1,6 +1,6 @@
 # AEGIS Companion Experience
 
-**Status:** Companion profile persistence, bounded interaction customisation and immersive text Companion Mode are implemented on draft PR #103. Source and CI are verified; production D1 provisioning, lifelike avatar runtime and voice runtime are not deployed.
+**Status:** Companion profile persistence, bounded interaction customisation, profile export, confirmed profile purge and immersive text Companion Mode are implemented on draft PR #103. Source and isolated D1/CI are verified; production D1 provisioning, lifelike avatar runtime and voice runtime are not deployed.
 
 ## Product contract
 
@@ -28,13 +28,17 @@ Migration: `migrations/companion/0001_companion_profiles.sql`
 - `POST /api/companion/profiles` — create a bounded custom profile and select it.
 - `PATCH /api/companion/profiles/:id` — create a new revision using `expectedVersion`.
 - `POST /api/companion/profile-selection` — select an exact custom revision or reset to official AEGIS with null values.
+- `GET /api/companion/profiles/export` — export all bounded custom revisions, active selection, profile events and prior purge audit records as JSON.
+- `POST /api/companion/profiles/purge` — delete custom revisions, preferences and profile events after the exact confirmation phrase `DELETE MY COMPANION PROFILES`; a minimal purge audit remains.
 
 All writes require the signed owner session and same-origin protection. The server derives the current owner; caller-supplied owner IDs are rejected. The current authentication boundary is single-owner, not a multi-user tenancy system.
 
 ### Integrity and privacy
 
 - Profile reads revalidate schema, identity and canonical SHA-256 digest.
-- Profile history and audit events are append-only.
+- Profile history and audit events are append-only outside the explicit owner-requested purge workflow.
+- Export and purge are available in the companion home under **Privacy & saved profile data**. Export downloads a JSON archive; purge requires the exact phrase and removes custom revisions, active selection and profile events. The remaining purge audit records owner scope, count and time only, without profile identifiers, content or digests.
+- These controls are enabled only when the authenticated persistent profile store is available; session-only profiles are not sent to the export/purge endpoints.
 - Free-text profile descriptions are stored as user-authored metadata but are never inserted into model instructions.
 - Interaction settings are limited to four integer values (0–100) and one verbosity enum. The API rejects unknown fields, prompt text and authority-bearing settings.
 - A configured, verified server profile takes precedence over client-supplied interaction settings.
@@ -69,12 +73,12 @@ The prompt builder loads the active profile from the verified owner-scoped store
 - D1 test configuration: `wrangler.companion-d1-test.toml`.
 - D1 smoke seed: `scripts/companion-d1-seed.sql`.
 - Store/API/UI tests cover owner isolation, immutable revisions, stale writes, profile digest tampering, strict field validation, session fallback, persisted-profile precedence, live chat continuity and responsive/reduced-motion UI contracts.
-- Full workflow [44202766321](https://github.com/LAURENCE1977/Aegis-/actions/runs/44202766321) passed on code head `44b15b81c9b208e07c3315aba1fa3aac6cf5aa8c`: **885 tests, 884 passed, 0 failed, 1 skipped**, including the isolated Companion Profile D1 migration and integrity smoke checks.
+- Full workflow [44209729903](https://github.com/LAURENCE1977/Aegis-/actions/runs/44209729903) passed on code head `c21531ccf1622c7f37b44746274410e36dee5dec`: **900 tests, 899 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks.
 
 ## Not yet complete — production gates
 
 1. Production D1 has not been provisioned or migrated. Until then, the interface correctly falls back to session-only profiles.
-2. Profile export, user-requested deletion/purge and a retention policy are not implemented. Do not store sensitive personal material in profile descriptions; production persistence must not be treated as complete until these controls are designed.
+2. A governed retention policy, expiry/rotation rules and scheduled cleanup are not implemented. Export and explicit user-requested purge are implemented in source; production persistence must remain gated until retention semantics are reviewed and production D1 is provisioned.
 3. Multi-user identity, household/team separation and independently authenticated reviewer identities are not implemented. The current owner session is a single-owner boundary.
 4. Lifelike human avatar, 3D rigging, lip sync, animation assets and accessible fallback asset packs remain future work.
 5. Voice output and optional voice input require a separate consent, device-capture, retention and provider-boundary design. No capture is enabled by this slice.
