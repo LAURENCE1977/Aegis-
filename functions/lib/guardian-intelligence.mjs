@@ -56,7 +56,7 @@ function requireHttpsUrl(value, label) {
 
 function requireTimestamp(value, label) {
   requireText(value, label, 40);
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?Z$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/.exec(value);
   if (!match || !Number.isFinite(Date.parse(value))) {
     throw new TypeError('Invalid ' + label + ' timestamp');
   }
