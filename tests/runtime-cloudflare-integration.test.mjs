@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { digestProjectBrief } from '../functions/lib/project-context-digest.mjs';
+import { validateAgentTaskEnvelope } from '../functions/lib/agent-contracts.mjs';
 
 const enabled = process.env.AEGIS_RUNTIME_INTEGRATION === '1';
 const token = 'aegis-miniflare-integration-token-at-least-32-characters';
@@ -15,6 +16,7 @@ const migrations = [
   '0006_agent_run_execution_authorization.sql',
   '0007_agent_run_steps.sql',
   '0008_agent_run_project_context.sql',
+  '0009_agent_step_task_envelopes.sql',
 ];
 
 function splitSqlStatements(sql) {
@@ -229,7 +231,7 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     ]);
 
     const steps = await db.prepare(
-      'SELECT id, step_index, specialist, status, attempts, step_json FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
+      'SELECT id, step_index, specialist, status, attempts, step_json, task_json FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
     ).bind(run.id).all();
     assert.equal(steps.results.length, 3);
     assert.deepEqual(steps.results.map((step) => step.specialist), [
@@ -237,6 +239,31 @@ test('Cloudflare runtime persists an agent run in D1 and consumes its real local
     ]);
     assert.ok(steps.results.every((step) => step.status === 'planned' && step.attempts === 0));
     assert.ok(steps.results.every((step) => JSON.parse(step.step_json).tools.length === 0));
+    for (const step of steps.results) {
+      const task = JSON.parse(step.task_json);
+      assert.equal(validateAgentTaskEnvelope(task), true);
+      assert.equal(task.runId, run.id);
+      assert.equal(task.stepId, step.id);
+      assert.equal(task.specialist, step.specialist);
+      assert.equal(task.executionMode, 'plan-only');
+      assert.deepEqual(task.capabilityRequests, []);
+      assert.equal(task.contextDigest, projectContext.digest);
+    }
+    await assert.rejects(
+      db.prepare('UPDATE agent_run_steps SET task_json = ? WHERE id = ?')
+        .bind(JSON.stringify({ ...JSON.parse(steps.results[0].task_json), attempt: 2 }), steps.results[0].id).run(),
+      /agent task envelopes are immutable/,
+    );
+    await assert.rejects(
+      db.prepare("INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, task_json, checkpoint_json, created_at, updated_at) VALUES (?, ?, 5, 'planner', 'planned', 0, ?, ?, '{}', ?, ?)")
+        .bind(
+          run.id + ':5', run.id,
+          JSON.stringify({ id: run.id + ':5', specialist: 'planner', status: 'planned', tools: [], output: null }),
+          JSON.stringify({ ...JSON.parse(steps.results[0].task_json), stepId: run.id + ':5', specialist: 'planner', executionMode: 'write' }),
+          new Date().toISOString(), new Date().toISOString(),
+        ).run(),
+      /CHECK constraint failed/,
+    );
     const stepEvents = await db.prepare(
       "SELECT event_type FROM agent_run_step_events WHERE agent_run_id = ? ORDER BY created_at, event_id"
     ).bind(run.id).all();
