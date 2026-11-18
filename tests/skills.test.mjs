@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { listSkills, selectSkills, getSkillGuidance, buildSkillContext } from '../functions/lib/skills.mjs';
+import { listSkills, selectSkills, getSkillGuidance, buildSkillContext, validateSkillManifest } from '../functions/lib/skills.mjs';
 
 test('registry exposes ten AEGIS-native Superpowers adaptations with provenance', () => {
   const skills = listSkills();
@@ -47,4 +47,26 @@ test('chat skill context contains selected guidance only and grants no tools', (
   assert.ok(context.some(skill => skill.id === 'test-driven-development'));
   assert.ok(context.every(skill => typeof skill.guidance === 'string'));
   assert.ok(context.length <= 4);
+});
+
+test('skill manifests are versioned, provenance-pinned and guidance-only', () => {
+  for (const skill of listSkills()) {
+    assert.equal(validateSkillManifest(skill), true);
+    assert.equal(skill.schemaVersion, '1.0');
+    assert.equal(skill.manifestVersion, '1.0.0');
+    assert.equal(skill.execution, 'guidance-only');
+    assert.deepEqual(skill.permissions, []);
+  }
+});
+
+test('skill manifest validator rejects executable authority and broken provenance', () => {
+  const skill = listSkills()[0];
+  for (const candidate of [
+    { ...skill, execution: 'shell' },
+    { ...skill, permissions: ['filesystem.write'] },
+    { ...skill, schemaVersion: '99.0' },
+    { ...skill, source: { ...skill.source, commit: 'latest' } },
+    { ...skill, source: { ...skill.source, url: 'http://github.com/obra/superpowers' } },
+    { ...skill, unreviewedInstruction: true },
+  ]) assert.throws(() => validateSkillManifest(candidate));
 });
