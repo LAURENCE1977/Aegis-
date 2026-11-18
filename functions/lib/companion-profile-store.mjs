@@ -12,6 +12,10 @@ const MAX_REVISIONS = 500;
 function requireDatabase(db) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Companion Profile database is required');
 }
+function requireAtomicDatabase(db) {
+  requireDatabase(db);
+  if (typeof db.batch !== 'function') throw new Error('Atomic D1 batch support is required for Companion Profile writes');
+}
 function requireOwner(ownerId) {
   if (typeof ownerId !== 'string' || !OWNER_PATTERN.test(ownerId)) throw new TypeError('Invalid Companion Profile owner identifier');
 }
@@ -80,8 +84,8 @@ async function readLatestProfile(db, ownerId, profileId) {
   `).bind(ownerId, profileId).first();
   return row ? mapProfileRow(row) : null;
 }
-async function writePreference(db, ownerId, profileId, version, timestamp) {
-  await db.prepare(`
+function preferenceStatement(db, ownerId, profileId, version, timestamp) {
+  return db.prepare(`
     INSERT INTO companion_profile_preferences (
       owner_id, active_profile_id, active_profile_version, updated_at
     ) VALUES (?, ?, ?, ?)
@@ -89,15 +93,15 @@ async function writePreference(db, ownerId, profileId, version, timestamp) {
       active_profile_id = excluded.active_profile_id,
       active_profile_version = excluded.active_profile_version,
       updated_at = excluded.updated_at
-  `).bind(ownerId, profileId, version, timestamp).run();
+  `).bind(ownerId, profileId, version, timestamp);
 }
-async function appendSelectionEvent(db, ownerId, profileId, version, eventType, digest, timestamp) {
-  await db.prepare(`
+function selectionEventStatement(db, ownerId, profileId, version, eventType, digest, timestamp) {
+  return db.prepare(`
     INSERT INTO companion_profile_events (
       id, owner_id, profile_id, profile_version, event_type, profile_digest, occurred_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind('selection-' + crypto.randomUUID().toLowerCase().replaceAll('-', ''),
-    ownerId, profileId, version, eventType, digest, timestamp).run();
+    ownerId, profileId, version, eventType, digest, timestamp);
 }
 
 export class CompanionProfileConflictError extends Error {
@@ -116,7 +120,7 @@ export class CompanionProfileNotFoundError extends Error {
 }
 
 export async function createCompanionProfile(db, ownerId, input, now = Date.now()) {
-  requireDatabase(db);
+  requireAtomicDatabase(db);
   requireOwner(ownerId);
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).some(key => !PATCH_KEYS.includes(key)) ||
@@ -139,14 +143,20 @@ export async function createCompanionProfile(db, ownerId, input, now = Date.now(
   const digest = await sha256Hex(json);
   const id = 'companion-profile-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
   const version = 1;
-  const write = await db.prepare(`
-    INSERT INTO companion_profiles (
-      id, owner_id, profile_id, version, profile_digest, profile_json, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, ownerId, profile.id, version, digest, json, timestamp).run();
-  if (write?.meta?.changes !== 1) throw new Error('Companion Profile could not be persisted');
-  await writePreference(db, ownerId, profile.id, version, timestamp);
-  await appendSelectionEvent(db, ownerId, profile.id, version, 'selected', digest, timestamp);
+  const results = await db.batch([
+    db.prepare(`
+      INSERT INTO companion_profiles (
+        id, owner_id, profile_id, version, profile_digest, profile_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, ownerId, profile.id, version, digest, json, timestamp),
+    preferenceStatement(db, ownerId, profile.id, version, timestamp),
+    selectionEventStatement(db, ownerId, profile.id, version, 'selected', digest, timestamp),
+  ]);
+  if (results?.[0]?.meta?.changes !== 1 ||
+      results?.[1]?.meta?.changes !== 1 ||
+      results?.[2]?.meta?.changes !== 1) {
+    throw new Error('Companion Profile could not be persisted atomically');
+  }
   return Object.freeze({
     ownerId, profile, version, digest, createdAt: timestamp,
     activeProfileId: profile.id,
@@ -201,7 +211,7 @@ export async function listCompanionProfiles(db, ownerId, limit = MAX_PROFILES) {
 }
 
 export async function updateCompanionProfile(db, ownerId, profileId, expectedVersion, patch, now = Date.now()) {
-  requireDatabase(db);
+  requireAtomicDatabase(db);
   requireOwner(ownerId);
   requireProfileId(profileId);
   if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
@@ -225,19 +235,35 @@ export async function updateCompanionProfile(db, ownerId, profileId, expectedVer
   const json = canonicalJson(merged);
   const digest = await sha256Hex(json);
   const id = 'companion-profile-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
-  const write = await db.prepare(`
-    INSERT INTO companion_profiles (
-      id, owner_id, profile_id, version, profile_digest, profile_json, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, ownerId, profileId, version, digest, json, timestamp).run();
-  if (write?.meta?.changes !== 1) throw new Error('Companion Profile revision could not be persisted');
-
   const preferences = await db.prepare(`
     SELECT * FROM companion_profile_preferences WHERE owner_id = ? LIMIT 1
   `).bind(ownerId).first();
+  const statements = [
+    db.prepare(`
+      INSERT INTO companion_profiles (
+        id, owner_id, profile_id, version, profile_digest, profile_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, ownerId, profileId, version, digest, json, timestamp),
+  ];
   if (preferences?.active_profile_id === profileId) {
-    await writePreference(db, ownerId, profileId, version, timestamp);
-    await appendSelectionEvent(db, ownerId, profileId, version, 'selected', digest, timestamp);
+    statements.push(
+      preferenceStatement(db, ownerId, profileId, version, timestamp),
+      selectionEventStatement(db, ownerId, profileId, version, 'selected', digest, timestamp),
+    );
+  }
+  let results;
+  try {
+    results = await db.batch(statements);
+  } catch (error) {
+    if (/UNIQUE constraint failed: companion_profiles\.owner_id, companion_profiles\.profile_id, companion_profiles\.version/i
+      .test(String(error?.message || error))) {
+      throw new CompanionProfileConflictError();
+    }
+    throw error;
+  }
+  if (results?.[0]?.meta?.changes !== 1 ||
+      (statements.length === 3 && (results?.[1]?.meta?.changes !== 1 || results?.[2]?.meta?.changes !== 1))) {
+    throw new Error('Companion Profile revision could not be persisted atomically');
   }
   return Object.freeze({
     ownerId, profile: merged, version, digest, createdAt: timestamp,
@@ -246,12 +272,17 @@ export async function updateCompanionProfile(db, ownerId, profileId, expectedVer
 }
 
 export async function selectCompanionProfile(db, ownerId, profileId, version, now = Date.now()) {
-  requireDatabase(db);
+  requireAtomicDatabase(db);
   requireOwner(ownerId);
   const timestamp = validClock(now);
   if (profileId === null && version === null) {
-    await writePreference(db, ownerId, null, null, timestamp);
-    await appendSelectionEvent(db, ownerId, null, null, 'reset', null, timestamp);
+    const results = await db.batch([
+      preferenceStatement(db, ownerId, null, null, timestamp),
+      selectionEventStatement(db, ownerId, null, null, 'reset', null, timestamp),
+    ]);
+    if (results?.some(result => result?.meta?.changes !== 1)) {
+      throw new Error('Official Companion Profile selection could not be saved atomically');
+    }
     return Object.freeze({
       activeProfileId: null,
       activeProfile: Object.freeze({ profile: createDefaultAegisCompanionProfile(), version: null }),
@@ -261,8 +292,13 @@ export async function selectCompanionProfile(db, ownerId, profileId, version, no
   if (!Number.isInteger(version) || version < 1) throw new TypeError('Invalid Companion Profile version');
   const profile = await readExactProfile(db, ownerId, profileId, version);
   if (!profile) throw new CompanionProfileNotFoundError();
-  await writePreference(db, ownerId, profileId, version, timestamp);
-  await appendSelectionEvent(db, ownerId, profileId, version, 'selected', profile.digest, timestamp);
+  const results = await db.batch([
+    preferenceStatement(db, ownerId, profileId, version, timestamp),
+    selectionEventStatement(db, ownerId, profileId, version, 'selected', profile.digest, timestamp),
+  ]);
+  if (results?.some(result => result?.meta?.changes !== 1)) {
+    throw new Error('Companion Profile selection could not be saved atomically');
+  }
   return Object.freeze({
     activeProfileId: profileId,
     activeProfile: Object.freeze({ profile: profile.profile, version: profile.version }),
