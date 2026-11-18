@@ -1,45 +1,79 @@
 // Canonical plan contract shared by plan construction and approval binding.
 export const AGENT_PLAN_SCHEMA_VERSION = '1.0';
+const SPECIALIST_LIMITS = Object.freeze({
+  maxInputBytes: 16384,
+  maxOutputBytes: 32768,
+  maxDurationMs: 60000,
+});
+const SPECIALIST_MANIFEST_KEYS = [
+  'schemaVersion', 'manifestVersion', 'id', 'order', 'default', 'description',
+  'inputContract', 'outputContract', 'executionMode', 'capabilityRequests', 'limits',
+];
 const SPECIALIST_DEFINITIONS = Object.freeze([
   Object.freeze({
+    schemaVersion: '1.0',
+    manifestVersion: '1.0.0',
     id: 'researcher',
     order: 10,
     default: true,
     description: 'Finds and compares evidence, sources, prior art and relevant constraints.',
+    inputContract: 'aegis.agent-task-envelope/1.0',
+    outputContract: 'aegis.agent-output/1.0',
     executionMode: 'plan-only',
     capabilityRequests: Object.freeze([]),
+    limits: SPECIALIST_LIMITS,
   }),
   Object.freeze({
+    schemaVersion: '1.0',
+    manifestVersion: '1.0.0',
     id: 'planner',
     order: 20,
     default: false,
     description: 'Breaks an objective into bounded, ordered steps and explicit dependencies.',
+    inputContract: 'aegis.agent-task-envelope/1.0',
+    outputContract: 'aegis.agent-output/1.0',
     executionMode: 'plan-only',
     capabilityRequests: Object.freeze([]),
+    limits: SPECIALIST_LIMITS,
   }),
   Object.freeze({
+    schemaVersion: '1.0',
+    manifestVersion: '1.0.0',
     id: 'engineer',
     order: 30,
     default: true,
     description: 'Designs and reviews implementation changes, tests and technical trade-offs.',
+    inputContract: 'aegis.agent-task-envelope/1.0',
+    outputContract: 'aegis.agent-output/1.0',
     executionMode: 'plan-only',
     capabilityRequests: Object.freeze([]),
+    limits: SPECIALIST_LIMITS,
   }),
   Object.freeze({
+    schemaVersion: '1.0',
+    manifestVersion: '1.0.0',
     id: 'security',
     order: 40,
     default: false,
     description: 'Reviews trust boundaries, threat exposure, permissions and failure modes.',
+    inputContract: 'aegis.agent-task-envelope/1.0',
+    outputContract: 'aegis.agent-output/1.0',
     executionMode: 'plan-only',
     capabilityRequests: Object.freeze([]),
+    limits: SPECIALIST_LIMITS,
   }),
   Object.freeze({
+    schemaVersion: '1.0',
+    manifestVersion: '1.0.0',
     id: 'reviewer',
     order: 50,
     default: true,
     description: 'Independently checks completeness, evidence, regressions and acceptance criteria.',
+    inputContract: 'aegis.agent-task-envelope/1.0',
+    outputContract: 'aegis.agent-output/1.0',
     executionMode: 'plan-only',
     capabilityRequests: Object.freeze([]),
+    limits: SPECIALIST_LIMITS,
   }),
 ]);
 
@@ -51,19 +85,48 @@ export const DEFAULT_AGENT_SPECIALISTS = Object.freeze(
     .map((specialist) => specialist.id),
 );
 
-export function listAgentSpecialists() {
-  return SPECIALIST_DEFINITIONS.map((specialist) => ({
+export function validateAgentSpecialistManifest(manifest) {
+  if (!exactKeys(manifest, SPECIALIST_MANIFEST_KEYS) ||
+      manifest.schemaVersion !== '1.0' ||
+      typeof manifest.manifestVersion !== 'string' ||
+      !/^\d+\.\d+\.\d+$/.test(manifest.manifestVersion) ||
+      typeof manifest.id !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(manifest.id) ||
+      !Number.isInteger(manifest.order) || manifest.order < 1 || manifest.order > 1000 ||
+      typeof manifest.default !== 'boolean' ||
+      typeof manifest.description !== 'string' || !manifest.description.trim() ||
+      manifest.description.length > 240 ||
+      manifest.inputContract !== 'aegis.agent-task-envelope/1.0' ||
+      manifest.outputContract !== 'aegis.agent-output/1.0' ||
+      manifest.executionMode !== 'plan-only' ||
+      !Array.isArray(manifest.capabilityRequests) || manifest.capabilityRequests.length !== 0 ||
+      !exactKeys(manifest.limits, ['maxInputBytes', 'maxOutputBytes', 'maxDurationMs']) ||
+      !Number.isInteger(manifest.limits.maxInputBytes) ||
+      manifest.limits.maxInputBytes < 1 || manifest.limits.maxInputBytes > 16384 ||
+      !Number.isInteger(manifest.limits.maxOutputBytes) ||
+      manifest.limits.maxOutputBytes < 1 || manifest.limits.maxOutputBytes > 32768 ||
+      !Number.isInteger(manifest.limits.maxDurationMs) ||
+      manifest.limits.maxDurationMs < 1000 || manifest.limits.maxDurationMs > 60000) {
+    throw new TypeError('Invalid or unsafe AEGIS specialist manifest.');
+  }
+  return true;
+}
+
+function copySpecialistManifest(specialist) {
+  validateAgentSpecialistManifest(specialist);
+  return {
     ...specialist,
     capabilityRequests: [...specialist.capabilityRequests],
-  }));
+    limits: { ...specialist.limits },
+  };
+}
+
+export function listAgentSpecialists() {
+  return SPECIALIST_DEFINITIONS.map(copySpecialistManifest);
 }
 
 export function getAgentSpecialist(id) {
   const specialist = SPECIALIST_DEFINITIONS.find((entry) => entry.id === id);
-  return specialist ? {
-    ...specialist,
-    capabilityRequests: [...specialist.capabilityRequests],
-  } : null;
+  return specialist ? copySpecialistManifest(specialist) : null;
 }
 
 export function compareAgentSpecialists(left, right) {
