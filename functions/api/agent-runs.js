@@ -62,6 +62,10 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
       if (!validSubmission(parsed.body)) {
         return jsonResponse({ error: 'Provide an objective and optional unique list of known AEGIS specialists.' }, 400);
       }
+      const intent = validateAgentRunIntent({
+        objective: parsed.body.objective,
+        ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
+      });
       const idempotencyKey = request.headers.get('Idempotency-Key');
       if (idempotencyKey !== null && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) {
         return jsonResponse({ error: 'Invalid Idempotency-Key.' }, 400);
@@ -72,7 +76,7 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
           return jsonResponse({ error: 'Project Space context is not available.' }, 503);
         }
         try {
-          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId, Date.now(), validateAgentRunIntent({ objective: parsed.body.objective }).objective);
+          projectContext = await buildProjectContext(env.AEGIS_DB, parsed.body.projectId, Date.now(), intent.objective);
         } catch {
           return jsonResponse({ error: 'Project Space context could not be loaded.' }, 503);
         }
@@ -83,11 +87,8 @@ export function createAgentRunsHandlers(proxy = proxyAgentRuntime, buildProjectC
         method: 'POST',
         path: '/v1/agent-runs',
         body: {
-          objective: validateAgentRunIntent({
-            objective: parsed.body.objective,
-            ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
-          }).objective,
-          ...(parsed.body.specialists === undefined ? {} : { specialists: parsed.body.specialists }),
+          objective: intent.objective,
+          specialists: intent.specialists,
           ...(projectContext === undefined ? {} : { projectContext }),
         },
         ...(idempotencyKey === null ? {} : { idempotencyKey }),

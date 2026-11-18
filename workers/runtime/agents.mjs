@@ -1,7 +1,6 @@
 import {
   AGENT_PLAN_SCHEMA_VERSION,
   AGENT_SPECIALISTS as ALLOWED_SPECIALISTS,
-  DEFAULT_AGENT_SPECIALISTS,
   compareAgentSpecialists,
   validateAgentPlanContract,
   validateAgentRunIntent,
