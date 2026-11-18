@@ -86,10 +86,64 @@ const SKILLS = Object.freeze(DEFINITIONS.map((item) => Object.freeze({
   permissions: Object.freeze([]),
 })));
 
+const SKILL_MANIFEST_KEYS = [
+  'schemaVersion', 'manifestVersion', 'id', 'name', 'category', 'description',
+  'source', 'status', 'execution', 'permissions',
+];
+const SKILL_CATEGORIES = new Set(['planning', 'engineering', 'quality', 'meta', 'delivery']);
+
+function isPlainRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function exactKeys(value, keys) {
+  return isPlainRecord(value) && Object.keys(value).length === keys.length &&
+    Object.keys(value).every((key) => keys.includes(key));
+}
+
+export function validateSkillManifest(manifest) {
+  if (!exactKeys(manifest, SKILL_MANIFEST_KEYS) ||
+      manifest.schemaVersion !== '1.0' ||
+      typeof manifest.manifestVersion !== 'string' ||
+      !/^\d+\.\d+\.\d+$/.test(manifest.manifestVersion) ||
+      typeof manifest.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(manifest.id) ||
+      typeof manifest.name !== 'string' || !manifest.name.trim() || manifest.name.length > 100 ||
+      !SKILL_CATEGORIES.has(manifest.category) ||
+      typeof manifest.description !== 'string' || !manifest.description.trim() || manifest.description.length > 300 ||
+      !exactKeys(manifest.source, ['repository', 'url', 'license', 'importedAt', 'commit']) ||
+      typeof manifest.source.repository !== 'string' ||
+      !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(manifest.source.repository) ||
+      manifest.source.url !== 'https://github.com/' + manifest.source.repository ||
+      typeof manifest.source.license !== 'string' || !manifest.source.license.trim() ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(manifest.source.importedAt) ||
+      !/^[a-f0-9]{40}$/.test(manifest.source.commit) ||
+      !['available', 'review-required', 'disabled'].includes(manifest.status) ||
+      manifest.execution !== 'guidance-only' ||
+      !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0) {
+    throw new TypeError('Invalid or unsafe AEGIS skill manifest.');
+  }
+  const importedAt = new Date(manifest.source.importedAt + 'T00:00:00.000Z');
+  if (!Number.isFinite(importedAt.getTime()) ||
+      importedAt.toISOString().slice(0, 10) !== manifest.source.importedAt) {
+    throw new TypeError('Invalid skill provenance import date.');
+  }
+  return true;
+}
+
 export function listSkills() {
-  return SKILLS.map(({ id, name, category, description, source, status, execution, permissions, upstreamCommit }) => ({
-    id, name, category, description, source: { ...source, commit: upstreamCommit }, status, execution, permissions: [...permissions],
-  }));
+  return SKILLS.map(({ id, name, category, description, source, status, execution, permissions, upstreamCommit }) => {
+    const manifest = {
+      schemaVersion: '1.0',
+      manifestVersion: '1.0.0',
+      id, name, category, description,
+      source: { ...source, commit: upstreamCommit },
+      status, execution, permissions: [...permissions],
+    };
+    validateSkillManifest(manifest);
+    return manifest;
+  });
 }
 
 export function selectSkills(prompt, limit = 4) {
