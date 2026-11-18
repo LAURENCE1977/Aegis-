@@ -185,3 +185,16 @@ test('chat sends only the active companion numeric and enum style settings to th
   assert.match(html, /function getActiveCompanionInteraction/);
   assert.match(html, /companionInteraction:\s*getActiveCompanionInteraction\(\)/);
 });
+
+
+test('companion data controls expose authenticated export and explicitly confirmed deletion', () => {
+  for (const id of ['exportCompanionProfiles', 'purgeCompanionProfiles', 'companionDataStatus']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /\/api\/companion\/profiles\/export/);
+  assert.match(html, /\/api\/companion\/profiles\/purge/);
+  assert.match(html, /DELETE MY COMPANION PROFILES/);
+  assert.match(html, /createObjectURL/);
+  assert.match(html, /aegis-companion-profiles\.json/);
+  assert.match(html, /companionProfilePersistenceAvailable/);
+});
