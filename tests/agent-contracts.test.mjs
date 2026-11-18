@@ -124,7 +124,7 @@ test('specialist registry exposes versioned, bounded plan-only manifests', () =>
   for (const manifest of listAgentSpecialists()) {
     assert.equal(validateAgentSpecialistManifest(manifest), true);
     assert.equal(manifest.schemaVersion, '1.0');
-    assert.match(manifest.manifestVersion, /^\\d+\\.\\d+\\.\\d+$/);
+    assert.match(manifest.manifestVersion, /^\d+\.\d+\.\d+$/);
     assert.equal(manifest.executionMode, 'plan-only');
     assert.deepEqual(manifest.capabilityRequests, []);
     assert.deepEqual(manifest.limits, {
