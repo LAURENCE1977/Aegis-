@@ -1194,4 +1194,23 @@ The sequenced delivery schedule, architecture boundaries, stage definitions, acc
 - Cross-contract composition coverage was added in `tests/agent-contract-compatibility.test.mjs`, verifying the existing run/task, specialist, Companion, Device, Skill, permission-request and receipt contracts compose without creating authority.
 - Owner API guard coverage now proves a valid signed owner session is accepted and a correctly HMAC-signed token with a substituted principal is rejected.
 - GREEN verification on `0f6f8d42f766bd5b69e698748b12b4525a7f2dad`: push workflow [44313097341](https://github.com/LAURENCE1977/Aegis-/actions/runs/44313097341) and PR workflow [44313110573](https://github.com/LAURENCE1977/Aegis-/actions/runs/44313110573) both passed all 24 steps. Node.js: 958 tests, 957 passed, zero failed, one skipped; Cloudflare runtime integration and isolated capability/runtime/Forge/Eval/Learning/Companion D1 checks passed.
-- Next: close the remaining Stage 1 context/evidence/capability/receipt compatibility checks at actual API/runtime boundaries, including Sentinel manifest-to-invocation binding. Do not infer multi-user support from the new claim schema.
+- Additional Sentinel regression tests prove that a validly shaped but altered capability manifest, including a changed action scope definition, is denied as `MANIFEST_MISMATCH` before rate reservation or adapter execution.
+- GREEN verification on `b155e8b5b8d49113afc7da51ac81e1e9ff82b0c6`: push workflow [44323069293](https://github.com/LAURENCE1977/Aegis-/actions/runs/44323069293) and PR workflow [44323080465](https://github.com/LAURENCE1977/Aegis-/actions/runs/44323080465) both passed all 24 steps. Node.js: 960 tests, 959 passed, zero failed, one skipped; Cloudflare runtime integration and isolated capability/runtime/Forge/Eval/Learning/Companion D1 checks passed.
+- Next: finish the remaining Stage 1 context/evidence/receipt compatibility checks at their actual API/runtime boundaries. Do not infer multi-user support from the new claim schema.
+
+
+### Companion product and visual direction — 18 November 2026
+
+The companion and visual shell are first-class build requirements, not optional decoration. The existing `index.html` provides a responsive public welcome screen, a signed-in companion-first home, profile selection/custom profile creation and personality controls. The current companion visual is CSS presentation geometry, not a functioning 3D avatar; the UI correctly discloses that the interactive avatar runtime is still in development.
+
+Product direction to carry through the build:
+- The signed-in experience should feel like a personal environment centred on the companion, not a conventional administration dashboard with a chatbot bolted on.
+- The official AEGIS identity should become a consistent, recognisable, full-screen interactive human companion. Do not substitute a floating orb, generic robot icon or decorative face as the finished avatar.
+- User-created companion identities remain first-class and customisable, while all identities share the same AEGIS intelligence, memory governance, permissions and Sentinel security core.
+- The visual system should evolve from the current restrained dark surfaces and calm cyan/teal accents; preserve readability, warmth and calm. Avoid an overbearing sci-fi control-room aesthetic.
+- Explore a local-first, open-format 3D asset/runtime after checking browser/mobile performance, accessibility, licensing and long-term maintainability. Do not lock the architecture to a paid avatar provider or mandatory hosted model service.
+- The avatar should support expressive but respectful idle states, gaze and head movement, conversation-state feedback and (when voice is added) consent-controlled lip synchronisation. Provide a usable non-3D fallback and reduced-motion mode.
+- Avatar assets, voice, animation and persona settings must be user-controlled, privacy-aware and portable. Never imply that animation proves consciousness or human presence.
+- Completion requires a working 3D companion integrated with profile selection and customisation, not merely a 3D mock-up or static render. The page shell must be responsive and verified on mobile and desktop.
+
+This is a design direction, not a claim that the 3D avatar or final interface is implemented. Revisit it as the core architecture and user testing reveal better choices.
