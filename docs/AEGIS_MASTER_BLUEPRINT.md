@@ -1183,3 +1183,14 @@ This is the first step of Stage 1 in the delivery blueprint. The next implementa
 ## Master build programme (18 November 2026)
 
 The sequenced delivery schedule, architecture boundaries, stage definitions, acceptance gates and current verified baseline are maintained in [AEGIS Master Build Programme](AEGIS_MASTER_BUILD_PROGRAMME_2026-11-18.md). This programme is part of the canonical handover and must be followed in priority order. It explicitly distinguishes the currently implemented plan-only agent runtime from future Sentinel-governed specialist execution.
+
+
+### Canonical owner/session identity claims — 18 November 2026
+
+- Session tokens now carry an exact versioned `1.0` claim set: the current installation's fixed `owner` principal, a cryptographically generated UUID session ID, canonical `issuedAt` and `expiresAt` timestamps, and a 12-hour lifetime.
+- Session verification validates the claim schema and lifetime as well as the HMAC signature. Unknown fields, unsupported schema versions, principal substitution, malformed session IDs, future issue times and altered lifetimes fail closed.
+- This makes the current single-owner session identity explicit; it does **not** implement multi-user tenancy or owner-specific data isolation. Session IDs are not yet persisted, so individual session revocation is not available. Sign-out clears the browser cookie; a copied token remains valid until expiry.
+- TDD evidence: test-only commit `b596110bfb01e6dcff8a87c3c7b5678146513cce` failed on the expected missing principal claim; implementation commit `1349ad628931719d4b3dd84658b174fe557e37be` passed.
+- Cross-contract composition coverage was added in `tests/agent-contract-compatibility.test.mjs`, verifying the existing run/task, specialist, Companion, Device, Skill, permission-request and receipt contracts compose without creating authority.
+- GREEN verification on `1349ad628931719d4b3dd84658b174fe557e37be`: push workflow [44311800768](https://github.com/LAURENCE19777/Aegis-/actions/runs/44311800768) and PR workflow [44311815182](https://github.com/LAURENCE1977/Aegis-/actions/runs/44311815182) both passed all 24 steps. Node.js: 957 tests, 956 passed, zero failed, one skipped; Cloudflare runtime integration and isolated capability/runtime/Forge/Eval/Learning/Companion D1 checks passed.
+- Next: verify that owner-protected API/runtime boundaries consistently bind the authenticated session principal; then close the remaining Stage 1 compatibility checks. Do not infer multi-user support from the new claim schema.
