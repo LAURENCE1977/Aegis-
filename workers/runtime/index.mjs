@@ -1,7 +1,7 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
 import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
-import { validateAgentRunRecord } from '../../functions/lib/agent-contracts.mjs';
+import { AGENT_RUN_RECORD_SCHEMA_VERSION, validateAgentRunRecord } from '../../functions/lib/agent-contracts.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -117,7 +117,7 @@ function parseAgentRun(row) {
   let specialists = [];
   try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
   const record = {
-    schemaVersion: '1.0',
+    schemaVersion: AGENT_RUN_RECORD_SCHEMA_VERSION,
     id: row.id,
     objective: row.objective,
     specialists,
