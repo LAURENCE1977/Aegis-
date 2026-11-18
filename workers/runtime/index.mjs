@@ -543,20 +543,27 @@ async function processAgentRun(message, env) {
   await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
-    const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
-    const expectedContextDigest = projectContext
-      ? (projectContext.knowledge === undefined
-        ? projectContext.digest
-        : await digestCanonicalInput({
-          briefDigest: projectContext.digest,
-          knowledgeDigest: projectContext.knowledgeDigest,
-        }))
-      : null;
-    if (projectContext && (row.context_digest !== expectedContextDigest ||
-        await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
-        (projectContext.knowledge !== undefined &&
-          await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
-      throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
+    let projectContext;
+    try {
+      projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
+      const expectedContextDigest = projectContext
+        ? (projectContext.knowledge === undefined
+          ? projectContext.digest
+          : await digestCanonicalInput({
+            briefDigest: projectContext.digest,
+            knowledgeDigest: projectContext.knowledgeDigest,
+          }))
+        : null;
+      if (projectContext && (row.context_digest !== expectedContextDigest ||
+          await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
+          (projectContext.knowledge !== undefined &&
+            await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
+        throw new Error('Context digest mismatch.');
+      }
+    } catch {
+      const integrityError = new Error('Persisted agent context failed integrity verification.');
+      integrityError.code = 'AGENT_CONTEXT_INTEGRITY_FAILED';
+      throw integrityError;
     }
     const plan = createAgentPlan({
       objective: row.objective,
@@ -583,7 +590,17 @@ async function processAgentRun(message, env) {
       await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
     }
     message.ack();
-  } catch {
+  } catch (error) {
+    if (error?.code === 'AGENT_CONTEXT_INTEGRITY_FAILED') {
+      const failed = await env.DB.prepare(
+        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_CONTEXT_INTEGRITY_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
+      ).bind(new Date().toISOString(), runId, attempt).run();
+      if (failed.meta?.changes) {
+        await auditAgentRun(env, runId, 'failed', { code: 'AGENT_CONTEXT_INTEGRITY_FAILED', attempt });
+      }
+      message.ack();
+      return;
+    }
     if (attempt >= MAX_ATTEMPTS) {
       const failed = await env.DB.prepare(
         "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
