@@ -23,8 +23,8 @@ function validateModels(models) {
     requirePositiveInteger(model.maxOutputTokens, 'model output limit');
     requirePositiveInteger(model.priority ?? 100, 'model priority');
     for (const key of ['inputCost', 'outputCost']) {
-      const value = model[key] ?? 0;
-      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      const value = model[key];
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
         throw new TypeError('Invalid model cost');
       }
     }
@@ -50,11 +50,18 @@ export function selectModelRoute({
   estimatedInputTokens,
   requestedOutputTokens,
   providerState,
+  maxInputCost,
+  maxOutputCost,
 }) {
   validateModels(models);
   if (!TASKS.has(task)) throw new TypeError('Invalid model task');
   requirePositiveInteger(estimatedInputTokens, 'estimated input tokens', { allowZero: true });
   requirePositiveInteger(requestedOutputTokens, 'requested output tokens');
+  for (const [value, label] of [[maxInputCost, 'maximum input cost'], [maxOutputCost, 'maximum output cost']]) {
+    if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+      throw new TypeError('Invalid ' + label);
+    }
+  }
   if (providerState !== undefined &&
       (!providerState || typeof providerState !== 'object' || Array.isArray(providerState))) {
     throw new TypeError('Invalid provider state');
@@ -64,6 +71,10 @@ export function selectModelRoute({
     if (model.tasks && !model.tasks.includes(task)) return false;
     if (model.contextTokens < estimatedInputTokens + requestedOutputTokens ||
         model.maxOutputTokens < requestedOutputTokens) return false;
+    if ((maxInputCost !== undefined || maxOutputCost !== undefined) &&
+        (model.inputCost === undefined || model.outputCost === undefined)) return false;
+    if (maxInputCost !== undefined && model.inputCost > maxInputCost) return false;
+    if (maxOutputCost !== undefined && model.outputCost > maxOutputCost) return false;
     if (providerState !== undefined) {
       const state = providerState[model.providerId];
       if (!state || state.enabled !== true ||
@@ -75,11 +86,12 @@ export function selectModelRoute({
 
   if (!eligible.length) throw new Error('No eligible model route satisfies context, output and provider quota limits');
   eligible.sort((a, b) => {
-    const costA = (a.inputCost ?? 0) * estimatedInputTokens +
-      (a.outputCost ?? 0) * requestedOutputTokens;
-    const costB = (b.inputCost ?? 0) * estimatedInputTokens +
-      (b.outputCost ?? 0) * requestedOutputTokens;
-    return costA - costB ||
+    const knownA = a.inputCost !== undefined && a.outputCost !== undefined;
+    const knownB = b.inputCost !== undefined && b.outputCost !== undefined;
+    if (knownA !== knownB) return knownA ? -1 : 1;
+    const costA = knownA ? a.inputCost * estimatedInputTokens + a.outputCost * requestedOutputTokens : null;
+    const costB = knownB ? b.inputCost * estimatedInputTokens + b.outputCost * requestedOutputTokens : null;
+    return (knownA ? costA - costB : 0) ||
       (a.priority ?? 100) - (b.priority ?? 100) ||
       a.contextTokens - b.contextTokens ||
       a.id.localeCompare(b.id);
@@ -93,8 +105,9 @@ export function selectModelRoute({
     reservedOutputTokens: requestedOutputTokens,
     contextTokens: selected.contextTokens,
     maxOutputTokens: selected.maxOutputTokens,
-    estimatedCost: (selected.inputCost ?? 0) * estimatedInputTokens +
-      (selected.outputCost ?? 0) * requestedOutputTokens,
+    estimatedCost: selected.inputCost === undefined || selected.outputCost === undefined
+      ? null
+      : selected.inputCost * estimatedInputTokens + selected.outputCost * requestedOutputTokens,
     alternatives: eligible.slice(1).map(model => model.id),
   });
 }
