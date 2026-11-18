@@ -233,3 +233,36 @@ test('fails closed when the atomic rate-limit store is unavailable', async () =>
   assert.equal(h.calls.execute, 0);
   assert.equal(h.events[0].reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
 });
+
+test('rejects a validly shaped but altered manifest before rate reservation or adapter execution', async () => {
+  const h = harness();
+  const alteredManifest = { ...manifest, description: manifest.description + ' altered' };
+  const result = await runSentinelInvocation({
+    ...request,
+    manifest: alteredManifest,
+  }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'MANIFEST_MISMATCH');
+  assert.equal(h.calls.reserve, 0);
+  assert.equal(h.calls.execute, 0);
+  assert.deepEqual(h.events.map((event) => event.type), ['invocation_denied']);
+  assert.equal(h.events[0].reasonCode, 'MANIFEST_MISMATCH');
+});
+
+test('rejects a manifest whose action definition differs from the canonical registry', async () => {
+  const h = harness();
+  const alteredManifest = {
+    ...manifest,
+    actions: manifest.actions.map((action) => action.id === 'discover'
+      ? { ...action, requiredScopes: [...action.requiredScopes, 'github:repository:write'] }
+      : action),
+  };
+  const result = await runSentinelInvocation({
+    ...request,
+    manifest: alteredManifest,
+  }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'MANIFEST_MISMATCH');
+  assert.equal(h.calls.execute, 0);
+  assert.equal(h.calls.reserve, 0);
+});
