@@ -95,3 +95,19 @@ test('default specialists are derived from canonical specialist registry default
     ['researcher', 'engineer', 'reviewer'],
   );
 });
+
+test('canonical run-intent validator normalises objective and defaults from the specialist registry', async () => {
+  const { validateAgentRunIntent, DEFAULT_AGENT_SPECIALISTS } = await import('../functions/lib/agent-contracts.mjs');
+  assert.deepEqual(validateAgentRunIntent({ objective: '  Review the runtime  ' }), {
+    objective: 'Review the runtime',
+    specialists: [...DEFAULT_AGENT_SPECIALISTS],
+  });
+});
+
+test('canonical run-intent validator rejects unknown fields, duplicate roles and unregistered roles', async () => {
+  const { validateAgentRunIntent } = await import('../functions/lib/agent-contracts.mjs');
+  assert.throws(() => validateAgentRunIntent({ objective: 'Review', projectId: 'project-a' }), /unexpected/i);
+  assert.throws(() => validateAgentRunIntent({ objective: 'Review', specialists: ['reviewer', 'reviewer'] }), /unique/i);
+  assert.throws(() => validateAgentRunIntent({ objective: 'Review', specialists: ['shell'] }), /known/i);
+  assert.throws(() => validateAgentRunIntent({ objective: '   ' }), /objective/i);
+});
