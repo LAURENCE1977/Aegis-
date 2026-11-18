@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createApprovalRequest,
+  validatePermissionRequest,
   decideApprovalRequest,
   listPendingApprovals,
   loadApproval,
@@ -347,4 +348,35 @@ test('loads a consumed approval only for its exact owner and capability for idem
   assert.equal(await loadConsumedApprovalById(db, pending.id, {
     principalId: 'owner', capabilityId: 'another-capability',
   }), null);
+});
+
+test('versioned permission request binds one exact principal, capability, resource and payload digest', () => {
+  const now = Date.now();
+  const canonical = {
+    schemaVersion: '1.0',
+    ...request({ expiresAt: new Date(now + 60_000).toISOString() }),
+  };
+  assert.equal(validatePermissionRequest(canonical, now), true);
+});
+
+test('permission request contract rejects version drift, extra authority and invalid expiry', () => {
+  const now = Date.now();
+  const canonical = {
+    schemaVersion: '1.0',
+    ...request({ expiresAt: new Date(now + 60_000).toISOString() }),
+  };
+  for (const candidate of [
+    { ...canonical, schemaVersion: '2.0' },
+    { ...canonical, permissions: ['shell.execute'] },
+    { ...canonical, inputDigest: 'not-a-digest' },
+    { ...canonical, expiresAt: new Date(now - 1).toISOString() },
+    { ...canonical, expiresAt: new Date(now + 16 * 60_000).toISOString() },
+    { ...canonical, operationSummary: '' },
+    { ...canonical, connectionId: '../private' },
+  ]) assert.throws(() => validatePermissionRequest(candidate, now));
+});
+
+test('approval creation rejects unexpected fields instead of silently accepting them', async () => {
+  const db = new MemoryD1();
+  await assert.rejects(() => createApprovalRequest(db, request({ executionAuthority: true }), Date.now()));
 });
