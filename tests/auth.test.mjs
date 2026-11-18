@@ -237,3 +237,30 @@ test('the public login endpoint never discloses deployment secret names or confi
   assert.equal(body.error, 'Sign-in is temporarily unavailable. Please contact the AEGIS administrator.');
   assert.doesNotMatch(JSON.stringify(body), /AEGIS_PASSWORD|AEGIS_SESSION_SECRET|secret|environment variable/i);
 });
+
+test('session tokens carry canonical versioned owner and session identity claims', async () => {
+  const { validateSessionClaims, SESSION_CLAIMS_SCHEMA_VERSION } = await import('../functions/lib/auth.mjs');
+  const token = await createSessionToken(secret, fixedNow);
+  const [encodedPayload] = token.split('.');
+  const claims = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+  assert.equal(claims.schemaVersion, SESSION_CLAIMS_SCHEMA_VERSION);
+  assert.equal(claims.principalId, 'owner');
+  assert.match(claims.sessionId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.equal(validateSessionClaims(claims, fixedNow + 1000), true);
+});
+
+test('session claim validation rejects identity tampering, unknown fields and invalid lifetime', async () => {
+  const { validateSessionClaims } = await import('../functions/lib/auth.mjs');
+  const token = await createSessionToken(secret, fixedNow);
+  const [encodedPayload] = token.split('.');
+  const claims = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+  for (const candidate of [
+    { ...claims, principalId: 'administrator' },
+    { ...claims, sessionId: 'not-a-session-id' },
+    { ...claims, schemaVersion: '99.0' },
+    { ...claims, extra: 'untrusted' },
+    { ...claims, expiresAt: new Date(fixedNow + 13 * 60 * 60 * 1000).toISOString() },
+    { ...claims, issuedAt: new Date(fixedNow + 60_000).toISOString() },
+  ]) assert.throws(() => validateSessionClaims(candidate, fixedNow));
+  assert.throws(() => validateSessionClaims({ ...claims, expiresAt: claims.issuedAt }, fixedNow));
+});
