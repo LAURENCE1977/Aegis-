@@ -8,6 +8,9 @@ ALTER TABLE agent_run_steps ADD COLUMN task_json TEXT
       AND json_extract(task_json, '$.executionMode') = 'plan-only'
       AND json_type(task_json, '$.capabilityRequests') = 'array'
       AND json_array_length(task_json, '$.capabilityRequests') = 0
+      AND json_extract(task_json, '$.runId') = agent_run_id
+      AND json_extract(task_json, '$.stepId') = id
+      AND json_extract(task_json, '$.specialist') = specialist
     )
   );
 
