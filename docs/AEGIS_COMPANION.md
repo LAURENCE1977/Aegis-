@@ -73,7 +73,7 @@ The prompt builder loads the active profile from the verified owner-scoped store
 - D1 test configuration: `wrangler.companion-d1-test.toml`.
 - D1 smoke seed: `scripts/companion-d1-seed.sql`.
 - Store/API/UI tests cover owner isolation, immutable revisions, stale writes, profile digest tampering, strict field validation, session fallback, persisted-profile precedence, live chat continuity and responsive/reduced-motion UI contracts.
-- Full workflow [44209729903](https://github.com/LAURENCE1977/Aegis-/actions/runs/44209729903) passed on code head `c21531ccf1622c7f37b44746274410e36dee5dec`: **900 tests, 899 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks.
+- Full workflow [44210310028](https://github.com/LAURENCE1977/Aegis-/actions/runs/44210310028) passed on code head `db4e15131ae1544c096e43bb8ee9ab446755efb5`: **893 tests, 892 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks. The run includes the regression guard that privacy action listeners register once, outside the profile renderer.
 
 ## Not yet complete — production gates
 
