@@ -106,7 +106,7 @@ test('canonical run-intent validator normalises objective and defaults from the 
 
 test('canonical run-intent validator rejects unknown fields, duplicate roles and unregistered roles', async () => {
   const { validateAgentRunIntent } = await import('../functions/lib/agent-contracts.mjs');
-  assert.throws(() => validateAgentRunIntent({ objective: 'Review', projectId: 'project-a' }), /unexpected/i);
+  assert.throws(() => validateAgentRunIntent({ objective: 'Review' + String.fromCharCode(1) + 'runtime' }), /safe characters/i);
   assert.throws(() => validateAgentRunIntent({ objective: 'Review', specialists: ['reviewer', 'reviewer'] }), /unique/i);
   assert.throws(() => validateAgentRunIntent({ objective: 'Review', specialists: ['shell'] }), /known/i);
   assert.throws(() => validateAgentRunIntent({ objective: '   ' }), /objective/i);
