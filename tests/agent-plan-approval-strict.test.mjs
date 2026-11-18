@@ -56,3 +56,26 @@ test('approval binding rejects duplicate step identifiers', async () => {
     /plan|step|identifier/i,
   );
 });
+
+
+test('agent plans carry an explicit supported schema version', () => {
+  assert.equal(validPlan().schemaVersion, '1.0');
+});
+
+test('approval binding rejects plans without a schema version', async () => {
+  const plan = validPlan();
+  delete plan.schemaVersion;
+  await assert.rejects(
+    () => buildAgentPlanApprovalBinding(plan, 'owner'),
+    /schema version/i,
+  );
+});
+
+test('approval binding rejects unsupported plan schema versions explicitly', async () => {
+  const plan = validPlan();
+  plan.schemaVersion = '2.0';
+  await assert.rejects(
+    () => buildAgentPlanApprovalBinding(plan, 'owner'),
+    /unsupported.*schema version/i,
+  );
+});
