@@ -5,13 +5,13 @@
 - Canonical repository: `LAURENCE1977/Aegis-`.
 - Active development PR: #103, branch `feature/rea-open-source-security-learning-batch`.
 - PR #103 is open, draft and unmerged; it remains stacked on PR #101.
-- Verified code head: `2d3442eb995861dcb8f6736d83d1ef98c3aded6e` (Learning Forge starter paths and free-only model-routing guard).
-- Push workflow [44543864661](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543864661) and matching PR workflow [44543873021](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543873021) both passed on that exact head.
-- Node.js suite: **1006 tests, 1005 passed, 0 failed, 1 skipped**.
-- Cloudflare Pages preview returned HTTP 200 and its public HTML contains the new Learning Forge starter controls.
-- Runtime D1 and Queue integration passed.
-- Isolated capability D1, Forge D1, Eval Forge, Learning Forge and Companion Profile migration/smoke checks passed.
-- The new applied-task evidence D1 smoke verified submission event creation, immutable receipt protection, owner withdrawal, a content-free withdrawal event and append-only event history.
+- Verified implementation code head: `4e6de97117c52d8537c3f4d94e15e2ded1311728` (guided Learning Forge authoring, separate reviewer identity, standalone reviewer portal and reviewer-only read/write boundaries).
+- Latest documentation follow-up head: `0fffd9e8f89d30281e53cf748cbea258b8581107`.
+- Push workflow [44560799026](https://github.com/LAURENCE1977/Aegis-/actions/runs/44560799026) passed on the verified code head: **1,015 tests, 1,014 passed, 0 failed, 1 skipped**.
+- Isolated capability/runtime/Queue/Forge/Eval Forge/Learning Forge/Companion Profile D1 migration and smoke checks passed on that code head.
+- Cloudflare Pages deployed the latest documentation follow-up successfully: [preview](https://922f185b.aegis-6yk.pages.dev). Browser-level interaction has not been independently verified in this session.
+- The earlier preview's public homepage returned HTTP 200 while `GET /api/login` returned HTTP 503 because the owner secrets were not configured. This was not rechecked on the newest preview; do not weaken authentication to work around it.
+- The reviewer portal also remains disabled until the separate reviewer secrets are configured as encrypted Cloudflare Pages secrets.
 - These are branch-preview and isolated-test results, not production deployment or production D1 migration.
 
 ## Guardian Resource implementation
@@ -48,6 +48,32 @@
 - Verified on code head `9f1d17dc1146d28c4537d6f12181f207362fc84a`: **1006 tests, 1005 passed, 0 failed, 1 skipped**, with push and PR workflows passing and all isolated D1/runtime/Forge/Companion checks green.
 - The preview's public HTML includes the new controls, but they remain behind authentication and have not been interactively exercised.
 
+## Learning Forge — guided path authoring (19 Nov 2026)
+
+- Added a guided authoring surface alongside the existing JSON editor: path ID/version/title/description and node ID/title/outcomes/prerequisites/difficulty/source links.
+- New nodes are added to a local draft only. Validation checks identifiers, semantic version, required fields, HTTPS source links, duplicate node IDs and prerequisite references.
+- Registration remains a separate explicit authenticated owner action. The guided editor does not register, publish or mutate an immutable Learning Path on its own.
+- Content remains link-only; no third-party course material is copied or redistributed.
+
+## Independent reviewer identity and portal (19 Nov 2026)
+
+- Added a separate fixed reviewer principal with its own password, signing secret, HMAC-signed 12-hour session and host-only HttpOnly/Secure/SameSite=Strict cookie.
+- Added `POST/GET/DELETE /api/reviewer-login`; owner and reviewer tokens cannot be replayed across their separate secrets and cookie names.
+- Guardian review transitions, general capability approval decisions and agent-run approval decisions require the reviewer session. Reviewer identity is server-derived; client-supplied actor IDs are not trusted.
+- Added reviewer-only read access to the pending approval queue and owner-scoped Guardian catalogue/resource detail. Guardian resource intake remains owner-only.
+- Added standalone `/reviewer.html`, which does not require the owner's login. It can read pending approvals and Guardian resources and record review decisions; it cannot create resources, issue owner grants or authorise agent runs.
+- Final agent-run authorisation remains owner-only and still requires the exact reviewer-approved request plus an active exact-resource Sentinel grant. A review decision does not execute a run.
+- Required encrypted Cloudflare secrets: `AEGIS_REVIEWER_PASSWORD` (minimum 12 characters) and `AEGIS_REVIEWER_SESSION_SECRET` (minimum 32 characters). Keep the signing secret server-side; issue the reviewer password to a trusted reviewer other than the owner.
+- This is a credential/session boundary, not verified civil identity. MFA/passkeys, external identity-provider verification, multiple named reviewers, account recovery/rotation and formal proof of two different humans remain future work.
+- Tests cover role separation, reviewer-only reads, owner-only intake, session replay rejection and reviewer UI gating. The full verified code-head run is linked above.
+
+## Companion renderer research (19 Nov 2026)
+
+- Reviewed ARPAHLS/avatar, payner35/avatarz, mctouch/webgpu-avatar-client, livliv-dev/player, M3-org/CharacterStudio and ekza-space/ekza-studio through GitHub/Composio.
+- Recorded code-vs-asset licences, runtime dependencies, mobile/browser limits, audio privacy, lip-sync latency and local-agent-bus security lessons in [AEGIS Companion Renderer Research](AEGIS_COMPANION_RENDERER_RESEARCH.md).
+- No third-party code, sample characters, model weights or animation assets were copied or adopted.
+- Current companion remains a CSS 2D presentation. The next safe step is an AEGIS-owned renderer/asset contract and measured mobile browser benchmark, not an unreviewed dependency or an assumed 3D deployment.
+
 ## Preview sign-in configuration blocker (19 Nov 2026)
 
 - Live public check: the Pages preview homepage returns HTTP 200; `GET /api/login` returns HTTP 503 with the configured sign-in-unavailable message.
@@ -68,7 +94,7 @@
 ## PR #103 stacked-branch drift (19 Nov 2026)
 
 - Current base branch `feature/composio-audit-lineage-verified` is at `4cc0d50a761dfed4df66106c95a24efb23c9441e`; PR #103's merge base is `74d1e53e7ea70ee713ff5b3b62d8f613bd3b2f73`.
-- GitHub compare reports PR #103 as **517 commits ahead and 7 behind** its base branch. This is branch divergence, not proof of a merge conflict. No branch sync, PR merge or rebase was performed.
+- GitHub compare reports PR #103 as **571 commits ahead and 7 behind** its base branch. GitHub currently marks it mergeable, but the branch is diverged and remains draft; no sync, rebase or merge was performed. This is branch divergence, not proof of a merge conflict. No branch sync, PR merge or rebase was performed.
 - The substantive free-only routing guard from the base branch is now present in the feature branch.
 - The base branch also contains a separate `learning-graph.mjs` concepts/activities schema. PR #103's Learning Forge uses its existing node/outcome/prerequisite schema. Keep the two contracts unreconciled rather than introducing a second canonical Learning Path format by accident.
 - The base branch's newer OsintHunter assessment is documentation-only; the feature branch already has an earlier research record. Consolidate the research record deliberately during the next branch-integration review.
@@ -82,12 +108,13 @@
 
 ## Next engineering gates
 
-1. **Independent reviewer identity:** establish a distinct authenticated reviewer principal and separation-of-duties before accepting human review. The current single-owner session is not a multi-person identity system.
+1. **Reviewer activation and identity assurance:** configure the separate reviewer secrets in Preview and Production, issue the reviewer password to a trusted second person and test the standalone portal. Add MFA/passkeys or an external identity provider before claiming independently verified human identity.
 2. **User-controlled artifact inspection:** design a privacy-preserving, time-bounded review handoff that lets an authorised reviewer inspect the learner's original artifact without turning AEGIS into a permanent file store. Until this exists, receipts are provenance fingerprints only.
-3. **Learning user experience:** the first curated local starter catalogue is now implemented. Remaining work: guided node authoring instead of JSON-only path creation and a user-friendly new-version workflow. Current registration still uses the editable JSON definition.
-4. **Companion renderer:** the current avatar is a CSS presentation placeholder. Proposed direction: a distinctive, expressive, stylised 3D human companion with a restrained semi-realistic look (avoid uncanny photorealism), configurable appearance, accessible presence states, reduced-motion/static fallback and provider-neutral rendering. No mandatory paid avatar/voice service.
+3. **Learning user experience:** curated starter paths and guided node authoring are now implemented. Remaining work: a user-friendly new-version workflow and a time-bounded reviewer handoff for original learner artifacts. Current evidence receipts remain provenance fingerprints, not proof of human inspection.
+4. **Companion renderer:** the current avatar is still a CSS presentation placeholder. Renderer research is recorded; next build an AEGIS-owned asset provenance contract and renderer adapter, then benchmark GLB/VRM on iOS Safari, Android Chrome and desktop before choosing a runtime. Target a distinctive expressive stylised 3D human, configurable appearance, accessible presence states, reduced-motion/static fallback and provider-neutral rendering. No mandatory paid avatar/voice service.
 5. **Feature-level product inventory:** score each capability separately for working UI, persistence, permissions, recovery, accessibility, tests and deployment readiness. Do not report completion percentages from commits or research volume.
 6. **Guardian pagination:** current history is bounded to the newest 100 events; add cursor pagination only if real catalogue use justifies it.
+7. **Live intelligence execution:** connect the verified free-only routing guard to the provider gateway, then add real provider usage/billing verification and a durable spend ledger. Current routing safeguards are deterministic planning controls, not a live runtime spend cap.
 
 ## Operating constraints
 
