@@ -76,7 +76,7 @@ class MemoryD1 {
   }
 }
 
-async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example', principal = 'owner' } = {}) {
+async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example', principal = (method === 'POST' ? 'reviewer' : 'owner') } = {}) {
   const token = principal === 'reviewer'
     ? reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET))
     : '__Host-aegis_session=' + await createSessionToken(secret);
@@ -149,6 +149,7 @@ test('only the separately authenticated reviewer can decide a pending approval a
     request: await authenticatedRequest('/api/approvals', {
       method: 'POST',
       body: { id: pending.id, decision: 'approved' },
+      principal: 'owner',
     }),
     env: { ...envBase, AEGIS_DB: db },
   });
@@ -184,13 +185,13 @@ test('approval decisions reject oversized bodies while streaming', async () => {
 });
 
 test('approval decisions reject non-JSON content types', async () => {
-  const token = await createSessionToken(secret);
+  const token = reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET));
   const response = await onRequestPost({
     request: new Request('https://aegis.example/api/approvals', {
       method: 'POST',
       headers: {
         Origin: 'https://aegis.example',
-        Cookie: '__Host-aegis_session=' + token,
+        Cookie: token,
         'Content-Type': 'text/plain',
       },
       body: '{"id":"approval-1","decision":"approved"}',
