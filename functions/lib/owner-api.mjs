@@ -35,6 +35,17 @@ export async function authorizeReviewer(request, env) {
   return null;
 }
 
+export async function authorizeOwnerOrReviewer(request, env) {
+  const ownerConfigured = authConfigAvailable(env);
+  const reviewerConfigured = reviewerAuthConfigAvailable(env);
+  if (!ownerConfigured && !reviewerConfigured) {
+    return jsonResponse({ error: "Authentication is not configured." }, 503);
+  }
+  if (ownerConfigured && await isAuthorized(request, env)) return null;
+  if (reviewerConfigured && await isReviewerAuthorized(request, env)) return null;
+  return jsonResponse({ error: "Owner or reviewer authentication required." }, 401);
+}
+
 export function isOwnerWriteRequest(request) {
   return isSameOriginRequest(request);
 }
