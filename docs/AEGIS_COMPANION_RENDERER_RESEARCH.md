@@ -158,3 +158,19 @@ Before selecting a production renderer:
 - Verify every model, animation and texture licence independently; a repository's MIT/Apache code licence does not grant rights to its sample assets.
 
 No renderer dependency, third-party model or animation pack is adopted by this research note.
+
+
+## Implementation status — 19 November 2026
+
+The first AEGIS-owned asset-provenance gate is now implemented in `companion/renderer.mjs`:
+
+- `validateCompanionAssetManifest` validates the versioned `aegis.companion-asset/1.0` metadata contract for GLB/VRM model assets and VRMA animation assets.
+- Metadata includes SHA-256 syntax, byte length (maximum 50 MiB), upload/HTTPS provenance, licence identifier and HTTPS terms, creator, commercial-use and redistribution declarations, blendshape profile, and bounded texture/draw-call budgets.
+- The validator returns a minimal immutable projection and drops unknown fields. It does not fetch remote URLs, execute files, prove licence ownership or scan content for malware.
+- `verifyCompanionAssetDigest` uses Web Crypto to calculate SHA-256 over the actual uploaded Blob/File bytes. It checks the declared size before reading and fails closed on missing crypto, read errors, size mismatch and digest mismatch.
+- `createCompanionRenderer.loadModel` now rejects invalid metadata before reaching the intentionally disabled external-loader path. Actual VRM/GLB/VRMA loading is still not enabled.
+- Test-first regression runs caught and corrected schema classification and oversized-file validation order.
+
+Verification: workflow [44586362158](https://github.com/LAURENCE1977/Aegis-/actions/runs/44586362158) passed on code head `7fa4de7463233b10eac7f9c0ccf12ad148aed4de`: **1,044 Node tests, 1,043 passed, 0 failed, 1 skipped**, plus Cloudflare runtime integration and all isolated capability, runtime/Queue, Forge, Eval Forge, Learning Forge and Companion Profile D1 checks.
+
+The loader remains deliberately disabled pending dependency pinning, parser-level format validation, model resource budgets, resource disposal, asset isolation and real iOS/Android/desktop performance tests. The procedural WebGL2 renderer and accessible CSS fallback remain the active presentation path.
