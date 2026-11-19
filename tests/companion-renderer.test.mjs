@@ -116,3 +116,55 @@ test('future and invalid viseme receive times fail closed to neutral weights', (
   assert.deepEqual(getFreshVisemes({ aa: 1 }, 1200, 1100), neutral);
   assert.deepEqual(getFreshVisemes({ aa: 1 }, Number.NaN, 1100), neutral);
 });
+
+
+test('renderer recovers after WebGL context loss and restores the 3D presentation', () => {
+  const listeners = new Map();
+  const host = {
+    dataset: {},
+    attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    querySelector() { return { removeAttribute() { host.fallbackShown = false; }, setAttribute() { host.fallbackShown = true; } }; },
+  };
+  const gl = {
+    VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3, LINK_STATUS: 4,
+    ARRAY_BUFFER: 5, STATIC_DRAW: 6, ELEMENT_ARRAY_BUFFER: 7, FLOAT: 8,
+    DEPTH_TEST: 9, CULL_FACE: 10, COLOR_BUFFER_BIT: 16, DEPTH_BUFFER_BIT: 32,
+    TRIANGLES: 11, UNSIGNED_SHORT: 12,
+    createShader: () => ({}), shaderSource: () => {}, compileShader: () => {},
+    getShaderParameter: () => true, getShaderInfoLog: () => '',
+    createProgram: () => ({}), attachShader: () => {}, linkProgram: () => {},
+    getProgramParameter: () => true, getProgramInfoLog: () => '',
+    deleteShader: () => {}, createVertexArray: () => ({}), createBuffer: () => ({}),
+    bindVertexArray: () => {}, bindBuffer: () => {}, bufferData: () => {},
+    getAttribLocation: (_program, name) => name === 'aPosition' ? 0 : 1,
+    enableVertexAttribArray: () => {}, vertexAttribPointer: () => {},
+    getUniformLocation: (_program, name) => name,
+    enable: () => {}, clearColor: () => {}, viewport: () => {},
+    deleteBuffer: () => {}, deleteVertexArray: () => {}, deleteProgram: () => {},
+  };
+  let contextRequests = 0;
+  const canvas = {
+    width: 0, height: 0, clientWidth: 320, clientHeight: 240, parentElement: host,
+    getContext(type) { if (type !== 'webgl2') return null; contextRequests += 1; return gl; },
+    addEventListener(name, callback) { listeners.set(name, callback); },
+    removeEventListener(name) { listeners.delete(name); },
+  };
+  const renderer = createCompanionRenderer(canvas);
+  assert.equal(renderer.init().supported, true);
+  assert.equal(contextRequests, 1);
+
+  listeners.get('webglcontextlost')({ preventDefault() {} });
+  assert.equal(renderer.supported, false);
+  assert.equal(host.dataset.renderer, 'fallback');
+
+  const restored = listeners.get('webglcontextrestored');
+  assert.equal(typeof restored, 'function');
+  restored();
+
+  assert.equal(contextRequests, 2);
+  assert.equal(renderer.supported, true);
+  assert.equal(host.dataset.renderer, 'webgl2');
+  assert.equal(host.attributes['aria-label'], 'Procedural three-dimensional Agent AEGIS companion prototype');
+  renderer.dispose();
+});
