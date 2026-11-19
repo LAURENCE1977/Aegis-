@@ -103,6 +103,44 @@ export function validateCompanionAssetManifest(input) {
   return { valid: true, manifest };
 }
 
+/**
+ * Verify the actual uploaded Blob/File bytes against a declared SHA-256.
+ * No network access, file persistence or executable content handling occurs.
+ */
+export async function verifyCompanionAssetDigest(file, expectedSha256, cryptoApi = globalThis.crypto) {
+  if (typeof expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(expectedSha256)) {
+    return { verified: false, reason: 'invalid-sha256' };
+  }
+  if (!file || typeof file.arrayBuffer !== 'function' ||
+      !Number.isSafeInteger(file.size) || file.size < 1) {
+    return { verified: false, reason: 'invalid-asset-file' };
+  }
+  if (file.size > COMPANION_ASSET_MAX_BYTES) {
+    return { verified: false, reason: 'asset-too-large' };
+  }
+  if (!cryptoApi?.subtle || typeof cryptoApi.subtle.digest !== 'function') {
+    return { verified: false, reason: 'crypto-unavailable' };
+  }
+  let bytes;
+  try {
+    bytes = await file.arrayBuffer();
+  } catch {
+    return { verified: false, reason: 'asset-read-failed' };
+  }
+  if (!(bytes instanceof ArrayBuffer) || bytes.byteLength !== file.size) {
+    return { verified: false, reason: 'asset-size-mismatch' };
+  }
+  try {
+    const digest = await cryptoApi.subtle.digest('SHA-256', bytes);
+    const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+    return sha256 === expectedSha256
+      ? { verified: true, sha256 }
+      : { verified: false, reason: 'digest-mismatch', sha256 };
+  } catch {
+    return { verified: false, reason: 'digest-failed' };
+  }
+}
+
 export const COMPANION_STATES = Object.freeze([
   'idle', 'listening', 'thinking', 'speaking', 'responding', 'interrupted', 'paused', 'disconnected', 'error',
 ]);
