@@ -21,3 +21,23 @@ test('path authoring parses JSON locally and registers only through the authenti
   assert.match(html, /await loadLearningPaths\(\)/);
   assert.doesNotMatch(html, /learningPathAuthorStatus\.innerHTML/);
 });
+
+
+test('Learning Forge offers curated local starter paths while retaining the editable JSON workflow', () => {
+  assert.match(html, /id="learningPathStarterSelect"/);
+  assert.match(html, /id="learningPathLoadStarterBtn"/);
+  assert.match(html, /value="javascript-foundations"/);
+  assert.match(html, /value="web-safety-foundations"/);
+  assert.match(html, /const LEARNING_PATH_STARTER_TEMPLATES/);
+  assert.match(html, /learningPathLoadStarterBtn\.addEventListener\(['"]click['"]/);
+  assert.match(html, /learningPathGraphJson\.value\s*=\s*JSON\.stringify/);
+  assert.match(html, /contentLicenseStatus:\s*['"]link-only['"]/);
+  assert.match(html, /not registered until you submit/i);
+});
+
+test('starter path loading is local-only and does not bypass the authenticated registration API', () => {
+  assert.match(html, /learningPathStarterSelect\.value/);
+  assert.match(html, /learningPathAuthorStatus\.textContent/);
+  assert.match(html, /controlApi\(['"]\/api\/learning\/paths['"]/);
+  assert.doesNotMatch(html, /learningPathAuthorStatus\.innerHTML/);
+});
