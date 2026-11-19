@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createSessionToken, createReviewerSessionToken, reviewerSessionCookie } from '../functions/lib/auth.mjs';
 import {
   createAgentRunApprovalHandlers,
   createAgentRunApprovalDecisionHandlers,
@@ -10,7 +10,7 @@ import {
 const secret = 'agent-run-approval-test-session-secret-with-entropy';
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
-  AEGIS_SESSION_SECRET: secret,
+  AEGIS_SESSION_SECRET: secret,\n  AEGIS_REVIEWER_PASSWORD: 'reviewer-password-long-enough',\n  AEGIS_REVIEWER_SESSION_SECRET: 'agent-run-reviewer-session-secret-with-entropy',
   AEGIS_DB: { prepare() { throw new Error('Unexpected database access'); } },
 };
 const runId = '00000000-0000-4000-8000-000000000001';
@@ -118,14 +118,14 @@ test('owner decision endpoint records only explicit approve or deny decisions', 
     },
   });
   const response = await handler.onRequestPatch({
-    request: await makeRequest('/api/sentinel/agent-run-approval/approval-1', 'PATCH', { decision: 'approved' }),
+    request: await makeRequest('/api/sentinel/agent-run-approval/approval-1', 'PATCH', { decision: 'approved' }, { principal: 'reviewer' }),
     env: envBase,
     params: { id: 'approval-1' },
   });
   assert.equal(response.status, 200);
   assert.equal(decision.id, 'approval-1');
   assert.equal(decision.decision, 'approved');
-  assert.equal(decision.decidedBy, 'owner');
+  assert.equal(decision.decidedBy, 'reviewer');
   assert.equal(decision.principalId, 'owner');
   assert.equal(decision.capabilityId, 'aegis-agent-run');
 });
@@ -135,7 +135,7 @@ test('owner decision endpoint rejects an approval belonging to another principal
     decideRequest: async () => ({ id: 'approval-1', principalId: 'other', capabilityId: 'other-capability' }),
   });
   const response = await handler.onRequestPatch({
-    request: await makeRequest('/api/sentinel/agent-run-approval/approval-1', 'PATCH', { decision: 'approved' }),
+    request: await makeRequest('/api/sentinel/agent-run-approval/approval-1', 'PATCH', { decision: 'approved' }, { principal: 'reviewer' }),
     env: envBase,
     params: { id: 'approval-1' },
   });
@@ -149,7 +149,7 @@ test('Sentinel consumes only an exact approved owner decision before recording r
     id: 'approval-consume-1',
     ...binding,
     status: 'approved',
-    decidedBy: 'owner',
+    decidedBy: 'reviewer',
     requestedBy: 'owner',
     connectionId: null,
   };
