@@ -106,7 +106,7 @@ test('model loading verifies the uploaded bytes after manifest validation and be
     loaded: false, reason: 'digest-mismatch',
   });
   assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto), {
-    loaded: false, reason: 'external-model-loader-not-yet-enabled',
+    loaded: false, reason: 'unsupported-model-adapter',
   });
 });
 
