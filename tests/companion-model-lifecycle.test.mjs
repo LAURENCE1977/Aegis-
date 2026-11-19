@@ -15,7 +15,7 @@ test('prepare keeps the active model until a candidate is explicitly committed',
   const initial = await lifecycle.prepare(async () => first);
   assert.equal(initial.prepared, true);
   assert.equal(lifecycle.active, null);
-  assert.equal(lifecycle.commit(initial.ticket).committed, true);
+  assert.equal((await lifecycle.commit(initial.ticket)).committed, true);
   assert.equal(lifecycle.active, first);
 
   const candidate = await lifecycle.prepare(async () => second);
