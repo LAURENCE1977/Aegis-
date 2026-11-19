@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
 import {
   COMPANION_STATES,
   createSphereGeometry,
@@ -8,6 +9,7 @@ import {
   createCompanionRenderer,
   getFreshVisemes,
   validateCompanionAssetManifest,
+  verifyCompanionAssetDigest,
 } from '../companion/renderer.mjs';
 
 test('procedural avatar sphere geometry is finite, indexed and has unit normals', () => {
@@ -310,4 +312,22 @@ test('companion asset manifest returns a minimal immutable projection', () => {
   assert.equal('untrustedExecutableHint' in result.manifest, false);
   assert.equal(Object.isFrozen(result.manifest), true);
   assert.equal(Object.isFrozen(result.manifest.licence), true);
+});
+
+
+test('companion asset digest verifies the actual uploaded bytes with SHA-256', async () => {
+  const bytes = new TextEncoder().encode('hello');
+  const file = { size: bytes.byteLength, arrayBuffer: async () => bytes.buffer };
+  assert.deepEqual(
+    await verifyCompanionAssetDigest(file, '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824', webcrypto),
+    { verified: true, sha256: '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824' },
+  );
+});
+
+test('companion asset digest rejects mismatched bytes, oversized files and unavailable crypto', async () => {
+  const bytes = new TextEncoder().encode('hello');
+  const file = { size: bytes.byteLength, arrayBuffer: async () => bytes.buffer };
+  assert.equal((await verifyCompanionAssetDigest(file, 'a'.repeat(64), webcrypto)).reason, 'digest-mismatch');
+  assert.equal((await verifyCompanionAssetDigest({ size: 50 * 1024 * 1024 + 1 }, 'a'.repeat(64), webcrypto)).reason, 'asset-too-large');
+  assert.equal((await verifyCompanionAssetDigest(file, 'a'.repeat(64), null)).reason, 'crypto-unavailable');
 });
