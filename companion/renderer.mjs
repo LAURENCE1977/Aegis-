@@ -13,6 +13,15 @@ export function normaliseVisemes(input = {}) {
   return output;
 }
 
+export function getFreshVisemes(weights, receivedAt, now, maxAgeMs = 250) {
+  const received = Number(receivedAt);
+  const current = Number(now);
+  const age = current - received;
+  if (!Number.isFinite(received) || !Number.isFinite(current) || !Number.isFinite(maxAgeMs) ||
+      maxAgeMs < 0 || age < 0 || age > maxAgeMs) return normaliseVisemes();
+  return normaliseVisemes(weights);
+}
+
 export function normaliseExpression(id, weight) {
   const value = Number(weight);
   if (!EXPRESSION_IDS.has(id) || !Number.isFinite(value)) return { id: 'neutral', weight: 0 };
@@ -174,6 +183,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   let expression = { id: 'neutral', weight: 0 };
   let visemes = normaliseVisemes();
   let visemeTimestamp = 0;
+  let visemeReceivedAt = 0;
   let resizeObserver = null;
   const reducedMotion = options.reducedMotion ?? (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const geometry = createSphereGeometry(32, 24);
@@ -319,7 +329,8 @@ export function createCompanionRenderer(canvas, options = {}) {
     part([-0.18, 0.69, 0.345], [0.075, 0.025, 0.035], [0.72, 0.94, 0.98], eyeGlow);
     part([0.18, 0.69, 0.345], [0.075, 0.025, 0.035], [0.72, 0.94, 0.98], eyeGlow);
     part([0, 0.52, 0.37], [0.035, 0.085, 0.045], trim, 0.03);
-    const mouthOpen = Math.max(visemes.jawOpen, visemes.aa * 0.9, visemes.oh * 0.75, visemes.ou * 0.55);
+    const activeVisemes = getFreshVisemes(visemes, visemeReceivedAt, now);
+    const mouthOpen = Math.max(activeVisemes.jawOpen, activeVisemes.aa * 0.9, activeVisemes.oh * 0.75, activeVisemes.ou * 0.55);
     const smile = expression.id === 'smile' ? expression.weight : 0;
     const mouthHeight = 0.018 + mouthOpen * 0.095;
     part([0, 0.39, 0.37], [0.105 + smile * 0.035, mouthHeight, 0.025], [0.025, 0.055, 0.075], 0);
@@ -355,6 +366,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   function setVisemes(timestamp, weights) {
     const time = Number(timestamp);
     visemeTimestamp = Number.isFinite(time) ? Math.max(0, time) : 0;
+    visemeReceivedAt = typeof performance !== 'undefined' && Number.isFinite(performance.now()) ? performance.now() : 0;
     visemes = normaliseVisemes(weights);
     schedule();
     return { timestamp: visemeTimestamp, weights: { ...visemes } };
