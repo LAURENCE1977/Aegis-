@@ -17,7 +17,8 @@ test('the signed-in home is companion-first and exposes an accessible presentati
 
 test('the companion presentation is honest about the avatar runtime and does not impersonate a live human', () => {
   assert.match(html, /companion presentation layer/i);
-  assert.match(html, /interactive avatar runtime is in development/i);
+  assert.match(html, /3D procedural prototype/i);
+  assert.match(html, /imported avatars and voice are not connected/i);
   assert.match(html, /aria-live="polite"/);
 });
 
@@ -208,4 +209,11 @@ test('companion privacy action listeners are registered once outside profile ren
   assert.doesNotMatch(renderBody, /(?:exportCompanionProfilesButton|purgeCompanionProfilesButton|purgeCompanionConfirmation)\.addEventListener/);
   assert.equal((html.match(/exportCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
   assert.equal((html.match(/purgeCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
+});
+
+test('the companion loads the AEGIS-owned WebGL2 renderer while retaining the CSS fallback', () => {
+  assert.match(html, /<script type="module" src="\/companion\/renderer\.mjs"><\/script>/);
+  assert.match(html, /companion-render-canvas/);
+  assert.match(html, /data-renderer="webgl2"/);
+  assert.match(html, /WebGL2 is unavailable here/);
 });
