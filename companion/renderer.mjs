@@ -564,7 +564,46 @@ export function createCompanionRenderer(canvas, options = {}) {
     if (file.size !== validation.manifest.byteLength) return { loaded: false, reason: 'asset-size-mismatch' };
     const digest = await verifyCompanionAssetDigest(file, validation.manifest.sha256, cryptoApi);
     if (!digest.verified) return { loaded: false, reason: digest.reason };
-    return { loaded: false, reason: 'external-model-loader-not-yet-enabled' };
+
+    // Adapters are trusted application code supplied by the host, never code
+    // discovered from an asset or manifest. No adapter means no model parsing.
+    const adapter = options.modelAdapter;
+    if (!adapter || !Array.isArray(adapter.formats) ||
+        !adapter.formats.includes(validation.manifest.format) ||
+        typeof adapter.load !== 'function') {
+      return { loaded: false, reason: 'unsupported-model-adapter' };
+    }
+
+    let resource;
+    try {
+      resource = await adapter.load({ file, manifest: validation.manifest });
+    } catch {
+      return { loaded: false, reason: 'model-load-failed' };
+    }
+    if (!resource || typeof resource !== 'object' || typeof resource.dispose !== 'function' ||
+        !resource.stats || typeof resource.stats !== 'object' ||
+        !Number.isSafeInteger(resource.stats.maxTextureDimension) ||
+        resource.stats.maxTextureDimension < 1 ||
+        !Number.isSafeInteger(resource.stats.drawCalls) ||
+        resource.stats.drawCalls < 0) {
+      try { if (typeof resource?.dispose === 'function') await resource.dispose(); } catch { /* best-effort cleanup */ }
+      return { loaded: false, reason: 'invalid-model-resource' };
+    }
+    if (resource.stats.maxTextureDimension > validation.manifest.performanceBudget.maxTextureDimension ||
+        resource.stats.drawCalls > validation.manifest.performanceBudget.maxDrawCalls) {
+      try { await resource.dispose(); } catch { /* best-effort cleanup */ }
+      return { loaded: false, reason: 'model-performance-budget-exceeded' };
+    }
+
+    const prepared = await prepareModelResource(async () => resource);
+    if (!prepared.prepared) {
+      // A renderer destroyed during asynchronous adapter work never adopts
+      // the candidate. The lifecycle disposes late resources after destroy.
+      return { loaded: false, reason: prepared.reason };
+    }
+    const committed = await commitModelResource(prepared.ticket);
+    if (!committed.committed) return { loaded: false, reason: committed.reason };
+    return { loaded: true, format: validation.manifest.format, previousDisposalFailed: committed.previousDisposalFailed };
   }
   function playAnimation(id) { return setState(id); }
   function suspend() { stop(); return true; }
