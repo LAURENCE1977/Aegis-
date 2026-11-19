@@ -58,7 +58,7 @@ test('Learning Forge provides a guided local authoring path for non-technical us
 
 test('guided Learning Forge authoring builds local JSON drafts without registering or bypassing the owner API', () => {
   assert.match(html, /learningPathGuidedAddNodeBtn\.addEventListener\(['"]click['"]/);
-  assert.match(html, /learningPathGuidedSources\.value/);
+  assert.match(html, /getElementById\(['"]learningPathGuidedSources['"]\)\.value/);
   assert.match(html, /contentLicenseStatus:\s*['"]link-only['"]/);
   assert.match(html, /learningPathGraphJson\.value\s*=\s*JSON\.stringify/);
   assert.match(html, /controlApi\(['"]\/api\/learning\/paths['"]/);
