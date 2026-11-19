@@ -52,7 +52,7 @@ class GuardianDetailD1 {
         if (!sql.includes('FROM guardian_resource_events')) return { results: [] };
         return { results: db.events
           .filter(event => event.owner_id === ownerId && event.resource_id === id)
-          .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at) || a.id.localeCompare(b.id))
+          .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at) || b.id.localeCompare(a.id))
           .slice(0, limit).map(event => ({ ...event })) };
       },
     };
