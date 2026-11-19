@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0b1420">
+  <title>AEGIS · Independent Review</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1420; --panel:#111f2d; --line:#26394b; --text:#e8f0f7; --muted:#9aafc2; --accent:#7dd3c7; --danger:#f2a6a6; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 20% 0%,#173247 0,transparent 42%),var(--bg); color:var(--text); font:15px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px clamp(18px,5vw,64px); border-bottom:1px solid var(--line); }
+    header strong { letter-spacing:.18em; font-size:.82rem; }
+    a { color:var(--accent); }
+    main { width:min(100% - 32px,1040px); margin:38px auto 80px; }
+    h1 { font-size:clamp(1.8rem,4vw,2.7rem); line-height:1.1; margin:0 0 10px; }
+    h2 { font-size:1.25rem; margin:0 0 14px; }
+    p { color:var(--muted); }
+    .panel,.card { background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:16px; padding:20px; }
+    .panel { margin:18px 0 28px; }
+    .login { max-width:460px; margin:54px auto; }
+    label { display:block; font-weight:650; margin:14px 0 7px; }
+    input,textarea { width:100%; border:1px solid #40576d; border-radius:10px; background:#09121c; color:var(--text); padding:12px; font:inherit; }
+    textarea { min-height:76px; resize:vertical; }
+    button { border:1px solid #4d8f8b; border-radius:10px; background:#1b4749; color:#f1fffc; padding:10px 14px; font:inherit; font-weight:650; cursor:pointer; }
+    button.secondary { background:#172838; border-color:#40576d; color:var(--text); }
+    button:disabled { opacity:.55; cursor:wait; }
+    .actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:12px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:14px; }
+    .card h3 { margin:0 0 7px; font-size:1.02rem; overflow-wrap:anywhere; }
+    .meta { color:var(--muted); font-size:.84rem; overflow-wrap:anywhere; }
+    .status { min-height:1.5em; color:var(--accent); }
+    .notice { border-left:3px solid var(--accent); padding-left:12px; }
+    .error { color:var(--danger); }
+    [hidden] { display:none !important; }
+    @media(max-width:600px) { header { align-items:flex-start; flex-direction:column; } main { margin-top:24px; } .panel,.card { padding:16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>AEGIS · INDEPENDENT REVIEW</strong>
+    <a href="/">Owner workspace</a>
+  </header>
+  <main>
+    <section class="login panel" id="loginPanel" aria-labelledby="pageTitle">
+      <h1 id="pageTitle">Reviewer sign-in</h1>
+      <p>This is a separate review access point. It does not require the owner's password and cannot grant execution permissions.</p>
+      <form id="reviewerLoginForm">
+        <label for="reviewerPassword">Independent reviewer password</label>
+        <input id="reviewerPassword" type="password" autocomplete="current-password" maxlength="1024" required>
+        <div class="actions"><button type="submit">Sign in</button></div>
+      </form>
+      <p id="loginStatus" class="status" role="status" aria-live="polite">Checking reviewer access…</p>
+    </section>
+
+    <section id="reviewerApp" hidden>
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div><h1>Review workspace</h1><p class="notice">Reviewer decisions are recorded as a separate principal. Agent approval does not start execution; the owner must still complete Sentinel authorisation.</p></div>
+          <button class="secondary" id="reviewerLogout" type="button">Sign out</button>
+        </div>
+        <p id="workspaceStatus" class="status" role="status" aria-live="polite"></p>
+      </div>
+
+      <section class="panel" aria-labelledby="approvalsTitle">
+        <h2 id="approvalsTitle">Pending approvals</h2>
+        <div id="approvalList" class="grid" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="guardianTitle">
+        <h2 id="guardianTitle">Guardian Resource reviews</h2>
+        <p>Inspect pinned source and licence evidence. Review transitions are audited and do not install, fetch or execute the resource.</p>
+        <div id="guardianList" class="grid" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const loginPanel = document.getElementById('loginPanel');
+    const loginForm = document.getElementById('reviewerLoginForm');
+    const passwordInput = document.getElementById('reviewerPassword');
+    const loginStatus = document.getElementById('loginStatus');
+    const reviewerApp = document.getElementById('reviewerApp');
+    const reviewerLogout = document.getElementById('reviewerLogout');
+    const workspaceStatus = document.getElementById('workspaceStatus');
+    const approvalList = document.getElementById('approvalList');
+    const guardianList = document.getElementById('guardianList');
+
+    async function requestJson(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) throw new Error('Reviewer session expired. Sign in again.');
+      if (!response.ok) throw new Error(payload.error || ('Request failed (' + response.status + ').'));
+      return payload;
+    }
+
+    async function refreshSession() {
+      try {
+        const response = await fetch('/api/reviewer-login', { cache: 'no-store' });
+        const payload = await response.json().catch(() => ({}));
+        if (response.status === 503) {
+          loginStatus.textContent = 'Reviewer credentials are not configured for this environment.';
+          loginStatus.className = 'status error';
+          loginForm.hidden = true;
+          return false;
+        }
+        const active = response.ok && payload.authenticated === true;
+        loginPanel.hidden = active;
+        reviewerApp.hidden = !active;
+        if (active) await loadWorkspace();
+        else {
+          loginStatus.textContent = 'Sign in with the separately issued reviewer credentials.';
+          loginStatus.className = 'status';
+        }
+        return active;
+      } catch (error) {
+        loginStatus.textContent = error.message;
+        loginStatus.className = 'status error';
+        return false;
+      }
+    }
+
+    function makeText(tag, className, value) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      element.textContent = value;
+      return element;
+    }
+
+    async function loadApprovals() {
+      const data = await requestJson('/api/approvals');
+      approvalList.replaceChildren();
+      if (!Array.isArray(data.approvals) || data.approvals.length === 0) {
+        approvalList.append(makeText('p', 'meta', 'No pending approvals.'));
+        return;
+      }
+      for (const approval of data.approvals) {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.append(
+          makeText('h3', '', approval.operationSummary),
+          makeText('p', 'meta', approval.capabilityId + ' · ' + approval.actionId),
+          makeText('p', 'meta', approval.resourceId),
+          makeText('p', 'meta', (approval.expired ? 'Expired' : 'Expires') + ' · ' + new Date(approval.expiresAt).toLocaleString()),
+        );
+        if (!approval.expired) {
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          for (const decision of ['approved', 'denied']) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = decision === 'approved' ? 'Approve' : 'Deny';
+            button.addEventListener('click', async () => {
+              button.disabled = true;
+              try {
+                const isAgentRun = approval.capabilityId === 'aegis-agent-run';
+                await requestJson(isAgentRun
+                  ? '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id)
+                  : '/api/approvals', {
+                  method: isAgentRun ? 'PATCH' : 'POST',
+                  body: JSON.stringify(isAgentRun ? { decision } : { id: approval.id, decision }),
+                });
+                workspaceStatus.textContent = isAgentRun && decision === 'approved'
+                  ? 'Reviewer approval recorded. Owner must still authorise with an exact Sentinel grant. No execution started.'
+                  : 'Reviewer decision recorded.';
+                await loadApprovals();
+              } catch (error) {
+                workspaceStatus.textContent = error.message;
+                workspaceStatus.className = 'status error';
+                button.disabled = false;
+                if (error.message.includes('session expired')) await refreshSession();
+              }
+            });
+            actions.append(button);
+          }
+          card.append(actions);
+        }
+        approvalList.append(card);
+      }
+    }
+
+    async function reviewResource(resource, status, note, button) {
+      button.disabled = true;
+      try {
+        await requestJson('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+          method: 'PATCH',
+          body: JSON.stringify({ status, note, expectedUpdatedAt: resource.updatedAt }),
+        });
+        workspaceStatus.textContent = 'Guardian Resource review recorded.';
+        workspaceStatus.className = 'status';
+        await loadGuardianResources();
+      } catch (error) {
+        workspaceStatus.textContent = error.message;
+        workspaceStatus.className = 'status error';
+        button.disabled = false;
+        if (error.message.includes('session expired')) await refreshSession();
+      }
+    }
+
+    async function loadGuardianResources() {
+      const data = await requestJson('/api/guardian/resources?limit=100');
+      guardianList.replaceChildren();
+      const resources = Array.isArray(data.resources) ? data.resources : [];
+      if (!resources.length) {
+        guardianList.append(makeText('p', 'meta', 'No Guardian Resources awaiting review.'));
+        return;
+      }
+      for (const resource of resources) {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.append(
+          makeText('h3', '', resource.name),
+          makeText('p', 'meta', resource.status + ' · ' + resource.category),
+          makeText('p', 'meta', 'Source: ' + resource.canonicalUrl + ' · revision ' + resource.sourceRevision),
+          makeText('p', 'meta', 'Licence: ' + resource.licence.identifier + ' · ' + resource.licence.review),
+          makeText('p', 'meta', resource.licence.evidenceUrl ? 'Licence evidence: ' + resource.licence.evidenceUrl : 'Licence evidence not supplied'),
+        );
+        const note = document.createElement('textarea');
+        note.maxLength = 2000;
+        note.setAttribute('aria-label', 'Review note for ' + resource.name);
+        note.placeholder = 'Record the evidence checked and your review reasoning…';
+        card.append(note);
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const nextStatus = resource.status === 'draft' ? 'reviewed'
+          : resource.status === 'reviewed' ? 'accepted' : null;
+        if (nextStatus) {
+          const reviewButton = document.createElement('button');
+          reviewButton.type = 'button';
+          reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed' : 'Accept resource';
+          reviewButton.addEventListener('click', () => {
+            const text = note.value.trim();
+            if (!text) {
+              workspaceStatus.textContent = 'A review note is required.';
+              workspaceStatus.className = 'status error';
+              note.focus();
+              return;
+            }
+            reviewResource(resource, nextStatus, text, reviewButton);
+          });
+          actions.append(reviewButton);
+        }
+        if (resource.status !== 'archived') {
+          const archiveButton = document.createElement('button');
+          archiveButton.type = 'button';
+          archiveButton.className = 'secondary';
+          archiveButton.textContent = 'Archive resource';
+          archiveButton.addEventListener('click', () => {
+            const text = note.value.trim();
+            if (!text) {
+              workspaceStatus.textContent = 'A review note is required.';
+              workspaceStatus.className = 'status error';
+              note.focus();
+              return;
+            }
+            reviewResource(resource, 'archived', text, archiveButton);
+          });
+          actions.append(archiveButton);
+        }
+        if (actions.childElementCount) card.append(actions);
+        guardianList.append(card);
+      }
+    }
+
+    async function loadWorkspace() {
+      workspaceStatus.textContent = 'Loading owner-scoped review queues…';
+      workspaceStatus.className = 'status';
+      try {
+        await Promise.all([loadApprovals(), loadGuardianResources()]);
+        workspaceStatus.textContent = 'Review access active · owner execution and Sentinel grants remain separate.';
+      } catch (error) {
+        workspaceStatus.textContent = error.message;
+        workspaceStatus.className = 'status error';
+      }
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginStatus.textContent = 'Signing in…';
+      loginStatus.className = 'status';
+      try {
+        await requestJson('/api/reviewer-login', {
+          method: 'POST',
+          body: JSON.stringify({ password: passwordInput.value }),
+        });
+        passwordInput.value = '';
+        await refreshSession();
+      } catch (error) {
+        loginStatus.textContent = error.message;
+        loginStatus.className = 'status error';
+      }
+    });
+
+    reviewerLogout.addEventListener('click', async () => {
+      try {
+        await fetch('/api/reviewer-login', { method: 'DELETE', cache: 'no-store' });
+        approvalList.replaceChildren();
+        guardianList.replaceChildren();
+        loginPanel.hidden = false;
+        reviewerApp.hidden = true;
+        loginStatus.textContent = 'Signed out.';
+        loginStatus.className = 'status';
+      } catch {
+        workspaceStatus.textContent = 'Sign-out could not be confirmed.';
+        workspaceStatus.className = 'status error';
+      }
+    });
+
+    refreshSession();
+  </script>
+</body>
+</html>
