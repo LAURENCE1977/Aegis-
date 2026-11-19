@@ -94,7 +94,7 @@
         cache: 'no-store',
       });
       const payload = await response.json().catch(() => ({}));
-      if (response.status === 401) throw new Error('Reviewer session expired. Sign in again.');
+      if (response.status === 401 && !(path === '/api/reviewer-login' && options.method === 'POST')) throw new Error('Reviewer session expired. Sign in again.');
       if (!response.ok) throw new Error(payload.error || ('Request failed (' + response.status + ').'));
       return payload;
     }
