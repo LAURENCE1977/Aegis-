@@ -78,6 +78,7 @@ export async function onRequestPost({ request, env, params }) {
     return jsonResponse({
       evidence,
       contentRetained: false,
+      mediaTypeVerified: false,
       masteryVerified: false,
       notice: 'Only a SHA-256 receipt and minimal metadata are stored. Keep the original artifact; it is not uploaded for later retrieval.',
     }, 201);
