@@ -7,6 +7,8 @@ const OWNER_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION_PATTERN = /^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/;
 const MAX_ASSESSMENTS = 100;
+const MAX_ATTEMPT_EVIDENCE = 75;
+const MAX_APPLIED_EVIDENCE = 25;
 const MAX_EVIDENCE = 100;
 
 function requireDatabase(db) {
@@ -92,7 +94,7 @@ export async function loadLearningMasteryEvidence(db, ownerId, pathId, pathVersi
       WHERE owner_id = ? AND assessment_id = ? AND assessment_version = ?
     `).bind(ownerId, assessment.assessment_id, assessment.version).first();
     const count = countRow?.total;
-    if (!Number.isInteger(count) || count < 0 || evidence.length + count > MAX_EVIDENCE) {
+    if (!Number.isInteger(count) || count < 0 || evidence.length + count > MAX_ATTEMPT_EVIDENCE) {
       throw new TypeError('Learning Mastery evidence exceeds the bounded attempt limit');
     }
     const attempts = await listLearningAttempts(
@@ -128,9 +130,9 @@ export async function loadLearningMasteryEvidence(db, ownerId, pathId, pathVersi
     WHERE owner_id = ? AND path_id = ? AND path_version = ? AND node_id = ?
     ORDER BY submitted_at ASC, id ASC
     LIMIT ?
-  `).bind(ownerId, pathId, pathVersion, nodeId, MAX_EVIDENCE + 1).all();
+  `).bind(ownerId, pathId, pathVersion, nodeId, MAX_APPLIED_EVIDENCE + 1).all();
   const appliedRows = appliedResult?.results ?? [];
-  if (appliedRows.length > MAX_EVIDENCE || evidence.length + appliedRows.length > MAX_EVIDENCE) {
+  if (appliedRows.length > MAX_APPLIED_EVIDENCE || evidence.length + appliedRows.length > MAX_EVIDENCE) {
     throw new TypeError('Learning Mastery evidence exceeds the bounded applied-task receipt limit');
   }
   for (const row of appliedRows) {
