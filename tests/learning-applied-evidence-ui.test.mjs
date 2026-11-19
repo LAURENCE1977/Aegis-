@@ -16,7 +16,7 @@ test('Forge exposes a learner-facing path, node and applied-artifact intake work
 test('learner UI loads registered paths and lists exact-node digest receipts', () => {
   assert.match(html, /\/api\/learning\/paths\?limit=100/);
   assert.match(html, /\/evidence\?version=/);
-  assert.match(html, /\/api\/learning\/paths\/\?limit=100/);
+  assert.match(html, /\/api\/learning\/paths\?limit=100/);
   assert.match(html, /contentRetained/);
   assert.match(html, /masteryVerified/);
 });
