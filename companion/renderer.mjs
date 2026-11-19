@@ -1,3 +1,5 @@
+import { createCompanionModelLifecycle } from './model-lifecycle.mjs';
+
 const VISeme_KEYS = Object.freeze(['aa', 'ee', 'ih', 'oh', 'ou', 'jawOpen']);
 const EXPRESSION_IDS = new Set(['neutral', 'smile', 'focused', 'concerned']);
 const COMPANION_ASSET_SCHEMA = 'aegis.companion-asset/1.0';
@@ -334,6 +336,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   const defaultPixelRatio = options.pixelRatio ?? (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1);
   const modelNames = ['uProjection', 'uView', 'uModel', 'uColour', 'uCamera', 'uGlow'];
   let uniforms = {};
+  const modelLifecycle = createCompanionModelLifecycle();
 
   function resize(width, height, pixelRatio = defaultPixelRatio) {
     if (!canvas || disposed) return false;
@@ -537,6 +540,19 @@ export function createCompanionRenderer(canvas, options = {}) {
     schedule();
     return { timestamp: visemeTimestamp, weights: { ...visemes } };
   }
+  async function prepareModelResource(loader) {
+    if (disposed) return { prepared: false, reason: 'renderer-disposed' };
+    return modelLifecycle.prepare(async () => {
+      const resource = await loader();
+      return resource && typeof resource === 'object' && typeof resource.dispose === 'function'
+        ? resource
+        : null;
+    });
+  }
+  async function commitModelResource(ticket) {
+    if (disposed) return { committed: false, reason: 'renderer-disposed' };
+    return modelLifecycle.commit(ticket);
+  }
   async function loadModel(assetManifest, file, cryptoApi = globalThis.crypto) {
     const validation = validateCompanionAssetManifest(assetManifest);
     if (!validation.valid) return { loaded: false, reason: validation.reason };
@@ -555,6 +571,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   function dispose() {
     if (disposed) return true;
     disposed = true;
+    void modelLifecycle.destroy();
     stop();
     if (resizeObserver) resizeObserver.disconnect();
     if (contextLostHandler) canvas?.removeEventListener('webglcontextlost', contextLostHandler);
@@ -564,7 +581,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     cleanupGl();
     return true;
   }
-  return { init, resize, setState, setExpression, setVisemes, loadModel, playAnimation, suspend, resume, dispose, get state() { return state; }, get supported() { return initialised; } };
+  return { init, resize, setState, setExpression, setVisemes, loadModel, prepareModelResource, commitModelResource, playAnimation, suspend, resume, dispose, get activeModelResource() { return modelLifecycle.active; }, get state() { return state; }, get supported() { return initialised; } };
 }
 
 function mountCompanionCanvases() {
