@@ -52,6 +52,8 @@ The graph stores links and learning metadata, not copied course content. This va
 - The owner can withdraw a receipt through `DELETE /api/learning/paths/:id/evidence/:evidenceId?version=:version&nodeId=:node`. The receipt row (including its digest) is deleted; an append-only withdrawal event remains without the digest.
 - Submission and withdrawal events are append-only. Receipt content/identity cannot be updated. The D1 migration is `0014_learning_applied_task_evidence.sql`.
 - `GET /api/learning/mastery` now loads owner-scoped applied-task receipts alongside server-scored assessment attempts. Human review remains unavailable; therefore evidence cannot currently reach a human-confirmation candidate or verify mastery. The candidate builder also bounds the combined evidence set to 100 records (up to 75 server-scored attempts and 25 applied-task receipts).
+- `GET /api/learning/paths/:id/evidence?version=:version&nodeId=:node` lists only the authenticated owner's active receipts for that exact path/node; it returns metadata and digest only, never artifact bytes.
+- The Forge panel now provides path/node selectors, file submission, receipt listing, owner withdrawal and a non-certifying evidence-gap diagnostic. It explicitly tells learners to keep their originals and that independent review/mastery verification is not yet available.
 - This is a provenance receipt, not proof that a reviewer has inspected the artifact. Because the file is not retained or retrievable, a future independent-review workflow must arrange a separate user-controlled, privacy-preserving review channel before it can approve evidence.
 
 ## 4. Security findings
