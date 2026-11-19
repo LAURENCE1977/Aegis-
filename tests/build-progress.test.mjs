@@ -31,7 +31,9 @@ test('the register records verified dashboard and companion lifecycle checkpoint
   assert.match(progress.latestVerifiedCheckpoint, /44591096408/);
   assert.match(progress.latestVerifiedCheckpoint, /44591891106/);
   assert.match(progress.latestVerifiedCheckpoint, /1,035 passed, 0 failed, 1 skipped/);
-  assert.match(progress.nextMilestone, /review the companion lifecycle draft PR #107/i);
+  assert.match(progress.latestVerifiedCheckpoint, /PR #108/);
+  assert.match(progress.latestVerifiedCheckpoint, /PR #109/);
+  assert.match(progress.nextMilestone, /optional VRM rendering adapter/i);
   assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /external model loader.*remain incomplete/i);
   assert.match(progress.workstreams.find(item => item.id === 'research').summary, /Composio intake reviewed/i);
 });
