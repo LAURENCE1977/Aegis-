@@ -33,6 +33,9 @@ export function validateCompanionAssetManifest(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { valid: false, reason: 'invalid-manifest' };
   }
+  if (typeof input.schema !== 'string' || !input.schema.trim()) {
+    return { valid: false, reason: 'invalid-manifest' };
+  }
   if (input.schema !== COMPANION_ASSET_SCHEMA) {
     return { valid: false, reason: 'unsupported-schema' };
   }
