@@ -680,3 +680,45 @@ test('AG-UI rejects oversized assembled system context before contacting a provi
   assert.equal(providerCalled, false);
   assert.match(await response.text(), /INPUT_CONTEXT_TOO_LARGE/);
 });
+
+
+test('AG-UI reserves bounded context headroom when Sentinel-mediated tools are enabled', async () => {
+  const db = new AgentToolMemoryD1(null);
+  let captured;
+  const history = Array.from({ length: 10 }, (_, index) => ({
+    id: 'tool-history-' + index,
+    role: index % 2 === 0 ? 'user' : 'assistant',
+    content: ('prior tool-enabled context ' + index + ' ').repeat(120),
+  }));
+  const response = await onRequestPost({
+    request: await request(input({ messages: [
+      ...history,
+      { id: 'latest-user', role: 'user', content: 'Keep this latest tool-enabled question.' },
+    ] })),
+    env: {
+      ...envBase,
+      AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      AEGIS_DB: db,
+    },
+    fetchImpl: async (_url, options) => {
+      captured = JSON.parse(options.body);
+      return new Response(modelSseStream([
+        qwenToolDelta({ content: 'No tool was needed.' }),
+        'data: [DONE]\\n\\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(response.status, 200);
+  await response.text();
+  const estimatedTokens = captured.messages.reduce(
+    (total, message) => total + Math.ceil(new TextEncoder().encode(message.content).byteLength / 4) + 4,
+    0,
+  );
+  assert.ok(estimatedTokens <= 5992, 'tool-enabled prompt must leave 2,200 estimated tokens for the bounded follow-up');
+  assert.equal(captured.messages.at(-1).content, 'Keep this latest tool-enabled question.');
+});
