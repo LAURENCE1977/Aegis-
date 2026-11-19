@@ -494,9 +494,8 @@ export function createCompanionRenderer(canvas, options = {}) {
     return { timestamp: visemeTimestamp, weights: { ...visemes } };
   }
   async function loadModel(assetManifest) {
-    if (!assetManifest || typeof assetManifest !== 'object' || Array.isArray(assetManifest)) {
-      return { loaded: false, reason: 'invalid-asset-manifest' };
-    }
+    const validation = validateCompanionAssetManifest(assetManifest);
+    if (!validation.valid) return { loaded: false, reason: validation.reason };
     return { loaded: false, reason: 'external-model-loader-not-yet-enabled' };
   }
   function playAnimation(id) { return setState(id); }
