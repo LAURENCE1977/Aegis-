@@ -50,3 +50,8 @@ Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anth
 ## Verification
 
 PR #33 uses Node.js built-in tests. The first test-only commit intentionally produced a failing CI run (RED). The implementation commit then passed the repository's full Node.js 22 suite: GitHub Actions run 43754887238, 0 failures. The library currently has six focused tests covering estimation, routing, quota exhaustion, context rejection, context fitting and malformed inputs.
+
+
+## Default free-first provider policy
+
+The live model adapter now treats an omitted `AEGIS_FREE_ONLY` setting as free-only whenever an external provider is selected. Cloudflare Workers AI remains the default provider. Anthropic and Alibaba Qwen are blocked before network access unless the operator explicitly sets `AEGIS_FREE_ONLY=false`. Setting `AEGIS_FREE_ONLY=true` continues to block external providers; invalid values fail closed. This is a provider-selection safeguard, not a promise of unlimited free inference: Workers AI usage remains subject to Cloudflare's current quotas and terms. The safeguard does not yet connect the model catalogue and token planner to live model selection, and it does not provide a durable usage ledger or automatic failover.
