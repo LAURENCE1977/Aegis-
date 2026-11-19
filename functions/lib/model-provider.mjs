@@ -176,6 +176,9 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   validateMessages(messages);
   const safeTools = validateTools(tools);
   const provider = env.AEGIS_MODEL_PROVIDER || 'workers-ai';
+  if (!['workers-ai', 'anthropic', 'alibaba-qwen'].includes(provider)) {
+    throw new Error('Unsupported AEGIS model provider.');
+  }
   if (env.AEGIS_FREE_ONLY !== undefined && !['true', 'false'].includes(env.AEGIS_FREE_ONLY)) {
     const error = new Error('The model provider policy is not configured correctly.');
     error.code = 'POLICY_CONFIGURATION_INVALID';
