@@ -350,8 +350,8 @@ export function createCompanionRenderer(canvas, options = {}) {
     return { loaded: false, reason: 'external-model-loader-not-yet-enabled' };
   }
   function playAnimation(id) { return setState(id); }
-  function suspend() { setState('paused'); stop(); return true; }
-  function resume() { if (state === 'paused') state = 'idle'; schedule(); return true; }
+  function suspend() { stop(); return true; }
+  function resume() { schedule(); return true; }
   function dispose() {
     if (disposed) return true;
     disposed = true;
