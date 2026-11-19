@@ -3473,6 +3473,192 @@
     });
 
 
+    function selectedLearningPath() {
+      const key = learningPathSelect.value;
+      return learningPaths.find(item => item.path.id + '@' + item.path.version === key) || null;
+    }
+
+    function selectedLearningNode() {
+      const path = selectedLearningPath();
+      return path?.path.nodes.find(node => node.id === learningNodeSelect.value) || null;
+    }
+
+    function updateLearningNodeOptions() {
+      const selected = selectedLearningPath();
+      learningNodeSelect.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = selected ? 'Choose a learning node…' : 'Choose a path first…';
+      learningNodeSelect.append(placeholder);
+      (selected?.path.nodes || []).forEach(node => {
+        const option = document.createElement('option');
+        option.value = node.id;
+        option.textContent = node.title + ' · ' + node.id;
+        learningNodeSelect.append(option);
+      });
+      learningNodeSelect.disabled = !selected || selected.path.nodes.length === 0;
+      updateLearningEvidenceActions();
+    }
+
+    function updateLearningEvidenceActions() {
+      const ready = Boolean(selectedLearningPath() && selectedLearningNode());
+      learningEvidenceUploadBtn.disabled = !ready || !learningEvidenceFile.files?.length;
+      learningMasteryCheckBtn.disabled = !ready;
+    }
+
+    async function loadLearningPaths() {
+      learningEvidenceStatus.textContent = 'Loading registered Learning Paths…';
+      learningEvidenceList.replaceChildren();
+      try {
+        const data = await controlApi('/api/learning/paths?limit=100');
+        learningPaths = Array.isArray(data.learningPaths)
+          ? data.learningPaths.filter(item => item?.path?.id && item?.path?.version && Array.isArray(item.path.nodes))
+          : [];
+        learningPathSelect.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = learningPaths.length ? 'Choose a registered path…' : 'No registered paths available';
+        learningPathSelect.append(placeholder);
+        learningPaths.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.path.id + '@' + item.path.version;
+          option.textContent = item.path.title + ' · v' + item.path.version;
+          learningPathSelect.append(option);
+        });
+        learningPathSelect.disabled = learningPaths.length === 0;
+        updateLearningNodeOptions();
+        learningEvidenceStatus.textContent = learningPaths.length
+          ? learningPaths.length + ' registered path(s). Choose a path and node to manage evidence receipts.'
+          : 'No registered Learning Paths yet. Register a reviewed path before submitting applied work.';
+        if (learningPaths.length) await loadLearningEvidence();
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Learning Paths unavailable: ' + error.message;
+      }
+    }
+
+    async function loadLearningEvidence() {
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      learningEvidenceList.replaceChildren();
+      updateLearningEvidenceActions();
+      if (!selectedPath || !selectedNode) {
+        learningEvidenceStatus.textContent = 'Choose an exact registered path and node to view evidence receipts.';
+        return;
+      }
+      learningEvidenceStatus.textContent = 'Loading evidence receipts…';
+      try {
+        const url = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+          '/evidence?version=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const data = await controlApi(url);
+        const receipts = Array.isArray(data.evidence) ? data.evidence : [];
+        learningEvidenceStatus.textContent = receipts.length +
+          ' digest receipt(s) for ' + selectedNode.title +
+          '. Original files are not stored; keep your own copies. Mastery is not verified.';
+        if (!receipts.length) {
+          learningEvidenceList.textContent = 'No applied-work receipts for this node yet.';
+          return;
+        }
+        receipts.forEach(receipt => {
+          const entry = document.createElement('article');
+          entry.className = 'workspace-card';
+          entry.textContent = '';
+          const summary = document.createElement('p');
+          summary.textContent = receipt.occurredAt + ' · ' + receipt.byteLength +
+            ' bytes · ' + receipt.mediaType + ' · SHA-256 ' +
+            receipt.artifactDigest.slice(0, 16) + '…';
+          const withdrawButton = document.createElement('button');
+          withdrawButton.type = 'button';
+          withdrawButton.className = 'secondary';
+          withdrawButton.textContent = 'Withdraw receipt';
+          withdrawButton.addEventListener('click', async () => {
+            withdrawButton.disabled = true;
+            try {
+              const deleteUrl = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+                '/evidence/' + encodeURIComponent(receipt.id) +
+                '?version=' + encodeURIComponent(selectedPath.path.version) +
+                '&nodeId=' + encodeURIComponent(selectedNode.id);
+              await controlApi(deleteUrl, { method: 'DELETE' });
+              learningEvidenceStatus.textContent = 'Receipt withdrawn. Its digest was deleted; a content-free audit event remains.';
+              await loadLearningEvidence();
+            } catch (error) {
+              learningEvidenceStatus.textContent = 'Receipt could not be withdrawn: ' + error.message;
+              withdrawButton.disabled = false;
+            }
+          });
+          entry.append(summary, withdrawButton);
+          learningEvidenceList.append(entry);
+        });
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Evidence receipts unavailable: ' + error.message;
+      }
+    }
+
+    learningPathSelect.addEventListener('change', () => {
+      updateLearningNodeOptions();
+      loadLearningEvidence();
+    });
+    learningNodeSelect.addEventListener('change', loadLearningEvidence);
+    learningEvidenceFile.addEventListener('change', updateLearningEvidenceActions);
+    learningEvidenceRefreshBtn.addEventListener('click', loadLearningPaths);
+
+    learningEvidenceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      const file = learningEvidenceFile.files?.[0];
+      if (!selectedPath || !selectedNode || !file) return;
+      if (file.size < 1 || file.size > 2 * 1024 * 1024) {
+        learningEvidenceStatus.textContent = 'Choose a non-empty file no larger than 2 MiB.';
+        return;
+      }
+      const allowedMediaTypes = new Set([
+        'application/octet-stream', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain',
+      ]);
+      const mediaType = allowedMediaTypes.has(file.type) ? file.type : 'application/octet-stream';
+      learningEvidenceUploadBtn.disabled = true;
+      learningEvidenceStatus.textContent = 'Computing and saving a SHA-256 receipt… The file itself will not be retained.';
+      try {
+        const url = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+          '/evidence?version=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const result = await controlApi(url, {
+          method: 'POST',
+          body: file,
+          headers: { 'Content-Type': mediaType },
+        });
+        learningEvidenceFile.value = '';
+        learningEvidenceStatus.textContent = 'SHA-256 receipt saved. The uploaded file was not retained; keep your original. Mastery is not verified.';
+        await loadLearningEvidence();
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Evidence receipt failed: ' + error.message;
+      } finally {
+        updateLearningEvidenceActions();
+      }
+    });
+
+    learningMasteryCheckBtn.addEventListener('click', async () => {
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      if (!selectedPath || !selectedNode) return;
+      learningMasteryCheckBtn.disabled = true;
+      learningEvidenceStatus.textContent = 'Checking evidence gaps…';
+      try {
+        const query = '?pathId=' + encodeURIComponent(selectedPath.path.id) +
+          '&pathVersion=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const result = await controlApi('/api/learning/mastery' + query);
+        const missing = result.candidate?.missing || [];
+        learningEvidenceStatus.textContent = 'Evidence status: ' + result.candidate.status +
+          '. Missing: ' + (missing.join(', ') || 'none') +
+          '. Independent human review is not connected; masteryVerified remains false.';
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Mastery evidence check unavailable: ' + error.message;
+      } finally {
+        updateLearningEvidenceActions();
+      }
+    });
+
     async function loadGuardianResources() {
       guardianResourceList.replaceChildren();
       guardianResourceStatus.textContent = 'Loading Guardian Resource catalogue…';
