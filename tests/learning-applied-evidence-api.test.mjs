@@ -66,7 +66,7 @@ class EvidenceD1 {
 async function request(url, { method = 'POST', body = new TextEncoder().encode('work sample'), contentType = 'application/pdf', authenticated = true, origin = 'https://aegis.example' } = {}) {
   const headers = { Origin: origin, 'Content-Type': contentType };
   if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
-  return new Request(url, { method, headers, body: method === 'DELETE' ? undefined : body });
+  return new Request(url, { method, headers, body: method === 'GET' || method === 'DELETE' ? undefined : body });
 }
 const routeParams = { id: path.id };
 
