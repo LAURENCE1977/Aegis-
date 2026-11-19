@@ -1004,6 +1004,37 @@
           <button id="learningPathLoadStarterBtn" class="secondary" type="button">Load starter into editor</button>
           <p class="memory-help">Loading a starter only fills the local editor; it is not registered until you submit the form. Examples contain learning metadata and source links only, not copied course content.</p>
         </div>
+        <div class="memory-form" id="learningPathGuidedEditor" aria-labelledby="learningPathGuidedHeading">
+          <h4 id="learningPathGuidedHeading">Guided path builder</h4>
+          <p class="memory-help">Create a path and add learning nodes using ordinary fields. Each node is added to the editable draft below; nothing is registered until you submit the separate registration form.</p>
+          <label for="learningPathGuidedId">Path ID</label>
+          <input id="learningPathGuidedId" maxlength="64" value="javascript-foundations" autocomplete="off">
+          <label for="learningPathGuidedVersion">Version</label>
+          <input id="learningPathGuidedVersion" maxlength="32" value="1.0.0" autocomplete="off">
+          <label for="learningPathGuidedTitle">Path title</label>
+          <input id="learningPathGuidedTitle" maxlength="120" value="JavaScript Foundations">
+          <label for="learningPathGuidedDescription">Description</label>
+          <textarea id="learningPathGuidedDescription" rows="2" maxlength="1000">A practical introduction to JavaScript fundamentals.</textarea>
+          <h5>Add a learning node</h5>
+          <label for="learningPathGuidedNodeId">Node ID</label>
+          <input id="learningPathGuidedNodeId" maxlength="64" placeholder="e.g. javascript-functions" autocomplete="off">
+          <label for="learningPathGuidedNodeTitle">Node title</label>
+          <input id="learningPathGuidedNodeTitle" maxlength="120" placeholder="e.g. Functions and scope">
+          <label for="learningPathGuidedOutcomes">Learning outcomes (one per line)</label>
+          <textarea id="learningPathGuidedOutcomes" rows="3" maxlength="4000" placeholder="Explain what the learner should understand or be able to do"></textarea>
+          <label for="learningPathGuidedPrerequisites">Prerequisite node IDs (one per line, optional)</label>
+          <textarea id="learningPathGuidedPrerequisites" rows="2" maxlength="2000" placeholder="javascript-basics"></textarea>
+          <label for="learningPathGuidedDifficulty">Difficulty</label>
+          <select id="learningPathGuidedDifficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+          <label for="learningPathGuidedSources">Source links (HTTPS, one per line)</label>
+          <textarea id="learningPathGuidedSources" rows="3" maxlength="4000" placeholder="https://developer.mozilla.org/"></textarea>
+          <button id="learningPathGuidedAddNodeBtn" class="secondary" type="button">Add node to local draft</button>
+          <p class="status" id="learningPathGuidedStatus" role="status" aria-live="polite">Guided builder edits a local draft only. Add at least one node before registering.</p>
+        </div>
         <form class="memory-form" id="learningPathForm">
           <label for="learningPathGraphJson">Learning Path definition (JSON)</label>
           <textarea id="learningPathGraphJson" rows="9" maxlength="128000" spellcheck="false">{
@@ -1381,6 +1412,8 @@
     const learningPathForm = document.getElementById('learningPathForm');
     const learningPathStarterSelect = document.getElementById('learningPathStarterSelect');
     const learningPathLoadStarterBtn = document.getElementById('learningPathLoadStarterBtn');
+    const learningPathGuidedAddNodeBtn = document.getElementById('learningPathGuidedAddNodeBtn');
+    const learningPathGuidedStatus = document.getElementById('learningPathGuidedStatus');
     const learningPathGraphJson = document.getElementById('learningPathGraphJson');
     const learningPathRegisterBtn = document.getElementById('learningPathRegisterBtn');
     const learningPathAuthorStatus = document.getElementById('learningPathAuthorStatus');
@@ -3574,7 +3607,88 @@
         return;
       }
       learningPathGraphJson.value = JSON.stringify(template, null, 2);
+      document.getElementById('learningPathGuidedId').value = template.id;
+      document.getElementById('learningPathGuidedVersion').value = template.version;
+      document.getElementById('learningPathGuidedTitle').value = template.title;
+      document.getElementById('learningPathGuidedDescription').value = template.description;
+      document.getElementById('learningPathGuidedNodeId').value = '';
+      document.getElementById('learningPathGuidedNodeTitle').value = '';
+      document.getElementById('learningPathGuidedOutcomes').value = '';
+      document.getElementById('learningPathGuidedPrerequisites').value = '';
+      document.getElementById('learningPathGuidedSources').value = '';
+      learningPathGuidedStatus.textContent = 'Starter loaded into the local draft. Add nodes below or edit the JSON directly; nothing has been registered yet.';
       learningPathAuthorStatus.textContent = 'Starter loaded into the local editor. Review the path, source links and version before submitting; nothing has been registered yet.';
+    });
+
+    learningPathGuidedAddNodeBtn.addEventListener('click', () => {
+      const pathId = document.getElementById('learningPathGuidedId').value.trim();
+      const version = document.getElementById('learningPathGuidedVersion').value.trim();
+      const title = document.getElementById('learningPathGuidedTitle').value.trim();
+      const description = document.getElementById('learningPathGuidedDescription').value.trim();
+      const nodeId = document.getElementById('learningPathGuidedNodeId').value.trim();
+      const nodeTitle = document.getElementById('learningPathGuidedNodeTitle').value.trim();
+      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      const outcomes = splitLines(document.getElementById('learningPathGuidedOutcomes').value);
+      const prerequisites = splitLines(document.getElementById('learningPathGuidedPrerequisites').value);
+      const sourceRefs = splitLines(document.getElementById('learningPathGuidedSources').value);
+      const difficulty = document.getElementById('learningPathGuidedDifficulty').value;
+      if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(pathId) || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(nodeId)) {
+        learningPathGuidedStatus.textContent = 'Use lowercase letters, numbers and hyphens for path and node IDs (2–64 characters).';
+        return;
+      }
+      if (!/^\\d+\\.\\d+\\.\\d+$/.test(version) || !title || !nodeTitle || !outcomes.length || !sourceRefs.length) {
+        learningPathGuidedStatus.textContent = 'Add a valid version, path title, node title, at least one outcome and at least one HTTPS source.';
+        return;
+      }
+      try {
+        if (sourceRefs.some(source => {
+          const url = new URL(source);
+          return url.protocol !== 'https:';
+        })) throw new Error('Only HTTPS source links are accepted.');
+      } catch {
+        learningPathGuidedStatus.textContent = 'Every source must be a valid HTTPS URL.';
+        return;
+      }
+      let pathDefinition;
+      try {
+        pathDefinition = JSON.parse(learningPathGraphJson.value);
+      } catch {
+        learningPathGuidedStatus.textContent = 'The JSON draft is invalid. Correct it before adding a guided node.';
+        return;
+      }
+      const nodes = Array.isArray(pathDefinition.nodes) ? pathDefinition.nodes : [];
+      if (nodes.some(node => node.id === nodeId)) {
+        learningPathGuidedStatus.textContent = 'That node ID already exists in this draft.';
+        return;
+      }
+      const knownNodeIds = new Set(nodes.map(node => node.id));
+      if (prerequisites.some(id => id === nodeId || !knownNodeIds.has(id))) {
+        learningPathGuidedStatus.textContent = 'Prerequisites must refer to existing nodes in this draft, and a node cannot depend on itself.';
+        return;
+      }
+      pathDefinition = {
+        id: pathId,
+        version,
+        title,
+        description,
+        nodes: [...nodes, {
+          id: nodeId,
+          title: nodeTitle,
+          outcomes,
+          prerequisites,
+          difficulty,
+          sourceRefs,
+          contentLicenseStatus: 'link-only',
+        }],
+      };
+      learningPathGraphJson.value = JSON.stringify(pathDefinition, null, 2);
+      learningPathGuidedStatus.textContent = 'Node added to the local draft. Review the JSON and add another node or submit the separate registration form.';
+      learningPathAuthorStatus.textContent = 'Local draft updated. Nothing has been registered yet.';
+      document.getElementById('learningPathGuidedNodeId').value = '';
+      document.getElementById('learningPathGuidedNodeTitle').value = '';
+      document.getElementById('learningPathGuidedOutcomes').value = '';
+      document.getElementById('learningPathGuidedPrerequisites').value = '';
+      document.getElementById('learningPathGuidedSources').value = '';
     });
 
     learningPathForm.addEventListener('submit', async event => {
