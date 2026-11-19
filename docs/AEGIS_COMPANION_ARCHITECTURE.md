@@ -1,6 +1,6 @@
 # AEGIS Interactive Human Companion Architecture
 
-**Status:** Foundational architecture decision; profile persistence and the first procedural WebGL2 renderer prototype are implemented on the open feature branch. Full lifelike avatar, imported model support, voice/audio runtime and device-level validation remain incomplete.
+**Status:** The procedural WebGL2 renderer is on `main`; its signed-in Home integration is proposed in PR #105. The current renderer is a stylised bust only. Full lifelike avatar, imported model support, voice/audio runtime and device-level validation remain incomplete.
 
 ## 1. Product decision
 
@@ -238,8 +238,28 @@ The first implementation is intentionally smaller than the target architecture:
 
 - `companion/renderer.mjs` owns a dependency-free WebGL2 renderer and generated procedural geometry.
 - The initial character is a stylised head-and-shoulders bust. It is not a full human model or final visual direction.
-- Existing home and full-screen companion surfaces mount the renderer independently. CSS presentation remains the fallback when WebGL2 is unavailable or initialisation fails.
+- The signed-in Home integration proposed in PR #105 mounts the renderer in the companion stage; a separate full-screen companion mode remains future work. CSS presentation remains the fallback when WebGL2 is unavailable or initialisation fails.
 - Presence state is a display-only contract. The renderer accepts bounded expression and viseme values but has no tool, memory, permission, Sentinel or agent-execution integration.
 - The current `loadModel` adapter explicitly reports that external model loading is not enabled. VRM/GLB/VRMA import, skeleton mapping, facial blendshapes, true audio-synchronised lip sync and asset provenance enforcement remain future work.
 - CI evidence: workflow [44565947826](https://github.com/LAURENCE1977/Aegis-/actions/runs/44565947826) passed on code head `71edd250f59cfd347a6338ec916f8acf560f20a5` with 1,024 Node tests (1,023 passed, zero failed, one skipped), one Cloudflare runtime integration test passed and all isolated D1 migration/smoke stages green. The suite includes a mock-WebGL2 initialisation, cleanup and pixel-ratio-cap test.
 - CI does not replace browser/device validation. WebGL2 availability is browser/GPU dependent; test the actual renderer on target browsers before promoting it beyond prototype status.
+
+
+## 15. VRM model-loading research direction — 19 November 2026
+
+A browser-first VRM path is preferable to building a proprietary avatar format or adopting a full third-party assistant application.
+
+Reviewed references:
+- [Looking-Glass/liteforms-web](https://github.com/Looking-Glass/liteforms-web) — repository and package metadata identify MIT licensing. Its avatar subsystem demonstrates Three.js, `@pixiv/three-vrm`, VRMA animation loading, expression/morph-target mapping, lip-sync events and browser-side VRM storage. Treat it as an architecture reference, not a dependency to import wholesale: its Next.js/React application, provider integrations and bundled model/environment/animation assets are not required by AEGIS. Review each asset licence separately before reuse.
+- [pixiv/three-vrm](https://github.com/pixiv/three-vrm) — MIT-licensed VRM loader/runtime for Three.js. A plausible optional renderer adapter, subject to dependency pinning, bundle-size checks and mobile-browser testing.
+
+Recommended AEGIS path:
+1. Keep the existing procedural WebGL2 renderer as the zero-dependency fallback.
+2. Add an optional, replaceable Three.js + `@pixiv/three-vrm` renderer adapter; do not make it part of the Sentinel/control plane.
+3. Start with user-supplied VRM files, processed locally in the browser. Require users to confirm they have rights to use uploaded assets; do not bundle third-party character models by default.
+4. Keep animation and expression mapping behind the provider-neutral renderer contract. Support VRM 0.x and 1.x carefully, with neutral fallback when a model lacks a requested expression or blendshape.
+5. Use a local browser asset repository with explicit clear/export controls only after storage, size limits, lifecycle and deletion tests are defined.
+6. Pin dependencies and decide whether to self-host the static packages or load a version-pinned optional module. Do not introduce an unpinned runtime CDN dependency.
+7. Add automated loader, invalid-file, resource-disposal, fallback, expression and lip-sync tests, then validate performance and WebGL recovery on iPhone/iPad/Chromebook-class browsers.
+
+Do not copy bundled character models, animations, environments or voice assets from reference repositories until each asset's own licence and redistribution terms are verified. The MIT licence on source code does not automatically license those assets.
