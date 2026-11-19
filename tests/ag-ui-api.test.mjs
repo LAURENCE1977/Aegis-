@@ -484,6 +484,7 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
     request: await request(input()),
     env: {
       ...envBase,
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
       AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
