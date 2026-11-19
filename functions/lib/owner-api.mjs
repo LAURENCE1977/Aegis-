@@ -6,11 +6,12 @@ import {
   isReviewerAuthorized,
 } from "./auth.mjs";
 
-export const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), {
+export const jsonResponse = (body, status = 200, extraHeaders = {}) => new Response(JSON.stringify(body), {
   status,
   headers: {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
+    ...extraHeaders,
   },
 });
 
