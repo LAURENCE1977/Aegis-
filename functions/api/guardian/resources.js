@@ -1,4 +1,5 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from '../../lib/auth.mjs';
+import { authorizeOwnerOrReviewer } from '../../lib/owner-api.mjs';
 import { readJsonRequest, jsonResponse } from '../../lib/owner-api.mjs';
 import { createGuardianResource, listGuardianResources } from '../../lib/guardian-catalogue.mjs';
 
@@ -6,8 +7,8 @@ const OWNER_ID = 'owner';
 const MAX_BODY_BYTES = 64 * 1024;
 
 export async function onRequestGet({ request, env }) {
-  if (!authConfigAvailable(env)) return jsonResponse({ error: 'Authentication is not configured.' }, 503);
-  if (!(await isAuthorized(request, env))) return jsonResponse({ error: 'Authentication required.' }, 401);
+  const denied = await authorizeOwnerOrReviewer(request, env);
+  if (denied) return denied;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Guardian Resource storage is not configured.' }, 503);
   }
