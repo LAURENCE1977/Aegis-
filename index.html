@@ -2243,6 +2243,27 @@
       await loadApprovals();
     });
 
+    async function refreshReviewerSession() {
+      try {
+        const response = await fetch('/api/reviewer-login', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        reviewerAuthenticated = response.ok && result.authenticated === true;
+        reviewerAuthStatus.textContent = response.status === 503
+          ? 'Independent reviewer credentials are not configured in this environment.'
+          : reviewerAuthenticated
+            ? 'Separate reviewer session active. Decisions will be recorded as reviewer.'
+            : 'Sign in with the separate reviewer credentials to record decisions.';
+        reviewerLoginForm.hidden = reviewerAuthenticated || response.status === 503;
+        reviewerLogoutBtn.hidden = !reviewerAuthenticated;
+      } catch {
+        reviewerAuthenticated = false;
+        reviewerAuthStatus.textContent = 'Reviewer session status is unavailable.';
+        reviewerLoginForm.hidden = false;
+        reviewerLogoutBtn.hidden = true;
+      }
+      return reviewerAuthenticated;
+    }
+
     async function loadChatProjects() {
       const selectedChat = chatProjectSelect.value;
       const selectedMemory = memoryProjectSelect.value;
@@ -3961,9 +3982,11 @@
       guardianResourceList.replaceChildren();
       guardianResourceStatus.textContent = 'Loading Guardian Resource catalogue…';
       try {
+        await refreshReviewerSession();
         const data = await controlApi('/api/guardian/resources?limit=100');
         const resources = Array.isArray(data.resources) ? data.resources : [];
-        guardianResourceStatus.textContent = resources.length + ' resource(s) · owner-scoped catalogue.';
+        guardianResourceStatus.textContent = resources.length + ' resource(s) · owner-scoped catalogue.' +
+          (reviewerAuthenticated ? ' · reviewer session active' : ' · open Approvals to sign in as reviewer before changing review states');
         if (!resources.length) {
           guardianResourceList.textContent = 'No Guardian Resources yet. Add a pinned source above; it will start as a draft.';
           guardianResourceList.className = 'memory-empty';
@@ -4050,7 +4073,7 @@
           if (resource.status === 'draft') nextStatus = 'reviewed';
           else if (resource.status === 'reviewed') nextStatus = 'accepted';
           else if (resource.status === 'accepted') nextStatus = 'archived';
-          if (resource.status !== 'archived') {
+          if (resource.status !== 'archived' && reviewerAuthenticated) {
             const reviewButton = document.createElement('button');
             reviewButton.type = 'button';
             reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed'
@@ -4059,7 +4082,7 @@
             reviewButton.addEventListener('click', async () => {
               const note = guardianResourceReviewNote.value.trim();
               if (!note) {
-                guardianResourceStatus.textContent = 'Add an owner review note before changing the resource status.';
+                guardianResourceStatus.textContent = 'Add a review note before changing the resource status.';
                 guardianResourceReviewNote.focus();
                 return;
               }
@@ -4093,7 +4116,7 @@
             archiveButton.addEventListener('click', async () => {
               const note = guardianResourceReviewNote.value.trim();
               if (!note) {
-                guardianResourceStatus.textContent = 'Add an owner review note before archiving this resource.';
+                guardianResourceStatus.textContent = 'Add a review note before archiving this resource.';
                 guardianResourceReviewNote.focus();
                 return;
               }
@@ -4115,6 +4138,10 @@
               }
             });
             item.append(archiveButton);
+          } else if (resource.status !== 'archived') {
+            const reviewerNotice = document.createElement('p');
+            reviewerNotice.textContent = 'Independent reviewer sign-in is required. Open the Approvals panel to sign in before changing this resource.';
+            item.append(reviewerNotice);
           }
           guardianResourceList.append(item);
         });
@@ -4211,17 +4238,7 @@
       approvalStatus.textContent = 'Loading approval inbox…';
       approvalList.replaceChildren();
       try {
-        const reviewerResponse = await fetch('/api/reviewer-login', { cache: 'no-store' });
-        const reviewerData = await reviewerResponse.json().catch(() => ({}));
-        reviewerAuthenticated = reviewerResponse.ok && reviewerData.authenticated === true;
-        reviewerAuthStatus.textContent = reviewerResponse.status === 503
-          ? 'Independent reviewer credentials are not configured in this environment.'
-          : reviewerAuthenticated
-            ? 'Separate reviewer session active. Decisions will be recorded as reviewer.'
-            : 'Sign in with the separate reviewer credentials to record decisions.';
-        reviewerLoginForm.hidden = reviewerAuthenticated || reviewerResponse.status === 503;
-        reviewerLogoutBtn.hidden = !reviewerAuthenticated;
-
+        await refreshReviewerSession();
         const data = await controlApi('/api/approvals');
         if (!Array.isArray(data.approvals) || !data.approvals.length) {
           approvalList.textContent = 'No pending approvals.';
