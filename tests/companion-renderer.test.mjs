@@ -383,7 +383,7 @@ test('renderer rejects invalid injected resources and preserves its active resou
 
 test('model adapter is opt-in and is called only after the uploaded digest is verified', async () => {
   let calls = 0;
-  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+  const renderer = createCompanionRenderer({ getContext: () => null }, { modelAdapter: {
     formats: ['vrm'],
     async load() { calls += 1; return { stats: { maxTextureDimension: 1024, drawCalls: 20 }, dispose() {} }; },
   } });
@@ -401,7 +401,7 @@ test('model adapter is opt-in and is called only after the uploaded digest is ve
 
 test('model adapter enforces format and declared texture and draw-call budgets', async () => {
   let disposed = 0;
-  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+  const renderer = createCompanionRenderer({ getContext: () => null }, { modelAdapter: {
     formats: ['glb'],
     async load() { throw new Error('must not be called for VRM'); },
   } });
@@ -411,7 +411,7 @@ test('model adapter enforces format and declared texture and draw-call budgets',
   renderer.dispose();
   await renderer.modelCleanupPromise;
 
-  const overBudget = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+  const overBudget = createCompanionRenderer({ getContext: () => null }, { modelAdapter: {
     formats: ['vrm'],
     async load() { return { stats: { maxTextureDimension: 4096, drawCalls: 20 }, dispose() { disposed += 1; } }; },
   } });
@@ -427,7 +427,7 @@ test('model adapter enforces format and declared texture and draw-call budgets',
 test('model adapter failures preserve the active model and reject incomplete resource telemetry', async () => {
   let disposeCandidate = 0;
   let fail = false;
-  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+  const renderer = createCompanionRenderer({ getContext: () => null }, { modelAdapter: {
     formats: ['vrm'],
     async load() {
       if (fail) return { dispose() { disposeCandidate += 1; } };
@@ -456,7 +456,7 @@ test('model adapter candidate is released when the renderer is disposed during l
     stats: { maxTextureDimension: 1024, drawCalls: 20 },
     dispose() { disposed += 1; },
   };
-  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+  const renderer = createCompanionRenderer({ getContext: () => null }, { modelAdapter: {
     formats: ['vrm'],
     async load() {
       beginLoad();
