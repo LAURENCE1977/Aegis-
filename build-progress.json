@@ -21,8 +21,8 @@
     {
       "id": "security",
       "name": "Security & governance",
-      "auditStatus": "pending",
-      "summary": "Sentinel, approvals, sandboxing, provenance and audit controls awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: signed owner/reviewer sessions with separate secrets and cookies; exact principal/capability/version/resource grants and bounded expiry; exact-operation human-always approvals bound to input digest and one-time consumption; AES-256-GCM vault secrets with key-versioned keyring, principal/provider AAD and owner/provider-scoped revocation; append-only redacted invocation audit; Sentinel policy/rate-limit/audit/approval mediation; one owner-authenticated, same-origin, fixed local read-only catalogue route. Evidence: docs/AEGIS_SECURITY_CENTRE.md, docs/AEGIS_SECURITY_SUITE.md, docs/AEGIS_CAPABILITY_GRANTS.md, docs/AEGIS_SENTINEL_COMPOSITION.md, docs/AEGIS_SENTINEL_RUNTIME_COMPOSITION.md, functions/lib/auth.mjs, functions/lib/capability-policy.mjs, functions/lib/secret-vault.mjs, functions/lib/sentinel.mjs, functions/api/sentinel/invoke.js and associated tests. Limits: D1 is not provisioned or deployed, vault keyring secrets and provider connections are not configured, and only the fixed local read-only catalogue route is exposed. No production VPN/endpoint suite exists; a post-execution audit can fail after a side effect, which must be surfaced as uncertain/audit-incomplete rather than represented as fully audited success."
     },
     {
       "id": "companion",
