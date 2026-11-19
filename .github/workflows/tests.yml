@@ -338,6 +338,30 @@ jobs:
             exit 1
           fi
 
+      - name: Verify applied-task evidence receipts, withdrawal and append-only audit
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-applied-evidence-smoke.sql
+          submitted=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' AND event_type = 'submitted'")
+          echo "$submitted"
+          grep -q "1" <<< "$submitted"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_applied_task_evidence SET artifact_digest = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' WHERE id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence receipts to reject mutation."
+            exit 1
+          fi
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_applied_task_evidence WHERE id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+          event_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'")
+          echo "$event_count"
+          grep -q "2" <<< "$event_count"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_applied_task_evidence_events SET event_type = 'submitted' WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence events to reject deletion."
+            exit 1
+          fi
+
       - name: Apply Companion Profile migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1
       - name: Verify Companion Profile ownership, selection and append-only history
