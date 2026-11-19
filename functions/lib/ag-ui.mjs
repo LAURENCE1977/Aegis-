@@ -1,6 +1,7 @@
 const EVENT_TYPES = new Set([
   'TEXT_MESSAGE_START','TEXT_MESSAGE_CONTENT','TEXT_MESSAGE_END',
   'RUN_STARTED','RUN_FINISHED','RUN_ERROR',
+  'TOOL_CALL_START','TOOL_CALL_ARGS','TOOL_CALL_END','TOOL_CALL_RESULT',
 ]);
 
 const MAX_IDENTIFIER = 128;
@@ -66,27 +67,80 @@ export function createTextRunEvents({ threadId, runId, message, now = Date.now()
   ];
 }
 
+export function createToolCallStartEvents({ toolCallId, toolCallName, argumentsText, now = Date.now() }) {
+  requireIdentifier(toolCallId, 'tool call ID');
+  if (typeof toolCallName !== 'string' || !/^[A-Za-z0-9_.-]{1,64}$/.test(toolCallName)) {
+    throw new TypeError('Invalid AG-UI tool name');
+  }
+  if (typeof argumentsText !== 'string' || argumentsText.length > 4096 ||
+      new TextEncoder().encode(argumentsText).byteLength > 8000) {
+    throw new TypeError('Invalid AG-UI tool arguments');
+  }
+  if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
+  return [
+    { type: 'TOOL_CALL_START', toolCallId, toolCallName, timestamp: now },
+    { type: 'TOOL_CALL_ARGS', toolCallId, delta: argumentsText, timestamp: now },
+    { type: 'TOOL_CALL_END', toolCallId, timestamp: now },
+  ];
+}
+
+export function createToolCallResultEvent({ messageId, toolCallId, content, now = Date.now() }) {
+  requireIdentifier(messageId, 'message ID');
+  requireIdentifier(toolCallId, 'tool call ID');
+  if (typeof content !== 'string' || content.length > 4000 ||
+      new TextEncoder().encode(content).byteLength > 8000) {
+    throw new TypeError('Invalid AG-UI tool result');
+  }
+  if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
+  return { type: 'TOOL_CALL_RESULT', messageId, toolCallId, content, timestamp: now };
+}
+
 export function encodeAgUiSse(events) {
   if (!Array.isArray(events) || events.length > 256) {
     throw new TypeError('Invalid AG-UI event list');
   }
-  return events.map((event) => {
-    if (!event || typeof event !== 'object' || Array.isArray(event) ||
-        !EVENT_TYPES.has(event.type)) {
+  return events.map(event => {
+    if (!event || typeof event !== 'object' || Array.isArray(event) || !EVENT_TYPES.has(event.type)) {
       throw new TypeError('Invalid AG-UI event');
     }
-    const valid = event.type === 'RUN_STARTED'
-      ? typeof event.threadId === 'string' && typeof event.runId === 'string' && event.protocolVersion === '1.0'
-      : event.type === 'RUN_FINISHED'
-        ? typeof event.threadId === 'string' && typeof event.runId === 'string' &&
-          (event.outcome === undefined || event.outcome === 'cancelled')
-        : event.type === 'TEXT_MESSAGE_START'
-          ? typeof event.messageId === 'string' && (event.role === undefined || event.role === 'assistant')
-          : event.type === 'TEXT_MESSAGE_CONTENT'
-            ? typeof event.messageId === 'string' && typeof event.delta === 'string'
-            : event.type === 'RUN_ERROR'
-              ? typeof event.message === 'string' && event.message.length <= 512 && (event.code === undefined || typeof event.code === 'string')
-              : typeof event.messageId === 'string';
+    let valid = false;
+    switch (event.type) {
+      case 'RUN_STARTED':
+        valid = typeof event.threadId === 'string' && typeof event.runId === 'string' && event.protocolVersion === '1.0';
+        break;
+      case 'RUN_FINISHED':
+        valid = typeof event.threadId === 'string' && typeof event.runId === 'string' &&
+          (event.outcome === undefined || event.outcome === 'cancelled' ||
+            (event.outcome && typeof event.outcome === 'object'));
+        break;
+      case 'TEXT_MESSAGE_START':
+        valid = typeof event.messageId === 'string' && (event.role === undefined || event.role === 'assistant');
+        break;
+      case 'TEXT_MESSAGE_CONTENT':
+        valid = typeof event.messageId === 'string' && typeof event.delta === 'string' && event.delta.length <= MAX_MESSAGE;
+        break;
+      case 'TEXT_MESSAGE_END':
+        valid = typeof event.messageId === 'string';
+        break;
+      case 'RUN_ERROR':
+        valid = typeof event.message === 'string' && event.message.length <= 512 &&
+          (event.code === undefined || typeof event.code === 'string');
+        break;
+      case 'TOOL_CALL_START':
+        valid = typeof event.toolCallId === 'string' && typeof event.toolCallName === 'string' &&
+          /^[A-Za-z0-9_.-]{1,64}$/.test(event.toolCallName);
+        break;
+      case 'TOOL_CALL_ARGS':
+        valid = typeof event.toolCallId === 'string' && typeof event.delta === 'string' && event.delta.length <= 4096;
+        break;
+      case 'TOOL_CALL_END':
+        valid = typeof event.toolCallId === 'string';
+        break;
+      case 'TOOL_CALL_RESULT':
+        valid = typeof event.messageId === 'string' && typeof event.toolCallId === 'string' &&
+          typeof event.content === 'string' && event.content.length <= 4000;
+        break;
+    }
     if (!valid) throw new TypeError('Invalid AG-UI event payload');
     let serialized;
     try { serialized = JSON.stringify(event); }

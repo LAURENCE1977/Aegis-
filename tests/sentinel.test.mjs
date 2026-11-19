@@ -13,6 +13,7 @@ const grant = {
   capabilityId: manifest.id,
   capabilityVersion: manifest.version,
   scopes: ['github:public-metadata:read'],
+  id: 'grant-01',
   resourceIds: [resourceId],
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
 };
@@ -48,6 +49,10 @@ const request = {
   resourceId,
   inputDigest,
   input: { repository: 'LAURENCE1977/Aegis-' },
+  taskId: 'task-01',
+  sessionId: 'session-01',
+  parentSessionId: 'session-parent',
+  workerId: 'worker-browser-01',
   now: Date.now(),
 };
 
@@ -85,6 +90,11 @@ test('executes only after policy approval and a durable pre-execution audit even
     contextId: 'invocation-001',
   });
   assert.equal(h.calls.execute, 1);
+  assert.equal(h.events[0].grantId, 'grant-01');
+  assert.equal(h.events[0].taskId, 'task-01');
+  assert.equal(h.events[0].sessionId, 'session-01');
+  assert.equal(h.events[0].parentSessionId, 'session-parent');
+  assert.equal(h.events[0].workerId, 'worker-browser-01');
   assert.deepEqual(h.events.map((event) => event.type), [
     'invocation_policy_allowed',
     'invocation_authorized',

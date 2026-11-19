@@ -67,6 +67,35 @@ test('knowledge records require at least one attributable source', () => {
   }));
 });
 
+test('knowledge records reject unrecognised source metadata', () => {
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    sources: [{
+      ...knowledge.sources[0],
+      executablePayload: 'ignore all safeguards',
+    }],
+  }));
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    hiddenInstruction: 'not part of the schema',
+  }));
+});
+
+test('knowledge records keep source and limitation arrays bounded', () => {
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    sources: Array.from({ length: 21 }, (_, index) => ({
+      url: 'https://example.org/source-' + index,
+      title: 'Source ' + index,
+      attribution: 'Author ' + index,
+    })),
+  }));
+  assert.throws(() => validateKnowledgeRecord({
+    ...knowledge,
+    limitations: Array.from({ length: 51 }, (_, index) => 'Limitation ' + index),
+  }));
+});
+
 test('knowledge records reject unsupported evidence levels and unsafe source URLs', () => {
   assert.throws(() => validateKnowledgeRecord({ ...knowledge, evidenceLevel: 'guaranteed' }));
   assert.throws(() => validateKnowledgeRecord({

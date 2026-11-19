@@ -1,6 +1,7 @@
 name: AEGIS tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -21,18 +22,20 @@ concurrency:
 jobs:
   test:
     name: Node.js tests and local D1 migration verification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Run Node.js test suite
+      - name: Install pinned parser and runtime test dependencies
+        run: npm install --no-save --no-package-lock --ignore-scripts web-tree-sitter@0.27.2 tree-sitter-javascript@0.25.0 tree-sitter-typescript@0.23.2 miniflare@4.20260730.0
+      - name: Run Node.js and Cloudflare runtime integration tests
         run: node --test tests/*.test.mjs
       - name: Install Wrangler for local D1 verification
-        run: npm install --global wrangler@4
+        run: npm install --global wrangler@4.163.0
       - name: Apply capability migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1
       - name: Smoke-test all capability tables and constraints
@@ -55,9 +58,58 @@ jobs:
             exit 1
           fi
 
+      - name: Apply runtime migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1
+      - name: Verify durable agent-run cancellation and append-only events
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --file scripts/runtime-d1-smoke.sql
+          output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT status, cancelled_at FROM agent_runs WHERE id = '550e8400-e29b-41d4-a716-446655440000'")
+          echo "$output"
+          grep -q "2026-11-16T00:01:00.000Z" <<< "$output"
+          index_output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_agent_runs_created_id'")
+          echo "$index_output"
+          grep -q "idx_agent_runs_created_id" <<< "$index_output"
+          event_index_output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_agent_run_events_cursor'")
+          echo "$event_index_output"
+          grep -q "idx_agent_run_events_cursor" <<< "$event_index_output"
+          duplicate_event_index_output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_agent_run_events_timeline'")
+          echo "$duplicate_event_index_output"
+          if grep -q "idx_agent_run_events_timeline" <<< "$duplicate_event_index_output"; then
+            echo "Unexpected duplicate agent-run event timeline index; keep one index for the shared cursor ordering."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_run_events SET event_type = 'tampered' WHERE event_id = 'cancelled:550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected append-only agent-run event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM agent_run_events WHERE event_id = 'cancelled:550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected append-only agent-run event trigger to reject deletion."
+            exit 1
+          fi
+          step_output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "SELECT status FROM agent_run_steps WHERE id = '550e8400-e29b-41d4-a716-446655440000:1'")
+          echo "$step_output"
+          grep -q "cancelled" <<< "$step_output"
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_run_step_events SET event_type = 'tampered' WHERE event_id = 'planned:550e8400-e29b-41d4-a716-446655440000:1'"; then
+            echo "Expected append-only agent-run step event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM agent_run_step_events WHERE event_id = 'planned:550e8400-e29b-41d4-a716-446655440000:1'"; then
+            echo "Expected append-only agent-run step event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE agent_runs SET context_json = '{}' WHERE id = '550e8400-e29b-41d4-a716-446655440000'"; then
+            echo "Expected immutable Project Space context trigger to reject mutation."
+            exit 1
+          fi
+
+      - name: Verify runtime D1 and Queue integration in Miniflare
+        env:
+          AEGIS_RUNTIME_INTEGRATION: '1'
+        run: node --test tests/runtime-cloudflare-integration.test.mjs
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
-      - name: Verify Forge licence gates, immutable source identity and append-only review events
+      - name: Verify Forge licence gates, immutable source identity, Knowledge Library review lifecycle and append-only events
         shell: bash
         run: |
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-seed.sql
@@ -76,6 +128,28 @@ jobs:
           fi
           if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM forge_candidate_events WHERE candidate_id = 'forge-smoke'"; then
             echo "Expected append-only candidate event trigger to reject deletion."
+            exit 1
+          fi
+          knowledge_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status || ':' || version FROM forge_knowledge_records WHERE id = 'knowledge-smoke'")
+          echo "$knowledge_state"
+          grep -q "accepted:3" <<< "$knowledge_state"
+          knowledge_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM forge_knowledge_events WHERE record_id = 'knowledge-smoke'")
+          echo "$knowledge_events"
+          grep -q "3" <<< "$knowledge_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_knowledge_records SET summary = 'tampered after review' WHERE id = 'knowledge-smoke'"; then
+            echo "Expected reviewed Knowledge Library content to be immutable."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_knowledge_events SET to_status = 'draft' WHERE record_id = 'knowledge-smoke'"; then
+            echo "Expected append-only Knowledge Library event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM forge_knowledge_events WHERE record_id = 'knowledge-smoke'"; then
+            echo "Expected append-only Knowledge Library event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO forge_knowledge_records (id, owner_id, title, domain, knowledge_type, summary, evidence_level, status, sources_json, limitations_json, applicable_capabilities_json, review_note, reviewer_id, version, created_at, updated_at, reviewed_at, accepted_at) VALUES ('knowledge-bypass', 'owner', 'Bypass review', 'coding-agents', 'benchmark', 'Attempt to create accepted knowledge without the review workflow.', 'high', 'accepted', '[{\"url\":\"https://example.org/source\",\"title\":\"Source\",\"attribution\":\"Author\"}]', '[]', '[]', 'This record attempts to bypass owner review.', 'owner', 3, '2026-11-16T00:00:00.000Z', '2026-11-16T00:02:00.000Z', '2026-11-16T00:01:00.000Z', '2026-11-16T00:02:00.000Z')"; then
+            echo "Expected Knowledge Library inserts to start as drafts only."
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql

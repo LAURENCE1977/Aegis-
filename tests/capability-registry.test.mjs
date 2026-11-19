@@ -120,3 +120,73 @@ test('approved registry metadata does not itself grant capability permissions', 
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.discover'), false);
   assert.equal(isCapabilityGranted('aegis-github-public-discovery', 'source.write'), false);
 });
+
+
+test('registers Composio pull request reads as a separate exact-resource capability', () => {
+  const pull = getCapabilityManifest('aegis-composio-github-pull-request-readonly');
+  assert.ok(pull);
+  assert.equal(validateCapabilityManifest(pull), true);
+  assert.equal(pull.actions[0].id, 'get-pull-request');
+  assert.equal(pull.actions[0].effect, 'read');
+  assert.equal(pull.actions[0].requiredScopes[0], 'github:pull-request:read');
+  assert.equal(pull.interface.path, '/api/sentinel/composio-github-pull-request');
+  assert.deepEqual(pull.data.writes, []);
+});
+
+
+test('registers bounded read-only workflow run metadata as its own capability', () => {
+  const workflows = getCapabilityManifest('aegis-composio-github-workflow-readonly');
+  assert.ok(workflows);
+  assert.equal(validateCapabilityManifest(workflows), true);
+  assert.equal(workflows.actions[0].id, 'list-workflow-runs');
+  assert.equal(workflows.actions[0].effect, 'read');
+  assert.equal(workflows.actions[0].requiredScopes[0], 'github:workflow:read');
+  assert.equal(workflows.interface.path, '/api/sentinel/composio-github-workflows');
+  assert.deepEqual(workflows.data.writes, []);
+});
+
+
+test('registers latest-attempt workflow job metadata as a separate exact-run capability', () => {
+  const jobs = getCapabilityManifest('aegis-composio-github-workflow-jobs-readonly');
+  assert.ok(jobs);
+  assert.equal(validateCapabilityManifest(jobs), true);
+  assert.equal(jobs.actions[0].id, 'list-workflow-jobs');
+  assert.equal(jobs.actions[0].effect, 'read');
+  assert.equal(jobs.actions[0].requiredScopes[0], 'github:workflow-jobs:read');
+  assert.equal(jobs.interface.path, '/api/sentinel/composio-github-workflow-jobs');
+  assert.deepEqual(jobs.data.writes, []);
+});
+
+
+test('registers workflow job summaries as a separate exact-run read-only capability', () => {
+  const jobs = getCapabilityManifest('aegis-composio-github-workflow-jobs-readonly');
+  assert.ok(jobs);
+  assert.equal(validateCapabilityManifest(jobs), true);
+  assert.equal(jobs.actions[0].id, 'list-workflow-jobs');
+  assert.equal(jobs.actions[0].effect, 'read');
+  assert.equal(jobs.actions[0].requiredScopes[0], 'github:workflow-jobs:read');
+  assert.equal(jobs.interface.path, '/api/sentinel/composio-github-workflow-jobs');
+  assert.deepEqual(jobs.data.writes, []);
+});
+
+
+test('registers agent plan approval as a restricted, human-always execution capability', () => {
+  const agent = getCapabilityManifest('aegis-agent-run');
+  assert.ok(agent, 'agent plan approval capability must be registered');
+  assert.equal(validateCapabilityManifest(agent), true);
+  assert.equal(agent.provider.kind, 'builtin');
+  assert.equal(agent.interface.kind, 'internal');
+  assert.equal(agent.actions.length, 1);
+  assert.deepEqual(agent.actions[0], {
+    id: 'approve-execution',
+    capability: 'agent-run.approve-execution',
+    effect: 'execute',
+    risk: 'critical',
+    approval: 'human-always',
+    requiredScopes: ['aegis:agent-run:execute'],
+  });
+  assert.equal(agent.data.classification, 'restricted');
+  assert.deepEqual(agent.data.writes, ['agent-run execution authorisation state']);
+  assert.deepEqual(agent.network.egressHosts, []);
+  assert.equal(agent.auth.mode, 'session');
+});

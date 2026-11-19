@@ -37,3 +37,100 @@ test('grant history and invocation output are rendered as text nodes, not HTML',
   assert.match(html, /detail\.textContent\s*=/);
   assert.match(html, /sentinelInvokeOutput\.textContent\s*=/);
 });
+
+
+test('Composio read-only controls expose exact PR, workflow-run and workflow-job grants', () => {
+  for (const id of [
+    'composioPullNumber', 'composioPreparePullRequestGrantBtn', 'composioReadPullRequestBtn',
+    'composioWorkflowBranch', 'composioPrepareWorkflowGrantBtn', 'composioReadWorkflowRunsBtn',
+    'composioWorkflowRunId', 'composioPrepareWorkflowJobsGrantBtn', 'composioReadWorkflowJobsBtn',
+  ]) assert.match(html, new RegExp('id="' + id + '"'));
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-pull-request'/);
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-workflows'/);
+  assert.match(html, /invokeComposioRead\(\s*'\/api\/sentinel\/composio-github-workflow-jobs'/);
+  assert.match(html, /github:pull-request:/);
+  assert.match(html, /github:workflow-run:/);
+  assert.match(html, /github:repository:/);
+});
+
+test('Composio read-only controls only prepare grants on explicit clicks', () => {
+  assert.match(html, /composioPreparePullRequestGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /composioPrepareWorkflowGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /composioPrepareWorkflowJobsGrantBtn\.addEventListener\('click'/);
+  assert.doesNotMatch(html, /loadComposioStatus\(\)[\s\S]{0,500}createGrant/);
+});
+
+
+test('Security Centre exposes an owner-proxied plan-only agent run console and event timeline', () => {
+  for (const id of [
+    'agentRunSection', 'agentRunForm', 'agentRunObjective', 'agentRunSubmitBtn',
+    'agentRunRefreshBtn', 'agentRunStatus', 'agentRunList', 'agentRunDetail',
+    'agentRunEvents', 'agentRunCancelBtn', 'agentRunLoadOlderEventsBtn',
+    'agentSpecialistResearcher', 'agentSpecialistPlanner', 'agentSpecialistEngineer',
+    'agentSpecialistSecurity', 'agentSpecialistReviewer',
+  ]) assert.match(html, new RegExp('id="' + id + '"'));
+  assert.match(html, /controlApi\('\/api\/agent-runs'/);
+  assert.match(html, /controlApi\('\/api\/agent-runs\/' \+ encodeURIComponent\(agentRunId\)/);
+  assert.match(html, /\/events/);
+  assert.match(html, /\/cancel/);
+  assert.match(html, /plan-only/i);
+  assert.match(html, /does not execute specialist work/i);
+  assert.match(html, /agentRunCancelBtn\.addEventListener\('click'/);
+  assert.match(html, /agentRunForm\.addEventListener\('submit'/);
+});
+
+test('Agent run console renders provider data with textContent and never auto-submits or auto-cancels', () => {
+  const start = html.indexOf('id="agentRunSection"');
+  const end = html.indexOf('</section>', start);
+  assert.ok(start >= 0 && end > start);
+  const section = html.slice(start, end);
+  assert.match(html, /agentRunList\.replaceChildren\(\)/);
+  assert.match(html, /agentRunList\.textContent\s*=/);
+  assert.doesNotMatch(section, /innerHTML\s*=/);
+  assert.doesNotMatch(section, /fetch\('\/api\/agent-runs',\s*\{\s*method:\s*'POST'/);
+});
+
+test('planned agent runs expose an explicit human approval request and use the scoped Sentinel decision route', () => {
+  assert.match(html, /id="agentRunRequestApprovalBtn"/);
+  assert.match(html, /agentRunRequestApprovalBtn\.addEventListener\('click'/);
+  assert.match(html, /controlApi\('\/api\/sentinel\/agent-run-approval'/);
+  assert.match(html, /approval\.capabilityId\s*===\s*'aegis-agent-run'/);
+  assert.match(html, /\/api\/sentinel\/agent-run-approval\/['"]?\s*\+\s*encodeURIComponent\(approval\.id\)/);
+  assert.match(html, /method:\s*'PATCH'/);
+  assert.match(html, /Request execution approval/);
+});
+
+test('agent-run approval inbox explicitly consumes an approved plan through Sentinel', () => {
+  assert.match(html, /Approve & authorise plan/);
+  assert.match(html, /\/api\/sentinel\/agent-run-approval\/['"]?\s*\+\s*encodeURIComponent\(approval\.id\)\s*\+\s*['"]\/authorize/);
+  assert.match(html, /Plan authorised\. Specialist execution remains disabled\./);
+});
+
+test('agent workforce shows persisted authorisation and prevents duplicate approval requests', () => {
+  assert.match(html, /run\.executionAuthorized \? ' · owner approval consumed; authorisation recorded' : ''/);
+  assert.match(html, /run\.executionAuthorized === true/);
+});
+
+test('Forge exposes an owner-reviewed searchable Knowledge Library without auto-acceptance', () => {
+  assert.match(html, /id="forgeKnowledgeForm"/);
+  assert.match(html, /id="forgeKnowledgeSources"/);
+  assert.match(html, /id="forgeKnowledgeQuery"/);
+  assert.match(html, /id="forgeKnowledgeReviewNote"/);
+  assert.match(html, /\/api\/forge\/knowledge/);
+  assert.match(html, /Draft saved; not accepted or used by agents/i);
+});
+
+test('Agent Workforce can bind a run to an owner-selected Project Space memory context', () => {
+  assert.match(html, /id="agentRunProjectId"/);
+  assert.match(html, /agentRunProjectSelect/);
+  assert.match(html, /projectId:\s*agentRunProjectSelect\.value\s*\|\|\s*undefined/);
+  assert.match(html, /const projectSelects = \[chatProjectSelect, memoryProjectSelect, agentRunProjectSelect\]/);
+  assert.match(html, /bounded brief made from accepted, non-restricted project memories/i);
+});
+
+test('Agent Workforce prepares a separate exact-resource grant before owner approval', () => {
+  assert.match(html, /id="agentRunPrepareGrantBtn"/);
+  assert.match(html, /agentRunPrepareGrantBtn\.addEventListener\('click'/);
+  assert.match(html, /'agent-run:' \+ selectedAgentRunId/);
+  assert.match(html, /prepareExactComposioGrant\(\s*'aegis-agent-run',\s*'approve-execution'/);
+});

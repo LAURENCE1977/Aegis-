@@ -3,123 +3,646 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description" content="AEGIS — Personal AI Assistant" />
+  <meta name="description" content="Agent AEGIS — Your Personal Guardian. A human-centred artificial intelligence companion." />
   <meta name="theme-color" content="#07090e" />
-  <meta name="apple-mobile-web-app-title" content="AEGIS" />
+  <meta name="apple-mobile-web-app-title" content="Agent AEGIS" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/aegis.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/icons/aegis.svg" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>AEGIS · AI Assistant</title>
+  <title>Agent AEGIS · Your Personal Guardian</title>
   <style>
     :root {
-      --bg: #07090e;
-      --card: rgba(13, 17, 26, 0.85);
-      --border: rgba(255,255,255,0.08);
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --accent: #06b6d4;
+      color-scheme: dark;
+      --bg: #080b12;
+      --surface: rgba(17, 23, 36, .82);
+      --surface-strong: #121a29;
+      --surface-soft: rgba(255,255,255,.035);
+      --border: rgba(160,180,210,.14);
+      --border-strong: rgba(160,180,210,.24);
+      --text: #edf3fc;
+      --muted: #91a0b6;
+      --muted-strong: #b6c2d4;
+      --accent: #67e8f9;
+      --accent-strong: #22d3ee;
+      --accent-wash: rgba(34,211,238,.11);
+      --success: #6ee7b7;
+      --warning: #fbbf24;
+      --danger: #fb7185;
+      --radius: 18px;
+      --shadow: 0 24px 70px rgba(0,0,0,.32);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     [hidden] { display: none !important; }
+    html { min-height: 100%; background: var(--bg); }
     body {
-      background: var(--bg);
+      min-height: 100vh; margin: 0; padding: 28px clamp(14px, 3vw, 44px) 40px;
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      min-height: 100vh;
-      padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
+      background:
+        radial-gradient(ellipse at 13% -10%, rgba(24,102,133,.20), transparent 34rem),
+        radial-gradient(ellipse at 94% 12%, rgba(74,58,132,.15), transparent 30rem),
+        linear-gradient(155deg, #0b101a 0%, #080b12 52%, #0a0e17 100%);
+      -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 700px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 2rem; position: relative; }
-    h1 { font-size: 1.5rem; color: var(--accent); margin-bottom: 0.25rem; }
-    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 3px;
+    }
+    button:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+    .container { width: min(100%, 1480px); margin: 0 auto; }
+    header {
+      display: flex; align-items: center; gap: 16px; min-height: 68px;
+      margin: 0 0 28px; padding: 0 2px; text-align: left; position: relative;
+    }
+    header h1 {
+      display: flex; align-items: center; gap: 13px; margin: 0;
+      color: var(--text); font-size: 1.12rem; line-height: 1; font-weight: 760;
+      letter-spacing: .19em;
+    }
+    header h1::before {
+      content: ""; display: block; width: 38px; height: 38px; border-radius: 13px;
+      border: 1px solid rgba(103,232,249,.38);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(103,232,249,.92) 0 2px, transparent 3px),
+        radial-gradient(circle at 50% 50%, rgba(34,211,238,.22), transparent 62%),
+        linear-gradient(145deg, rgba(103,232,249,.15), rgba(99,102,241,.10));
+      box-shadow: 0 0 28px rgba(34,211,238,.12), inset 0 0 18px rgba(103,232,249,.08);
+      position: relative;
+    }
+    header h1::after {
+      content: ""; position: absolute; left: 15px; top: 11px; width: 8px; height: 15px;
+      border: 1px solid var(--accent); border-top-color: transparent; border-bottom-color: transparent;
+      transform: skewY(-28deg); opacity: .9;
+    }
+    .subtitle {
+      color: var(--muted); font-size: .76rem; letter-spacing: .12em;
+      text-transform: uppercase; margin: 2px 0 0;
+    }
+    .logout {
+      margin-left: auto; padding: 10px 15px; border: 1px solid var(--border);
+      border-radius: 11px; color: var(--muted-strong); background: rgba(255,255,255,.035);
+      font-size: .82rem; font-weight: 650;
+    }
+    .logout:hover, .secondary:hover { border-color: rgba(103,232,249,.38); background: var(--accent-wash); color: var(--text); }
     .login-panel {
-      max-width: 420px; margin: 12vh auto 0; padding: 1.5rem;
-      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+      width: min(100%, 460px); margin: clamp(55px, 12vh, 130px) auto 0; padding: clamp(26px, 5vw, 42px);
+      background: linear-gradient(145deg, rgba(20,29,45,.96), rgba(12,18,29,.96));
+      border: 1px solid var(--border-strong); border-radius: 24px; box-shadow: var(--shadow);
+      position: relative; overflow: hidden;
     }
-    .login-panel h2 { font-size: 1.15rem; margin-bottom: .5rem; }
-    .login-panel p { color: var(--muted); line-height: 1.5; margin-bottom: 1rem; }
-    .login-panel input { width: 100%; margin-bottom: .75rem; }
-    .login-panel button { width: 100%; }
+    .login-panel::before {
+      content: ""; position: absolute; width: 220px; height: 220px; right: -100px; top: -120px;
+      background: rgba(34,211,238,.12); filter: blur(48px); pointer-events: none;
+    }
+    .login-panel h2 { position: relative; font-size: 1.55rem; letter-spacing: -.035em; margin: 0 0 9px; }
+    .login-panel p { position: relative; color: var(--muted); line-height: 1.65; margin: 0 0 22px; font-size: .93rem; }
+    .login-panel .status { margin: 16px 0 0; }
+    #appPanel:not([hidden]) {
+      display: grid; grid-template-columns: 218px minmax(0, 1fr); align-items: start; gap: 22px;
+    }
+    .toolbar {
+      position: sticky; top: 20px; display: flex; flex-direction: column; gap: 7px;
+      padding: 13px; margin: 0; border: 1px solid var(--border);
+      border-radius: 20px; background: rgba(13,19,30,.76);
+      box-shadow: 0 16px 48px rgba(0,0,0,.18); backdrop-filter: blur(18px);
+    }
+    .toolbar::before {
+      content: "WORKSPACE"; padding: 9px 11px 12px; color: #71829a;
+      font-size: .64rem; font-weight: 750; letter-spacing: .17em;
+    }
+    .toolbar button {
+      position: relative; display: flex; align-items: center; gap: 12px;
+      width: 100%; min-height: 46px; padding: 0 12px; text-align: left;
+      color: var(--muted-strong); background: transparent; border: 1px solid transparent;
+      border-radius: 12px; font-size: .88rem; font-weight: 620;
+    }
+    .toolbar button::before {
+      display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px;
+      color: #8fa4bc; background: rgba(255,255,255,.045); font-size: .76rem; font-weight: 700;
+    }
+    #chatTab::before { content: "✳"; }
+    #workspaceTab::before { content: "▦"; }
+    #memoryTab::before { content: "◈"; }
+    #approvalTab::before { content: "✓"; }
+    #forgeTab::before { content: "⌘"; }
+    #securityTab::before { content: "⬡"; }
+    .toolbar button:hover { background: rgba(255,255,255,.045); color: var(--text); }
+    .toolbar button.active, .toolbar button[aria-selected="true"] {
+      color: #e9fbff; border-color: rgba(103,232,249,.17);
+      background: linear-gradient(100deg, rgba(34,211,238,.15), rgba(34,211,238,.045));
+      box-shadow: inset 2px 0 0 var(--accent-strong);
+    }
+    .toolbar button.active::before, .toolbar button[aria-selected="true"]::before {
+      color: var(--accent); background: rgba(34,211,238,.12);
+    }
+    #chatSection, .memory-panel {
+      min-width: 0; padding: clamp(18px, 2.4vw, 30px);
+      border: 1px solid var(--border); border-radius: 21px;
+      background: linear-gradient(145deg, rgba(18,26,41,.92), rgba(12,18,29,.92));
+      box-shadow: var(--shadow); backdrop-filter: blur(16px);
+    }
+    #chatSection { min-height: min(760px, calc(100vh - 130px)); display: flex; flex-direction: column; }
+    #chatSection[hidden], .memory-panel[hidden] { display: none !important; }
+    .project-context {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      padding: 12px 14px; margin: 0 0 18px; border: 1px solid var(--border);
+      border-radius: 13px; background: rgba(255,255,255,.025);
+      color: var(--muted); font-size: .78rem; font-weight: 650; letter-spacing: .025em;
+    }
+    input, select, textarea {
+      min-width: 0; color: var(--text); background: rgba(5,9,16,.72);
+      border: 1px solid var(--border-strong); border-radius: 11px;
+      padding: 12px 14px; font-size: .9rem; line-height: 1.45;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    input::placeholder, textarea::placeholder { color: #697991; }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: rgba(103,232,249,.55);
+      box-shadow: 0 0 0 3px rgba(34,211,238,.09); background: rgba(5,12,20,.94);
+    }
+    .project-context select { width: min(60%, 420px); padding: 9px 12px; background: rgba(5,9,16,.72); }
     .chat-box {
-      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
-      padding: 1rem; margin-bottom: 1rem; height: 50vh; overflow-y: auto;
+      flex: 1; min-height: 390px; max-height: 58vh; overflow-y: auto;
+      padding: 22px; margin: 0 0 16px; border: 1px solid rgba(160,180,210,.10);
+      border-radius: 17px; background:
+        radial-gradient(ellipse at 50% 0%, rgba(34,211,238,.045), transparent 60%),
+        rgba(5,9,16,.48);
+      scrollbar-color: #33465d transparent;
     }
-    .message { margin-bottom: 1rem; white-space: pre-wrap; word-wrap: break-word; }
-    .user { color: var(--accent); }
-    .assistant { color: var(--text); }
-    .input-area { display: flex; gap: 0.5rem; }
-    input {
-      flex: 1; min-width: 0; padding: 0.875rem 1rem; border-radius: 0.75rem;
-      border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem;
+    .message {
+      width: fit-content; max-width: min(82%, 760px); margin: 0 0 14px;
+      padding: 13px 16px; border: 1px solid var(--border); border-radius: 15px;
+      color: var(--text); background: rgba(255,255,255,.045);
+      line-height: 1.65; font-size: .93rem; white-space: pre-wrap; overflow-wrap: anywhere;
     }
-    button {
-      padding: 0.875rem 1.5rem; border-radius: 0.75rem; border: none;
-      background: var(--accent); color: white; font-weight: 600; cursor: pointer;
+    .message.user {
+      margin-left: auto; color: #e9fbff; background: rgba(8,117,143,.19);
+      border-color: rgba(103,232,249,.18); border-bottom-right-radius: 5px;
     }
-    button:disabled { opacity: 0.5; }
-    .logout { position: absolute; right: 0; top: 0; padding: .45rem .7rem; font-size: .8rem; }
-    .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
-    .toolbar { display: flex; gap: .6rem; margin: 0 0 1rem; }
-    .toolbar button { flex: 1; padding: .7rem .9rem; }
-    .secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; color: var(--muted); font-size: .82rem; }
-    .project-context select { flex: 1; min-width: 0; padding: .65rem; border-radius: .7rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
-    .memory-panel { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
-    .memory-panel h2 { font-size: 1.05rem; margin-bottom: .4rem; }
-    .memory-help { color: var(--muted); font-size: .82rem; line-height: 1.45; margin-bottom: .8rem; }
-    .memory-form { display: grid; gap: .6rem; margin-bottom: 1rem; }
-    .memory-form select, .memory-form textarea {
-      width: 100%; padding: .75rem; border-radius: .7rem; border: 1px solid var(--border);
-      background: var(--bg); color: var(--text); font: inherit;
+    .message.assistant { border-bottom-left-radius: 5px; }
+    .input-area { display: flex; align-items: stretch; gap: 10px; }
+    .input-area input { flex: 1; width: 100%; }
+    button:not(.secondary):not(.logout) {
+      padding: 12px 18px; border: 1px solid rgba(103,232,249,.32); border-radius: 11px;
+      color: #04141b; background: linear-gradient(135deg, #a5f3fc, #22d3ee 70%, #06b6d4);
+      box-shadow: 0 7px 22px rgba(6,182,212,.13);
+      font-size: .86rem; font-weight: 760;
     }
-    .memory-form textarea { min-height: 5rem; resize: vertical; }
-    .memory-item { border-top: 1px solid var(--border); padding: .9rem 0; }
-    .memory-item p { line-height: 1.45; overflow-wrap: anywhere; }
-    .memory-meta { color: var(--muted); font-size: .75rem; margin: .35rem 0 .6rem; }
-    .memory-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
-    .memory-actions button { padding: .5rem .7rem; font-size: .78rem; }
-    .memory-history { margin-top: .6rem; padding-left: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.5; }
-    .memory-empty { color: var(--muted); font-size: .85rem; padding: .75rem 0; }
-    .workspace-card, .approval-card { border: 1px solid var(--border); border-radius: .8rem; padding: .9rem; margin: .7rem 0; background: var(--card); }
-    .workspace-card h3, .approval-card h3 { font-size: .98rem; margin-bottom: .35rem; overflow-wrap: anywhere; }
-    .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.45; margin: .35rem 0; overflow-wrap: anywhere; }
-    .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .65rem; }
-    .workspace-actions button, .approval-actions button { padding: .55rem .75rem; font-size: .8rem; }
-    .workspace-detail { border-top: 1px solid var(--border); margin-top: .75rem; padding-top: .75rem; }
-    .workspace-detail textarea { width: 100%; min-height: 4rem; padding: .7rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
-    .forge-preview { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 55vh; padding: .9rem; border-radius: .7rem; border: 1px solid var(--border); background: #05070b; color: var(--text); font: .78rem/1.5 ui-monospace, SFMono-Regular, monospace; }
-    .toolbar { flex-wrap: wrap; }
-    .toolbar button { min-width: 5rem; }
-    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
-    .project-context select { min-width: 0; flex: 1; padding: .65rem; border-radius: .65rem; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; }
-    @media (max-width: 420px) {
-      .logout { position: static; margin-top: .75rem; }
-      .input-area button { padding-inline: 1rem; }
+    button:not(.secondary):not(.logout):hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(6,182,212,.2); }
+    .secondary {
+      padding: 11px 15px; color: var(--muted-strong); background: rgba(255,255,255,.035);
+      border: 1px solid var(--border-strong); border-radius: 11px; font-size: .83rem; font-weight: 650;
     }
+    .status { color: var(--muted); font-size: .76rem; line-height: 1.5; margin: 13px 0 0; }
+    #chatSection > .status { text-align: left; }
+    .memory-panel { margin: 0; }
+    .memory-panel h2 { margin: 0 0 9px; font-size: 1.45rem; letter-spacing: -.035em; }
+    .memory-panel h3 { margin: 26px 0 10px; font-size: 1rem; letter-spacing: -.015em; }
+    .memory-panel h4 { margin: 12px 0 2px; font-size: .88rem; color: var(--muted-strong); }
+    .memory-help { color: var(--muted); font-size: .86rem; line-height: 1.65; margin: 0 0 18px; max-width: 850px; }
+    .memory-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 11px 13px; margin: 18px 0 22px; }
+    .memory-form > label { align-self: end; color: var(--muted-strong); font-size: .79rem; font-weight: 650; }
+    .memory-form > input, .memory-form > select, .memory-form > textarea { width: 100%; }
+    .memory-form > textarea, .memory-form > button, .memory-form > h4, .memory-form > p { grid-column: 1 / -1; }
+    .memory-form textarea { min-height: 104px; resize: vertical; }
+    .memory-form select[multiple] { min-height: 116px; }
+    .memory-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 12px 0; }
+    .memory-actions button { padding: 9px 12px; font-size: .78rem; }
+    .memory-actions .status { flex-basis: 100%; }
+    .memory-item { padding: 17px 0; border-top: 1px solid var(--border); }
+    .memory-item p { line-height: 1.6; overflow-wrap: anywhere; }
+    .memory-meta { color: var(--muted); font-size: .72rem; margin: 7px 0 10px; }
+    .memory-actions button, .workspace-actions button, .approval-actions button { border-radius: 9px; }
+    .memory-history { margin-top: 10px; padding-left: 18px; color: var(--muted); font-size: .78rem; line-height: 1.6; }
+    .memory-empty { color: var(--muted); font-size: .86rem; padding: 14px 0; }
+    .workspace-card, .approval-card {
+      margin: 12px 0; padding: 18px; border: 1px solid var(--border);
+      border-radius: 15px; background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+    }
+    .workspace-card h3, .approval-card h3 { margin: 0 0 7px; font-size: 1rem; overflow-wrap: anywhere; }
+    .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
+    .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .workspace-actions button, .approval-actions button { padding: 9px 12px; font-size: .78rem; }
+    .workspace-detail { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+    .workspace-detail textarea { width: 100%; min-height: 90px; }
+    .forge-preview {
+      white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 55vh;
+      padding: 17px; border-radius: 13px; border: 1px solid var(--border);
+      background: #060a11; color: var(--text); font: .78rem/1.65 ui-monospace, SFMono-Regular, monospace;
+    }
+    #composioAdvancedReadControls { padding: 18px; border: 1px solid var(--border); border-radius: 15px; background: var(--surface-soft); }
+    #composioOutput, #agentRunOutput { overflow-wrap: anywhere; }
+    @media (max-width: 820px) {
+      body { padding: 18px 14px 28px; }
+      header { margin-bottom: 18px; }
+      #appPanel:not([hidden]) { grid-template-columns: minmax(0,1fr); gap: 13px; }
+      .toolbar {
+        position: sticky; top: 8px; z-index: 5; flex-direction: row; overflow-x: auto;
+        padding: 7px; gap: 5px; border-radius: 14px;
+      }
+      .toolbar::before { display: none; }
+      .toolbar button { flex: 0 0 auto; width: auto; min-height: 42px; padding: 0 11px; font-size: .78rem; }
+      .toolbar button::before { width: 23px; height: 23px; }
+      #chatSection { min-height: min(720px, calc(100dvh - 150px)); padding: 16px; }
+      .chat-box { min-height: 320px; max-height: 58dvh; padding: 15px; }
+      .memory-panel { padding: 18px; }
+    }
+    @media (max-width: 520px) {
+      body { padding: 13px 10px 22px; }
+      header { min-height: 52px; gap: 10px; margin-bottom: 14px; }
+      header h1 { font-size: .98rem; gap: 10px; }
+      header h1::before { width: 32px; height: 32px; border-radius: 10px; }
+      header h1::after { left: 12px; top: 9px; }
+      .subtitle { display: none; }
+      .logout { padding: 8px 10px; font-size: .75rem; }
+      .toolbar { margin-inline: -1px; }
+      .toolbar button { gap: 7px; padding: 0 9px; }
+      .toolbar button::before { display: none; }
+      #chatSection { padding: 12px; min-height: calc(100dvh - 128px); }
+      .project-context { align-items: flex-start; flex-direction: column; gap: 8px; padding: 11px; }
+      .project-context select { width: 100%; }
+      .chat-box { min-height: 300px; max-height: 56dvh; padding: 12px; }
+      .message { max-width: 94%; font-size: .88rem; }
+      .input-area { gap: 7px; }
+      .input-area button { padding: 11px 13px; }
+      .memory-panel { padding: 15px; }
+      .memory-form { grid-template-columns: minmax(0,1fr); }
+      .memory-form > label { margin-top: 4px; }
+      .memory-actions { align-items: stretch; }
+      .memory-actions > input, .memory-actions > select { flex: 1 1 100%; }
+      .login-panel { margin-top: 9vh; border-radius: 19px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    .companion-stage {
+      grid-column: 1; grid-row: 1 / 5; min-width: 0; min-height: 570px;
+      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+      gap: 24px; padding: clamp(20px, 3vw, 34px) 22px;
+      overflow: hidden; position: relative; isolation: isolate;
+      border: 1px solid rgba(103,232,249,.17); border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(34,211,238,.14), transparent 48%),
+        radial-gradient(ellipse at 50% 100%, rgba(99,102,241,.10), transparent 52%),
+        linear-gradient(155deg, rgba(16,30,45,.94), rgba(9,15,26,.98));
+    }
+    .companion-stage::before, .companion-stage::after {
+      content: ""; position: absolute; z-index: -1; pointer-events: none; border-radius: 50%;
+      border: 1px solid rgba(103,232,249,.09);
+    }
+    .companion-stage::before { width: 360px; height: 360px; top: 70px; left: 50%; transform: translateX(-50%); }
+    .companion-stage::after { width: 270px; height: 270px; top: 115px; left: 50%; transform: translateX(-50%); }
+    .companion-kicker { align-self: flex-start; margin: 0; color: #8da5bb; font-size: .65rem; font-weight: 760; letter-spacing: .19em; }
+    .companion-presence {
+      width: min(100%, 310px); min-height: 300px; display: grid; place-items: center;
+      position: relative; flex: 1;
+    }
+    .companion-orbit {
+      position: absolute; width: min(90%, 270px); aspect-ratio: 1; border-radius: 50%;
+      border: 1px solid rgba(103,232,249,.17);
+      box-shadow: 0 0 55px rgba(34,211,238,.08), inset 0 0 45px rgba(34,211,238,.035);
+    }
+    .companion-orbit::before, .companion-orbit::after {
+      content: ""; position: absolute; inset: 13%; border: 1px solid rgba(129,140,248,.15); border-radius: 50%;
+    }
+    .companion-orbit::after { inset: 27%; border-color: rgba(103,232,249,.12); }
+    .companion-avatar {
+      position: relative; width: 164px; height: 218px; display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start; filter: drop-shadow(0 16px 38px rgba(34,211,238,.12));
+    }
+    .companion-avatar .avatar-head {
+      z-index: 2; display: block; width: 74px; height: 91px; margin-top: 19px;
+      border-radius: 48% 48% 44% 44%;
+      background: linear-gradient(145deg, #9fb6c8 0%, #4c7189 43%, #1d344a 100%);
+      border: 1px solid rgba(190,235,248,.46);
+      box-shadow: inset -12px -8px 22px rgba(3,12,23,.44), 0 0 28px rgba(103,232,249,.14);
+    }
+    .companion-avatar .avatar-body {
+      z-index: 1; display: block; width: 154px; height: 111px; margin-top: -3px;
+      border-radius: 54% 54% 17% 17% / 46% 46% 14% 14%;
+      background: linear-gradient(120deg, #29465c 0%, #172c40 48%, #101d2d 100%);
+      border: 1px solid rgba(151,211,231,.26); border-bottom: 0;
+      box-shadow: inset 0 15px 24px rgba(103,232,249,.08);
+    }
+    .companion-avatar .avatar-light {
+      position: absolute; z-index: 3; top: 61px; width: 38px; height: 2px;
+      border-radius: 50%; background: rgba(165,243,252,.8);
+      box-shadow: 0 0 12px rgba(103,232,249,.65);
+    }
+    .companion-copy { width: 100%; max-width: 320px; position: relative; }
+    .companion-copy h2 { margin: 0 0 9px; font-size: clamp(1.45rem, 2.4vw, 2rem); letter-spacing: -.045em; }
+    .companion-copy > p:not(.companion-kicker) { color: var(--muted); font-size: .86rem; line-height: 1.65; margin: 0; }
+    .companion-copy .companion-status {
+      margin-top: 15px; padding-top: 13px; border-top: 1px solid rgba(160,180,210,.12);
+      color: #8298ad; font-size: .68rem; line-height: 1.55;
+    }
+    .companion-profile-controls {
+      width: 100%; max-width: 320px; margin-top: 16px; padding-top: 14px;
+      border-top: 1px solid rgba(160,180,210,.12); display: grid; gap: 8px;
+    }
+    .companion-profile-controls label { color: var(--muted-strong); font-size: .72rem; font-weight: 650; }
+    .companion-profile-controls select, .companion-profile-controls input {
+      width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 10px;
+      padding: 10px 11px; color: var(--text); background: rgba(5,10,18,.72);
+    }
+    .companion-profile-create { display: flex; gap: 8px; }
+    .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
+    .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    @media (max-width: 520px) {
+      .companion-profile-controls { max-width: 100%; text-align: left; }
+    }
+    #chatSection { display: grid; grid-template-columns: minmax(220px, .76fr) minmax(0, 1.24fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 13px; }
+    #chatSection .project-context { grid-column: 2; grid-row: 1; margin: 0; }
+    #chatSection .chat-box { grid-column: 2; grid-row: 2; min-height: 330px; max-height: none; margin: 0; }
+    #chatSection .input-area { grid-column: 2; grid-row: 3; }
+    #chatSection > .status { grid-column: 2; grid-row: 4; margin: 0; }
+    @media (max-width: 980px) {
+      #chatSection { display: flex; flex-direction: column; }
+      .companion-stage { min-height: 310px; flex-direction: row; align-items: center; gap: 16px; }
+      .companion-presence { min-height: 240px; max-width: 240px; }
+      .companion-orbit { width: 210px; }
+      .companion-avatar { transform: scale(.82); }
+      .companion-copy { max-width: 360px; }
+      #chatSection .chat-box { min-height: 320px; max-height: 58vh; }
+    }
+    @media (max-width: 520px) {
+      .companion-stage { min-height: 0; flex-direction: column; gap: 8px; padding: 17px 14px 19px; }
+      .companion-kicker { align-self: center; }
+      .companion-presence { min-height: 190px; max-width: 220px; }
+      .companion-orbit { width: 180px; }
+      .companion-avatar { transform: scale(.68); height: 165px; }
+      .companion-copy { text-align: center; }
+      .companion-copy h2 { font-size: 1.45rem; }
+      .companion-copy .companion-status { margin-top: 10px; padding-top: 9px; }
+    }
+    /* Product-led public welcome experience */
+    body:has(.welcome-shell:not([hidden])) {
+      padding: 22px clamp(14px, 3vw, 46px) 36px;
+      background:
+        radial-gradient(ellipse at 17% 18%, rgba(39,105,131,.17), transparent 34rem),
+        radial-gradient(ellipse at 78% 66%, rgba(102,82,165,.14), transparent 38rem),
+        #080b12;
+    }
+    body:has(.welcome-shell:not([hidden])) .container { width: min(100%, 1540px); }
+    body:has(.welcome-shell:not([hidden])) header { min-height: 54px; margin-bottom: 18px; }
+    .welcome-shell {
+      position: relative; min-height: min(790px, calc(100dvh - 112px));
+      display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(260px, .88fr) minmax(285px, .68fr);
+      align-items: stretch; gap: clamp(18px, 2.4vw, 36px);
+      padding: clamp(24px, 4vw, 58px);
+      overflow: hidden; isolation: isolate;
+      border: 1px solid rgba(174,197,220,.13); border-radius: 30px;
+      background: linear-gradient(116deg, rgba(16,25,39,.97) 0%, rgba(11,18,31,.96) 52%, rgba(15,18,34,.98) 100%);
+      box-shadow: 0 36px 100px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.035);
+    }
+    .welcome-shell::before {
+      content: ""; position: absolute; z-index: -1; width: 680px; height: 680px;
+      top: -350px; left: 24%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(53,154,177,.12), transparent 68%);
+      pointer-events: none;
+    }
+    .welcome-story { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 18px 0; }
+    .welcome-eyebrow { display: flex; align-items: center; gap: 10px; color: #91a8bb; font-size: .66rem; font-weight: 760; letter-spacing: .17em; }
+    .welcome-live-dot, .auth-foot-dot { width: 7px; height: 7px; border-radius: 50%; background: #7ee6d0; box-shadow: 0 0 13px rgba(126,230,208,.55); }
+    .welcome-story h2 { margin: 30px 0 20px; color: #f0f5fb; font-size: clamp(2.8rem, 4.6vw, 5.4rem); font-weight: 570; line-height: .99; letter-spacing: -.075em; }
+    .welcome-story h2 span { color: transparent; background: linear-gradient(100deg, #a9f0ee 5%, #87b9ee 52%, #b9a5ff 100%); background-clip: text; -webkit-background-clip: text; }
+    .welcome-description { max-width: 440px; margin: 0; color: #a3b1c2; font-size: clamp(.96rem, 1.15vw, 1.12rem); line-height: 1.75; }
+    .welcome-principles { display: grid; gap: 18px; margin-top: clamp(30px, 5vh, 54px); }
+    .welcome-principles > div { display: flex; align-items: flex-start; gap: 14px; }
+    .principle-mark { color: #7c91a8; font: 650 .68rem/1.5 ui-monospace, SFMono-Regular, monospace; letter-spacing: .08em; }
+    .welcome-principles strong, .welcome-principles small { display: block; }
+    .welcome-principles strong { color: #dce7f2; font-size: .83rem; font-weight: 660; }
+    .welcome-principles small { margin-top: 4px; color: #8193a8; font-size: .75rem; line-height: 1.5; }
+    .welcome-tagline { margin: auto 0 0; padding-top: 35px; color: #75899e; font-size: .72rem; letter-spacing: .035em; }
+    .welcome-art { min-width: 0; min-height: 470px; position: relative; display: grid; place-items: center; overflow: hidden; }
+    .art-grid { position: absolute; inset: 8% -18%; opacity: .18; background-image: linear-gradient(rgba(154,195,220,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(154,195,220,.13) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(ellipse, black, transparent 69%); }
+    .art-orbit { position: absolute; width: min(92%, 430px); aspect-ratio: 1; border: 1px solid rgba(141,195,220,.17); border-radius: 50%; box-shadow: inset 0 0 45px rgba(92,163,191,.035), 0 0 50px rgba(68,135,169,.035); }
+    .art-orbit-one { transform: rotateX(67deg) rotateZ(-23deg); }
+    .art-orbit-two { transform: rotateX(67deg) rotateZ(43deg) scale(.82); border-color: rgba(168,151,237,.19); }
+    .art-orbit-three { width: 54%; border-color: rgba(111,224,225,.2); }
+    .art-core { width: min(72%, 300px); aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, rgba(64,148,171,.18), rgba(65,87,139,.08) 48%, transparent 70%); filter: drop-shadow(0 0 48px rgba(91,189,204,.12)); }
+    .art-core svg { width: 100%; height: 100%; overflow: visible; }
+    .art-caption { position: absolute; bottom: 7%; left: 50%; transform: translateX(-50%); display: flex; width: 84%; justify-content: space-between; gap: 10px; color: #6e8299; font: 600 .57rem/1.4 ui-monospace, SFMono-Regular, monospace; letter-spacing: .12em; white-space: nowrap; }
+    .welcome-auth { align-self: center; min-width: 0; padding: clamp(23px, 2.5vw, 36px); border: 1px solid rgba(180,204,226,.15); border-radius: 22px; background: linear-gradient(150deg, rgba(25,36,53,.93), rgba(15,23,37,.96)); box-shadow: 0 24px 70px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.04); }
+    .auth-topline { display: flex; align-items: center; gap: 10px; color: #8da4ba; font-size: .62rem; font-weight: 750; letter-spacing: .15em; }
+    .auth-lock { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid rgba(126,230,208,.25); border-radius: 9px; color: #8fe6d5; font-size: 1rem; }
+    .welcome-auth h3 { margin: 29px 0 7px; color: #f0f5fb; font-size: 1.8rem; font-weight: 620; letter-spacing: -.055em; }
+    .auth-description { margin: 0 0 27px; color: #93a4b8; font-size: .84rem; line-height: 1.65; }
+    .welcome-auth form { display: grid; gap: 11px; }
+    .welcome-auth form label { color: #b5c2d1; font-size: .75rem; font-weight: 650; }
+    .welcome-auth input { width: 100%; min-height: 49px; border-radius: 12px; border-color: rgba(166,190,215,.19); background: rgba(5,10,19,.56); }
+    .welcome-auth #loginBtn { display: flex; align-items: center; justify-content: space-between; min-height: 49px; margin-top: 5px; padding: 0 16px; border: 1px solid rgba(142,225,226,.4); border-radius: 12px; color: #071a21; background: linear-gradient(105deg, #b8efea, #8cc8e5 58%, #b8a8f0); box-shadow: 0 10px 25px rgba(77,160,181,.13); font-weight: 760; }
+    .welcome-auth #loginBtn span:last-child { font-size: 1.1rem; }
+    .welcome-auth .status { min-height: 46px; margin: 16px 0 0; padding: 11px 12px; border: 1px solid rgba(251,191,36,.16); border-radius: 10px; background: rgba(251,191,36,.045); color: #c5b78d; font-size: .7rem; line-height: 1.55; overflow-wrap: anywhere; }
+    .auth-foot { display: flex; align-items: center; gap: 9px; margin-top: 23px; color: #73879b; font-size: .58rem; font-weight: 740; letter-spacing: .15em; }
+    @media (max-width: 1120px) {
+      .welcome-shell { grid-template-columns: minmax(0, 1fr) minmax(280px, .78fr); }
+      .welcome-art { position: absolute; width: 42%; height: 55%; right: 27%; top: 5%; opacity: .46; pointer-events: none; }
+      .welcome-story { position: relative; z-index: 1; }
+      .welcome-auth { position: relative; z-index: 1; grid-column: 2; }
+    }
+    @media (max-width: 820px) {
+      body:has(.welcome-shell:not([hidden])) { padding: 12px 10px 22px; }
+      body:has(.welcome-shell:not([hidden])) header { margin: 0 4px 12px; }
+      .welcome-shell { min-height: 0; grid-template-columns: minmax(0,1fr); gap: 18px; padding: clamp(20px, 5vw, 34px); border-radius: 23px; }
+      .welcome-story { padding: 8px 0 0; }
+      .welcome-story h2 { margin: 20px 0 13px; font-size: clamp(2.65rem, 10vw, 4.2rem); }
+      .welcome-description { max-width: 560px; }
+      .welcome-principles { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 25px; }
+      .welcome-principles > div { gap: 8px; }
+      .welcome-principles strong { font-size: .7rem; }
+      .welcome-principles small { font-size: .65rem; }
+      .welcome-tagline { padding-top: 23px; }
+      .welcome-art { position: absolute; width: 52%; height: 44%; right: -4%; top: 2%; opacity: .28; }
+      .welcome-auth { grid-column: 1; width: min(100%, 520px); justify-self: center; }
+    }
+    @media (max-width: 520px) {
+      .art-caption { display: none; }
+      .welcome-shell { padding: 20px 17px; gap: 16px; }
+      .welcome-eyebrow { font-size: .57rem; letter-spacing: .11em; }
+      .welcome-story h2 { font-size: clamp(2.45rem, 12vw, 3.4rem); }
+      .welcome-description { font-size: .88rem; }
+      .welcome-principles { grid-template-columns: 1fr; gap: 13px; margin-top: 22px; }
+      .welcome-principles strong { font-size: .76rem; }
+      .welcome-principles small { font-size: .68rem; }
+      .welcome-art { width: 75%; height: 33%; right: -18%; top: 1%; opacity: .2; }
+      .welcome-auth { padding: 22px 18px; border-radius: 18px; }
+      .welcome-auth h3 { margin-top: 22px; }
+      .welcome-tagline { font-size: .65rem; }
+    }
+  
+    /* Companion-led AEGIS home: a real workspace, not a decorative sign-in page. */
+    #appPanel:not([hidden]) { grid-template-columns: 218px minmax(0, 1fr); }
+    .home-dashboard { min-width: 0; display: grid; gap: 22px; }
+    .home-hero { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr); gap: 18px; align-items: stretch; }
+    .home-welcome-card {
+      min-width: 0; min-height: 500px; display: flex; flex-direction: column; justify-content: center;
+      position: relative; isolation: isolate; overflow: hidden; padding: clamp(26px, 4vw, 54px);
+      border: 1px solid rgba(153,184,213,.14); border-radius: 22px;
+      background:
+        radial-gradient(ellipse at 6% 4%, rgba(50,174,190,.16), transparent 52%),
+        radial-gradient(ellipse at 100% 100%, rgba(113,91,190,.14), transparent 48%),
+        linear-gradient(145deg, rgba(20,31,48,.98), rgba(11,18,30,.98));
+      box-shadow: 0 28px 80px rgba(0,0,0,.23), inset 0 1px rgba(255,255,255,.035);
+    }
+    .home-welcome-card::after {
+      content: ""; position: absolute; z-index: -1; width: 320px; height: 320px; right: -180px; bottom: -190px;
+      border: 1px solid rgba(112,220,229,.16); border-radius: 50%;
+      box-shadow: 0 0 0 32px rgba(112,220,229,.025), 0 0 0 66px rgba(112,220,229,.018);
+    }
+    .home-eyebrow, .home-section-kicker {
+      display: flex; align-items: center; gap: 9px; color: #8da9bb;
+      font-size: .63rem; font-weight: 780; letter-spacing: .16em;
+    }
+    .home-eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #79e4d1; box-shadow: 0 0 14px rgba(121,228,209,.6); }
+    .home-separator { color: #50647a; }
+    .home-welcome-card h2 {
+      margin: 34px 0 19px; color: #f2f7fb; font-size: clamp(3.1rem, 5.2vw, 5.8rem);
+      font-weight: 570; line-height: .94; letter-spacing: -.085em;
+    }
+    .home-welcome-card h2 span {
+      color: transparent; background: linear-gradient(105deg, #a6f0e8, #8ac9ed 56%, #b4a5f5);
+      background-clip: text; -webkit-background-clip: text;
+    }
+    .home-intro-copy { max-width: 510px; margin: 0; color: #a4b3c4; font-size: clamp(.92rem, 1.1vw, 1.06rem); line-height: 1.78; }
+    .home-primary-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
+    .home-primary-actions button { min-height: 48px; display: flex; align-items: center; gap: 18px; }
+    .home-primary-actions .secondary { color: #c4d2e0; background: rgba(255,255,255,.035); }
+    .home-assurance { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 42px; color: #7f94a9; font-size: .72rem; }
+    .home-assurance-mark { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(111,220,221,.2); border-radius: 8px; color: #9cebe7; background: rgba(57,173,183,.08); }
+    .home-hero .companion-stage { min-height: 500px; grid-column: auto; grid-row: auto; border-radius: 22px; }
+    .home-hero .companion-presence { min-height: 290px; }
+    .home-hero .companion-copy { max-width: 340px; }
+    .home-launch-section { min-width: 0; padding: clamp(20px, 2.5vw, 30px); border: 1px solid var(--border); border-radius: 21px; background: linear-gradient(145deg, rgba(17,25,39,.84), rgba(11,17,28,.88)); }
+    .home-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .home-section-kicker { margin: 0 0 8px; font-size: .58rem; color: #7892a8; }
+    .home-section-heading h2 { margin: 0; font-size: clamp(1.2rem, 2vw, 1.55rem); font-weight: 630; letter-spacing: -.045em; }
+    .home-section-note { color: #71869d; font-size: .7rem; white-space: nowrap; }
+    .home-launch-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .home-launch-card {
+      min-width: 0; min-height: 92px; display: flex; align-items: center; gap: 12px;
+      padding: 15px; text-align: left; border: 1px solid rgba(151,177,203,.13);
+      border-radius: 15px; color: var(--text); background: rgba(255,255,255,.025);
+      box-shadow: none !important;
+    }
+    .home-launch-card:hover { transform: translateY(-2px); border-color: rgba(111,220,229,.34); background: rgba(50,156,175,.075); }
+    .home-launch-icon { flex: 0 0 36px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; font-size: 1rem; }
+    .icon-conversation { color: #9cebe7; background: rgba(57,173,183,.13); }
+    .icon-projects { color: #a9c7ff; background: rgba(89,127,211,.14); }
+    .icon-memory { color: #c3adff; background: rgba(128,99,202,.15); }
+    .icon-forge { color: #f0c58d; background: rgba(192,137,70,.13); }
+    .icon-approvals { color: #91e4b9; background: rgba(64,168,116,.13); }
+    .icon-security { color: #a6c5d9; background: rgba(93,139,165,.14); }
+    .home-launch-text { min-width: 0; display: grid; gap: 4px; }
+    .home-launch-text strong { color: #e3edf6; font-size: .78rem; font-weight: 700; }
+    .home-launch-text small { color: #8497ab; font-size: .66rem; line-height: 1.45; }
+    .home-launch-arrow { margin-left: auto; color: #718ba1; font-size: .9rem; }
+    #chatSection { display: flex; flex-direction: column; gap: 13px; }
+    #chatSection .project-context, #chatSection .chat-box, #chatSection .input-area, #chatSection > .status { width: 100%; margin: 0; }
+    #chatSection .chat-box { min-height: 390px; max-height: min(62vh, 720px); }
+    @media (max-width: 1120px) {
+      .home-hero { grid-template-columns: minmax(0,1fr) minmax(280px,.9fr); }
+      .home-welcome-card { padding: 28px; }
+      .home-welcome-card h2 { font-size: clamp(2.9rem, 5vw, 4.8rem); }
+      .home-launch-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 820px) {
+      #appPanel:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+      #appPanel > .toolbar { grid-column: 1; }
+      #appPanel > section { grid-column: 1; }
+      .home-hero { grid-template-columns: minmax(0,1fr); }
+      .home-welcome-card { min-height: 390px; }
+      .home-hero .companion-stage { min-height: 370px; }
+      .home-launch-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      #chatSection .chat-box { max-height: 58dvh; }
+    }
+    @media (max-width: 520px) {
+      .home-dashboard { gap: 13px; }
+      .home-hero { gap: 13px; }
+      .home-welcome-card { min-height: 380px; padding: 24px 20px; border-radius: 18px; }
+      .home-welcome-card h2 { margin: 27px 0 16px; font-size: clamp(3rem, 14vw, 4rem); }
+      .home-intro-copy { font-size: .88rem; }
+      .home-primary-actions { margin-top: 24px; }
+      .home-primary-actions button { flex: 1 1 auto; justify-content: center; }
+      .home-assurance { padding-top: 30px; font-size: .66rem; }
+      .home-hero .companion-stage { min-height: 0; }
+      .home-launch-section { padding: 17px 13px; border-radius: 17px; }
+      .home-section-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
+      .home-launch-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
+      .home-launch-card { min-height: 76px; padding: 12px; }
+      .home-launch-text strong { font-size: .8rem; }
+      .home-launch-text small { font-size: .68rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .home-launch-card:hover { transform: none; }
+    }
+
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>AEGIS</h1>
-      <p class="subtitle">Personal AI Assistant</p>
+      <h1>AGENT AEGIS</h1>
+      <p class="subtitle">Your Personal Guardian</p>
       <button class="logout" id="logoutBtn" type="button" hidden>Sign out</button>
     </header>
 
-    <section class="login-panel" id="loginPanel" hidden>
-      <h2>Welcome back</h2>
-      <p>Sign in to access your private AEGIS workspace.</p>
-      <form id="loginForm">
-        <input type="password" id="loginPassword" placeholder="Your AEGIS password" autocomplete="current-password" required minlength="12" />
-        <button id="loginBtn" type="submit">Sign in</button>
-      </form>
-      <p class="status" id="loginStatus" role="status" aria-live="polite">Checking security settings…</p>
+    <section class="welcome-shell" id="loginPanel" hidden aria-labelledby="welcomeTitle">
+      <div class="welcome-story">
+        <div class="welcome-eyebrow"><span class="welcome-live-dot"></span> PERSONAL INTELLIGENCE, ON YOUR TERMS</div>
+        <h2 id="welcomeTitle">Meet a more<br /><span>human kind</span><br />of intelligence.</h2>
+        <p class="welcome-description">A companion that helps you think, create and get things done — while keeping you in control.</p>
+        <div class="welcome-principles">
+          <div><span class="principle-mark">01</span><span><strong>One connected experience</strong><small>Your AEGIS, across the devices you use.</small></span></div>
+          <div><span class="principle-mark">02</span><span><strong>Built around your choices</strong><small>Your identity, your boundaries, your pace.</small></span></div>
+          <div><span class="principle-mark">03</span><span><strong>Open by design</strong><small>Privacy, transparency and user control at the core.</small></span></div>
+        </div>
+        <p class="welcome-tagline">Built around your life, not the other way around.</p>
+      </div>
+      <div class="welcome-art" aria-hidden="true">
+        <div class="art-grid"></div>
+        <div class="art-orbit art-orbit-one"></div>
+        <div class="art-orbit art-orbit-two"></div>
+        <div class="art-orbit art-orbit-three"></div>
+        <div class="art-core">
+          <svg viewBox="0 0 240 240" role="presentation" focusable="false">
+            <defs>
+              <linearGradient id="aegisCore" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#d8fbff"/>
+                <stop offset=".48" stop-color="#67d9e8"/>
+                <stop offset="1" stop-color="#8d83f7"/>
+              </linearGradient>
+              <filter id="aegisGlow"><feGaussianBlur stdDeviation="7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <path d="M120 18 194 59v82l-74 81-74-81V59z" fill="none" stroke="url(#aegisCore)" stroke-width="1.4" opacity=".72"/>
+            <path d="M120 39 176 70v62l-56 62-56-62V70z" fill="rgba(105,213,231,.045)" stroke="url(#aegisCore)" stroke-width="1.8"/>
+            <path d="m120 65 31 18v38l-31 34-31-34V83z" fill="none" stroke="url(#aegisCore)" stroke-width="2.2" filter="url(#aegisGlow)"/>
+            <path d="M120 85v52m-21-26h42" stroke="#d9fbff" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+            <circle cx="120" cy="111" r="5" fill="#e8fdff" filter="url(#aegisGlow)"/>
+          </svg>
+        </div>
+        <div class="art-caption"><span>AEGIS / 01</span><span>YOUR INTELLIGENCE LAYER</span></div>
+      </div>
+      <aside class="welcome-auth" aria-label="Private sign in">
+        <div class="auth-topline"><span class="auth-lock">⌑</span><span>PRIVATE WORKSPACE</span></div>
+        <h3>Welcome back.</h3>
+        <p class="auth-description">Sign in to continue to your AEGIS space.</p>
+        <form id="loginForm">
+          <label for="loginPassword">Your access password</label>
+          <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required minlength="12" />
+          <button id="loginBtn" type="submit"><span>Enter AEGIS</span><span aria-hidden="true">↗</span></button>
+        </form>
+        <p class="status" id="loginStatus" role="status" aria-live="polite">Checking security settings…</p>
+        <div class="auth-foot"><span class="auth-foot-dot"></span> YOUR SPACE. YOUR RULES.</div>
+      </aside>
     </section>
 
     <main id="appPanel" hidden>
       <div class="toolbar" role="tablist" aria-label="AEGIS Control Centre">
+        <button class="secondary" id="homeTab" type="button" aria-selected="true">Home</button>
         <button class="secondary" id="chatTab" type="button">Chat</button>
         <button class="secondary" id="workspaceTab" type="button">Projects</button>
         <button class="secondary" id="memoryTab" type="button">Memory</button>
@@ -127,7 +650,76 @@
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
       </div>
+      <section class="home-dashboard" id="homeSection" aria-labelledby="homeWelcomeTitle">
+        <div class="home-hero">
+          <section class="home-welcome-card">
+            <div class="home-eyebrow"><span class="home-eyebrow-dot"></span> YOUR PRIVATE WORKSPACE <span class="home-separator">/</span> ONE AEGIS</div>
+            <h2 id="homeWelcomeTitle">Your space.<br /><span>Your pace.</span></h2>
+            <p class="home-intro-copy">Think out loud, make something meaningful, get a hand with the everyday — or just take a moment. Your companion and your tools are all here when you need them.</p>
+            <div class="home-primary-actions">
+              <button type="button" data-panel-target="chat"><span>Start a conversation</span><span aria-hidden="true">↗</span></button>
+              <button class="secondary" type="button" data-panel-target="projects">Explore projects</button>
+            </div>
+            <div class="home-assurance"><span class="home-assurance-mark">✳</span><span>One connected experience, with you in control.</span></div>
+          </section>
+                <section class="companion-stage" id="companionStage" aria-labelledby="companionTitle">
+        <p class="companion-kicker">YOUR PERSONAL GUARDIAN</p>
+        <div class="companion-presence" id="companionVisual" role="img" aria-label="Agent AEGIS companion presentation">
+          <div class="companion-orbit" aria-hidden="true"></div>
+          <div class="companion-avatar" aria-hidden="true">
+            <span class="avatar-head"></span>
+            <span class="avatar-body"></span>
+            <span class="avatar-light"></span>
+          </div>
+        </div>
+        <div class="companion-copy">
+          <h2 id="companionTitle">Here with you.</h2>
+          <p>Agent AEGIS is your personal guardian: an intelligent companion designed to understand your context, help you think things through and support you across your devices — always with you in control.</p>
+          <p class="companion-status" id="companionStatus" aria-live="polite">Companion presentation layer · interactive avatar runtime is in development.</p>
+          <div class="companion-profile-controls" aria-label="Companion profile controls">
+            <label for="companionProfileSelect">Your companion</label>
+            <select id="companionProfileSelect">
+              <option value="aegis" data-companion-profile="aegis">Official Agent AEGIS</option>
+            </select>
+            <label for="customCompanionName">Create a custom companion</label>
+            <div class="companion-profile-create">
+              <input id="customCompanionName" type="text" maxlength="48" autocomplete="off" placeholder="Give your companion a name" />
+              <button id="createCompanionProfile" type="button">Create</button>
+            </div>
+            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Custom profiles stay in this browser session only. Secure account saving is not connected yet.</p>
+          </div>
+        </div>
+      </section>
+        </div>
+        <section class="home-launch-section" aria-labelledby="homeLaunchTitle">
+          <div class="home-section-heading">
+            <div><p class="home-section-kicker">YOUR AEGIS</p><h2 id="homeLaunchTitle">Pick up where you want to go.</h2></div>
+            <span class="home-section-note">Your tools, one place</span>
+          </div>
+          <div class="home-launch-grid">
+            <button class="home-launch-card" type="button" data-panel-target="chat">
+              <span class="home-launch-icon icon-conversation">✳</span><span class="home-launch-text"><strong>Conversation</strong><small>Talk, think and create with AEGIS</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+            <button class="home-launch-card" type="button" data-panel-target="projects">
+              <span class="home-launch-icon icon-projects">▦</span><span class="home-launch-text"><strong>Project Spaces</strong><small>Keep work, plans and decisions together</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+            <button class="home-launch-card" type="button" data-panel-target="memory">
+              <span class="home-launch-icon icon-memory">◈</span><span class="home-launch-text"><strong>Memory</strong><small>Review what AEGIS can remember</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+            <button class="home-launch-card" type="button" data-panel-target="forge">
+              <span class="home-launch-icon icon-forge">⌘</span><span class="home-launch-text"><strong>Knowledge Forge</strong><small>Inspect sources and build knowledge</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+            <button class="home-launch-card" type="button" data-panel-target="approvals">
+              <span class="home-launch-icon icon-approvals">✓</span><span class="home-launch-text"><strong>Approvals</strong><small>You stay in charge of important actions</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+            <button class="home-launch-card" type="button" data-panel-target="security">
+              <span class="home-launch-icon icon-security">⬡</span><span class="home-launch-text"><strong>Security centre</strong><small>Manage access, grants and safeguards</small></span><span class="home-launch-arrow">↗</span>
+            </button>
+          </div>
+        </section>
+      </section>
       <section id="chatSection">
+
       <label class="project-context" for="chatProjectSelect">Chat context
         <select id="chatProjectSelect" aria-label="Project Space context"><option value="">Personal memory only</option></select>
       </label>
@@ -151,8 +743,65 @@
         </div>
         <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
         <div id="forgeFileList" aria-live="polite"></div>
+        <h3>Read-only codebase intelligence</h3>
+        <p class="memory-help">Select a JavaScript/TypeScript source folder or files. Forge maps local imports and package references without running the code. First version is a heuristic scanner, not a full parser.</p>
+        <form class="memory-form" id="forgeCodeIntelligenceForm">
+          <label for="forgeCodeFiles">Source files (.js, .jsx, .mjs, .cjs, .ts, .tsx)</label>
+          <input id="forgeCodeFiles" type="file" multiple webkitdirectory directory accept=".js,.jsx,.mjs,.cjs,.ts,.tsx" />
+          <button id="forgeCodeAnalyzeBtn" type="submit">Analyse source relationships</button>
+        </form>
+        <p class="status" id="forgeCodeStatus" role="status" aria-live="polite">No source files selected. Nothing is uploaded until you start an analysis.</p>
+        <div id="forgeCodeResults" aria-live="polite"></div>
         <h3>Saved source candidates</h3>
         <div id="forgeCandidateList" aria-live="polite"></div>
+        <h3>Knowledge Library</h3>
+        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Only owner-reviewed high/medium evidence can be accepted; accepted records are not yet automatically injected into agent plans.</p>
+        <form class="memory-form" id="forgeKnowledgeForm">
+          <label for="forgeKnowledgeTitle">Knowledge title</label>
+          <input id="forgeKnowledgeTitle" maxlength="200" required placeholder="A clear, reusable finding" />
+          <label for="forgeKnowledgeDomain">Domain slug</label>
+          <input id="forgeKnowledgeDomain" maxlength="80" pattern="[a-z0-9]+(-[a-z0-9]+)*" required placeholder="e.g. coding-agents" />
+          <label for="forgeKnowledgeType">Knowledge type</label>
+          <select id="forgeKnowledgeType" required>
+            <option value="research">Research</option>
+            <option value="practice">Practice</option>
+            <option value="standard">Standard</option>
+            <option value="benchmark">Benchmark</option>
+            <option value="pattern">Pattern</option>
+            <option value="technique">Technique</option>
+          </select>
+          <label for="forgeKnowledgeEvidence">Evidence level</label>
+          <select id="forgeKnowledgeEvidence" required>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="experimental">Experimental</option>
+          </select>
+          <label for="forgeKnowledgeSummary">Finding / summary</label>
+          <textarea id="forgeKnowledgeSummary" rows="4" maxlength="4000" required placeholder="What did the evidence establish?"></textarea>
+          <label for="forgeKnowledgeSources">Sources (JSON array with url, title and attribution)</label>
+          <textarea id="forgeKnowledgeSources" rows="4" required placeholder='[{"url":"https://example.org/paper","title":"Paper title","attribution":"Author / organisation"}]'></textarea>
+          <label for="forgeKnowledgeLimitations">Limitations (one per line)</label>
+          <textarea id="forgeKnowledgeLimitations" rows="3" placeholder="What this evidence does not establish"></textarea>
+          <label for="forgeKnowledgeCapabilities">Applicable capabilities (one per line, e.g. code.test)</label>
+          <textarea id="forgeKnowledgeCapabilities" rows="3" placeholder="benchmark.compare"></textarea>
+          <button id="forgeKnowledgeSaveBtn" type="submit">Save as draft</button>
+        </form>
+        <div class="memory-actions">
+          <input id="forgeKnowledgeQuery" maxlength="120" placeholder="Search accepted knowledge…" />
+          <select id="forgeKnowledgeFilter" aria-label="Knowledge record status">
+            <option value="accepted">Accepted</option>
+            <option value="all">All statuses</option>
+            <option value="draft">Drafts</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="superseded">Superseded</option>
+          </select>
+          <button id="forgeKnowledgeSearchBtn" class="secondary" type="button">Search library</button>
+        </div>
+        <label for="forgeKnowledgeReviewNote">Owner review note (at least 10 characters before changing status)</label>
+        <textarea id="forgeKnowledgeReviewNote" rows="2" maxlength="1000" placeholder="Explain what you checked, evidence quality and remaining limitations."></textarea>
+        <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
+        <div id="forgeKnowledgeList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
@@ -179,6 +828,84 @@
         </form>
         <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
         <div id="grantList" aria-live="polite"></div>
+        <h3>Composio · GitHub (read-only)</h3>
+        <p class="memory-help">Connect one GitHub account through Composio. AEGIS keeps the Composio key server-side and the session reference in its encrypted vault. Repository, pull-request and workflow reads each require their own exact-resource Sentinel grant. New sessions expose four fixed read-only GitHub tools; reconnect to refresh an older session.</p>
+        <div class="input-area">
+          <button id="composioConnectBtn" type="button">Connect GitHub</button>
+          <button id="composioRefreshBtn" class="secondary" type="button">Refresh status</button>
+          <button id="composioDisconnectBtn" class="secondary" type="button" hidden>Revoke AEGIS access</button>
+        </div>
+        <p class="status" id="composioStatus" role="status" aria-live="polite">Connection status has not been checked.</p>
+        <form class="memory-form" id="composioLookupForm">
+          <label for="composioOwner">GitHub owner or organisation</label>
+          <input id="composioOwner" maxlength="39" pattern="[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]|[A-Za-z0-9]" placeholder="e.g. octocat" required />
+          <label for="composioRepo">Repository</label>
+          <input id="composioRepo" maxlength="100" pattern="[A-Za-z0-9_.-]+" placeholder="e.g. Hello-World" required />
+          <div class="input-area">
+            <button id="composioPrepareGrantBtn" class="secondary" type="button">Prepare exact grant</button>
+            <button id="composioReadMetadataBtn" type="submit" disabled>Read metadata through Sentinel</button>
+          </div>
+        </form>
+        <div class="memory-form" id="composioAdvancedReadControls">
+          <h4>Pull request metadata</h4>
+          <label for="composioPullNumber">Pull request number</label>
+          <input id="composioPullNumber" type="number" min="1" step="1" placeholder="e.g. 101" />
+          <div class="input-area">
+            <button id="composioPreparePullRequestGrantBtn" class="secondary" type="button">Prepare exact PR grant</button>
+            <button id="composioReadPullRequestBtn" type="button" disabled>Read pull request</button>
+          </div>
+          <h4>GitHub Actions workflow runs</h4>
+          <label for="composioWorkflowBranch">Branch filter (optional)</label>
+          <input id="composioWorkflowBranch" maxlength="128" placeholder="e.g. feature/composio-audit-lineage-verified" />
+          <div class="input-area">
+            <button id="composioPrepareWorkflowGrantBtn" class="secondary" type="button">Prepare repository workflow grant</button>
+            <button id="composioReadWorkflowRunsBtn" type="button" disabled>Read workflow runs</button>
+          </div>
+          <h4>Workflow job and step summaries</h4>
+          <label for="composioWorkflowRunId">Workflow run ID</label>
+          <input id="composioWorkflowRunId" type="number" min="1" step="1" placeholder="e.g. 123456789" />
+          <div class="input-area">
+            <button id="composioPrepareWorkflowJobsGrantBtn" class="secondary" type="button">Prepare exact workflow-run grant</button>
+            <button id="composioReadWorkflowJobsBtn" type="button" disabled>Read jobs and steps</button>
+          </div>
+        </div>
+        <pre id="composioOutput" class="forge-preview" hidden></pre>
+        <div id="agentRunSection">
+          <h3>Agent workforce · plan-only</h3>
+          <p class="memory-help">Create and inspect durable specialist plans. This does not execute specialist work, call models or invoke tools. Before approval, prepare an exact execution grant for the selected run below. Owner approval and grant are separate controls; authorisation records permission only.</p>
+          <form class="memory-form" id="agentRunForm">
+            <label for="agentRunObjective">Objective</label>
+            <textarea id="agentRunObjective" rows="4" maxlength="2000" placeholder="Describe the work you want the AEGIS team to plan…" required></textarea>
+            <label for="agentRunProjectId">Project Space context (optional)</label>
+            <select id="agentRunProjectId" aria-label="Project Space context">
+              <option value="">No Project Space context</option>
+            </select>
+            <p class="memory-help">When selected, AEGIS attaches a bounded brief made from accepted, non-restricted project memories and event summaries. Raw event content and source URLs are excluded; memory text remains untrusted reference data.</p>
+            <p class="memory-help">Choose one or more specialists.</p>
+            <div class="input-area">
+              <label><input id="agentSpecialistResearcher" type="checkbox" checked /> Researcher</label>
+              <label><input id="agentSpecialistPlanner" type="checkbox" /> Planner</label>
+              <label><input id="agentSpecialistEngineer" type="checkbox" checked /> Engineer</label>
+              <label><input id="agentSpecialistSecurity" type="checkbox" /> Security</label>
+              <label><input id="agentSpecialistReviewer" type="checkbox" checked /> Reviewer</label>
+            </div>
+            <button id="agentRunSubmitBtn" type="submit">Create agent plan</button>
+          </form>
+          <div class="memory-actions">
+            <button id="agentRunRefreshBtn" class="secondary" type="button">Refresh run history</button>
+            <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent runtime status has not been checked.</p>
+          </div>
+          <div id="agentRunList" aria-live="polite"></div>
+          <div id="agentRunDetail" hidden>
+            <h4>Selected run</h4>
+            <p class="status" id="agentRunDetailStatus" role="status" aria-live="polite"></p>
+            <div class="input-area"><button id="agentRunPrepareGrantBtn" class="secondary" type="button" disabled>Prepare exact execution grant</button><button id="agentRunRequestApprovalBtn" class="secondary" type="button" disabled>Request execution approval</button><button id="agentRunCancelBtn" class="secondary" type="button" disabled>Cancel run</button></div>
+            <h4>Append-only event timeline</h4>
+            <ul id="agentRunEvents" class="memory-history" aria-live="polite"></ul>
+            <button id="agentRunLoadOlderEventsBtn" class="secondary" type="button" hidden disabled>Load older events</button>
+          </div>
+        </div>
+        <p class="memory-help">Revoking AEGIS access removes its session and vault reference. It does not revoke the upstream GitHub OAuth grant in Composio; disconnect that separately if required.</p>
         <h3>Sentinel read-only test</h3>
         <p class="memory-help">This manual test invokes only the local module catalogue. It requires an active exact-resource grant and records the invocation in Sentinel's audit trail.</p>
         <button id="invokeModuleCatalogueBtn" type="button">Run module catalogue through Sentinel</button>
@@ -231,6 +958,8 @@
     const loginStatus = document.getElementById('loginStatus');
     const appPanel = document.getElementById('appPanel');
     const logoutBtn = document.getElementById('logoutBtn');
+    const homeTab = document.getElementById('homeTab');
+    const homeSection = document.getElementById('homeSection');
     const chatTab = document.getElementById('chatTab');
     const memoryTab = document.getElementById('memoryTab');
     const workspaceTab = document.getElementById('workspaceTab');
@@ -239,6 +968,49 @@
     const securityTab = document.getElementById('securityTab');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
+    const composioConnectBtn = document.getElementById('composioConnectBtn');
+    const composioRefreshBtn = document.getElementById('composioRefreshBtn');
+    const composioDisconnectBtn = document.getElementById('composioDisconnectBtn');
+    const composioStatus = document.getElementById('composioStatus');
+    const composioLookupForm = document.getElementById('composioLookupForm');
+    const composioOwner = document.getElementById('composioOwner');
+    const composioRepo = document.getElementById('composioRepo');
+    const composioPrepareGrantBtn = document.getElementById('composioPrepareGrantBtn');
+    const composioReadMetadataBtn = document.getElementById('composioReadMetadataBtn');
+    const composioOutput = document.getElementById('composioOutput');
+    const composioPullNumber = document.getElementById('composioPullNumber');
+    const composioPreparePullRequestGrantBtn = document.getElementById('composioPreparePullRequestGrantBtn');
+    const composioReadPullRequestBtn = document.getElementById('composioReadPullRequestBtn');
+    const composioWorkflowBranch = document.getElementById('composioWorkflowBranch');
+    const composioPrepareWorkflowGrantBtn = document.getElementById('composioPrepareWorkflowGrantBtn');
+    const composioReadWorkflowRunsBtn = document.getElementById('composioReadWorkflowRunsBtn');
+    const composioWorkflowRunId = document.getElementById('composioWorkflowRunId');
+    const composioPrepareWorkflowJobsGrantBtn = document.getElementById('composioPrepareWorkflowJobsGrantBtn');
+    const composioReadWorkflowJobsBtn = document.getElementById('composioReadWorkflowJobsBtn');
+    const composioReadButtons = [composioReadMetadataBtn, composioReadPullRequestBtn, composioReadWorkflowRunsBtn, composioReadWorkflowJobsBtn];
+    const agentRunForm = document.getElementById('agentRunForm');
+    const agentRunObjective = document.getElementById('agentRunObjective');
+    const agentRunProjectSelect = document.getElementById('agentRunProjectId');
+    const agentRunSubmitBtn = document.getElementById('agentRunSubmitBtn');
+    const agentRunRefreshBtn = document.getElementById('agentRunRefreshBtn');
+    const agentRunStatus = document.getElementById('agentRunStatus');
+    const agentRunList = document.getElementById('agentRunList');
+    const agentRunDetail = document.getElementById('agentRunDetail');
+    const agentRunDetailStatus = document.getElementById('agentRunDetailStatus');
+    const agentRunEvents = document.getElementById('agentRunEvents');
+    const agentRunCancelBtn = document.getElementById('agentRunCancelBtn');
+    const agentRunRequestApprovalBtn = document.getElementById('agentRunRequestApprovalBtn');
+    const agentRunPrepareGrantBtn = document.getElementById('agentRunPrepareGrantBtn');
+    const agentRunLoadOlderEventsBtn = document.getElementById('agentRunLoadOlderEventsBtn');
+    const agentSpecialistInputs = [
+      ['researcher', document.getElementById('agentSpecialistResearcher')],
+      ['planner', document.getElementById('agentSpecialistPlanner')],
+      ['engineer', document.getElementById('agentSpecialistEngineer')],
+      ['security', document.getElementById('agentSpecialistSecurity')],
+      ['reviewer', document.getElementById('agentSpecialistReviewer')],
+    ];
+    let selectedAgentRunId = null;
+    let agentRunEventCursor = null;
     const moduleList = document.getElementById('moduleList');
     const capabilityList = document.getElementById('capabilityList');
     const grantForm = document.getElementById('grantForm');
@@ -262,6 +1034,23 @@
     const forgeStatus = document.getElementById('forgeStatus');
     const forgeFileList = document.getElementById('forgeFileList');
     const forgeCandidateList = document.getElementById('forgeCandidateList');
+    const forgeKnowledgeForm = document.getElementById('forgeKnowledgeForm');
+    const forgeKnowledgeTitle = document.getElementById('forgeKnowledgeTitle');
+    const forgeKnowledgeDomain = document.getElementById('forgeKnowledgeDomain');
+    const forgeKnowledgeType = document.getElementById('forgeKnowledgeType');
+    const forgeKnowledgeEvidence = document.getElementById('forgeKnowledgeEvidence');
+    const forgeKnowledgeSummary = document.getElementById('forgeKnowledgeSummary');
+    const forgeKnowledgeSources = document.getElementById('forgeKnowledgeSources');
+    const forgeKnowledgeLimitations = document.getElementById('forgeKnowledgeLimitations');
+    const forgeKnowledgeCapabilities = document.getElementById('forgeKnowledgeCapabilities');
+    const forgeKnowledgeSaveBtn = document.getElementById('forgeKnowledgeSaveBtn');
+    const forgeKnowledgeQuery = document.getElementById('forgeKnowledgeQuery');
+    const forgeKnowledgeFilter = document.getElementById('forgeKnowledgeFilter');
+    const forgeKnowledgeSearchBtn = document.getElementById('forgeKnowledgeSearchBtn');
+    const forgeKnowledgeReviewNote = document.getElementById('forgeKnowledgeReviewNote');
+    const forgeKnowledgeStatus = document.getElementById('forgeKnowledgeStatus');
+    const forgeKnowledgeList = document.getElementById('forgeKnowledgeList');
+
     const forgeFilePreview = document.getElementById('forgeFilePreview');
     const forgePreviewTitle = document.getElementById('forgePreviewTitle');
     const workspaceSection = document.getElementById('workspaceSection');
@@ -343,12 +1132,12 @@
       logoutBtn.hidden = false;
       chatSection.hidden = false;
       memorySection.hidden = true;
+      showPanel('home');
       chatBox.replaceChildren();
       loadHistory();
       addMessage('Hello! How can I help you today?');
       loadChatProjects();
       history.forEach(m => addMessage(m.content, m.role));
-      userInput.focus();
     }
 
     async function checkSession() {
@@ -356,7 +1145,7 @@
         const res = await fetch('/api/login', { cache: 'no-store' });
         const data = await res.json();
         if (res.status === 503) {
-          showLogin('Security setup is not finished. Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET in your Cloudflare Pages secrets.');
+          showLogin('Sign-in is temporarily unavailable. Please contact the AEGIS administrator.');
           loginBtn.disabled = true;
           return;
         }
@@ -625,20 +1414,90 @@
       finally { saveMemoryBtn.disabled = false; }
     });
 
+    // Profile controls alter presentation only. They do not create identities,
+    // permissions, memory stores or Sentinel policy. Until owner-scoped persistence
+    // is implemented, custom profiles intentionally live only in this page session.
+    const companionProfileSelect = document.getElementById('companionProfileSelect');
+    const customCompanionName = document.getElementById('customCompanionName');
+    const createCompanionProfile = document.getElementById('createCompanionProfile');
+    const companionProfileStatus = document.getElementById('companionProfileStatus');
+    const companionTitle = document.getElementById('companionTitle');
+    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS' }];
+    const customIdPattern = /^custom-[a-z0-9-]+$/;
+
+    companionProfileSelect.addEventListener('change', () => {
+      const selected = companionProfiles.find(profile => profile.id === companionProfileSelect.value);
+      if (!selected) {
+        companionProfileSelect.value = 'aegis';
+        companionProfileStatus.textContent = 'Unknown profile. Returned to official AEGIS.';
+        return;
+      }
+      companionTitle.textContent = selected.kind === 'official' ? 'Here with you.' : 'Meet ' + selected.displayName + '.';
+      companionProfileStatus.textContent = selected.kind === 'official'
+        ? 'Agent AEGIS · Your Personal Guardian · one shared intelligence and security system.'
+        : selected.displayName + ' is a custom presentation profile · session only, with no separate permissions or memory.';
+    });
+
+    createCompanionProfile.addEventListener('click', () => {
+      const displayName = customCompanionName.value.trim();
+      if (displayName.length < 2 || displayName.length > 48 || /[\\u0000-\\u001f\\u007f]/.test(displayName)) {
+        companionProfileStatus.textContent = 'Choose a name between 2 and 48 characters.';
+        customCompanionName.focus();
+        return;
+      }
+      const slug = displayName.toLowerCase().normalize('NFKD')
+        .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/g, '');
+      const profileId = 'custom-' + (slug || 'companion');
+      if (!customIdPattern.test(profileId) || profileId === 'custom-aegis') {
+        companionProfileStatus.textContent = 'That name cannot be used. Try another.';
+        return;
+      }
+      if (companionProfiles.some(profile => profile.id === profileId)) {
+        companionProfileStatus.textContent = 'A companion with that name already exists in this session.';
+        return;
+      }
+      const profile = { id: profileId, kind: 'custom', displayName };
+      companionProfiles.push(profile);
+      const option = document.createElement('option');
+      option.value = profile.id;
+      option.dataset.companionProfile = profile.id;
+      option.textContent = profile.displayName;
+      companionProfileSelect.appendChild(option);
+      companionProfileSelect.value = profile.id;
+      companionProfileSelect.dispatchEvent(new Event('change'));
+      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account saving is not connected yet.';
+      customCompanionName.value = '';
+    });
+
     function showPanel(panel) {
+      const panelTabs = {
+        home: homeTab, chat: chatTab, projects: workspaceTab, memory: memoryTab,
+        approvals: approvalTab, forge: forgeTab, security: securityTab,
+      };
+      Object.entries(panelTabs).forEach(([key, tab]) => {
+        const active = key === panel;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+      homeSection.hidden = panel !== 'home';
       chatSection.hidden = panel !== 'chat';
       workspaceSection.hidden = panel !== 'projects';
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
-      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
       if (panel === 'approvals') loadApprovals();
     }
+    homeTab.addEventListener('click', () => showPanel('home'));
+    document.querySelectorAll('[data-panel-target]').forEach(button => {
+      button.addEventListener('click', () => showPanel(button.dataset.panelTarget));
+    });
     chatTab.addEventListener('click', () => showPanel('chat'));
     workspaceTab.addEventListener('click', () => showPanel('projects'));
     memoryTab.addEventListener('click', () => showPanel('memory'));
@@ -665,17 +1524,21 @@
     async function loadChatProjects() {
       const selectedChat = chatProjectSelect.value;
       const selectedMemory = memoryProjectSelect.value;
-      for (const select of [chatProjectSelect, memoryProjectSelect]) {
+      const selectedAgentRunProject = agentRunProjectSelect.value;
+      const projectSelects = [chatProjectSelect, memoryProjectSelect, agentRunProjectSelect];
+      for (const select of projectSelects) {
         select.replaceChildren();
         const personal = document.createElement('option');
         personal.value = '';
-        personal.textContent = select === chatProjectSelect ? 'Personal memory only' : 'Personal memory';
+        personal.textContent = select === chatProjectSelect
+          ? 'Personal memory only'
+          : select === memoryProjectSelect ? 'Personal memory' : 'No Project Space context';
         select.append(personal);
       }
       try {
         const data = await controlApi('/api/workspaces');
         (data.workspaces || []).forEach(workspace => {
-          for (const select of [chatProjectSelect, memoryProjectSelect]) {
+          for (const select of projectSelects) {
             const option = document.createElement('option');
             option.value = workspace.id;
             option.textContent = workspace.name;
@@ -688,8 +1551,11 @@
         if ([...memoryProjectSelect.options].some(option => option.value === selectedMemory)) {
           memoryProjectSelect.value = selectedMemory;
         }
+        if ([...agentRunProjectSelect.options].some(option => option.value === selectedAgentRunProject)) {
+          agentRunProjectSelect.value = selectedAgentRunProject;
+        }
       } catch (error) {
-        // Chat and personal memory remain available without the optional Project Space database.
+        // Chat, personal memory and plan-only runs remain available without the optional Project Space database.
       }
     }
 
@@ -740,12 +1606,200 @@
         securityCapabilities = capabilityData.capabilities || [];
         populateGrantCapabilities();
         await loadGrantManager();
+        await loadComposioStatus();
+        await loadAgentRuns();
         securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
           (capabilityData.total || 0) + ' capability manifest(s) · registry inventory';
       } catch (error) {
         securityStatus.textContent = error.message;
       }
     }
+
+    function isAgentRunId(value) {
+      return typeof value === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    }
+
+    function renderAgentRunEvents(events, append = false) {
+      if (!append) agentRunEvents.replaceChildren();
+      (events || []).forEach(event => {
+        const item = document.createElement('li');
+        const detail = event.detail && typeof event.detail === 'object'
+          ? JSON.stringify(event.detail)
+          : '{}';
+        item.textContent = (event.type || 'event') + ' · ' +
+          (event.createdAt || 'unknown time') + ' · ' + detail;
+        agentRunEvents.append(item);
+      });
+      if (!agentRunEvents.children.length) agentRunEvents.textContent = 'No lifecycle events recorded.';
+      agentRunLoadOlderEventsBtn.hidden = !agentRunEventCursor;
+      agentRunLoadOlderEventsBtn.disabled = !agentRunEventCursor;
+    }
+
+    async function loadAgentRunEvents(agentRunId, append = false) {
+      if (!isAgentRunId(agentRunId)) return;
+      const query = new URLSearchParams({ limit: '20' });
+      if (append && agentRunEventCursor) {
+        query.set('before', agentRunEventCursor.before);
+        query.set('beforeId', agentRunEventCursor.beforeId);
+      }
+      const data = await controlApi(
+        '/api/agent-runs/' + encodeURIComponent(agentRunId) + '/events?' + query.toString(),
+      );
+      agentRunEventCursor = data.nextCursor || null;
+      renderAgentRunEvents(data.events || [], append);
+    }
+
+    async function loadAgentRun(agentRunId) {
+      if (!isAgentRunId(agentRunId)) return;
+      selectedAgentRunId = agentRunId;
+      agentRunEventCursor = null;
+      agentRunDetail.hidden = false;
+      agentRunDetailStatus.textContent = 'Loading run and event history…';
+      agentRunEvents.replaceChildren();
+      agentRunCancelBtn.disabled = true;
+      agentRunRequestApprovalBtn.disabled = true;
+      agentRunPrepareGrantBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/agent-runs/' + encodeURIComponent(agentRunId));
+        const run = data.run;
+        if (!run || run.id !== agentRunId) throw new Error('Agent runtime returned an invalid run record.');
+        const stepSummary = (run.steps || []).map(step =>
+          step.stepIndex + '. ' + step.specialist + ': ' + step.status
+        ).join(' · ');
+        agentRunDetailStatus.textContent = run.status + ' · ' + run.objective +
+          ' · attempts: ' + run.attempts + (run.projectId ? ' · Project Space: ' + run.projectId : '') +
+          (run.plan ? ' · plan steps: ' + (run.plan.steps || []).length : '') +
+          (run.plan?.context ? ' · context: ' + run.plan.context.memoryCount + ' memories, ' + run.plan.context.eventCount + ' events' : '') +
+          (stepSummary ? ' · ' + stepSummary : '') +
+          (run.executionAuthorized ? ' · owner approval consumed; authorisation recorded' : '');
+        agentRunCancelBtn.disabled = !['pending_dispatch', 'queued', 'running', 'planned'].includes(run.status);
+        agentRunRequestApprovalBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
+        agentRunPrepareGrantBtn.disabled = run.status !== 'planned' || !run.plan || run.executionAuthorized === true;
+        await loadAgentRunEvents(agentRunId);
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+      }
+    }
+
+    async function loadAgentRuns() {
+      agentRunStatus.textContent = 'Loading recent agent runs…';
+      agentRunList.replaceChildren();
+      try {
+        const data = await controlApi('/api/agent-runs?limit=20');
+        const runs = Array.isArray(data.runs) ? data.runs : [];
+        runs.forEach(run => {
+          if (!isAgentRunId(run.id)) return;
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const title = document.createElement('h4');
+          title.textContent = run.objective || 'Agent run';
+          const state = document.createElement('p');
+          state.textContent = run.status + ' · ' + (run.createdAt || 'unknown time') +
+            ' · attempts: ' + (Number.isFinite(run.attempts) ? run.attempts : 0);
+          const open = document.createElement('button');
+          open.type = 'button';
+          open.className = 'secondary';
+          open.textContent = 'Inspect run';
+          open.addEventListener('click', () => loadAgentRun(run.id));
+          card.append(title, state, open);
+          agentRunList.append(card);
+        });
+        if (!agentRunList.children.length) agentRunList.textContent = 'No agent runs yet.';
+        agentRunStatus.textContent = runs.length + ' recent run(s) · plan-only execution';
+      } catch (error) {
+        agentRunStatus.textContent = error.message;
+        if (/not configured/i.test(error.message)) {
+          agentRunList.textContent = 'The owner-only runtime proxy is ready, but AEGIS_RUNTIME_URL and AEGIS_JOB_TOKEN must be configured server-side before agent runs can be used.';
+        }
+      }
+    }
+
+    async function submitAgentRun(event) {
+      event.preventDefault();
+      const objective = agentRunObjective.value.trim();
+      const specialists = agentSpecialistInputs
+        .filter(([, input]) => input.checked)
+        .map(([role]) => role);
+      if (!objective || objective.length > 2000 || specialists.length < 1 || specialists.length > 5) {
+        agentRunStatus.textContent = 'Enter an objective and select between one and five specialists.';
+        return;
+      }
+      agentRunSubmitBtn.disabled = true;
+      agentRunStatus.textContent = 'Persisting the agent run and queueing its plan…';
+      try {
+        const data = await controlApi('/api/agent-runs', {
+          method: 'POST',
+          body: JSON.stringify({
+            objective,
+            specialists,
+            projectId: agentRunProjectSelect.value || undefined,
+          }),
+        });
+        if (!data.run || !isAgentRunId(data.run.id)) throw new Error('Agent runtime returned an invalid submission.');
+        agentRunStatus.textContent = 'Run created · ' + data.run.id + ' · ' + data.run.status;
+        await loadAgentRuns();
+        await loadAgentRun(data.run.id);
+      } catch (error) {
+        agentRunStatus.textContent = error.message;
+      } finally {
+        agentRunSubmitBtn.disabled = false;
+      }
+    }
+
+    async function cancelAgentRun() {
+      if (!isAgentRunId(selectedAgentRunId) ||
+          !window.confirm('Cancel this agent run? Its current plan and audit history will be retained.')) return;
+      agentRunCancelBtn.disabled = true;
+      agentRunDetailStatus.textContent = 'Cancelling agent run…';
+      try {
+        await controlApi('/api/agent-runs/' + encodeURIComponent(selectedAgentRunId) + '/cancel', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        await loadAgentRuns();
+        await loadAgentRun(selectedAgentRunId);
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+        agentRunCancelBtn.disabled = false;
+      }
+    }
+
+    agentRunForm.addEventListener('submit', submitAgentRun);
+    agentRunRefreshBtn.addEventListener('click', loadAgentRuns);
+    agentRunPrepareGrantBtn.addEventListener('click', () => {
+      if (!isAgentRunId(selectedAgentRunId) || agentRunPrepareGrantBtn.disabled) return;
+      prepareExactComposioGrant(
+        'aegis-agent-run',
+        'approve-execution',
+        'agent-run:' + selectedAgentRunId,
+        'agent run execution',
+      );
+    });
+    agentRunCancelBtn.addEventListener('click', cancelAgentRun);
+    agentRunRequestApprovalBtn.addEventListener('click', async () => {
+      if (!isAgentRunId(selectedAgentRunId) || agentRunRequestApprovalBtn.disabled) return;
+      agentRunRequestApprovalBtn.disabled = true;
+      agentRunDetailStatus.textContent = 'Requesting owner approval for this exact plan…';
+      try {
+        const data = await controlApi('/api/sentinel/agent-run-approval', {
+          method: 'POST',
+          body: JSON.stringify({ runId: selectedAgentRunId }),
+        });
+        agentRunDetailStatus.textContent = 'Approval request ' + data.approval.id + ' created. Review it in the Approval inbox; this does not execute the plan.';
+        await loadApprovals();
+      } catch (error) {
+        agentRunDetailStatus.textContent = error.message;
+        agentRunRequestApprovalBtn.disabled = false;
+      }
+    });
+    agentRunLoadOlderEventsBtn.addEventListener('click', async () => {
+      if (!selectedAgentRunId || !agentRunEventCursor) return;
+      agentRunLoadOlderEventsBtn.disabled = true;
+      try { await loadAgentRunEvents(selectedAgentRunId, true); }
+      catch (error) { agentRunDetailStatus.textContent = error.message; }
+      finally { agentRunLoadOlderEventsBtn.disabled = !agentRunEventCursor; }
+    });
 
     function populateGrantCapabilities() {
       grantCapabilitySelect.replaceChildren();
@@ -823,6 +1877,210 @@
           : error.message;
       }
     }
+
+    async function loadComposioStatus() {
+      composioStatus.textContent = 'Checking Composio connection…';
+      composioDisconnectBtn.hidden = true;
+      composioReadMetadataBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/connections/composio');
+        const configured = data.configured === true;
+        const connected = data.connected === true;
+        composioConnectBtn.disabled = configured;
+        composioDisconnectBtn.hidden = !configured;
+        composioReadButtons.forEach(button => { button.disabled = !connected; });
+        composioStatus.textContent = !configured
+          ? 'Not connected. Connect GitHub to begin the read-only setup.'
+          : connected
+            ? 'Connected · GitHub account verified · four fixed read-only tools. If a newer action is unavailable, reconnect to refresh the session.'
+            : 'Setup exists, but GitHub authorisation is not complete. Revoke and reconnect if you abandoned the authorisation step.';
+      } catch (error) {
+        composioConnectBtn.disabled = /not configured|server secret|storage/i.test(error.message);
+        composioReadButtons.forEach(button => { button.disabled = true; });
+        composioStatus.textContent = error.message;
+      }
+    }
+
+    composioConnectBtn.addEventListener('click', async () => {
+      composioConnectBtn.disabled = true;
+      composioStatus.textContent = 'Creating a restricted Composio session…';
+      try {
+        const data = await controlApi('/api/connections/composio', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        composioStatus.textContent = 'Opening GitHub authorisation…';
+        window.location.assign(data.redirectUrl);
+      } catch (error) {
+        composioStatus.textContent = error.message;
+        composioConnectBtn.disabled = false;
+      }
+    });
+
+    composioRefreshBtn.addEventListener('click', loadComposioStatus);
+
+    composioDisconnectBtn.addEventListener('click', async () => {
+      if (!window.confirm('Revoke AEGIS access to this Composio GitHub session? The GitHub OAuth grant itself may remain in Composio.')) return;
+      composioDisconnectBtn.disabled = true;
+      composioStatus.textContent = 'Revoking AEGIS session and vault access…';
+      try {
+        await controlApi('/api/connections/composio', { method: 'DELETE' });
+        composioStatus.textContent = 'AEGIS access revoked.';
+        await loadComposioStatus();
+      } catch (error) {
+        composioStatus.textContent = error.message;
+      } finally {
+        composioDisconnectBtn.disabled = false;
+      }
+    });
+
+    function prepareExactComposioGrant(capabilityId, actionId, resourceId, label) {
+      grantCapabilitySelect.value = capabilityId;
+      populateGrantActions();
+      [...grantActionSelect.options].forEach(option => {
+        option.selected = option.value === actionId;
+      });
+      grantResourceId.value = resourceId;
+      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      expiry.setMinutes(expiry.getMinutes() - expiry.getTimezoneOffset());
+      grantExpiresAt.value = expiry.toISOString().slice(0, 16);
+      grantStatus.textContent = 'Review the exact ' + label + ' grant below, then select Create exact grant.';
+      grantForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function invokeComposioRead(endpoint, body, description, grantResource) {
+      composioOutput.hidden = true;
+      composioStatus.textContent = 'Checking exact grant and reading ' + description + ' through Sentinel…';
+      try {
+        const result = await controlApi(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        composioOutput.textContent = JSON.stringify(result.output, null, 2);
+        composioOutput.hidden = false;
+        composioStatus.textContent = 'Success · exact read audited · invocation ' + result.invocationId;
+      } catch (error) {
+        composioStatus.textContent = error.message + ' Prepare an exact grant for ' + grantResource + ' and try again.';
+      } finally {
+        await loadComposioStatus();
+      }
+    }
+
+    composioPrepareGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-readonly', 'get-repository',
+        'github:repository:' + owner + '/' + repo, 'GitHub repository',
+      );
+    });
+
+    composioPreparePullRequestGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const pullNumber = Number(composioPullNumber.value);
+      if (!owner || !repo || !Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and pull request number first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-pull-request-readonly', 'get-pull-request',
+        'github:pull-request:' + owner + '/' + repo + '/' + pullNumber, 'GitHub pull request',
+      );
+    });
+
+    composioPrepareWorkflowGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-workflow-readonly', 'list-workflow-runs',
+        'github:repository:' + owner + '/' + repo, 'GitHub workflow',
+      );
+    });
+
+    composioPrepareWorkflowJobsGrantBtn.addEventListener('click', () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const runId = Number(composioWorkflowRunId.value);
+      if (!owner || !repo || !Number.isSafeInteger(runId) || runId < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and workflow run ID first.';
+        return;
+      }
+      prepareExactComposioGrant(
+        'aegis-composio-github-workflow-jobs-readonly', 'list-workflow-jobs',
+        'github:workflow-run:' + owner + '/' + repo + '/' + runId, 'GitHub workflow run',
+      );
+    });
+
+    composioLookupForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      composioReadMetadataBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-repository', { owner, repo },
+        'repository metadata', 'github:repository:' + owner + '/' + repo,
+      );
+    });
+
+    composioReadPullRequestBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const pullNumber = Number(composioPullNumber.value);
+      if (!owner || !repo || !Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and pull request number first.';
+        return;
+      }
+      composioReadPullRequestBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-pull-request', { owner, repo, pullNumber },
+        'pull request metadata', 'github:pull-request:' + owner + '/' + repo + '/' + pullNumber,
+      );
+    });
+
+    composioReadWorkflowRunsBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const branch = composioWorkflowBranch.value.trim();
+      if (!owner || !repo) {
+        composioStatus.textContent = 'Enter a GitHub owner and repository first.';
+        return;
+      }
+      if (branch && (branch.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch) ||
+          branch.includes('..') || branch.includes('//'))) {
+        composioStatus.textContent = 'Enter a valid branch filter or leave it blank.';
+        return;
+      }
+      composioReadWorkflowRunsBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-workflows',
+        { owner, repo, ...(branch ? { branch } : {}) },
+        'workflow runs', 'github:repository:' + owner + '/' + repo,
+      );
+    });
+
+    composioReadWorkflowJobsBtn.addEventListener('click', async () => {
+      const owner = composioOwner.value.trim();
+      const repo = composioRepo.value.trim();
+      const runId = Number(composioWorkflowRunId.value);
+      if (!owner || !repo || !Number.isSafeInteger(runId) || runId < 1) {
+        composioStatus.textContent = 'Enter a valid owner, repository and workflow run ID first.';
+        return;
+      }
+      composioReadWorkflowJobsBtn.disabled = true;
+      await invokeComposioRead(
+        '/api/sentinel/composio-github-workflow-jobs', { owner, repo, runId },
+        'workflow job summaries', 'github:workflow-run:' + owner + '/' + repo + '/' + runId,
+      );
+    });
 
     invokeModuleCatalogueBtn.addEventListener('click', async () => {
       invokeModuleCatalogueBtn.disabled = true;
@@ -1088,6 +2346,62 @@
       }
     });
 
+    const forgeCodeIntelligenceForm = document.getElementById('forgeCodeIntelligenceForm');
+    const forgeCodeFiles = document.getElementById('forgeCodeFiles');
+    const forgeCodeAnalyzeBtn = document.getElementById('forgeCodeAnalyzeBtn');
+    const forgeCodeStatus = document.getElementById('forgeCodeStatus');
+    const forgeCodeResults = document.getElementById('forgeCodeResults');
+
+    forgeCodeIntelligenceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const selected = Array.from(forgeCodeFiles.files || []);
+      if (!selected.length) {
+        forgeCodeStatus.textContent = 'Choose a source folder or one or more source files first.';
+        return;
+      }
+      if (selected.length > 1000) {
+        forgeCodeStatus.textContent = 'The first analyser accepts at most 1,000 files.';
+        return;
+      }
+      forgeCodeAnalyzeBtn.disabled = true;
+      forgeCodeStatus.textContent = 'Reading selected source files locally…';
+      forgeCodeResults.replaceChildren();
+      try {
+        let totalBytes = 0;
+        const files = [];
+        for (const file of selected) {
+          if (file.size > 512 * 1024) throw new Error(file.name + ' exceeds the 512 KiB per-file limit.');
+          totalBytes += file.size;
+          if (totalBytes > 8 * 1024 * 1024) throw new Error('Selected source exceeds the 8 MiB total limit.');
+          files.push({
+            path: file.webkitRelativePath || file.name,
+            content: await file.text(),
+          });
+        }
+        forgeCodeStatus.textContent = 'Analysing ' + files.length + ' source file(s). Source is inspected as text only.';
+        const data = await controlApi('/api/forge/code-intelligence', {
+          method: 'POST',
+          body: JSON.stringify({ files }),
+        });
+        const graph = data.graph;
+        const summary = document.createElement('p');
+        summary.className = 'memory-meta';
+        summary.textContent = graph.nodes.length + ' source file(s) · ' +
+          graph.edges.length + ' resolved relationship(s) · ' +
+          graph.unresolved.length + ' unresolved local import(s) · ' +
+          graph.externalImports.length + ' external package reference(s) · execution: none';
+        const output = document.createElement('pre');
+        output.className = 'forge-preview';
+        output.textContent = JSON.stringify(graph, null, 2);
+        forgeCodeResults.append(summary, output);
+        forgeCodeStatus.textContent = 'Analysis complete. Review the unresolved and external references; this heuristic result is not a complete dependency audit.';
+      } catch (error) {
+        forgeCodeStatus.textContent = error.message || 'Code intelligence analysis failed.';
+      } finally {
+        forgeCodeAnalyzeBtn.disabled = false;
+      }
+    });
+
     forgeForm.addEventListener('submit', async event => {
       event.preventDefault();
       const sourceUrl = forgeSourceUrl.value.trim();
@@ -1116,6 +2430,52 @@
         saveCandidate.textContent = 'Save pinned source as candidate';
         saveCandidate.addEventListener('click', saveForgeCandidate);
         forgeFileList.append(saveCandidate);
+        const analyseSelected = document.createElement('button');
+        analyseSelected.type = 'button';
+        analyseSelected.className = 'secondary';
+        analyseSelected.textContent = 'Analyse selected JS/TS files with Forge';
+        analyseSelected.disabled = true;
+        analyseSelected.addEventListener('click', async () => {
+          const selected = Array.from(forgeFileList.querySelectorAll('[data-forge-code-file]:checked'))
+            .map(input => ({ path: input.dataset.path, sha: input.dataset.sha }));
+          if (!forgeRepository?.treeSha || !selected.length) return;
+          analyseSelected.disabled = true;
+          forgeStatus.textContent = 'Reading selected pinned blobs and analysing relationships…';
+          try {
+            const result = await controlApi('/api/forge/repository-code-intelligence', {
+              method: 'POST',
+              body: JSON.stringify({
+                sourceUrl: forgeRepository.sourceUrl,
+                treeSha: forgeRepository.treeSha,
+                files: selected,
+              }),
+            });
+            const graph = result.graph;
+            const report = document.createElement('article');
+            report.className = 'workspace-card';
+            const heading = document.createElement('h3');
+            heading.textContent = 'Pinned source relationship report';
+            const detail = document.createElement('p');
+            detail.className = 'memory-meta';
+            detail.textContent = result.repository.fullName + ' · tree ' +
+              result.repository.treeSha.slice(0, 12) + ' · ' + graph.nodes.length +
+              ' files · ' + graph.edges.length + ' resolved links · ' +
+              graph.unresolved.length + ' unresolved local imports · ' +
+              graph.externalImports.length + ' external references · execution: none';
+            const output = document.createElement('pre');
+            output.className = 'forge-preview';
+            output.textContent = JSON.stringify(graph, null, 2);
+            report.append(heading, detail, output);
+            forgeCodeResults.replaceChildren(report);
+            forgeCodeStatus.textContent = 'Pinned GitHub analysis complete. This is a heuristic JS/TS scan, not a complete dependency audit.';
+            forgeStatus.textContent = 'Analysed ' + selected.length + ' pinned source file(s) from ' + result.repository.fullName + '.';
+          } catch (error) {
+            forgeStatus.textContent = error.message;
+          } finally {
+            analyseSelected.disabled = false;
+          }
+        });
+        forgeFileList.append(analyseSelected);
         (repo.files || []).forEach(file => {
           const item = document.createElement('article');
           item.className = 'workspace-card';
@@ -1125,7 +2485,26 @@
           read.type = 'button';
           read.textContent = 'Read pinned source';
           read.addEventListener('click', () => readForgeBlob(file));
-          item.append(path, read);
+          const isCode = /\.(?:js|jsx|mjs|cjs|ts|tsx)$/i.test(file.path) && file.size <= 32 * 1024;
+          if (isCode) {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.dataset.forgeCodeFile = 'true';
+            checkbox.dataset.path = file.path;
+            checkbox.dataset.sha = file.sha;
+            checkbox.addEventListener('change', () => {
+              const count = forgeFileList.querySelectorAll('[data-forge-code-file]:checked').length;
+              analyseSelected.disabled = count < 1 || count > 50;
+              analyseSelected.textContent = count > 50
+                ? 'Select no more than 50 source files'
+                : 'Analyse ' + count + ' selected JS/TS file(s) with Forge';
+            });
+            label.append(checkbox, document.createTextNode(' Include in code analysis'));
+            item.append(path, label, read);
+          } else {
+            item.append(path, read);
+          }
           forgeFileList.append(item);
         });
         if (!repo.files?.length) forgeFileList.append(document.createTextNode('No supported text files were found.'));
@@ -1324,6 +2703,167 @@
       }
     }
 
+    async function loadForgeKnowledge() {
+      forgeKnowledgeList.replaceChildren();
+      forgeKnowledgeStatus.textContent = 'Loading Knowledge Library…';
+      const params = new URLSearchParams();
+      if (forgeKnowledgeQuery.value.trim()) params.set('q', forgeKnowledgeQuery.value.trim());
+      params.set('status', forgeKnowledgeFilter.value);
+      try {
+        const data = await controlApi('/api/forge/knowledge?' + params.toString());
+        const records = Array.isArray(data.records) ? data.records : [];
+        forgeKnowledgeStatus.textContent = records.length + ' record(s) · ' + forgeKnowledgeFilter.value + ' status filter.';
+        if (!records.length) {
+          forgeKnowledgeList.textContent = 'No matching knowledge records. New submissions are saved as drafts.';
+          forgeKnowledgeList.className = 'memory-empty';
+          return;
+        }
+        forgeKnowledgeList.className = '';
+        records.forEach(record => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const heading = document.createElement('h4');
+          heading.textContent = record.title;
+          const meta = document.createElement('p');
+          meta.textContent = record.status + ' · ' + record.domain + ' · ' +
+            record.knowledgeType + ' · evidence: ' + record.evidenceLevel + ' · v' + record.version;
+          const summary = document.createElement('p');
+          summary.textContent = record.summary;
+          const sourceSummary = document.createElement('p');
+          sourceSummary.textContent = 'Sources: ' + record.sources.map(source =>
+            source.title + ' — ' + source.attribution
+          ).join(' · ');
+          const limits = document.createElement('p');
+          limits.textContent = 'Limitations: ' + (record.limitations || []).join(' · ');
+          const capabilities = document.createElement('p');
+          capabilities.textContent = 'Capabilities: ' + (record.applicableCapabilities || []).join(', ');
+          item.append(heading, meta, summary, sourceSummary, limits, capabilities);
+
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'Knowledge history';
+          historyButton.addEventListener('click', async () => {
+            const existing = item.querySelector('.knowledge-history');
+            if (existing) { existing.remove(); return; }
+            const history = document.createElement('ol');
+            history.className = 'memory-history knowledge-history';
+            const loading = document.createElement('li');
+            loading.textContent = 'Loading knowledge history…';
+            history.append(loading);
+            item.append(history);
+            try {
+              const result = await controlApi('/api/forge/knowledge/' + encodeURIComponent(record.id) + '/events');
+              history.replaceChildren();
+              (result.events || []).forEach(event => {
+                const entry = document.createElement('li');
+                entry.textContent = event.eventType + ' · ' +
+                  (event.fromStatus || 'new') + ' → ' + event.toStatus +
+                  ' · ' + new Date(event.occurredAt).toLocaleString();
+                history.append(entry);
+              });
+              if (!history.children.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'No history recorded.';
+                history.append(empty);
+              }
+            } catch (error) {
+              history.textContent = error.message;
+            }
+          });
+          item.append(historyButton);
+
+          const nextStatus = record.status === 'draft' ? 'reviewed'
+            : record.status === 'reviewed' && ['high', 'medium'].includes(record.evidenceLevel) ? 'accepted'
+            : record.status === 'accepted' ? 'superseded' : null;
+          if (nextStatus) {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed'
+              : nextStatus === 'accepted' ? 'Accept evidence' : 'Supersede record';
+            reviewButton.addEventListener('click', async () => {
+              const reviewNote = forgeKnowledgeReviewNote.value.trim();
+              if (reviewNote.length < 10) {
+                forgeKnowledgeStatus.textContent = 'Add an owner review note of at least 10 characters first.';
+                forgeKnowledgeReviewNote.focus();
+                return;
+              }
+              reviewButton.disabled = true;
+              try {
+                await controlApi('/api/forge/knowledge/' + encodeURIComponent(record.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: nextStatus,
+                    reviewNote,
+                    expectedUpdatedAt: record.updatedAt,
+                  }),
+                });
+                forgeKnowledgeReviewNote.value = '';
+                await loadForgeKnowledge();
+              } catch (error) {
+                forgeKnowledgeStatus.textContent = error.message;
+                reviewButton.disabled = false;
+              }
+            });
+            item.append(reviewButton);
+          } else if (record.status === 'reviewed' && !['high', 'medium'].includes(record.evidenceLevel)) {
+            const note = document.createElement('p');
+            note.textContent = 'Not eligible for acceptance: evidence must be high or medium.';
+            item.append(note);
+          }
+          forgeKnowledgeList.append(item);
+        });
+      } catch (error) {
+        forgeKnowledgeStatus.textContent = error.message.includes('not configured')
+          ? 'Knowledge Library storage is not active yet. The Forge D1 migrations and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        forgeKnowledgeList.className = 'memory-empty';
+      }
+    }
+
+    forgeKnowledgeForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      let sources;
+      try { sources = JSON.parse(forgeKnowledgeSources.value); }
+      catch {
+        forgeKnowledgeStatus.textContent = 'Sources must be a valid JSON array with HTTPS URL, title and attribution.';
+        return;
+      }
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      forgeKnowledgeSaveBtn.disabled = true;
+      forgeKnowledgeStatus.textContent = 'Saving a new draft…';
+      try {
+        await controlApi('/api/forge/knowledge', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: forgeKnowledgeTitle.value.trim(),
+            domain: forgeKnowledgeDomain.value.trim(),
+            knowledgeType: forgeKnowledgeType.value,
+            summary: forgeKnowledgeSummary.value.trim(),
+            evidenceLevel: forgeKnowledgeEvidence.value,
+            sources,
+            limitations: splitLines(forgeKnowledgeLimitations.value),
+            applicableCapabilities: splitLines(forgeKnowledgeCapabilities.value),
+          }),
+        });
+        forgeKnowledgeForm.reset();
+        await loadForgeKnowledge();
+        forgeKnowledgeStatus.textContent = 'Draft saved; not accepted or used by agents.';
+      } catch (error) {
+        forgeKnowledgeStatus.textContent = error.message;
+      } finally {
+        forgeKnowledgeSaveBtn.disabled = false;
+      }
+    });
+
+    forgeKnowledgeSearchBtn.addEventListener('click', loadForgeKnowledge);
+    forgeKnowledgeQuery.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        loadForgeKnowledge();
+      }
+    });
+
     async function saveForgeCandidate() {
       if (!forgeRepository) return;
       const button = document.getElementById('forgeSaveCandidateBtn');
@@ -1388,14 +2928,28 @@
               for (const decision of ['approved', 'denied']) {
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.textContent = decision === 'approved' ? 'Approve' : 'Deny';
+                button.textContent = decision === 'approved' ? (approval.capabilityId === 'aegis-agent-run' ? 'Approve & authorise plan' : 'Approve') : 'Deny';
                 button.addEventListener('click', async () => {
                   button.disabled = true;
                   try {
-                    await controlApi('/api/approvals', {
-                      method: 'POST',
-                      body: JSON.stringify({ id: approval.id, decision }),
+                    const agentRunApproval = approval.capabilityId === 'aegis-agent-run';
+                    await controlApi(agentRunApproval
+                      ? '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id)
+                      : '/api/approvals', {
+                      method: agentRunApproval ? 'PATCH' : 'POST',
+                      body: JSON.stringify(agentRunApproval
+                        ? { decision }
+                        : { id: approval.id, decision }),
                     });
+                    if (agentRunApproval && decision === 'approved') {
+                      const result = await controlApi(
+                        '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id) + '/authorize',
+                        { method: 'POST', body: JSON.stringify({}) },
+                      );
+                      approvalStatus.textContent = result.authorization?.executionStarted === false
+                        ? 'Plan authorised. Specialist execution remains disabled.'
+                        : 'Approval decision recorded.';
+                    }
                     await loadApprovals();
                   } catch (error) {
                     approvalStatus.textContent = error.message;
@@ -1409,7 +2963,7 @@
             approvalList.append(card);
           });
         }
-        approvalStatus.textContent = data.total + ' pending request(s) · decisions are recorded, not executed';
+        approvalStatus.textContent = data.total + ' pending request(s) · approved plans can be authorised; specialist execution remains disabled';
       } catch (error) {
         approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'

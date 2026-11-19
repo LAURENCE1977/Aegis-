@@ -226,3 +226,14 @@ test('chat rejects cross-origin requests before invoking the model', async () =>
   assert.equal(response.status, 403);
   assert.equal(modelCalls, 0);
 });
+
+test('the public login endpoint never discloses deployment secret names or configuration details', async () => {
+  const response = await loginGet({
+    request: new Request('https://aegis.example/api/login'),
+    env: {},
+  });
+  const body = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(body.error, 'Sign-in is temporarily unavailable. Please contact the AEGIS administrator.');
+  assert.doesNotMatch(JSON.stringify(body), /AEGIS_PASSWORD|AEGIS_SESSION_SECRET|secret|environment variable/i);
+});

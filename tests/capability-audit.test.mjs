@@ -16,12 +16,15 @@ class MemoryD1 {
         if (!sql.includes('INSERT INTO capability_invocation_audit')) {
           throw new Error('Append-only audit store rejects mutation');
         }
-        const [id, invocationId, type, principal, capability, version, action, resource, digest, reason, occurredAt] = this.values;
+        const [id, invocationId, type, principal, capability, version, action, resource, digest, reason, occurredAt, grantId, connectionId, approvalId, taskId, sessionId, parentSessionId, workerId, adapterReceiptId] = this.values;
         if (db.rows.some(row => row.id === id)) return { meta: { changes: 0 } };
         db.rows.push({
           id, invocation_id: invocationId, event_type: type, principal_id: principal,
           capability_id: capability, capability_version: version, action_id: action,
           resource_id: resource, input_digest: digest, reason_code: reason, occurred_at: occurredAt,
+          grant_id: grantId, connection_id: connectionId, approval_id: approvalId,
+          task_id: taskId, session_id: sessionId, parent_session_id: parentSessionId,
+          worker_id: workerId, adapter_receipt_id: adapterReceiptId,
         });
         return { meta: { changes: 1 } };
       },
@@ -47,6 +50,14 @@ const event = (overrides = {}) => ({
   inputDigest: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   reasonCode: 'ALLOW',
   occurredAt: '2026-11-15T19:00:00.000Z',
+  grantId: 'grant-01',
+  connectionId: 'connection-01',
+  approvalId: null,
+  taskId: 'task-01',
+  sessionId: 'session-01',
+  parentSessionId: 'session-parent',
+  workerId: 'worker-browser-01',
+  adapterReceiptId: 'log-01',
   ...overrides,
 });
 
@@ -56,6 +67,13 @@ test('persists a bounded redacted Sentinel event without accepting raw payload f
   assert.equal(stored.invocationId, 'invocation-01');
   assert.equal(stored.type, 'invocation_authorized');
   assert.equal(stored.inputDigest, event().inputDigest);
+  assert.equal(stored.grantId, 'grant-01');
+  assert.equal(stored.connectionId, 'connection-01');
+  assert.equal(stored.taskId, 'task-01');
+  assert.equal(stored.sessionId, 'session-01');
+  assert.equal(stored.parentSessionId, 'session-parent');
+  assert.equal(stored.workerId, 'worker-browser-01');
+  assert.equal(stored.adapterReceiptId, 'log-01');
   assert.equal(db.rows.length, 1);
   assert.equal('input' in stored, false);
 });
@@ -83,4 +101,11 @@ test('requires a valid audit clock and fails closed on storage errors', async ()
   await assert.rejects(() => recordCapabilityAudit(db, event({ occurredAt: 'yesterday' })), /timestamp/i);
   const broken = { prepare() { throw new Error('offline'); } };
   await assert.rejects(() => recordCapabilityAudit(broken, event()), /offline/);
+});
+
+
+test('rejects malformed optional execution-context identifiers', async () => {
+  const db = new MemoryD1();
+  await assert.rejects(() => recordCapabilityAudit(db, event({ sessionId: 'bad session' })), /session/i);
+  await assert.rejects(() => recordCapabilityAudit(db, event({ adapterReceiptId: 'bad receipt!' })), /receipt/i);
 });

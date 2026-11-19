@@ -1,4 +1,7 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
+import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
+import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -7,6 +10,7 @@ import {
 } from './lib.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024;
+const MAX_AGENT_RUN_BODY_BYTES = 24 * 1024;
 const MAX_ATTEMPTS = 5;
 
 function agentRunsEnabled(env) { return env?.AGENT_RUNS_ENABLED === 'true'; }
@@ -16,6 +20,40 @@ function json(body, status = 200, headers = {}) {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
   });
+}
+
+
+async function readBoundedRequestText(request, maxBytes) {
+  const reader = request.body?.getReader();
+  if (!reader) return '';
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        try { await reader.cancel(); } catch {}
+        throw new RangeError('Request body is too large.');
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    try { await reader.cancel(); } catch {}
+    throw error;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new TypeError('Request body is not valid UTF-8.');
+  }
 }
 
 function safeEqual(left, right) {
@@ -81,13 +119,51 @@ function parseAgentRun(row) {
     id: row.id,
     objective: row.objective,
     specialists,
-    status: row.status,
+    projectId: row.project_id || null,
+    hasProjectContext: Boolean(row.context_json),
+    contextDigest: row.context_digest || null,
+    status: row.cancelled_at ? 'cancelled' : row.status,
     attempts: row.attempts,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    cancelledAt: row.cancelled_at || null,
+    executionAuthorized: Boolean(row.authorization_approval_id && row.execution_authorized_at),
+    executionAuthorizedAt: row.execution_authorized_at || null,
+    executionGrantId: row.authorization_grant_id || null,
     plan,
     errorCode: row.error_code || null,
   };
+}
+
+function parseAgentRunStep(row) {
+  if (!row) return null;
+  const parseJson = (value, fallback) => {
+    try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
+  };
+  return {
+    id: row.id,
+    stepIndex: row.step_index,
+    specialist: row.specialist,
+    status: row.status,
+    attempts: row.attempts,
+    step: parseJson(row.step_json, null),
+    checkpoint: parseJson(row.checkpoint_json, {}),
+    result: parseJson(row.result_json, null),
+    errorCode: row.error_code || null,
+    leaseUntil: row.lease_until || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function parseAgentRunWithSteps(env, row) {
+  const run = parseAgentRun(row);
+  if (!run) return null;
+  const stepRows = await env.DB.prepare(
+    'SELECT * FROM agent_run_steps WHERE agent_run_id = ? ORDER BY step_index'
+  ).bind(row.id).all();
+  run.steps = (stepRows.results || []).map(parseAgentRunStep);
+  return run;
 }
 
 async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypto.randomUUID()) {
@@ -101,23 +177,23 @@ async function dispatchAgentRuns(env, limit = 25) {
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
   const now = new Date().toISOString();
   const expired = await env.DB.prepare(
-    "SELECT id FROM agent_runs WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until < ?"
+    "SELECT id FROM agent_runs WHERE status = 'running' AND cancelled_at IS NULL AND lease_until IS NOT NULL AND lease_until < ?"
   ).bind(now).all();
   for (const row of expired.results || []) {
     const recovered = await env.DB.prepare(
-      "UPDATE agent_runs SET status = 'pending_dispatch', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND lease_until < ?"
+      "UPDATE agent_runs SET status = 'pending_dispatch', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND cancelled_at IS NULL AND lease_until < ?"
     ).bind(now, row.id, now).run();
     if (recovered.meta?.changes) await auditAgentRun(env, row.id, 'lease_expired');
   }
   const pending = await env.DB.prepare(
-    "SELECT id FROM agent_runs WHERE status = 'pending_dispatch' ORDER BY created_at ASC LIMIT ?"
+    "SELECT id FROM agent_runs WHERE status = 'pending_dispatch' AND cancelled_at IS NULL ORDER BY created_at ASC LIMIT ?"
   ).bind(Math.max(1, Math.min(100, limit))).all();
   let dispatched = 0;
   for (const row of pending.results || []) {
     try {
       await env.JOBS.send({ agentRunId: row.id });
       const updated = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
+        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch' AND cancelled_at IS NULL"
       ).bind(new Date().toISOString(), row.id).run();
       if (updated.meta?.changes) {
         await auditAgentRun(env, row.id, 'queued');
@@ -137,33 +213,73 @@ async function submitAgentRun(request, env) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
-  if (length > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
-  const raw = await request.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
+  if (length > MAX_AGENT_RUN_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
+  let raw;
+  try { raw = await readBoundedRequestText(request, MAX_AGENT_RUN_BODY_BYTES); } catch (error) {
+    if (error instanceof RangeError) return json({ error: 'Request body is too large.' }, 413);
+    return json({ error: 'Invalid JSON.' }, 400);
+  }
   let input;
   try { input = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
   let submission;
   try { submission = validateAgentRunSubmission(input); } catch (error) {
     return json({ error: error.message }, 400);
   }
+  if (submission.projectContext) {
+    try {
+      const expectedDigest = await digestProjectBrief(submission.projectContext.brief);
+      if (expectedDigest !== submission.projectContext.digest) {
+        return json({ error: 'Project context digest does not match its contents.' }, 400);
+      }
+      if (submission.projectContext.knowledge !== undefined) {
+        const expectedKnowledgeDigest = await digestCanonicalInput(submission.projectContext.knowledge);
+        if (expectedKnowledgeDigest !== submission.projectContext.knowledgeDigest) {
+          return json({ error: 'Forge knowledge digest does not match its contents.' }, 400);
+        }
+      }
+    } catch {
+      return json({ error: 'Project context could not be verified.' }, 400);
+    }
+  }
+  const projectId = submission.projectContext?.brief.workspace.id || null;
+  const contextDigest = submission.projectContext
+    ? (submission.projectContext.knowledge === undefined
+      ? submission.projectContext.digest
+      : await digestCanonicalInput({
+        briefDigest: submission.projectContext.digest,
+        knowledgeDigest: submission.projectContext.knowledgeDigest,
+      }))
+    : null;
+  const contextJson = submission.projectContext ? JSON.stringify(submission.projectContext) : null;
   const idempotencyKey = request.headers.get('Idempotency-Key');
   if (idempotencyKey && !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
     return json({ error: 'Idempotency-Key must be 8–128 safe characters.' }, 400);
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  await env.DB.prepare(
-    "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
-  ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at, project_id, context_digest, context_json) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
+    ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now, projectId, contextDigest, contextJson),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'created', '{}', ? FROM agent_runs WHERE id = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(crypto.randomUUID(), now, id),
+  ]);
   const row = idempotencyKey
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run could not be persisted.' }, 500);
+  const storedContextDigest = row.context_digest || null;
+  if (row.objective !== submission.objective ||
+      row.specialists_json !== JSON.stringify(submission.specialists) ||
+      (row.project_id || null) !== projectId || storedContextDigest !== contextDigest) {
+    return json({ error: 'Idempotency-Key was already used for a different agent run request.' }, 409);
+  }
   if (row.status === 'pending_dispatch') {
     try {
       await env.JOBS.send({ agentRunId: row.id });
       const updated = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch'"
+        "UPDATE agent_runs SET status = 'queued', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'pending_dispatch' AND cancelled_at IS NULL"
       ).bind(new Date().toISOString(), row.id).run();
       if (updated.meta?.changes) await auditAgentRun(env, row.id, 'queued');
     } catch {
@@ -174,44 +290,305 @@ async function submitAgentRun(request, env) {
   return json({ run: parseAgentRun(current) }, current?.status === 'pending_dispatch' ? 202 : 201);
 }
 
+
+async function cancelAgentRun(env, id) {
+  if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'Agent run not found.' }, 404);
+  if (row.cancelled_at) return json({ run: await parseAgentRunWithSteps(env, row), cancelled: true });
+  if (row.status === 'failed') {
+    return json({ error: 'A failed agent run cannot be cancelled.', run: parseAgentRun(row) }, 409);
+  }
+
+  const now = new Date().toISOString();
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE agent_runs SET cancelled_at = ?, lease_until = NULL, updated_at = ? WHERE id = ? AND cancelled_at IS NULL AND status IN ('pending_dispatch', 'queued', 'running', 'planned')"
+    ).bind(now, now, id),
+    env.DB.prepare(
+      "UPDATE agent_run_steps SET status = 'cancelled', lease_until = NULL, updated_at = ? WHERE agent_run_id = ? AND status IN ('planned', 'pending_dispatch', 'queued', 'running') AND EXISTS (SELECT 1 FROM agent_runs WHERE id = ? AND cancelled_at = ?)"
+    ).bind(now, id, id, now),
+    env.DB.prepare(
+      "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT 'cancelled:' || id, id, agent_run_id, 'cancelled', '{}', ? FROM agent_run_steps WHERE agent_run_id = ? AND status = 'cancelled' AND EXISTS (SELECT 1 FROM agent_runs WHERE id = ? AND cancelled_at = ?) ON CONFLICT(event_id) DO NOTHING"
+    ).bind(now, id, id, now),
+  ]);
+  const updated = results[0];
+  if (!updated.meta?.changes) {
+    const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
+    if (!current) return json({ error: 'Agent run not found.' }, 404);
+    if (current.cancelled_at) return json({ run: await parseAgentRunWithSteps(env, current), cancelled: true });
+    return json({ error: 'Agent run is no longer cancellable.', run: parseAgentRun(current) }, 409);
+  }
+
+  await auditAgentRun(env, id, 'cancelled', {}, 'cancelled:' + id);
+  const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
+  return json({ run: await parseAgentRunWithSteps(env, current), cancelled: true });
+}
+
+
+async function listAgentRuns(request, env) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(['limit', 'before', 'beforeId']);
+  for (const key of params.keys()) {
+    if (!allowed.has(key) || params.getAll(key).length !== 1) {
+      return json({ error: 'Invalid agent run list query.' }, 400);
+    }
+  }
+
+  const limitText = params.get('limit') ?? '20';
+  if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText)) {
+    return json({ error: 'Agent run list limit must be between 1 and 50.' }, 400);
+  }
+  const limit = Number(limitText);
+  const before = params.get('before');
+  const beforeId = params.get('beforeId');
+  if ((before === null) !== (beforeId === null)) {
+    return json({ error: 'Both before and beforeId are required for cursor pagination.' }, 400);
+  }
+  if (before !== null) {
+    const time = Date.parse(before);
+    if (!Number.isFinite(time) || new Date(time).toISOString() !== before || !isJobId(beforeId)) {
+      return json({ error: 'Invalid agent run list cursor.' }, 400);
+    }
+  }
+
+  const result = before === null
+    ? await env.DB.prepare(
+      'SELECT * FROM agent_runs ORDER BY created_at DESC, id DESC LIMIT ?'
+    ).bind(limit + 1).all()
+    : await env.DB.prepare(
+      'SELECT * FROM agent_runs WHERE created_at < ? OR (created_at = ? AND id < ?) ORDER BY created_at DESC, id DESC LIMIT ?'
+    ).bind(before, before, beforeId, limit + 1).all();
+
+  const rows = result.results || [];
+  const hasMore = rows.length > limit;
+  const visible = rows.slice(0, limit);
+  const last = visible[visible.length - 1];
+  return json({
+    runs: visible.map(parseAgentRun),
+    nextCursor: hasMore && last
+      ? { before: last.created_at, beforeId: last.id }
+      : null,
+  });
+}
+
+async function listAgentRunEvents(request, env, runId) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  if (!isJobId(runId)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  const run = await env.DB.prepare('SELECT id FROM agent_runs WHERE id = ?').bind(runId).first();
+  if (!run) return json({ error: 'Agent run not found.' }, 404);
+
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(['limit', 'before', 'beforeId']);
+  for (const key of params.keys()) {
+    if (!allowed.has(key) || params.getAll(key).length !== 1) {
+      return json({ error: 'Invalid agent run event query.' }, 400);
+    }
+  }
+  const limitText = params.get('limit') ?? '20';
+  if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText)) {
+    return json({ error: 'Agent run event limit must be between 1 and 50.' }, 400);
+  }
+  const limit = Number(limitText);
+  const before = params.get('before');
+  const beforeId = params.get('beforeId');
+  if ((before === null) !== (beforeId === null)) {
+    return json({ error: 'Both before and beforeId are required for event pagination.' }, 400);
+  }
+  if (before !== null) {
+    const time = Date.parse(before);
+    if (!Number.isFinite(time) || new Date(time).toISOString() !== before ||
+        typeof beforeId !== 'string' || !/^[A-Za-z0-9:_-]{1,180}$/.test(beforeId)) {
+      return json({ error: 'Invalid agent run event cursor.' }, 400);
+    }
+  }
+
+  const result = before === null
+    ? await env.DB.prepare(
+      'SELECT event_id, event_type, detail_json, created_at FROM agent_run_events WHERE agent_run_id = ? ORDER BY created_at DESC, event_id DESC LIMIT ?'
+    ).bind(runId, limit + 1).all()
+    : await env.DB.prepare(
+      'SELECT event_id, event_type, detail_json, created_at FROM agent_run_events WHERE agent_run_id = ? AND (created_at < ? OR (created_at = ? AND event_id < ?)) ORDER BY created_at DESC, event_id DESC LIMIT ?'
+    ).bind(runId, before, before, beforeId, limit + 1).all();
+
+  const rows = result.results || [];
+  const hasMore = rows.length > limit;
+  const visible = rows.slice(0, limit);
+  const events = visible.map((row) => {
+    if (typeof row.event_id !== 'string' || !/^[A-Za-z0-9:_-]{1,180}$/.test(row.event_id) ||
+        typeof row.event_type !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(row.event_type)) {
+      throw new Error('Invalid persisted agent run event.');
+    }
+    let detail = {};
+    if (typeof row.detail_json === 'string' && row.detail_json.length <= 4096) {
+      try {
+        const parsed = JSON.parse(row.detail_json);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) detail = parsed;
+      } catch { /* Keep malformed event detail redacted. */ }
+    }
+    return {
+      id: row.event_id,
+      type: row.event_type,
+      detail,
+      createdAt: row.created_at,
+    };
+  });
+  const last = visible[visible.length - 1];
+  return json({
+    events,
+    nextCursor: hasMore && last
+      ? { before: last.created_at, beforeId: last.event_id }
+      : null,
+  });
+}
+
+async function authorizeAgentRun(request, env, id) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+  if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  const length = Number(request.headers.get('Content-Length') || 0);
+  if (length > 2048) return json({ error: 'Request body is too large.' }, 413);
+  let raw;
+  try { raw = await readBoundedRequestText(request, 2048); } catch (error) {
+    if (error instanceof RangeError) return json({ error: 'Request body is too large.' }, 413);
+    return json({ error: 'Invalid JSON.' }, 400);
+  }
+  let body;
+  try { body = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  const keys = ['approvalId', 'capabilityId', 'capabilityVersion', 'actionId', 'inputDigest', 'grantId'];
+  if (!body || typeof body !== 'object' || Array.isArray(body) ||
+      Object.keys(body).length !== keys.length || Object.keys(body).some((key) => !keys.includes(key)) ||
+      typeof body.approvalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.approvalId) ||
+      typeof body.capabilityId !== 'string' || typeof body.capabilityVersion !== 'string' ||
+      typeof body.actionId !== 'string' || typeof body.inputDigest !== 'string' ||
+      typeof body.grantId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.grantId) ||
+      !/^sha256:[a-f0-9]{64}$/i.test(body.inputDigest)) {
+    return json({ error: 'Invalid execution authorisation binding.' }, 400);
+  }
+  const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'Agent run not found.' }, 404);
+  if (row.cancelled_at || row.status !== 'planned' || !row.plan_json) {
+    return json({ error: 'Only an active planned run can be authorised.' }, 409);
+  }
+  let plan;
+  try { plan = JSON.parse(row.plan_json); } catch {
+    return json({ error: 'Persisted agent plan is invalid.' }, 409);
+  }
+  let expected;
+  try { expected = await buildAgentPlanApprovalBinding(plan, 'owner'); } catch {
+    return json({ error: 'Agent plan does not meet the registered approval policy.' }, 409);
+  }
+  if (body.capabilityId !== expected.capabilityId ||
+      body.capabilityVersion !== expected.capabilityVersion ||
+      body.actionId !== expected.actionId ||
+      body.inputDigest !== expected.inputDigest) {
+    return json({ error: 'Execution authorisation does not match the persisted plan and capability.' }, 409);
+  }
+  if (row.authorization_approval_id && row.authorization_approval_id !== body.approvalId) {
+    return json({ error: 'This run has already consumed a different approval.' }, 409);
+  }
+  const now = new Date().toISOString();
+  const authorised = await env.DB.prepare(`
+    UPDATE agent_runs
+    SET authorization_approval_id = COALESCE(authorization_approval_id, ?),
+        execution_authorized_at = COALESCE(execution_authorized_at, ?),
+        authorization_grant_id = COALESCE(authorization_grant_id, ?),
+        updated_at = ?
+    WHERE id = ? AND status = 'planned' AND cancelled_at IS NULL
+      AND (authorization_approval_id IS NULL OR authorization_approval_id = ?)
+      AND (authorization_grant_id IS NULL OR authorization_grant_id = ?)
+    RETURNING *
+  `).bind(body.approvalId, now, body.grantId, now, id, body.approvalId, body.grantId).first();
+  if (!authorised) return json({ error: 'Agent run changed before authorisation could be recorded.' }, 409);
+  await auditAgentRun(env, id, 'execution_authorized', {
+    approvalId: body.approvalId,
+    grantId: body.grantId,
+    capabilityId: expected.capabilityId,
+    capabilityVersion: expected.capabilityVersion,
+    actionId: expected.actionId,
+    inputDigest: expected.inputDigest,
+  }, 'execution-authorized:' + id + ':' + body.approvalId);
+  return json({ run: parseAgentRun(authorised), authorised: true, executionStarted: false });
+}
+
 async function getAgentRun(env, id) {
   if (!isJobId(id)) return json({ error: 'Invalid agent run identifier.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
   if (!row) return json({ error: 'Agent run not found.' }, 404);
-  return json({ run: parseAgentRun(row) });
+  return json({ run: await parseAgentRunWithSteps(env, row) });
 }
 
 async function processAgentRun(message, env) {
   const runId = message?.body?.agentRunId;
   if (!isJobId(runId)) { message.ack(); return; }
   const row = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(runId).first();
-  if (!row || ['planned', 'failed', 'running'].includes(row.status) ||
+  if (!row || row.cancelled_at || ['planned', 'failed', 'running'].includes(row.status) ||
       !['queued', 'pending_dispatch'].includes(row.status)) { message.ack(); return; }
   const startedAt = new Date().toISOString();
   const claim = await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
+    "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') AND cancelled_at IS NULL RETURNING attempts"
   ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId).first();
   if (!claim) { message.ack(); return; }
   const attempt = Number(claim.attempts);
   await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
-    const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
-    const saved = await env.DB.prepare(
-      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-    ).bind(JSON.stringify(plan), new Date().toISOString(), runId, attempt).run();
-    if (saved.meta?.changes) await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
+    const expectedContextDigest = projectContext
+      ? (projectContext.knowledge === undefined
+        ? projectContext.digest
+        : await digestCanonicalInput({
+          briefDigest: projectContext.digest,
+          knowledgeDigest: projectContext.knowledgeDigest,
+        }))
+      : null;
+    if (projectContext && (row.context_digest !== expectedContextDigest ||
+        await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
+        (projectContext.knowledge !== undefined &&
+          await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
+      throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
+    }
+    const plan = createAgentPlan({
+      objective: row.objective,
+      specialists,
+      ...(projectContext ? { projectContext } : {}),
+    }, { runId, createdAt: row.created_at });
+    const planJson = JSON.stringify(plan);
+    const completedAt = new Date().toISOString();
+    const statements = [env.DB.prepare(
+      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
+    ).bind(planJson, completedAt, runId, attempt)];
+
+    for (const [index, step] of plan.steps.entries()) {
+      statements.push(env.DB.prepare(
+        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
+      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), completedAt, completedAt, runId, attempt, planJson));
+      statements.push(env.DB.prepare(
+        "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, agent_run_id, 'planned', ?, ? FROM agent_run_steps WHERE id = ? AND agent_run_id = ? ON CONFLICT(event_id) DO NOTHING"
+      ).bind('planned:' + step.id, JSON.stringify({ stepIndex: index + 1, specialist: step.specialist }), completedAt, step.id, runId));
+    }
+
+    const results = await env.DB.batch(statements);
+    if (results[0]?.meta?.changes) {
+      await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    }
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
       const failed = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
+        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
       ).bind(new Date().toISOString(), runId, attempt).run();
       if (failed.meta?.changes) await auditAgentRun(env, runId, 'failed', { code: 'AGENT_PLAN_FAILED', attempt });
       message.ack();
     } else {
       const retry = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
+        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
       ).bind(new Date().toISOString(), runId, attempt).run();
       if (!retry.meta?.changes) { message.ack(); return; }
       await auditAgentRun(env, runId, 'retry_scheduled', { attempt });
@@ -225,7 +602,7 @@ async function processAgentDeadLetter(message, env) {
   if (!isJobId(runId)) { message.ack(); return; }
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))"
+    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND cancelled_at IS NULL AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))"
   ).bind(now, runId, now).run();
   const row = await env.DB.prepare(
     'SELECT status, error_code FROM agent_runs WHERE id = ?'
@@ -343,6 +720,23 @@ export async function handleRuntimeFetch(request, env) {
   const url = new URL(request.url);
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
+  if (request.method === 'POST' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/cancel')) {
+    if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+    if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+    const id = url.pathname.slice('/v1/agent-runs/'.length, -'/cancel'.length);
+    return cancelAgentRun(env, id);
+  }
+  if (request.method === 'GET' && url.pathname === '/v1/agent-runs') return listAgentRuns(request, env);
+  if (request.method === 'POST' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/authorize')) {
+    const id = url.pathname.slice('/v1/agent-runs/'.length, -'/authorize'.length);
+    return authorizeAgentRun(request, env, id);
+  }
+  if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/') && url.pathname.endsWith('/events')) {
+    if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+    if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+    const id = url.pathname.slice('/v1/agent-runs/'.length, -'/events'.length);
+    return listAgentRunEvents(request, env, id);
+  }
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);

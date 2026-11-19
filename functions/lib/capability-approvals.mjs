@@ -77,7 +77,7 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
       id, principal_id, capability_id, capability_version, action_id,
       resource_id, operation_summary, connection_id, input_digest, requested_by,
       requested_at, expires_at, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
     id, input.principalId, input.capabilityId, input.capabilityVersion,
     input.actionId, input.resourceId, input.operationSummary.trim(), input.connectionId ?? null,
@@ -119,7 +119,7 @@ export async function listPendingApprovals(db, limit = 50) {
  * connection and atomically consume this record immediately before execution.
  */
 export async function loadApproval(db, {
-  principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest,
+  id = null, principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest,
 } = {}, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') {
     throw new TypeError('Approval database is required');
@@ -136,31 +136,31 @@ export async function loadApproval(db, {
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
 
-  const row = await db.prepare(`
-    SELECT * FROM capability_approvals
-    WHERE principal_id = ?
-      AND capability_id = ?
-      AND capability_version = ?
-      AND action_id = ?
-      AND resource_id = ?
-      AND input_digest = ?
-      AND status = 'approved'
-      AND consumed_at IS NULL
-      AND expires_at > ?
-    ORDER BY decided_at DESC, requested_at DESC
-    LIMIT 1
-  `).bind(
-    principalId, capabilityId, capabilityVersion, actionId,
-    resourceId, inputDigest, new Date(now).toISOString(),
-  ).first();
+  if (id !== null) requiredId(id, 'request identifier');
+  const row = id === null
+    ? await db.prepare(`
+      SELECT * FROM capability_approvals
+      WHERE principal_id = ? AND capability_id = ? AND capability_version = ?
+        AND action_id = ? AND resource_id = ? AND input_digest = ?
+        AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+      ORDER BY decided_at DESC, requested_at DESC LIMIT 1
+    `).bind(principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest, new Date(now).toISOString()).first()
+    : await db.prepare(`
+      SELECT * FROM capability_approvals
+      WHERE id = ? AND principal_id = ? AND capability_id = ? AND capability_version = ?
+        AND action_id = ? AND resource_id = ? AND input_digest = ?
+        AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+    `).bind(id, principalId, capabilityId, capabilityVersion, actionId, resourceId, inputDigest, new Date(now).toISOString()).first();
   return mapApproval(row);
 }
 
 export async function decideApprovalRequest(db, {
-  id, decision, decidedBy, now = Date.now(),
+  id, decision, decidedBy, principalId = null, capabilityId = null, now = Date.now(),
 } = {}) {
   requiredId(id, 'request identifier');
   requiredId(decidedBy, 'decision actor');
+  if (principalId !== null) requiredId(principalId, 'principal');
+  if (capabilityId !== null) requiredId(capabilityId, 'capability identifier');
   if (!['approved', 'denied'].includes(decision)) {
     throw new TypeError('Approval decision must be approved or denied');
   }
@@ -170,8 +170,10 @@ export async function decideApprovalRequest(db, {
     UPDATE capability_approvals
     SET status = ?, decided_by = ?, decided_at = ?
     WHERE id = ? AND status = 'pending' AND expires_at > ?
+      AND (? IS NULL OR principal_id = ?)
+      AND (? IS NULL OR capability_id = ?)
     RETURNING *
-  `).bind(decision, decidedBy, decidedAt, id, decidedAt).first();
+  `).bind(decision, decidedBy, decidedAt, id, decidedAt, principalId, principalId, capabilityId, capabilityId).first();
   return mapApproval(row);
 }
 
@@ -179,6 +181,43 @@ export async function decideApprovalRequest(db, {
  * Atomically consumes an approved decision for one exact operation.
  * A concurrent caller or replay receives null; no read-then-write window exists.
  */
+
+export async function loadApprovedApprovalById(db, id, {
+  principalId, capabilityId, now = Date.now(),
+} = {}) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Approval database is required');
+  requiredId(id, 'request identifier');
+  requiredId(principalId, 'principal');
+  requiredId(capabilityId, 'capability identifier');
+  if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
+  const row = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE id = ? AND principal_id = ? AND capability_id = ?
+      AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+  `).bind(id, principalId, capabilityId, new Date(now).toISOString()).first();
+  return mapApproval(row);
+}
+
+/**
+ * Loads an already-consumed approval for safe recovery of the same idempotent
+ * runtime authorisation request. Callers must revalidate every immutable
+ * binding and re-check the live Sentinel grant before retrying.
+ */
+export async function loadConsumedApprovalById(db, id, {
+  principalId, capabilityId,
+} = {}) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Approval database is required');
+  requiredId(id, 'request identifier');
+  requiredId(principalId, 'principal');
+  requiredId(capabilityId, 'capability identifier');
+  const row = await db.prepare(`
+    SELECT * FROM capability_approvals
+    WHERE id = ? AND principal_id = ? AND capability_id = ?
+      AND status = 'consumed' AND consumed_at IS NOT NULL
+  `).bind(id, principalId, capabilityId).first();
+  return mapApproval(row);
+}
+
 export async function consumeApproval(db, {
   id, principalId, capabilityId, capabilityVersion, actionId,
   resourceId, operationSummary, connectionId = null, inputDigest, now = Date.now(),

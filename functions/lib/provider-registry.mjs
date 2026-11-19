@@ -102,11 +102,68 @@ export function listEligibleModels(registry, { task, now, maxAgeMs = 86400000 } 
         contextTokens: model.contextTokens,
         maxOutputTokens: model.maxOutputTokens,
         tasks: [...model.tasks],
-        inputCost: model.inputCost ?? 0,
-        outputCost: model.outputCost ?? 0,
+        inputCost: model.inputCost,
+        outputCost: model.outputCost,
+        costKnown: model.inputCost !== undefined && model.outputCost !== undefined,
         verifiedAt: provider.verifiedAt,
       }));
     }
   }
   return result;
+}
+
+
+function optionalPositiveInteger(value, label) {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) {
+    throw new TypeError('Invalid ' + label);
+  }
+}
+
+function optionalNonNegativeCost(value, label) {
+  if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+    throw new TypeError('Invalid ' + label);
+  }
+}
+
+export function rankEligibleModels(registry, {
+  task,
+  now,
+  maxAgeMs = 86400000,
+  requiredContextTokens,
+  requiredOutputTokens,
+  maxInputCost,
+  maxOutputCost,
+  preferredProviderIds = [],
+} = {}) {
+  optionalPositiveInteger(requiredContextTokens, 'required context tokens');
+  optionalPositiveInteger(requiredOutputTokens, 'required output tokens');
+  optionalNonNegativeCost(maxInputCost, 'maximum input cost');
+  optionalNonNegativeCost(maxOutputCost, 'maximum output cost');
+  if (!Array.isArray(preferredProviderIds) || preferredProviderIds.length > 100 ||
+      preferredProviderIds.some(id => typeof id !== 'string' || !ID.test(id)) ||
+      new Set(preferredProviderIds).size !== preferredProviderIds.length) {
+    throw new TypeError('Invalid preferred provider identifiers');
+  }
+
+  const preference = new Map(preferredProviderIds.map((id, index) => [id, index]));
+  return listEligibleModels(registry, { task, now, maxAgeMs })
+    .filter(model => requiredContextTokens === undefined || model.contextTokens >= requiredContextTokens)
+    .filter(model => requiredOutputTokens === undefined || model.maxOutputTokens >= requiredOutputTokens)
+    .filter(model => {
+      if ((maxInputCost !== undefined || maxOutputCost !== undefined) && !model.costKnown) return false;
+      if (maxInputCost !== undefined && model.inputCost > maxInputCost) return false;
+      if (maxOutputCost !== undefined && model.outputCost > maxOutputCost) return false;
+      return true;
+    })
+    .sort((left, right) => {
+      const leftPreference = preference.get(left.providerId) ?? Number.MAX_SAFE_INTEGER;
+      const rightPreference = preference.get(right.providerId) ?? Number.MAX_SAFE_INTEGER;
+      if (leftPreference !== rightPreference) return leftPreference - rightPreference;
+      if (left.costKnown !== right.costKnown) return left.costKnown ? -1 : 1;
+      if (left.costKnown) {
+        const costDifference = (left.inputCost + left.outputCost) - (right.inputCost + right.outputCost);
+        if (costDifference !== 0) return costDifference;
+      }
+      return left.id.localeCompare(right.id);
+    });
 }

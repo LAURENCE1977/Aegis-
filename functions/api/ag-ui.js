@@ -12,6 +12,8 @@ import {
   createTextRunContentEvent,
   createTextRunFinishEvents,
   createTextRunErrorEvent,
+  createToolCallStartEvents,
+  createToolCallResultEvent,
   encodeAgUiSse,
   createAgUiSseResponse,
 } from "../lib/ag-ui.mjs";
@@ -119,6 +121,9 @@ export async function onRequestPost(context) {
       fetchImpl,
       promptMessages,
       allowedToolNames: tools.map(tool => tool.function.name),
+      // AG-UI IDs are correlation context only; Sentinel grants remain authoritative.
+      taskId: input.runId,
+      sessionId: input.threadId,
     } : null,
   });
 }
@@ -297,14 +302,32 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               throw agentStreamError("TOOL_NOT_ALLOWED", "The requested tool is not in the server-owned AEGIS tool registry.");
             }
 
+            controller.enqueue(encoder.encode(encodeAgUiSse(
+              createToolCallStartEvents({
+                toolCallId: call.id,
+                toolCallName: call.function.name,
+                argumentsText: call.function.arguments,
+              }),
+            )));
             const toolResult = await executeAgentToolCall({
               name: call.function.name,
               argumentsText: call.function.arguments,
               db: toolContext.db,
+              env: toolContext.env,
               principalId: "owner",
               fetchImpl: toolContext.fetchImpl,
+              taskId: toolContext.taskId,
+              sessionId: toolContext.sessionId,
+              workerId: "aegis-ag-ui",
             });
             const toolContent = boundedToolResult(toolResult);
+            controller.enqueue(encoder.encode(encodeAgUiSse([
+              createToolCallResultEvent({
+                messageId: runId,
+                toolCallId: call.id,
+                content: toolContent,
+              }),
+            ])));
             const assistantToolCall = {
               role: "assistant",
               content: messageText,
@@ -372,7 +395,7 @@ function agentStreamError(code, publicMessage) {
 
 function boundedToolResult(result) {
   const serialized = JSON.stringify(result);
-  if (serialized.length <= MAX_TOOL_RESULT) return serialized;
+  if (new TextEncoder().encode(serialized).byteLength <= MAX_TOOL_RESULT) return serialized;
   const compact = {
     ok: result?.ok === true,
     reasonCode: result?.reasonCode || "TOOL_RESULT_TOO_LARGE",
@@ -399,6 +422,8 @@ function validateRunInput(input) {
   if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
+  const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+  if (!identifierPattern.test(input.threadId) || !identifierPattern.test(input.runId)) return "Invalid AG-UI thread or run identifier.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
   if (input.tools !== undefined && (!Array.isArray(input.tools) || input.tools.length)) return "Frontend tools are not enabled until Sentinel mediation is connected.";
   if (input.context !== undefined && (!Array.isArray(input.context) || input.context.length)) return "Ambient context is not enabled on this endpoint.";

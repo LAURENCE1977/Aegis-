@@ -77,3 +77,92 @@ test('fails closed for stale verification and malformed catalogue structure', ()
   }), []);
   assert.throws(() => validateProviderRegistry({ version: 1, providers: [] }), /providers/i);
 });
+
+test('ranks eligible models by explicit provider preference, then known cost and stable ID', async () => {
+  const { rankEligibleModels } = await import('../functions/lib/provider-registry.mjs');
+  const input = registry();
+  input.providers[0].models[0].inputCost = 0.2;
+  input.providers[0].models[0].outputCost = 0.4;
+  input.providers.push({
+    id: 'provider-b', adapterId: 'adapter-b', displayName: 'Provider B',
+    status: 'enabled', termsUrl: 'https://example.com/terms',
+    verifiedAt: '2026-11-15T18:00:00.000Z',
+    models: [
+      { id: 'model-b', contextTokens: 32000, maxOutputTokens: 2048, tasks: ['chat'], inputCost: 0.1, outputCost: 0.2 },
+      { id: 'model-c', contextTokens: 64000, maxOutputTokens: 4096, tasks: ['chat'] },
+    ],
+  });
+  const ranked = rankEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    preferredProviderIds: ['provider-a'],
+  });
+  assert.deepEqual(ranked.map(model => model.id), ['model-a', 'model-b', 'model-c']);
+  assert.equal(ranked[2].costKnown, false);
+});
+
+test('filters candidates by context, output and maximum cost without treating unknown prices as free', async () => {
+  const { rankEligibleModels } = await import('../functions/lib/provider-registry.mjs');
+  const input = registry();
+  input.providers[0].models[0].inputCost = 0.2;
+  input.providers[0].models[0].outputCost = 0.4;
+  input.providers.push({
+    id: 'provider-b', adapterId: 'adapter-b', displayName: 'Provider B',
+    status: 'enabled', termsUrl: 'https://example.com/terms',
+    verifiedAt: '2026-11-15T18:00:00.000Z',
+    models: [
+      { id: 'model-b', contextTokens: 32000, maxOutputTokens: 2048, tasks: ['chat'], inputCost: 0.1, outputCost: 0.2 },
+      { id: 'model-c', contextTokens: 64000, maxOutputTokens: 4096, tasks: ['chat'] },
+    ],
+  });
+  const ranked = rankEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    requiredContextTokens: 16000,
+    requiredOutputTokens: 1500,
+    maxInputCost: 0.15,
+    maxOutputCost: 0.25,
+  });
+  assert.deepEqual(ranked.map(model => model.id), ['model-b']);
+});
+
+test('rejects invalid routing constraints instead of silently widening eligibility', async () => {
+  const { rankEligibleModels } = await import('../functions/lib/provider-registry.mjs');
+  assert.throws(() => rankEligibleModels(registry(), {
+    task: 'chat', now: '2026-11-15T19:00:00.000Z', requiredContextTokens: -1,
+  }), /context/i);
+});
+
+
+test('preserves unknown provider prices as unknown instead of exposing false zero-cost values', () => {
+  const input = registry();
+  input.providers[0].models[0].inputCost = undefined;
+  input.providers[0].models[0].outputCost = undefined;
+  const [model] = listEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+  });
+  assert.equal(model.costKnown, false);
+  assert.equal(model.inputCost, undefined);
+  assert.equal(model.outputCost, undefined);
+});
+
+
+test('marks partially-known model pricing as unknown and excludes it from cost-capped routing', async () => {
+  const { rankEligibleModels } = await import('../functions/lib/provider-registry.mjs');
+  const input = registry();
+  input.providers[0].models[0].inputCost = undefined;
+  input.providers[0].models[0].outputCost = 0;
+  const [listed] = listEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+  });
+  assert.equal(listed.costKnown, false);
+  assert.equal(listed.inputCost, undefined);
+  assert.equal(listed.outputCost, 0);
+  assert.deepEqual(rankEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    maxInputCost: 0,
+  }), []);
+});

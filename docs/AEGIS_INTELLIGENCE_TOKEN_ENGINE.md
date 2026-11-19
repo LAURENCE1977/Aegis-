@@ -10,6 +10,12 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 - `selectModelRoute(...)`: selects a model from a trusted server-side catalogue using task compatibility, context window, output limit, estimated cost, priority and provider quota/availability.
 - `fitMessagesToContext(messages, maxInputTokens)`: keeps the system instruction and newest complete messages that fit a supplied input budget. It never slices a message mid-text and fails if the system instruction or newest message cannot fit.
 
+## Free-only routing guard
+
+`selectModelRoute` accepts optional `maxInputCost` and `maxOutputCost` constraints. When either cap is supplied, a model must have verified values for both input and output pricing to remain eligible. Setting both caps to `0` therefore selects only explicitly zero-cost models; missing price metadata is never treated as proof of free usage. Without a cost cap, an unpriced model may remain eligible, but its `estimatedCost` is returned as `null` and it ranks behind models with known prices.
+
+This is a policy/planning safeguard only. It does not verify provider invoices, enforce a durable spend ledger, or activate automatic failover. The planner is still not wired into AG-UI or the live model adapter.
+
 ## Design boundaries
 
 - The model catalogue is trusted configuration, not data that can supply arbitrary URLs or executable adapter code.

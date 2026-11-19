@@ -45,3 +45,41 @@ test('run finish can explicitly report a producer-cancelled outcome', () => {
   assert.match(encoded, /"outcome":"cancelled"/);
   assert.throws(() => createTextRunFinishEvents({ threadId: 't', runId: 'r', outcome: 'mystery' }), /outcome/i);
 });
+
+
+test('AG-UI tool-call lifecycle preserves real invocation correlation and bounded payloads', async () => {
+  const {
+    createToolCallStartEvents,
+    createToolCallResultEvent,
+    encodeAgUiSse,
+  } = await import('../functions/lib/ag-ui.mjs');
+  const start = createToolCallStartEvents({
+    toolCallId: 'call-123',
+    toolCallName: 'aegis_list_modules',
+    argumentsText: '{"filter":"active"}',
+    now: 1234,
+  });
+  const result = createToolCallResultEvent({
+    messageId: 'run-123',
+    toolCallId: 'call-123',
+    content: '{"ok":true,"output":{"total":2}}',
+    now: 1235,
+  });
+  assert.deepEqual(start.map(event => event.type), [
+    'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END',
+  ]);
+  assert.equal(start[0].toolCallName, 'aegis_list_modules');
+  assert.equal(start[1].delta, '{"filter":"active"}');
+  assert.equal(result.toolCallId, 'call-123');
+  assert.equal(result.messageId, 'run-123');
+  assert.equal(encodeAgUiSse([...start, result]).trim().split('\n\n').length, 4);
+  assert.throws(() => createToolCallStartEvents({
+    toolCallId: 'call-123', toolCallName: 'x'.repeat(65), argumentsText: '{}',
+  }), /tool/i);
+  assert.throws(() => createToolCallResultEvent({
+    messageId: 'run-123', toolCallId: 'call-123', content: 'x'.repeat(4001),
+  }), /result/i);
+  assert.throws(() => createToolCallStartEvents({
+    toolCallId: 'call-123', toolCallName: 'tool', argumentsText: '😀'.repeat(2048),
+  }), /arguments/i);
+});

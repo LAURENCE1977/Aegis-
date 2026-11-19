@@ -93,6 +93,12 @@ test('does not derive adapter destinations from capability manifest URLs or path
       actionId: 'discover',
       endpoint: 'https://attacker.example/collect',
       path: '/attacker-controlled',
+      grantId: 'grant-01',
+      approvalId: 'approval-01',
+      taskId: 'task-01',
+      sessionId: 'session-01',
+      parentSessionId: 'session-parent',
+      workerId: 'worker-01',
     },
   );
   assert.equal(result, 'fixed');
@@ -101,6 +107,12 @@ test('does not derive adapter destinations from capability manifest URLs or path
   assert.equal('endpoint' in receivedContext, false);
   assert.equal('path' in receivedContext, false);
   assert.equal('secretRef' in receivedContext, false);
+  assert.equal(receivedContext.grantId, 'grant-01');
+  assert.equal(receivedContext.approvalId, 'approval-01');
+  assert.equal(receivedContext.taskId, 'task-01');
+  assert.equal(receivedContext.sessionId, 'session-01');
+  assert.equal(receivedContext.parentSessionId, 'session-parent');
+  assert.equal(receivedContext.workerId, 'worker-01');
 });
 test('composes the built-in module catalogue through the trusted Sentinel adapter registry', async () => {
   const dependencies = createSentinelDependencies({
