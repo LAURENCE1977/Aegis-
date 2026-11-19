@@ -100,7 +100,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\r?\n\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -619,7 +619,7 @@ test('AG-UI returns a clear safe error when free-only policy blocks a paid provi
     fetchImpl: async () => { throw new Error('network must not be called'); },
   });
   assert.equal(response.status, 503);
-  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/).map(frame => JSON.parse(frame.slice(6)));
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/).map(frame => JSON.parse(frame.slice(6)));
   assert.equal(frames[0].type, 'RUN_ERROR');
   assert.equal(frames[0].code, 'PROVIDER_DISABLED');
   assert.equal(frames[0].message, 'That AI provider is disabled by the free-only policy.');
@@ -635,7 +635,7 @@ test('AG-UI rejects an invalid free-only policy setting as a server configuratio
     },
   });
   assert.equal(response.status, 503);
-  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/).map(frame => JSON.parse(frame.slice(6)));
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/).map(frame => JSON.parse(frame.slice(6)));
   assert.equal(frames[0].type, 'RUN_ERROR');
   assert.equal(frames[0].code, 'POLICY_CONFIGURATION_INVALID');
   assert.equal(frames[0].message, 'The model provider policy is not configured correctly.');
