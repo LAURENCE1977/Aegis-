@@ -4139,7 +4139,7 @@
               }
               archiveButton.disabled = true;
               try {
-                await controlApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                await reviewerApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
                   method: 'PATCH',
                   body: JSON.stringify({
                     status: 'archived',
