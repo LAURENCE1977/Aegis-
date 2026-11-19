@@ -643,7 +643,7 @@ test('AG-UI bounds assembled model context while preserving system instructions 
   const history = Array.from({ length: 10 }, (_, index) => ({
     id: 'history-' + index,
     role: index % 2 === 0 ? 'user' : 'assistant',
-    content: ('history-' + index + ' ').repeat(300),
+    content: ('history-' + index + ' ').repeat(380),
   }));
   const response = await onRequestPost({
     request: await request(input({ messages: [
