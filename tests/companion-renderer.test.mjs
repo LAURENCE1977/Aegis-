@@ -92,9 +92,12 @@ test('renderer initialises WebGL2 resources and caps the drawing buffer pixel ra
   assert.deepEqual(deleted, { buffers: 2, arrays: 1, programs: 1 });
 });
 
-test('external model manifests remain explicitly unsupported until a licensed loader is added', async () => {
+test('model loading enforces asset provenance before reporting the loader as unavailable', async () => {
   const renderer = createCompanionRenderer({ getContext: () => null });
   assert.deepEqual(await renderer.loadModel({ format: 'glb', source: 'local-file' }), {
+    loaded: false, reason: 'invalid-manifest',
+  });
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset()), {
     loaded: false, reason: 'external-model-loader-not-yet-enabled',
   });
 });
