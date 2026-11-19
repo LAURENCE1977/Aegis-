@@ -540,9 +540,11 @@ export function createCompanionRenderer(canvas, options = {}) {
   async function loadModel(assetManifest, file, cryptoApi = globalThis.crypto) {
     const validation = validateCompanionAssetManifest(assetManifest);
     if (!validation.valid) return { loaded: false, reason: validation.reason };
-    if (!file || !Number.isSafeInteger(file.size) || file.size !== validation.manifest.byteLength) {
-      return { loaded: false, reason: 'asset-size-mismatch' };
+    if (!file || typeof file !== 'object' || !Number.isSafeInteger(file.size) || file.size < 1) {
+      return { loaded: false, reason: 'invalid-asset-file' };
     }
+    if (file.size > COMPANION_ASSET_MAX_BYTES) return { loaded: false, reason: 'asset-too-large' };
+    if (file.size !== validation.manifest.byteLength) return { loaded: false, reason: 'asset-size-mismatch' };
     const digest = await verifyCompanionAssetDigest(file, validation.manifest.sha256, cryptoApi);
     if (!digest.verified) return { loaded: false, reason: digest.reason };
     return { loaded: false, reason: 'external-model-loader-not-yet-enabled' };
