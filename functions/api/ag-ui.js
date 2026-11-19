@@ -95,6 +95,7 @@ export async function onRequestPost(context) {
       projectId,
       companionInteraction: input.companionInteraction,
     });
+    promptMessages = fitMessagesToContext(promptMessages, MAX_INPUT_TOKENS);
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
@@ -102,6 +103,11 @@ export async function onRequestPost(context) {
       return createAgUiSseResponse([
         createTextRunErrorEvent({ message: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }),
       ], 503);
+    }
+    if (error instanceof RangeError) {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The assembled context is too large for this request. Please shorten the latest message or reduce saved context.", code: "INPUT_CONTEXT_TOO_LARGE" }),
+      ], 413);
     }
     if (error instanceof TypeError) {
       return createAgUiSseResponse([
