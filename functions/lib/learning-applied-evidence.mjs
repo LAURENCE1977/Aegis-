@@ -16,10 +16,11 @@ export function validateLearningArtifactUpload(bytes, mediaType) {
   if (bytes.byteLength > MAX_LEARNING_ARTIFACT_BYTES) {
     throw new TypeError('Learning artifact exceeds the 2 MiB size limit');
   }
-  if (typeof mediaType !== 'string' || !ALLOWED_MEDIA_TYPES.has(mediaType)) {
+  const normalizedMediaType = typeof mediaType === 'string' ? mediaType.trim().toLowerCase() : '';
+  if (!ALLOWED_MEDIA_TYPES.has(normalizedMediaType)) {
     throw new TypeError('Unsupported Learning artifact media type');
   }
-  return Object.freeze({ byteLength: bytes.byteLength, mediaType });
+  return Object.freeze({ byteLength: bytes.byteLength, mediaType: normalizedMediaType });
 }
 
 export async function hashLearningArtifact(bytes) {
