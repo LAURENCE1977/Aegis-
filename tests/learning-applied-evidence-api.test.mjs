@@ -39,7 +39,11 @@ class EvidenceD1 {
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
-      async first() { return sql.includes('FROM learning_paths') ? db.pathRow : null; },
+      async first() {
+        if (sql.includes('FROM learning_paths')) return db.pathRow;
+        if (sql.includes('COUNT(*) AS total')) return { total: 0 };
+        return null;
+      },
       async all() { return { results: [] }; },
       async run() {
         if (sql.includes('INSERT INTO learning_applied_task_evidence')) db.inserted = this.values;
