@@ -2,6 +2,8 @@ import {
   authConfigAvailable,
   isAuthorized,
   isSameOriginRequest,
+  reviewerAuthConfigAvailable,
+  isReviewerAuthorized,
 } from "./auth.mjs";
 
 export const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), {
@@ -18,6 +20,16 @@ export async function authorizeOwner(request, env) {
   }
   if (!(await isAuthorized(request, env))) {
     return jsonResponse({ error: "Authentication required." }, 401);
+  }
+  return null;
+}
+
+export async function authorizeReviewer(request, env) {
+  if (!reviewerAuthConfigAvailable(env)) {
+    return jsonResponse({ error: "Independent reviewer authentication is not configured." }, 503);
+  }
+  if (!(await isReviewerAuthorized(request, env))) {
+    return jsonResponse({ error: "Independent reviewer authentication required." }, 401);
   }
   return null;
 }
