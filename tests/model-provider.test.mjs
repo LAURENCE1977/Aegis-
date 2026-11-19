@@ -23,7 +23,7 @@ test('Workers AI remains the default provider and preserves existing streaming c
 test('Qwen provider requires a server-side key and workspace before any network request',async()=>{
   let called=false;
   await assert.rejects(()=>createModelStream({
-    env:{AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_WORKSPACE_ID:'workspace-1'},
+    env:{AEGIS_FREE_ONLY:'false',AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_WORKSPACE_ID:'workspace-1'},
     messages:[{role:'user',content:'hello'}],
     fetchImpl:async()=>{called=true;return readable();},
   }),/not configured/i);
@@ -35,7 +35,7 @@ test('Qwen provider builds a fixed regional endpoint and streams OpenAI-compatib
   const stream=new ReadableStream({start(controller){controller.close();}});
   const result=await createModelStream({
     env:{
-      AEGIS_MODEL_PROVIDER:'alibaba-qwen',
+      AEGIS_FREE_ONLY:'false',AEGIS_MODEL_PROVIDER:'alibaba-qwen',
       AEGIS_QWEN_API_KEY:'server-secret-not-returned',
       AEGIS_QWEN_WORKSPACE_ID:'workspace-123',
       AEGIS_QWEN_REGION:'ap-southeast-1',
@@ -56,7 +56,7 @@ test('Qwen provider builds a fixed regional endpoint and streams OpenAI-compatib
 });
 
 test('Qwen provider rejects arbitrary hosts, unsupported regions and invalid model names',async()=>{
-  const base={AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'};
+  const base={AEGIS_FREE_ONLY:'false',AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'};
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_WORKSPACE_ID:'evil.example'},messages:[{role:'user',content:'hello'}]}),/workspace/i);
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_REGION:'evil-region'},messages:[{role:'user',content:'hello'}]}),/region/i);
   await assert.rejects(()=>createModelStream({env:{...base,AEGIS_QWEN_MODEL:'qwen;drop'},messages:[{role:'user',content:'hello'}]}),/model/i);
@@ -65,7 +65,7 @@ test('Qwen provider rejects arbitrary hosts, unsupported regions and invalid mod
 test('unknown providers fail closed and provider errors are not surfaced to callers',async()=>{
   await assert.rejects(()=>createModelStream({env:{AEGIS_MODEL_PROVIDER:'unknown'},messages:[{role:'user',content:'hello'}]}),/unsupported/i);
   await assert.rejects(()=>createModelStream({
-    env:{AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'},
+    env:{AEGIS_FREE_ONLY:'false',AEGIS_MODEL_PROVIDER:'alibaba-qwen',AEGIS_QWEN_API_KEY:'test-api-key-long-enough',AEGIS_QWEN_WORKSPACE_ID:'workspace-123',AEGIS_QWEN_REGION:'ap-southeast-1'},
     messages:[{role:'user',content:'hello'}],fetchImpl:async()=>new Response('sensitive provider diagnostic',{status:401}),
   }),/provider request failed/i);
 });
@@ -83,6 +83,7 @@ test('Qwen receives only server-provided function tools and automatic tool choic
   const stream = new ReadableStream({ start(controller) { controller.close(); } });
   await createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -109,6 +110,7 @@ test('model provider rejects tool definitions from unsupported providers and mal
 
   await assert.rejects(() => createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -125,6 +127,7 @@ test('Qwen follow-up accepts one bounded assistant tool call and matching tool r
   let captured;
   await createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -149,6 +152,7 @@ test('Qwen follow-up accepts one bounded assistant tool call and matching tool r
 test('Qwen tool calling is restricted to the model with verified tool-call support', async () => {
   await assert.rejects(() => createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -167,6 +171,7 @@ test('Anthropic provider uses the fixed Messages API with server-side bearer aut
   let capturedOptions;
   const result = await createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
       AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
@@ -197,7 +202,7 @@ test('Anthropic provider uses the fixed Messages API with server-side bearer aut
 });
 
 test('Anthropic provider fails closed without server-side key or explicit model configuration', async () => {
-  const base = { AEGIS_MODEL_PROVIDER: 'anthropic' };
+  const base = { AEGIS_FREE_ONLY: 'false', AEGIS_MODEL_PROVIDER: 'anthropic' };
   await assert.rejects(() => createModelStream({
     env: base,
     messages: [{ role: 'user', content: 'hello' }],
@@ -213,6 +218,7 @@ test('Anthropic provider fails closed without server-side key or explicit model 
 test('Anthropic provider rejects tool calls until its own Sentinel adapter is implemented', async () => {
   await assert.rejects(() => createModelStream({
     env: {
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
       AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
@@ -228,12 +234,14 @@ test('free-only mode blocks paid external providers before any network request',
   for (const env of [
     {
       AEGIS_FREE_ONLY: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
       AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
     },
     {
       AEGIS_FREE_ONLY: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -260,4 +268,19 @@ test('free-only mode keeps the Cloudflare Workers AI path available without exte
   });
   assert.equal(called, true);
   assert.equal(result, stream);
+});
+
+test('external providers require an explicit paid-provider opt-in when free-only policy is unset', async () => {
+  for (const env of [
+    { AEGIS_MODEL_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough', AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5' },
+    { AEGIS_MODEL_PROVIDER: 'alibaba-qwen', AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough', AEGIS_QWEN_WORKSPACE_ID: 'workspace-123', AEGIS_QWEN_REGION: 'ap-southeast-1' },
+  ]) {
+    let called = false;
+    await assert.rejects(() => createModelStream({
+      env,
+      messages: [{ role: 'user', content: 'hello' }],
+      fetchImpl: async () => { called = true; throw new Error('network must not be called'); },
+    }), error => error.code === 'PROVIDER_DISABLED');
+    assert.equal(called, false);
+  }
 });
