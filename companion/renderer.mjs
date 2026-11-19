@@ -337,6 +337,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   const modelNames = ['uProjection', 'uView', 'uModel', 'uColour', 'uCamera', 'uGlow'];
   let uniforms = {};
   const modelLifecycle = createCompanionModelLifecycle();
+  let modelCleanupPromise = Promise.resolve({ destroyed: false, disposedCount: 0 });
 
   function resize(width, height, pixelRatio = defaultPixelRatio) {
     if (!canvas || disposed) return false;
@@ -571,7 +572,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   function dispose() {
     if (disposed) return true;
     disposed = true;
-    void modelLifecycle.destroy();
+    modelCleanupPromise = modelLifecycle.destroy();
     stop();
     if (resizeObserver) resizeObserver.disconnect();
     if (contextLostHandler) canvas?.removeEventListener('webglcontextlost', contextLostHandler);
@@ -581,7 +582,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     cleanupGl();
     return true;
   }
-  return { init, resize, setState, setExpression, setVisemes, loadModel, prepareModelResource, commitModelResource, playAnimation, suspend, resume, dispose, get activeModelResource() { return modelLifecycle.active; }, get state() { return state; }, get supported() { return initialised; } };
+  return { init, resize, setState, setExpression, setVisemes, loadModel, prepareModelResource, commitModelResource, playAnimation, suspend, resume, dispose, get activeModelResource() { return modelLifecycle.active; }, get modelCleanupPromise() { return modelCleanupPromise; }, get state() { return state; }, get supported() { return initialised; } };
 }
 
 function mountCompanionCanvases() {
