@@ -40,3 +40,13 @@ test('Knowledge Library copy reflects objective-relevant retrieval while preserv
   assert.match(html, /ranked against each Project Space agent objective/i);
   assert.match(html, /untrusted reference data/i);
 });
+
+
+test('Guardian Resource cards expose an accessible, safely rendered audit timeline', () => {
+  assert.match(html, /View audit history/);
+  assert.match(html, /\?eventLimit=100/);
+  assert.match(html, /historyList\.append\(entry\)/);
+  assert.match(html, /entry\.textContent\s*=/);
+  assert.match(html, /aria-label['"]?,\s*['"]Guardian Resource audit history/);
+  assert.doesNotMatch(html, /historyList\.innerHTML/);
+});
