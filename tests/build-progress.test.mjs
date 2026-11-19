@@ -23,7 +23,11 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.equal(progress.schema, 'aegis.build-progress/1.0');
   assert.equal(progress.overallCompletion, null);
   assert.equal(progress.workstreams.length, 6);
-  assert.ok(progress.workstreams.every(item => item.auditStatus === 'pending'));
+  const audited = progress.workstreams.filter(item => item.auditStatus === 'audited');
+  assert.equal(audited.length, 2);
+  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'research']);
+  assert.ok(progress.workstreams.filter(item => item.id !== 'companion' && item.id !== 'research')
+    .every(item => item.auditStatus === 'pending'));
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
 
@@ -36,4 +40,17 @@ test('the register records verified dashboard and companion lifecycle checkpoint
   assert.match(progress.nextMilestone, /lazily loaded Three\.js\/VRM renderer/i);
   assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /no VRM parser\/runtime is bundled/i);
   assert.match(progress.workstreams.find(item => item.id === 'research').summary, /Composio intake reviewed/i);
+});
+
+
+test('audited workstreams cite concrete implementation and research evidence', () => {
+  const companion = progress.workstreams.find(item => item.id === 'companion');
+  const research = progress.workstreams.find(item => item.id === 'research');
+  assert.match(companion.summary, /docs\/AEGIS_COMPANION\.md/);
+  assert.match(companion.summary, /44595869026/);
+  assert.match(companion.summary, /imported VRM\/GLB assets are not rendered/i);
+  assert.match(research.summary, /docs\/AEGIS_RESEARCH_INTAKE\.md/);
+  assert.match(research.summary, /docs\/AEGIS_AGENT_RUNTIME_ECOSYSTEM_2026-11-19\.md/);
+  assert.match(research.summary, /docs\/AEGIS_AGENT_CONTROL_AND_CAD_RESEARCH_2026-11-19\.md/);
+  assert.match(research.summary, /Phantom.*licence/i);
 });
