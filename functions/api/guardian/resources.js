@@ -1,6 +1,5 @@
 import { authConfigAvailable, isAuthorized, isSameOriginRequest } from '../../lib/auth.mjs';
-import { authorizeOwnerOrReviewer } from '../../lib/owner-api.mjs';
-import { readJsonRequest, jsonResponse } from '../../lib/owner-api.mjs';
+import { authorizeOwnerOrReviewer, readJsonRequest, jsonResponse } from '../../lib/owner-api.mjs';
 import { createGuardianResource, listGuardianResources } from '../../lib/guardian-catalogue.mjs';
 
 const OWNER_ID = 'owner';
