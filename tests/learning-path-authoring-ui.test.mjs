@@ -41,3 +41,27 @@ test('starter path loading is local-only and does not bypass the authenticated r
   assert.match(html, /controlApi\(['"]\/api\/learning\/paths['"]/);
   assert.doesNotMatch(html, /learningPathAuthorStatus\.innerHTML/);
 });
+
+test('Learning Forge provides a guided local authoring path for non-technical users', () => {
+  assert.match(html, /id="learningPathGuidedEditor"/);
+  assert.match(html, /id="learningPathGuidedId"/);
+  assert.match(html, /id="learningPathGuidedVersion"/);
+  assert.match(html, /id="learningPathGuidedTitle"/);
+  assert.match(html, /id="learningPathGuidedNodeId"/);
+  assert.match(html, /id="learningPathGuidedNodeTitle"/);
+  assert.match(html, /id="learningPathGuidedOutcomes"/);
+  assert.match(html, /id="learningPathGuidedPrerequisites"/);
+  assert.match(html, /id="learningPathGuidedSources"/);
+  assert.match(html, /id="learningPathGuidedAddNodeBtn"/);
+  assert.match(html, /id="learningPathGuidedStatus"/);
+});
+
+test('guided Learning Forge authoring builds local JSON drafts without registering or bypassing the owner API', () => {
+  assert.match(html, /learningPathGuidedAddNodeBtn\.addEventListener\(['"]click['"]/);
+  assert.match(html, /learningPathGuidedSources\.value/);
+  assert.match(html, /contentLicenseStatus:\s*['"]link-only['"]/);
+  assert.match(html, /learningPathGraphJson\.value\s*=\s*JSON\.stringify/);
+  assert.match(html, /controlApi\(['"]\/api\/learning\/paths['"]/);
+  assert.match(html, /method:\s*['"]POST['"]/);
+  assert.doesNotMatch(html, /learningPathGuidedStatus\.innerHTML/);
+});
