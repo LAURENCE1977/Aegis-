@@ -491,7 +491,7 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 
 ### Eval Forge — immutable evidence-verified run history (17 November 2026)
 
-**Status:** Implemented and full CI verified on draft PR #103 (17 November 2026).
+**Status:** Implemented and full CI verified on draft PR #103; latest full verification 19 November 2026.
 
 - Added Forge migration `0009_eval_runs.sql` with owner-scoped unique run IDs, a foreign key to an exact registered suite version, bounded score/status constraints and append-only run events.
 - Added `functions/lib/eval-forge-runs.mjs`: verifies the registered suite digest, verifies candidate/evidence bytes through the existing verifier, then stores only the result and digests. Raw artifact/evidence bytes and prompts are not retained.
@@ -512,32 +512,44 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - Added `functions/lib/learning-forge.mjs` to validate learning graph prerequisites, HTTPS source attribution and licence status; canonicalise JSON; register idempotently; reject conflicting content under an existing version; and list owner-scoped paths.
 - Added authenticated same-origin `GET/POST /api/learning/paths` with bounded request bodies and page size.
 - Added store, API and migration tests plus D1 smoke checks for duplicate-version rejection and immutable audit history.
-- This is a learning-path catalogue, not yet a mastery engine. Node progress, practice attempts, evidence-backed mastery, spaced repetition and adaptive sequencing remain future slices.
+- This is the immutable learning-path catalogue used by progress, assessment, applied-task evidence and mastery diagnostics. It does not scrape, copy or redistribute course content.
 - Learning content is linked and attributed; the registry does not scrape, copy or redistribute course content.
 
 
 ### Learning Forge — prerequisite-gated learner progress (17 November 2026)
 
-**Status:** Implemented and full PR CI verified on draft PR #103 (17 November 2026).
+**Status:** Implemented and full CI verified on draft PR #103; latest full verification 19 November 2026.
 
 - Added `migrations/forge/0011_learning_progress.sql` for owner/path-version/node progress and append-only events; progress history cannot be deleted.
 - Added `functions/lib/learning-progress.mjs` with exact path/node binding, optimistic concurrency and prerequisite-gated transitions.
 - Added authenticated `GET/PATCH /api/learning/paths/:id/progress`; writes are same-origin and bounded.
 - Progress labels are `in_progress` and `self_reported_complete`, not verified mastery. API responses explicitly set `masteryVerified: false`.
 - Both the service and D1 triggers enforce prerequisites before downstream completion. CI smoke checks attempt a database-level bypass and verify it is rejected.
-- Assessment, evidence-backed mastery, spaced repetition and adaptive sequencing remain future work.
+- Assessment attempts, spaced-review suggestions and a non-certifying mastery evidence candidate are now implemented. Independent reviewer identity and certification remain future work.
 
 
 ### Learning Forge — deterministic assessment contract (17 November 2026)
 
-**Status:** Pure assessment contract implemented on PR #103; full CI pending.
+**Status:** Immutable assessment registry, learner-safe delivery, server-scored attempt history and deterministic scoring are implemented and CI-verified on PR #103.
 
 - Added `functions/lib/learning-mastery.mjs` and `tests/learning-mastery.test.mjs`.
 - Validates bounded assessment definitions bound to an exact immutable Learning Path version and node.
 - Deterministic weighted scoring requires exactly one valid answer per question and enforces a declared pass threshold.
-- The scorer explicitly returns `masteryVerified: false`; no persisted mastery, learner-facing delivery API or certification is claimed.
-- Next: immutable assessment registry, private answer-key handling, append-only attempt history and policy-backed mastery verification. No external model-as-judge or automatic skill inference.
+- The scorer explicitly returns `masteryVerified: false`. Learner-safe API projections omit answer keys and pass thresholds; server-scored attempts retain score/pass/provenance but not raw answers or answer hashes.
+- No external model-as-judge or automatic skill inference.
 
+
+### Learning Forge — digest-only applied-task evidence receipts (19 November 2026)
+
+**Status:** Implemented and full CI verified on draft PR #103. This is evidence provenance, not mastery certification.
+
+- `POST /api/learning/paths/:id/evidence?version=:version&nodeId=:node` accepts authenticated same-origin binary submissions up to 2 MiB.
+- AEGIS computes SHA-256 server-side and binds each receipt to the owner and exact immutable path version/node. Browser-supplied digests and filenames are rejected.
+- Only digest, byte length, client-declared media type and server timestamp are stored; media type is not content-verified and raw bytes are discarded.
+- Owner withdrawal deletes the digest receipt while preserving content-free append-only submission/withdrawal events.
+- D1 enforces 25 active receipts per node and 500 per owner. Mastery input is bounded to 75 server-scored attempts plus 25 applied-task receipts.
+- Independently authenticated human review and a privacy-preserving artifact-inspection handoff are not implemented. Mastery remains non-certifying and no capability or credential is granted.
+- Full verification on code head `56aa8e05220d345c3f7470dac0a2f0ac8aaf1ade`: 985 Node tests, 984 passed, 0 failed, 1 skipped; Cloudflare preview, runtime/Queue and all isolated D1/Forge/Learning/Companion checks passed.
 
 ## Web Intelligence & Media Production Forge — ecosystem intake (17 November 2026)
 
