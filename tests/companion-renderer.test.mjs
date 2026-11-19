@@ -94,12 +94,18 @@ test('renderer initialises WebGL2 resources and caps the drawing buffer pixel ra
   assert.deepEqual(deleted, { buffers: 2, arrays: 1, programs: 1 });
 });
 
-test('model loading enforces asset provenance before reporting the loader as unavailable', async () => {
+test('model loading verifies the uploaded bytes after manifest validation and before loader availability', async () => {
   const renderer = createCompanionRenderer({ getContext: () => null });
   assert.deepEqual(await renderer.loadModel({ format: 'glb', source: 'local-file' }), {
     loaded: false, reason: 'invalid-manifest',
   });
   assert.deepEqual(await renderer.loadModel(validCompanionAsset()), {
+    loaded: false, reason: 'invalid-asset-file',
+  });
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['jello']), webcrypto), {
+    loaded: false, reason: 'digest-mismatch',
+  });
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto), {
     loaded: false, reason: 'external-model-loader-not-yet-enabled',
   });
 });
@@ -249,8 +255,8 @@ const validCompanionAsset = () => ({
   schema: 'aegis.companion-asset/1.0',
   kind: 'model',
   format: 'vrm',
-  sha256: 'a'.repeat(64),
-  byteLength: 8 * 1024 * 1024,
+  sha256: '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+  byteLength: 5,
   source: { kind: 'user-upload' },
   licence: {
     id: 'CC-BY-4.0',
@@ -266,8 +272,8 @@ const validCompanionAsset = () => ({
 test('companion asset manifest accepts a bounded, attributable local VRM model', () => {
   const result = validateCompanionAssetManifest(validCompanionAsset());
   assert.equal(result.valid, true);
-  assert.equal(result.manifest.sha256, 'a'.repeat(64));
-  assert.equal(result.manifest.byteLength, 8 * 1024 * 1024);
+  assert.equal(result.manifest.sha256, '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+  assert.equal(result.manifest.byteLength, 5);
   assert.equal(result.manifest.source.kind, 'user-upload');
 });
 
