@@ -102,6 +102,9 @@ test('intelligence audit separates reusable foundations from an unintegrated rou
   assert.match(intelligence.summary, /functions\/lib\/provider-registry\.mjs/);
   assert.match(intelligence.summary, /functions\/lib\/memory-substrate\.mjs/);
   assert.match(intelligence.summary, /functions\/lib\/knowledge-retrieval\.mjs/);
+  assert.match(intelligence.summary, /functions\/lib\/free-tier-ledger\.mjs/);
+  assert.match(intelligence.summary, /metadata-only free-tier offer ledger/i);
+  assert.match(intelligence.summary, /no account provisioning or usage metering/i);
   assert.match(intelligence.summary, /functions\/lib\/model-provider\.mjs/);
   assert.match(intelligence.summary, /planner is not wired into live provider routing/i);
   assert.match(intelligence.summary, /no durable token ledger or automatic failover/i);
