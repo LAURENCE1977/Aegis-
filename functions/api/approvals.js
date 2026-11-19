@@ -1,5 +1,6 @@
 import {
   authorizeOwner,
+  authorizeOwnerOrReviewer,
   authorizeReviewer,
   isOwnerWriteRequest,
   jsonResponse,
@@ -31,7 +32,7 @@ function publicApproval(approval, now = Date.now()) {
 }
 
 export async function onRequestGet({ request, env }) {
-  const denied = await authorizeOwner(request, env);
+  const denied = await authorizeOwnerOrReviewer(request, env);
   if (denied) return denied;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Approval storage is not configured." }, 503);
