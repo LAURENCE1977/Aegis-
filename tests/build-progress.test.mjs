@@ -27,9 +27,11 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
 
-test('the register records the latest verified implementation checkpoint and honest next milestone', () => {
-  assert.match(progress.latestVerifiedCheckpoint, /44589027079/);
+test('the register records verified dashboard and companion lifecycle checkpoints', () => {
+  assert.match(progress.latestVerifiedCheckpoint, /44591096408/);
+  assert.match(progress.latestVerifiedCheckpoint, /44591891106/);
   assert.match(progress.latestVerifiedCheckpoint, /1,035 passed, 0 failed, 1 skipped/);
-  assert.match(progress.nextMilestone, /capability baseline audit/i);
-  assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /remain incomplete/i);
+  assert.match(progress.nextMilestone, /review the companion lifecycle draft PR #107/i);
+  assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /external model loader.*remain incomplete/i);
+  assert.match(progress.workstreams.find(item => item.id === 'research').summary, /Composio intake reviewed/i);
 });
