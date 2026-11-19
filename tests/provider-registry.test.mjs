@@ -61,7 +61,7 @@ test('rejects duplicate provider/model IDs and invalid model capabilities', () =
 test('lists only enabled models with supported task and a recent verification', () => {
   const input = registry();
   input.providers.push({
-    id: 'provider-b', adapterId: 'future-adapter', displayName: 'Future',
+    id: 'provider-b', adapterId: 'workers-ai', displayName: 'Future',
     status: 'disabled', termsUrl: 'https://example.com/terms',
     verifiedAt: '2026-11-15T18:00:00.000Z',
     models: [{ id: 'model-b', contextTokens: 1000000, maxOutputTokens: 1000, tasks: ['research'] }],
