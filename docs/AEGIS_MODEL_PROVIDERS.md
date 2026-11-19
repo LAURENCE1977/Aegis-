@@ -14,6 +14,29 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | ANTHROPIC_API_KEY, AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
 | Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
 
+## Provider registry rollout status
+
+The registry rollout is deliberately staged and is not yet complete:
+
+- PR #116 changes missing input/output pricing from numeric zero to `null`. A confirmed zero remains zero. Do not use unknown prices in cost ranking or describe them as free.
+- PR #117 adds a server-owned adapter allowlist: `workers-ai`, `anthropic` and `alibaba-qwen`.
+- PR #118 makes the runtime provider adapter selection consult the same canonical allowlist before dispatch. This prevents the registry and runtime from drifting into separate adapter allowlists.
+- The live request path still selects the configured provider through `AEGIS_MODEL_PROVIDER`. It does **not yet** select a model through `listEligibleModels`; catalogue eligibility, model ID enforcement, metadata freshness, context/output limits and task compatibility are not yet enforced by live AG-UI routing.
+- No model pricing, context limit or tool capability should be inferred from an unverified model ID. Missing or stale facts remain unknown and must block decisions that depend on them.
+
+### Evidence sources and refresh policy
+
+Use provider-owned documentation as the evidence source, record the exact URL and verification timestamp, and recheck before a catalogue record is eligible. Documentation is not a live account entitlement check: a provider's model being documented does not prove that a particular AEGIS account has access.
+
+- [Cloudflare Workers AI model catalogue](https://developers.cloudflare.com/workers-ai/models/)
+- [Cloudflare Workers AI model details and limits](https://developers.cloudflare.com/workers-ai/models/llama-3.3-70b-instruct-fp8-fast/)
+- [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+- [Anthropic model lifecycle and deprecations](https://docs.anthropic.com/en/docs/about-claude/model-deprecations)
+- [Alibaba Model Studio model catalogue API](https://help.aliyun.com/en/model-studio/list-models)
+- [Alibaba Model Studio pricing](https://help.aliyun.com/en/model-studio/model-pricing)
+
+Pricing is region-, tier- and feature-dependent for some providers. The registry must not flatten tiered or conditional prices into a misleading single cost. If a model has tiered pricing, unsupported cache/batch pricing, or region-dependent pricing that the current cost planner cannot represent, cost stays unknown for routing purposes.
+
 ## Anthropic Messages adapter
 
 - Fixed endpoint: https://api.anthropic.com/v1/messages; no custom URL or browser-supplied endpoint.
