@@ -3500,6 +3500,40 @@
     });
 
 
+    learningPathForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      let pathDefinition;
+      try {
+        pathDefinition = JSON.parse(learningPathGraphJson.value);
+      } catch {
+        learningPathAuthorStatus.textContent = 'Learning Path definition is not valid JSON. Correct it and try again.';
+        return;
+      }
+      learningPathRegisterBtn.disabled = true;
+      learningPathAuthorStatus.textContent = 'Validating and registering the immutable Learning Path version…';
+      try {
+        const result = await controlApi('/api/learning/paths', {
+          method: 'POST',
+          body: JSON.stringify(pathDefinition),
+        });
+        learningPathAuthorStatus.textContent = result.learningPath?.created
+          ? 'Immutable Learning Path version registered. Only graph metadata and source links are stored.'
+          : 'This exact Learning Path version already exists. Existing immutable content was not replaced.';
+        await loadLearningPaths();
+        const registered = result.learningPath?.path;
+        if (registered) {
+          learningPathSelect.value = registered.id + '@' + registered.version;
+          updateLearningNodeOptions();
+          if (registered.nodes[0]) learningNodeSelect.value = registered.nodes[0].id;
+          await loadLearningEvidence();
+        }
+      } catch (error) {
+        learningPathAuthorStatus.textContent = 'Learning Path could not be registered: ' + error.message;
+      } finally {
+        learningPathRegisterBtn.disabled = false;
+      }
+    });
+
     function selectedLearningPath() {
       const key = learningPathSelect.value;
       return learningPaths.find(item => item.path.id + '@' + item.path.version === key) || null;
