@@ -130,7 +130,7 @@ test('future and invalid viseme receive times fail closed to neutral weights', (
 });
 
 
-test('renderer recovers after WebGL context loss and restores the 3D presentation', () => {
+test('renderer recovers after WebGL context loss and restores the 3D presentation', async () => {
   const listeners = new Map();
   const host = {
     dataset: {},
