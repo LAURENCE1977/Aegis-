@@ -6,7 +6,7 @@ import {
   normaliseVisemes,
   normaliseExpression,
   createCompanionRenderer,
-} from '../companion/renderer.js';
+} from '../companion/renderer.mjs';
 
 test('procedural avatar sphere geometry is finite, indexed and has unit normals', () => {
   const geometry = createSphereGeometry(16, 12);
