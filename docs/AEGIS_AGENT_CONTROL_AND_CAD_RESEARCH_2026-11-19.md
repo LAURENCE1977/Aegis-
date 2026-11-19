@@ -166,3 +166,55 @@ The public evidence points to several different products:
 The exact Robert Guiterraz Reel cannot be conclusively matched without its URL or a screenshot. The safest AEGIS direction is to combine the *ideas* — provider-neutral agent cockpit, local-first memory/search, optional desktop computer-use worker, MCP/ACP interoperability and task-linked shared context — under AEGIS's existing policy and execution architecture. Do not import any of these whole applications or expose a desktop-control server over the public network.
 
 No Ghost/Phantom package, binary, model, local agent, MCP server, credentials or service was installed, connected, run or deployed.
+
+
+## 6. OpenHands, OpenCode and Orca — coding-agent workflow candidates
+
+### [OpenHands Agent Canvas](https://github.com/OpenHands/OpenHands)
+
+- Root licence and package metadata: MIT. Inspected recursive tree: 3,277 entries, not truncated. Reviewed README, package manifest, Dockerfile, self-hosting guide, cloud sandbox/runtime services, MCP service, credential validation and secret-redaction code.
+- Current repository is the **Agent Canvas** self-hosted developer control centre. It can run OpenHands, Claude Code, Codex, Gemini CLI, Pi, OpenCode or any ACP-compatible agent, with local, Docker, VM, remote and optional cloud backends. The browser UI can switch backends while preserving conversations.
+- Local install requires Node.js 24+ and `uv`; Docker is the safer documented path for an execution sandbox. A no-sandbox install runs the agent server directly as the host user and has full filesystem access. Self-hosting guidance explicitly says the agent can read/write files, execute shell commands and reach the network; the host must be protected like a machine containing production credentials.
+- The self-hosting guide recommends firewall-deny by default, loopback-bound internal services, TLS reverse proxy, a random `LOCAL_BACKEND_API_KEY` and public mode so the key is not baked into the browser bundle. It also documents a same-origin localStorage exposure risk from the bundled editor path; path-prefix routing is not isolation.
+- MCP implementation includes server test/health checks, read-only credential probes for known integrations, OAuth status handling, credential redaction and explicit distinction between connectivity-only and verified health.
+- AEGIS decision: **strong architecture reference for a future remote agent-worker service and ACP backend registry**. Adapt the separation between browser control surface and host-owned runtime, backend switching, runtime health and secret-redacted MCP connection tests. Do not import the whole React/Electron app or let it become AEGIS's policy authority. AEGIS must require an isolated worker, not rely on UI prompts or a Git worktree as a sandbox. No runtime was installed or launched.
+
+### [OpenCode](https://github.com/anomalyco/opencode)
+
+- Root licence and package metadata: MIT. Inspected recursive tree: 12,697 entries, not truncated. Reviewed README, LICENSE, SECURITY.md, the canonical tool runtime and its tests, MCP connection state machine and MCP configuration UI.
+- OpenCode is an open-source coding-agent CLI with a desktop beta for macOS, Windows and Linux. Its README describes a build agent (full access) and a plan agent (read-only, asks before bash). It has an extensible tool runtime, provider protocols and MCP connections.
+- Its own SECURITY.md is explicit: **there is no sandbox**. The permission system is a user-awareness/confirmation feature, not security isolation. Server mode is opt-in and unauthenticated unless `OPENCODE_SERVER_PASSWORD` is set. It recommends Docker or a VM when true isolation is needed.
+- AEGIS decision: **valuable optional coding-agent backend and tool/MCP architecture reference**, not a security boundary. AEGIS can support OpenCode behind a future ACP/worker adapter, but must retain its own exact grants, approval, sandbox, budget and audit. Do not run OpenCode with ambient AEGIS credentials or production filesystem/network access.
+
+### [VirtusLab/orca](https://github.com/VirtusLab/orca) — deterministic agentic development flows
+
+- Licence: Apache-2.0. Inspected recursive tree: 1,091 entries, not truncated. Reviewed README, LICENSE and AGENTS.md architecture instructions.
+- A CLI and Scala 3 flow-as-code library for deterministic, resumable development workflows. It can orchestrate Claude, Codex, OpenCode, Pi and Gemini backends. Its built-in implement flow creates a feature branch, plans tasks, implements each task, runs per-task review/fix and final review, commits each completed stage and can resume after interruption from the last committed stage.
+- Its AGENTS.md documents an unusually useful capability split: `InStage` gates agent runs and `WorkspaceWrite` gates Git/filesystem/PR writes; workspace-write authority is designed not to cross concurrent fork boundaries. The production minting door is narrow, with compile-time capture checking only partially enabled and runtime thread checks covering the rest.
+- Critical caveat: README says coding-agent tool usage is auto-approved by default, so write-capable turns can edit files and run shell without prompting. It explicitly requires a sandbox such as Docker/VPS/Sandcat or narrower agent tools. It is designed for one developer, not a multi-tenant service.
+- AEGIS decision: **excellent architecture pattern reference for durable stage orchestration, task-level review, resumable progress and separation of model-execution authority from workspace-write authority**. Re-express those concepts in AEGIS-native job/step envelopes and Sentinel grants; do not adopt its default auto-approval or run its CLI on the AEGIS control plane.
+
+### [cold-atom/Orca](https://github.com/cold-atom/Orca) — Godot-specific safety-first editor agent
+
+- Licence: MIT. Inspected recursive tree: 516 entries, not truncated. Reviewed README, SECURITY.md, ORCA.md and plugin README.
+- This is a Godot editor plugin, not the VirtusLab CLI. Plan mode is read-only; Work mode defaults to review edits with Apply/Reject, hash-bound proposals, stale-state checks, diffs and conflict-checked Revert. Auto-apply is scoped to bounded project scripts; scene/config changes retain review. It supports local models through Ollama/LM Studio/OpenAI-compatible servers and optional exact-project MCP connections.
+- The 1.9.0 Blender Asset Studio work is a release candidate, not the latest published release; the README states 1.8.0 remains the published release. SECURITY.md describes typed, hash-bound native operations, exact project/live-session approvals, process ownership and bounded preview decoding; it also states the user-trusted editor/workspace is not a security sandbox.
+- AEGIS decision: **strong reference for review-first UI, hash-bound change proposals, revert/recovery, scoped Auto apply and native editor integration**, but Godot-specific and not a general agent runtime. No plugin or native helper was installed.
+
+### [Hyper-Int/OrcaBot](https://github.com/Hyper-Int/OrcaBot) and [BuildContext/orca-mcp](https://github.com/BuildContext/orca-mcp)
+
+- OrcaBot describes itself as web-based agentic coding orchestration; its inspected tree has 1,067 entries and a third-party licence inventory, but no root project licence was found. Treat the project as **no licence grant / no code reuse** until the owner supplies one. Its third-party inventory includes components under MIT, BSD-2-Clause, Apache-2.0, AGPL-3.0-or-later and proprietary terms, so bundling its environment would require a full component-level review.
+- `BuildContext/orca-mcp` is MIT and has 106 tree entries, but it is a separate community MCP bridge for the **stablyai/orca** IDE, not VirtusLab/orca. Its README and SECURITY.md call it an RCE-class bridge: it runs with host-user privileges, has no OS/filesystem/network sandbox, and its toolsets default open (including admin/raw CLI). Its HTTP mode binds loopback and uses token/OAuth controls, but those do not isolate the host.
+- AEGIS decision: OrcaBot is held for licensing; orca-mcp is a threat-model reference only. Do not connect either to AEGIS or expose host-control MCP to untrusted callers.
+
+## 7. Combined agent architecture decision
+
+The strongest ideas now converge:
+- **OpenHands Agent Canvas:** browser control surface, remote backends and ACP-compatible agent workers.
+- **OpenCode:** practical multi-provider coding agent and MCP tool lifecycle.
+- **VirtusLab/orca:** deterministic, resumable stage workflows and separate agent-run versus workspace-write capabilities.
+- **cold-atom/Orca:** hash-bound review/apply/revert and scoped automation UX.
+- **T3 Code:** host-owned terminal/agent process management and separately approved MCP access.
+- **AEGIS:** sole owner of identity, project truth, canonical job/step state, exact grants, Sentinel, approvals, secret custody, cost ceilings, evidence and audit.
+
+Recommended implementation direction: define one AEGIS worker/ACP contract, run workers in disposable isolated environments, and keep all writes and external effects behind Sentinel. A Git worktree, a prompt-level permission setting or an MCP bearer token is not a sandbox. No whole application should be imported; adopt narrow interfaces and independently authored AEGIS implementations.
