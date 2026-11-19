@@ -3632,11 +3632,11 @@
       const prerequisites = splitLines(document.getElementById('learningPathGuidedPrerequisites').value);
       const sourceRefs = splitLines(document.getElementById('learningPathGuidedSources').value);
       const difficulty = document.getElementById('learningPathGuidedDifficulty').value;
-      if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(pathId) || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(nodeId)) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathId) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nodeId)) {
         learningPathGuidedStatus.textContent = 'Use lowercase letters, numbers and hyphens for path and node IDs (2–64 characters).';
         return;
       }
-      if (!/^\d+\.\d+\.\d+$/.test(version) || !title || !nodeTitle || !outcomes.length || !sourceRefs.length) {
+      if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(version) || !title || !nodeTitle || !outcomes.length || outcomes.length > 20 || outcomes.some(outcome => outcome.length > 300) || !sourceRefs.length || sourceRefs.length > 20) {
         learningPathGuidedStatus.textContent = 'Add a valid version, path title, node title, at least one outcome and at least one HTTPS source.';
         return;
       }
@@ -3656,7 +3656,7 @@
         learningPathGuidedStatus.textContent = 'The JSON draft is invalid. Correct it before adding a guided node.';
         return;
       }
-      const nodes = Array.isArray(pathDefinition.nodes) ? pathDefinition.nodes : [];
+      if (!pathDefinition || typeof pathDefinition !== 'object' || Array.isArray(pathDefinition) || !Array.isArray(pathDefinition.nodes)) {\n        learningPathGuidedStatus.textContent = 'The JSON draft must contain a Learning Path object with a nodes array.';\n        return;\n      }\n      const nodes = pathDefinition.nodes;
       if (nodes.some(node => node.id === nodeId)) {
         learningPathGuidedStatus.textContent = 'That node ID already exists in this draft.';
         return;
