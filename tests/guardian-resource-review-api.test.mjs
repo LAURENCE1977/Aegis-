@@ -4,7 +4,12 @@ import { createReviewerSessionToken, reviewerSessionCookie } from '../functions/
 import { onRequestPatch } from '../functions/api/guardian/resources/[id].js';
 
 const secret = 'guardian-resource-review-api-test-session-secret-long-enough';
-const env = { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: secret };
+const env = {
+  AEGIS_PASSWORD: 'test-password-long-enough',
+  AEGIS_SESSION_SECRET: secret,
+  AEGIS_REVIEWER_PASSWORD: 'reviewer-password-long-enough',
+  AEGIS_REVIEWER_SESSION_SECRET: 'guardian-reviewer-session-secret-with-enough-entropy',
+};
 
 class ReviewApiD1 {
   constructor() {
