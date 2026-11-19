@@ -6,6 +6,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('approval inbox exposes a separate reviewer sign-in without collecting owner credentials', () => {
   assert.match(html, /id="reviewerLoginForm"/);
+  assert.match(html, /href="\/reviewer\.html"/);
   assert.match(html, /id="reviewerPassword" type="password"/);
   assert.match(html, /fetch\('\/api\/reviewer-login'/);
   assert.match(html, /response\.ok && result\.authenticated === true/);
