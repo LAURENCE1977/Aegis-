@@ -83,6 +83,7 @@ test('stores a server-computed digest receipt without retaining the uploaded art
   assert.equal(body.evidence.artifactDigest, createHash('sha256').update(bytes).digest('hex'));
   assert.equal(body.evidence.byteLength, bytes.byteLength);
   assert.equal(body.contentRetained, false);
+  assert.equal(body.mediaTypeVerified, false);
   assert.equal(body.masteryVerified, false);
   assert.equal(db.inserted[5], body.evidence.artifactDigest);
   assert.equal(db.inserted[6], bytes.byteLength);
