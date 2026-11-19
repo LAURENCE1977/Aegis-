@@ -186,9 +186,10 @@ export class GuardianResourceConflictError extends Error {
   }
 }
 
-export async function updateGuardianResourceReview(db, ownerId, resourceId, input, now = Date.now()) {
+export async function updateGuardianResourceReview(db, ownerId, resourceId, input, now = Date.now(), reviewerId = ownerId) {
   requireDatabase(db);
   requireOwner(ownerId);
+  requireOwner(reviewerId);
   requireResourceId(resourceId);
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).some((key) => !['status', 'note', 'expectedUpdatedAt'].includes(key))) {
@@ -240,7 +241,7 @@ export async function updateGuardianResourceReview(db, ownerId, resourceId, inpu
     SET review_status = ?, review_note = ?, reviewer_id = ?, updated_at = ?
     WHERE id = ? AND owner_id = ? AND updated_at = ?
   `).bind(
-    input.status, input.note.trim(), ownerId, timestamp,
+    input.status, input.note.trim(), reviewerId, timestamp,
     resourceId, ownerId, input.expectedUpdatedAt,
   ).run();
   if (result?.meta?.changes !== 1) throw new GuardianResourceConflictError();
