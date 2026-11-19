@@ -1,5 +1,105 @@
 const VISeme_KEYS = Object.freeze(['aa', 'ee', 'ih', 'oh', 'ou', 'jawOpen']);
 const EXPRESSION_IDS = new Set(['neutral', 'smile', 'focused', 'concerned']);
+const COMPANION_ASSET_SCHEMA = 'aegis.companion-asset/1.0';
+const COMPANION_ASSET_MAX_BYTES = 50 * 1024 * 1024;
+const COMPANION_ASSET_FORMATS = new Set(['glb', 'vrm', 'vrma']);
+const COMPANION_BLENDSHAPE_PROFILES = new Set(['none', 'vrm0', 'vrm1', 'arkit', 'custom']);
+
+function isBoundedText(value, maxLength) {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+}
+
+function isHttpsProvenanceUrl(value) {
+  if (!isBoundedText(value, 2048)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+/**
+ * Validate metadata for a user-supplied companion asset. This function never
+ * fetches URLs, reads files, executes content or certifies a licence claim.
+ */
+export function validateCompanionAssetManifest(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { valid: false, reason: 'invalid-manifest' };
+  }
+  if (input.schema !== COMPANION_ASSET_SCHEMA) {
+    return { valid: false, reason: 'unsupported-schema' };
+  }
+  if (!['model', 'animation'].includes(input.kind) ||
+      !COMPANION_ASSET_FORMATS.has(input.format) ||
+      (input.kind === 'model' && input.format === 'vrma') ||
+      (input.kind === 'animation' && input.format !== 'vrma')) {
+    return { valid: false, reason: 'unsupported-format' };
+  }
+  if (typeof input.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(input.sha256)) {
+    return { valid: false, reason: 'invalid-sha256' };
+  }
+  if (!Number.isSafeInteger(input.byteLength) || input.byteLength < 1 ||
+      input.byteLength > COMPANION_ASSET_MAX_BYTES) {
+    return { valid: false, reason: 'asset-too-large' };
+  }
+  const source = input.source;
+  if (!source || typeof source !== 'object' || Array.isArray(source) ||
+      !(['user-upload', 'https'].includes(source.kind)) ||
+      (source.kind === 'https' && !isHttpsProvenanceUrl(source.url)) ||
+      (source.kind === 'user-upload' && source.url !== undefined)) {
+    return { valid: false, reason: 'invalid-source-url' };
+  }
+  const licence = input.licence;
+  if (!licence || typeof licence !== 'object' || Array.isArray(licence) ||
+      !isBoundedText(licence.id, 80) || !isHttpsProvenanceUrl(licence.termsUrl) ||
+      !isBoundedText(licence.creator, 160) ||
+      typeof licence.commercialUse !== 'boolean' ||
+      typeof licence.redistribution !== 'boolean') {
+    return { valid: false, reason: 'incomplete-licence-provenance' };
+  }
+  if (!COMPANION_BLENDSHAPE_PROFILES.has(input.blendshapeProfile)) {
+    return { valid: false, reason: 'invalid-blendshape-profile' };
+  }
+  const budget = input.performanceBudget;
+  if (!budget || typeof budget !== 'object' || Array.isArray(budget) ||
+      !Number.isInteger(budget.maxTextureDimension) ||
+      budget.maxTextureDimension < 256 || budget.maxTextureDimension > 4096 ||
+      !Number.isInteger(budget.maxDrawCalls) ||
+      budget.maxDrawCalls < 1 || budget.maxDrawCalls > 2000) {
+    return { valid: false, reason: 'invalid-performance-budget' };
+  }
+  const manifest = deepFreeze({
+    schema: COMPANION_ASSET_SCHEMA,
+    kind: input.kind,
+    format: input.format,
+    sha256: input.sha256,
+    byteLength: input.byteLength,
+    source: source.kind === 'https'
+      ? { kind: 'https', url: new URL(source.url).href }
+      : { kind: 'user-upload' },
+    licence: {
+      id: licence.id.trim(),
+      termsUrl: new URL(licence.termsUrl).href,
+      creator: licence.creator.trim(),
+      commercialUse: licence.commercialUse,
+      redistribution: licence.redistribution,
+    },
+    blendshapeProfile: input.blendshapeProfile,
+    performanceBudget: {
+      maxTextureDimension: budget.maxTextureDimension,
+      maxDrawCalls: budget.maxDrawCalls,
+    },
+  });
+  return { valid: true, manifest };
+}
+
 export const COMPANION_STATES = Object.freeze([
   'idle', 'listening', 'thinking', 'speaking', 'responding', 'interrupted', 'paused', 'disconnected', 'error',
 ]);
