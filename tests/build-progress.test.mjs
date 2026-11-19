@@ -38,7 +38,7 @@ test('the register records verified dashboard and companion lifecycle checkpoint
   assert.match(progress.latestVerifiedCheckpoint, /1,047 passed, 0 failed, 1 skipped/);
   assert.match(progress.latestVerifiedCheckpoint, /44595564920/);
   assert.match(progress.latestVerifiedCheckpoint, /44595869026/);
-  assert.match(progress.nextMilestone, /lazily loaded Three\.js\/VRM renderer/i);
+  assert.match(progress.nextMilestone, /optional VRM renderer/i);
   assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /no imported VRM\/GLB\/VRMA is rendered/i);
   assert.match(progress.workstreams.find(item => item.id === 'research').summary, /narrow Composio GitHub read-only tools/i);
 });
@@ -61,7 +61,7 @@ test('security audit distinguishes implemented primitives from a deployed securi
   const security = progress.workstreams.find(item => item.id === 'security');
   assert.match(security.summary, /functions\/lib\/sentinel\.mjs/);
   assert.match(security.summary, /functions\/lib\/secret-vault\.mjs/);
-  assert.match(security.summary, /AES-GCM/);
+  assert.match(security.summary, /AES-256-GCM/);
   assert.match(security.summary, /human-always/i);
   assert.match(security.summary, /D1 is not provisioned/i);
   assert.match(security.summary, /post-execution audit can fail/i);
@@ -75,7 +75,7 @@ test('engineering audit keeps agent plans separate from executable authority', (
   assert.match(engineering.summary, /AGENT_RUNS_ENABLED/);
   assert.match(engineering.summary, /functions\/lib\/agent-tools\.mjs/);
   assert.match(engineering.summary, /four fixed read-only tools/i);
-  assert.match(engineering.summary, /no shell, filesystem, browser or arbitrary MCP execution/i);
+  assert.match(engineering.summary, /no LLM, tool, filesystem, browser, shell or external API calls/i);
   assert.match(engineering.summary, /OpenAI-compatible endpoint adapter remains planned/i);
 });
 
@@ -85,7 +85,7 @@ test('platform audit distinguishes a responsive PWA shell from certified native 
   assert.match(platform.summary, /docs\/PLATFORM_COMPATIBILITY\.md/);
   assert.match(platform.summary, /manifest\.webmanifest/);
   assert.match(platform.summary, /service-worker\.js/);
-  assert.match(platform.summary, /API, login and MCP responses are not cached/i);
+  assert.match(platform.summary, /authenticated API, login and MCP responses are explicitly excluded from cache/i);
   assert.match(platform.summary, /real-device validation remains outstanding/i);
   assert.equal(manifest.display, 'standalone');
   assert.match(html, /viewport-fit=cover/);
