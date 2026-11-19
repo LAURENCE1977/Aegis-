@@ -26,6 +26,8 @@ Implemented:
 - `guardian_resource_events` records creation lineage; update and delete triggers make the event table append-only.
 - `functions/lib/guardian-catalogue.mjs` provides owner-scoped, idempotent create and bounded list operations. IDs are generated server-side; new resources always start as `draft`.
 - `GET /api/guardian/resources` lists only the authenticated owner's resources.
+- `GET /api/guardian/resources/:id` returns the authenticated owner's resource plus a bounded event window (1–100, default 50). It selects the newest events first and presents that window in chronological order, so a long-lived record does not hide recent review activity.
+- The owner-facing catalogue offers a per-resource audit-history disclosure. It renders event content with DOM `textContent` (never HTML injection), keeps history collapsed until requested, and reports load failures without changing resource state.
 - `POST /api/guardian/resources` requires an owner session, same-origin request, bounded JSON body and server-generated identity. Unknown fields and client-supplied IDs are rejected.
 - Duplicate owner + canonical URL + source revision submissions return the existing resource rather than creating a second record.
 
@@ -65,7 +67,7 @@ These checks do not establish production D1 migration, production deployment, le
 
 ## 6. Next gates
 
-1. Add resource detail/events endpoints and a simple owner-facing catalogue UI.
+1. Extend the resource timeline with cursor-based pagination if event volumes justify it; the current newest-window endpoint is bounded to 100 events.
 2. Persist learning graphs with owner scoping, versioning and append-only history; add mastery/progress only with user-visible controls.
 3. Add property-based/adversarial tests for URL parsing, graph size/depth, stale evidence and malformed findings.
 4. Add Security Research capability declarations only after exact target registration, Sentinel policy, isolated-worker enforcement, egress/resource controls, cancellation and effect-level audit verification exist.
