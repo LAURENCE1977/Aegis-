@@ -5,10 +5,10 @@
 - Canonical repository: `LAURENCE1977/Aegis-`.
 - Active development PR: #103, branch `feature/rea-open-source-security-learning-batch`.
 - PR #103 is open, draft and unmerged; it remains stacked on PR #101.
-- Verified code head: `ace28bfa11e09cb50f719d5fc61e988367cb5189`.
-- Push workflow [44489708170](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44489715270](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed.
-- Node.js suite: **1002 tests, 1001 passed, 0 failed, 1 skipped**.
-- Cloudflare Pages preview passed.
+- Verified code head: `9f1d17dc1146d28c4537d6f12181f207362fc84a` (Learning Forge starter-path implementation).
+- Push workflow [44543864661](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543864661) and matching PR workflow [44543873021](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543873021) both passed on that exact head.
+- Node.js suite: **1006 tests, 1005 passed, 0 failed, 1 skipped**.
+- Cloudflare Pages preview returned HTTP 200 and its public HTML contains the new Learning Forge starter controls.
 - Runtime D1 and Queue integration passed.
 - Isolated capability D1, Forge D1, Eval Forge, Learning Forge and Companion Profile migration/smoke checks passed.
 - The new applied-task evidence D1 smoke verified submission event creation, immutable receipt protection, owner withdrawal, a content-free withdrawal event and append-only event history.
@@ -38,6 +38,23 @@
 - Added the learner-facing Forge workspace: registered path/node selectors, raw file upload, receipt list, owner withdrawal and a non-certifying evidence-gap diagnostic. The UI uses text-safe DOM rendering and explicitly tells the learner to retain the original file.
 - The receipt is not proof that an independent reviewer inspected the artifact. No permanent file store or reviewer identity has been introduced.
 
+## Learning Forge — curated starter paths (19 Nov 2026)
+
+- Added a local starter selector to the existing Learning Forge authoring form.
+- Includes two editable beginner examples: JavaScript Foundations and Web Safety Foundations.
+- Each example contains bounded learning-node metadata, prerequisite links, HTTPS references to MDN documentation and the explicit `link-only` content-licence state. No course content is copied or redistributed.
+- Loading a starter only populates the existing local JSON editor. It does not call an API, register a path, or replace an immutable version. The owner must review and explicitly submit through the existing authenticated same-origin `POST /api/learning/paths` route.
+- Added two focused UI regression tests. The pre-implementation HTML did not contain any of the new selector, handler or template markers; the implementation now passes the full suite.
+- Verified on code head `9f1d17dc1146d28c4537d6f12181f207362fc84a`: **1006 tests, 1005 passed, 0 failed, 1 skipped**, with push and PR workflows passing and all isolated D1/runtime/Forge/Companion checks green.
+- The preview's public HTML includes the new controls, but they remain behind authentication and have not been interactively exercised.
+
+## Preview sign-in configuration blocker (19 Nov 2026)
+
+- Live public check: the Pages preview homepage returns HTTP 200; `GET /api/login` returns HTTP 503 with the configured sign-in-unavailable message.
+- Source inspection confirms this is the deliberate fail-closed response when either `AEGIS_PASSWORD` is missing/shorter than 12 characters or `AEGIS_SESSION_SECRET` is missing/shorter than 32 characters.
+- The preview environment therefore needs both values configured as encrypted Cloudflare Pages Preview secrets, followed by a preview redeployment. Do not weaken authentication or expose secret values to diagnose this.
+- No authenticated UI interaction was performed, no secret was read or changed, and no production configuration or deployment was altered.
+
 ## Test-first evidence and corrections
 
 - Added hash/validation, API, store, migration and D1 lifecycle tests for applied-task evidence.
@@ -49,7 +66,7 @@
 
 1. **Independent reviewer identity:** establish a distinct authenticated reviewer principal and separation-of-duties before accepting human review. The current single-owner session is not a multi-person identity system.
 2. **User-controlled artifact inspection:** design a privacy-preserving, time-bounded review handoff that lets an authorised reviewer inspect the learner's original artifact without turning AEGIS into a permanent file store. Until this exists, receipts are provenance fingerprints only.
-3. **Learning user experience:** add a curated starter catalogue, guided node authoring instead of JSON-only path creation, and a user-friendly new-version workflow. Current path registration uses an editable JSON definition.
+3. **Learning user experience:** the first curated local starter catalogue is now implemented. Remaining work: guided node authoring instead of JSON-only path creation and a user-friendly new-version workflow. Current registration still uses the editable JSON definition.
 4. **Companion renderer:** the current avatar is a CSS presentation placeholder. Proposed direction: a distinctive, expressive, stylised 3D human companion with a restrained semi-realistic look (avoid uncanny photorealism), configurable appearance, accessible presence states, reduced-motion/static fallback and provider-neutral rendering. No mandatory paid avatar/voice service.
 5. **Feature-level product inventory:** score each capability separately for working UI, persistence, permissions, recovery, accessibility, tests and deployment readiness. Do not report completion percentages from commits or research volume.
 6. **Guardian pagination:** current history is bounded to the newest 100 events; add cursor pagination only if real catalogue use justifies it.
