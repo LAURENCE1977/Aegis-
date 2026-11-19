@@ -1252,8 +1252,8 @@ This is a design direction, not a claim that the 3D avatar or final interface is
 
 ## 19 November 2026 — latest verified engineering handover
 
-- The latest verified implementation head before this documentation refresh is `601a5ace460a854795206c80dfa3eab9bb75be72` on stacked draft PR #103.
-- Push workflow [44488935201](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44488941763](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed: **989 Node tests, 988 passed, 0 failed, 1 skipped**, plus Cloudflare preview, runtime/Queue integration and all isolated D1/Forge/Eval/Learning/Companion checks.
+- The latest verified implementation head before this documentation refresh is `ace28bfa11e09cb50f719d5fc61e988367cb5189` on stacked draft PR #103.
+- Push workflow [44489708170](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44489715270](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed: **1002 Node tests, 1001 passed, 0 failed, 1 skipped**, plus Cloudflare preview, runtime/Queue integration and all isolated D1/Forge/Eval/Learning/Companion checks.
 - Guardian Resource now includes owner-scoped detail and bounded on-demand audit history. Stored event metadata is schema-validated; history is rendered with text-safe DOM APIs.
 - Learning Forge now accepts bounded binary applied-task submissions, computes SHA-256 server-side and stores only digest/minimal metadata bound to the exact owner/path version/node. Raw bytes are discarded. Owner withdrawal deletes the digest while preserving content-free append-only submission/withdrawal events. The Forge UI now supports path/node selection, upload, receipt listing, withdrawal and non-certifying evidence-gap diagnostics.
 - Evidence quotas are database-enforced (25 per node, 500 per owner). Mastery evidence input is bounded to 75 assessment attempts plus 25 applied-task receipts. Human reviewer identity and a safe artifact-inspection handoff are still missing, so mastery remains non-certifying.
