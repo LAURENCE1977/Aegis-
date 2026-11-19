@@ -266,18 +266,25 @@ export function createCompanionRenderer(canvas, options = {}) {
         canvas.addEventListener('webglcontextlost', contextLostHandler);
         canvas.addEventListener('webglcontextrestored', contextRestoredHandler);
       }
-      const onVisibility = () => { if (document.visibilityState === 'visible') schedule(); else stop(); };
-      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
-      visibilityHandler = onVisibility;
+      if (!visibilityHandler && typeof document !== 'undefined') {
+        visibilityHandler = () => {
+          if (document.visibilityState === 'visible') schedule();
+          else stop();
+        };
+        document.addEventListener('visibilitychange', visibilityHandler);
+      }
       if (typeof ResizeObserver !== 'undefined') {
-        resizeObserver = new ResizeObserver(entries => {
-          const rect = entries[0]?.contentRect;
-          if (rect) resize(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, 1.5));
-          schedule();
-        });
-        resizeObserver.observe(canvas);
-      } else if (typeof window !== 'undefined') {
+        if (!resizeObserver) {
+          resizeObserver = new ResizeObserver(entries => {
+            const rect = entries[0]?.contentRect;
+            if (rect) resize(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, 1.5));
+            schedule();
+          });
+          resizeObserver.observe(canvas);
+        }
+      } else if (typeof window !== 'undefined' && !windowResizeAttached) {
         window.addEventListener('resize', onResize);
+        windowResizeAttached = true;
       }
       schedule();
       return { supported: true, renderer: 'webgl2' };
@@ -287,6 +294,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     }
   }
   let visibilityHandler = null;
+  let windowResizeAttached = false;
   let contextLostHandler = null;
   let contextRestoredHandler = null;
   function onResize() { resize(canvas.clientWidth, canvas.clientHeight, Math.min(window.devicePixelRatio || 1, 1.5)); schedule(); }
