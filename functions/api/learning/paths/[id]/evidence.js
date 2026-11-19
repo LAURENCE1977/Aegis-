@@ -1,5 +1,5 @@
 import { authorizeOwner, isOwnerWriteRequest, jsonResponse } from '../../../../lib/owner-api.mjs';
-import { recordLearningAppliedTaskEvidence, LearningMasteryPathNotFoundError } from '../../../../lib/learning-mastery-evidence-store.mjs';
+import { recordLearningAppliedTaskEvidence, LearningMasteryPathNotFoundError, LearningAppliedEvidenceLimitError } from '../../../../lib/learning-mastery-evidence-store.mjs';
 import { MAX_LEARNING_ARTIFACT_BYTES, validateLearningArtifactUpload } from '../../../../lib/learning-applied-evidence.mjs';
 
 const OWNER_ID = 'owner';
@@ -82,6 +82,9 @@ export async function onRequestPost({ request, env, params }) {
       notice: 'Only a SHA-256 receipt and minimal metadata are stored. Keep the original artifact; it is not uploaded for later retrieval.',
     }, 201);
   } catch (error) {
+    if (error instanceof LearningAppliedEvidenceLimitError || error?.status === 429) {
+      return jsonResponse({ error: 'Learning applied-task evidence limit reached. Withdraw an older receipt before adding another.' }, 429);
+    }
     if (error instanceof LearningMasteryPathNotFoundError || error?.status === 404) {
       return jsonResponse({ error: 'Exact registered Learning Path version or node not found.' }, 404);
     }
