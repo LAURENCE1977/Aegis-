@@ -25,7 +25,9 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 class EvidenceD1 {
-  constructor() {
+  constructor({ nodeCount = 0, ownerCount = 0 } = {}) {
+    this.nodeCount = nodeCount;
+    this.ownerCount = ownerCount;
     this.pathRow = {
       owner_id: 'owner', path_id: path.id, version: path.version,
       graph_digest: createHash('sha256').update(canonicalJson(path)).digest('hex'),
@@ -41,7 +43,7 @@ class EvidenceD1 {
       bind(...values) { this.values = values; return this; },
       async first() {
         if (sql.includes('FROM learning_paths')) return db.pathRow;
-        if (sql.includes('COUNT(*) AS total')) return { total: 0 };
+        if (sql.includes('COUNT(*) AS total')) return { total: sql.includes('node_id = ?') ? db.nodeCount : db.ownerCount };
         return null;
       },
       async all() { return { results: [] }; },
@@ -102,6 +104,16 @@ test('rejects unsupported media types and cross-origin submissions before persis
     env: { ...envBase, AEGIS_DB: db }, params: routeParams,
   });
   assert.equal(crossOrigin.status, 403);
+  assert.equal(db.inserted, null);
+});
+
+test('enforces per-node evidence quota before creating a receipt', async () => {
+  const db = new EvidenceD1({ nodeCount: 100 });
+  const response = await onRequestPost({
+    request: await request('https://aegis.example/api/learning/paths/javascript-foundations/evidence?version=1.0.0&nodeId=javascript-basics'),
+    env: { ...envBase, AEGIS_DB: db }, params: routeParams,
+  });
+  assert.equal(response.status, 429);
   assert.equal(db.inserted, null);
 });
 
