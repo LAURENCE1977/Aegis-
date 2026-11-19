@@ -348,14 +348,14 @@ test('renderer prepares and commits injected model resources transactionally', a
   const preparedFirst = await renderer.prepareModelResource(async () => first);
   assert.equal(preparedFirst.prepared, true);
   assert.equal(renderer.activeModelResource, null);
-  assert.equal(renderer.commitModelResource(preparedFirst.ticket).committed, true);
+  assert.equal((await renderer.commitModelResource(preparedFirst.ticket)).committed, true);
   assert.equal(renderer.activeModelResource, first);
 
   const preparedSecond = await renderer.prepareModelResource(async () => second);
   assert.equal(preparedSecond.prepared, true);
   assert.equal(renderer.activeModelResource, first);
   assert.equal(disposed.includes('first'), false);
-  assert.equal(renderer.commitModelResource(preparedSecond.ticket).committed, true);
+  assert.equal((await renderer.commitModelResource(preparedSecond.ticket)).committed, true);
   assert.equal(renderer.activeModelResource, second);
   assert.deepEqual(disposed, ['first']);
 
@@ -369,12 +369,12 @@ test('renderer rejects invalid injected resources and preserves its active resou
   const active = { dispose() {} };
   const prepared = await renderer.prepareModelResource(async () => active);
   assert.equal(prepared.prepared, true);
-  assert.equal(renderer.commitModelResource(prepared.ticket).committed, true);
+  assert.equal((await renderer.commitModelResource(prepared.ticket)).committed, true);
 
   assert.deepEqual(await renderer.prepareModelResource(async () => ({ id: 'not-disposable' })), {
     prepared: false, reason: 'invalid-model',
   });
   assert.equal(renderer.activeModelResource, active);
-  assert.equal(renderer.commitModelResource({ id: 999 }).reason, 'unknown-ticket');
+  assert.equal((await renderer.commitModelResource({ id: 999 })).reason, 'unknown-ticket');
   renderer.dispose();
 });
