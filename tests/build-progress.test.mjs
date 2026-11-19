@@ -32,9 +32,9 @@ test('overall completion stays unpublished until every workstream has an audited
 });
 
 test('the register records verified dashboard and companion lifecycle checkpoints', () => {
-  assert.match(progress.latestVerifiedCheckpoint, /44592454361/);
-  assert.match(progress.latestVerifiedCheckpoint, /44592511233/);
-  assert.match(progress.latestVerifiedCheckpoint, /1,035 passed, 0 failed, 1 skipped/);
+  assert.match(progress.latestVerifiedCheckpoint, /44595869026/);
+  assert.match(progress.latestVerifiedCheckpoint, /44595887588/);
+  assert.match(progress.latestVerifiedCheckpoint, /1,047 passed, 0 failed, 1 skipped/);
   assert.match(progress.latestVerifiedCheckpoint, /44595564920/);
   assert.match(progress.latestVerifiedCheckpoint, /44595869026/);
   assert.match(progress.nextMilestone, /lazily loaded Three\.js\/VRM renderer/i);
@@ -48,7 +48,7 @@ test('audited workstreams cite concrete implementation and research evidence', (
   const research = progress.workstreams.find(item => item.id === 'research');
   assert.match(companion.summary, /docs\/AEGIS_COMPANION\.md/);
   assert.match(companion.summary, /44595869026/);
-  assert.match(companion.summary, /imported VRM\/GLB assets are not rendered/i);
+  assert.match(companion.summary, /no imported VRM\/GLB\/VRMA is rendered/i);
   assert.match(research.summary, /docs\/AEGIS_RESEARCH_INTAKE\.md/);
   assert.match(research.summary, /docs\/AEGIS_AGENT_RUNTIME_ECOSYSTEM_2026-11-19\.md/);
   assert.match(research.summary, /docs\/AEGIS_AGENT_CONTROL_AND_CAD_RESEARCH_2026-11-19\.md/);
