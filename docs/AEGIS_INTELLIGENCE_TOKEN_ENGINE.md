@@ -12,13 +12,9 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 
 ## Free-only routing guard
 
-- `selectModelRoute(...)` accepts optional `maxInputCost` and `maxOutputCost` constraints.
-- When either cap is supplied, a candidate must have verified values for both input and output pricing. Unknown pricing is never treated as zero.
-- Setting both caps to `0` selects only catalogue entries explicitly priced at zero for both input and output.
-- Without a cost cap, an unpriced model may remain eligible, but it ranks behind models with known prices and its `estimatedCost` is `null`, not zero.
-- Negative, non-finite or otherwise invalid cost caps are rejected.
+`selectModelRoute` accepts optional `maxInputCost` and `maxOutputCost` constraints. When either cap is supplied, a model must have verified values for both input and output pricing to remain eligible. Setting both caps to `0` therefore selects only explicitly zero-cost models; missing price metadata is never treated as proof of free usage. Without a cost cap, an unpriced model may remain eligible, but its `estimatedCost` is returned as `null` and it ranks behind models with known prices.
 
-This is a deterministic planning safeguard only. It does not verify provider invoices, enforce a durable spend ledger, reserve cross-request budgets or activate automatic failover. The planner remains unwired from AG-UI and the live model adapter, so this must not be represented as a live spend-control guarantee.
+This is a policy/planning safeguard only. It does not verify provider invoices, enforce a durable spend ledger, or activate automatic failover. The planner is still not wired into AG-UI or the live model adapter.
 
 ## Design boundaries
 
