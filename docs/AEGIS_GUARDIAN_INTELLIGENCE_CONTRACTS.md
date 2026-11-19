@@ -1,6 +1,6 @@
 # Guardian Intelligence Contracts and Resource Catalogue
 
-**Status:** Resource validation, owner-scoped D1 persistence, authenticated read/create API and guarded review lifecycle implemented on the stacked draft PR #103. Learning Graph and Security Finding remain pure validation contracts. No catalogue UI, scanner, active test runner or security-worker execution is implemented.
+**Status:** Resource validation, owner-scoped D1 persistence, authenticated read/create/detail APIs, bounded append-only event history, guarded review lifecycle and owner-facing catalogue/audit timeline are implemented on the stacked draft PR #103. Learning Graph and Security Finding remain pure validation contracts. No scanner, active test runner or security-worker execution is implemented.
 
 ## Purpose
 
