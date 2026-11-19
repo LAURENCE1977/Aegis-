@@ -26,6 +26,8 @@ const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
 // Conservative application-level input ceiling; provider tokenizers may differ.
 const MAX_INPUT_TOKENS = 8192;
+// Reserve one bounded model output plus the capped tool result and message overhead.
+const TOOL_FOLLOWUP_RESERVE_TOKENS = 2200;
 const MAX_TOOL_RESULT = 4000;
 const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
 const MAX_PROVIDER_STREAM_BYTES = 256 * 1024;
@@ -95,7 +97,10 @@ export async function onRequestPost(context) {
       projectId,
       companionInteraction: input.companionInteraction,
     });
-    promptMessages = fitMessagesToContext(promptMessages, MAX_INPUT_TOKENS);
+    const inputBudget = toolsEnabled
+      ? MAX_INPUT_TOKENS - TOOL_FOLLOWUP_RESERVE_TOKENS
+      : MAX_INPUT_TOKENS;
+    promptMessages = fitMessagesToContext(promptMessages, inputBudget);
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
