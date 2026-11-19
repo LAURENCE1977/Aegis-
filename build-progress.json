@@ -39,8 +39,8 @@
     {
       "id": "platform",
       "name": "Cross-platform experience",
-      "auditStatus": "pending",
-      "summary": "Mobile, desktop, synchronisation, accessibility and deployment validation awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: one responsive browser/PWA shell with standalone manifest, SVG app icon, viewport-fit layout, responsive breakpoints, reduced-motion handling and a minimal service worker. The worker caches only the app shell/manifest/icons and a successful navigation response; authenticated API, login and MCP responses are explicitly excluded from cache. Evidence: docs/PLATFORM_COMPATIBILITY.md, manifest.webmanifest, service-worker.js, index.html and static build-progress regression checks. Limits: this is not a support certification; no real-device sign-in/chat/approval/file/voice/background/network-recovery matrix has been completed for Chromebook, iPad, iPhone or Android; no native iOS/Android app or desktop shell is released; offline support is shell-only and does not provide offline data or job execution."
     }
   ]
 }
