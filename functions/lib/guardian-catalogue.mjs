@@ -57,6 +57,32 @@ function mapEventRow(row) {
   if (!detail || typeof detail !== 'object' || Array.isArray(detail)) {
     throw new TypeError('Stored Guardian Resource event detail is invalid');
   }
+
+  const keys = Object.keys(detail).sort();
+  if (row.event_type === 'created') {
+    if (keys.join(',') !== 'reviewStatus,sourceRevision' ||
+        typeof detail.sourceRevision !== 'string' || !detail.sourceRevision.trim() ||
+        detail.sourceRevision.length > 128 || detail.reviewStatus !== 'draft') {
+      throw new TypeError('Stored Guardian Resource creation event detail is invalid');
+    }
+  } else {
+    if (keys.join(',') !== 'fromStatus,note,reviewerId,toStatus' ||
+        typeof detail.fromStatus !== 'string' || typeof detail.toStatus !== 'string' ||
+        detail.toStatus !== row.event_type ||
+        typeof detail.reviewerId !== 'string' || !ID_PATTERN.test(detail.reviewerId) ||
+        typeof detail.note !== 'string' || !detail.note.trim() || detail.note.length > 2000) {
+      throw new TypeError('Stored Guardian Resource review event detail is invalid');
+    }
+    const validTransitions = {
+      reviewed: ['draft'],
+      accepted: ['reviewed'],
+      archived: ['draft', 'reviewed', 'accepted'],
+    };
+    if (!validTransitions[row.event_type]?.includes(detail.fromStatus)) {
+      throw new TypeError('Stored Guardian Resource review event transition is invalid');
+    }
+  }
+
   return {
     id: row.id,
     resourceId: row.resource_id,
