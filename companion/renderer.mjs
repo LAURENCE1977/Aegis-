@@ -372,7 +372,6 @@ function mountCompanionCanvases() {
     canvas.className = 'companion-render-canvas';
     canvas.setAttribute('aria-hidden', 'true');
     canvas.setAttribute('role', 'presentation');
-    canvas.style.cssText = 'display:block;width:100%;height:100%;min-height:inherit;touch-action:pan-y;';
     host.prepend(canvas);
     const renderer = createCompanionRenderer(canvas);
     const result = renderer.init();
@@ -380,9 +379,15 @@ function mountCompanionCanvases() {
       host.dataset.renderer = 'webgl2';
       host.setAttribute('aria-label', 'Procedural three-dimensional Agent AEGIS companion prototype');
       host.querySelector('.companion-avatar')?.setAttribute('hidden', '');
+      const status = document.getElementById('companionStatus');
+      if (status) status.textContent = '3D procedural prototype · WebGL2 · imported models and voice are not connected.';
+      const modeState = document.getElementById('companionModeState');
+      if (modeState) modeState.textContent = '3D procedural prototype ready. Microphone capture and spoken responses are not connected.';
     } else {
       canvas.remove();
       host.dataset.renderer = 'fallback';
+      const status = document.getElementById('companionStatus');
+      if (status) status.textContent = 'WebGL2 is unavailable here; using the accessible 2D companion fallback.';
     }
     host._aegisRenderer = renderer;
     if (typeof IntersectionObserver !== 'undefined') {
