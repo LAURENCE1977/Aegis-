@@ -2203,7 +2203,7 @@
         bar.textContent = coverage + '%';
         summary.textContent = audited + ' of ' + data.workstreams.length + ' workstreams audited (' + coverage + '%).';
         overall.textContent = data.overallCompletion === null
-          ? 'Overall build percentage is intentionally withheld until every workstream has a verified baseline.'
+          ? 'Overall product completion is intentionally withheld; audit coverage is not product completion.'
           : 'Verified overall completion: ' + data.overallCompletion + '%.';
         departments.replaceChildren();
         data.workstreams.forEach(item => {

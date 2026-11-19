@@ -3,44 +3,44 @@
   "updatedAt": "2026-11-19",
   "overallCompletion": null,
   "progressPolicy": "Overall completion is withheld until all six workstreams have an audited, evidence-backed baseline. Audit coverage is not a measure of total product completion.",
-  "latestVerifiedCheckpoint": "Dashboard PR #106 baseline CI workflow 44592454361 passed; the refreshed progress-register checks are running. Companion model lifecycle PR #107 CI workflows 44592511233 and 44592523576 passed. Renderer lifecycle integration PR #108 passed corrected-head CI workflow 44595564920. Safe model adapter PR #109 passed current-head CI workflow 44595869026; a duplicate run 44595887588 is still running. Earlier implementation workflow 44589027079 recorded 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. No PR has been merged or deployed.",
-  "nextMilestone": "Review PRs #108 and #109 together, then build a separately isolated, lazily loaded Three.js/VRM renderer. Measure actual bundle size, mobile memory, frame rate and context-loss recovery before enabling imported models.",
+  "latestVerifiedCheckpoint": "Companion model adapter PR #109 workflows 44595869026 and 44595887588 passed: 1,048 Node.js tests (1,047 passed, 0 failed, 1 skipped), Cloudflare runtime/Queue integration and isolated D1 migration/constraint checks passed. Renderer integration PR #108 workflow 44595564920 passed. Build-progress audit PR #111 push workflow 44613712238 and pull-request workflow 44613722152 both passed: Node.js/Cloudflare tests plus isolated capability, runtime, Forge, Eval, Learning and Companion D1 migrations and constraints. All six workstream baselines are evidence-audited; overall product completion remains unpublished. Research PR #110 contains Ghost, T3 Code, OpenHands, OpenCode, Orca and text-to-CAD licence/source review. No PR merged or production deployment performed.",
+  "nextMilestone": "All six workstream baselines are now audited, but overallCompletion remains unpublished because audit coverage is not product completion. Next build slice: integrate the provider registry and token planner into a server-side route behind feature flags, then add a durable reservation/reconciliation ledger before any automatic failover. Keep structured memory and retrieval owner-scoped and provenance-aware. Complete the optional VRM renderer and real-device PWA validation as separate gated milestones.",
   "workstreams": [
     {
       "id": "intelligence",
       "name": "Core intelligence",
-      "auditStatus": "pending",
-      "summary": "Provider routing, memory, reasoning and fallback capabilities awaiting evidence-based inventory."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: provider-specific Workers AI, Anthropic text-only and Qwen streaming adapters keep credentials server-side and enforce bounded message/output sizes, fixed endpoints, redirect rejection and SSE validation; Qwen tool use is separately gated. Provider registry validates versioned provider/model metadata, task support, context/output ceilings, terms URLs, verification freshness and explicit pricing. The pure intelligence planner estimates tokens conservatively, selects routes by task/context/output/quota/cost and fits whole messages to context; free-only routing rejects unknown prices. Structured memory records carry owner/project scope, provenance, confidence, sensitivity, lifecycle and expiry; D1 repository methods and BM25 retrieval exist, and agent project-context assembly uses accepted memory/Forge knowledge as untrusted references. Knowledge chunk retrieval is accepted-only, deterministic BM25 with source citations. Evidence: docs/AEGIS_INTELLIGENCE_TOKEN_ENGINE.md, docs/AEGIS_MODEL_PROVIDERS.md, docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md, functions/lib/intelligence-engine.mjs, functions/lib/provider-registry.mjs, functions/lib/model-provider.mjs, functions/lib/memory-substrate.mjs, functions/lib/knowledge-retrieval.mjs, functions/lib/agent-run-context.mjs and associated tests. Limits: planner is not wired into live provider routing; no durable token ledger or automatic failover; provider registry is not a universal adapter runtime; metadata-only free-tier offer ledger exists in functions/lib/free-tier-ledger.mjs with official terms, quota and 30-day freshness validation, but no account provisioning or usage metering; no verified free-model catalogue/quota ingestion; token counts are byte heuristics; legacy KV notes endpoint is not the structured D1 memory API; no production D1/provider secrets are configured."
     },
     {
       "id": "engineering",
       "name": "Engineering & agents",
-      "auditStatus": "pending",
-      "summary": "Workspace, coding workflows, orchestration and autonomous execution awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: durable agent-run API with bounded plan submission, idempotency, D1 outbox, Queue dispatch, lease/retry/dead-letter handling, cancellation and immutable plan/task-envelope records; specialist roles are labels, not running agents or permissions. The default runtime is execution: plan-only and makes no LLM, tool, filesystem, browser, shell or external API calls. A server-side capability bridge exists but is not called by the plan-only queue. Optional Qwen tooling is separately gated and exposes four fixed read-only tools with one tool round, exact Sentinel grants and active Composio connection; default Workers AI remains text-only. Workers AI, Anthropic text-only and Qwen adapters exist; OpenAI-compatible endpoint and local Ollama/LM Studio adapters remain planned. Evidence: docs/AEGIS_AGENT_ORCHESTRATION.md, docs/AEGIS_AGENT_TOOLS.md, docs/AEGIS_MODEL_PROVIDERS.md, docs/AEGIS_FORGE.md, docs/AEGIS_MCP_FORGE.md, functions/lib/agent-tools.mjs, functions/lib/model-provider.mjs, workers/runtime/index.mjs, workers/runtime/agent-capability-bridge.mjs and associated runtime/provider/Sentinel tests. Limits: AGENT_RUNS_ENABLED and provider tooling flags are not configured in production; no autonomous coding, shell, browser, file-write, generic MCP or external-action worker is enabled; no production D1/Queue deployment is verified; provider-neutral registry does not yet provide a universal adapter implementation."
     },
     {
       "id": "security",
       "name": "Security & governance",
-      "auditStatus": "pending",
-      "summary": "Sentinel, approvals, sandboxing, provenance and audit controls awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: signed owner/reviewer sessions with separate secrets and cookies; exact principal/capability/version/resource grants and bounded expiry; exact-operation human-always approvals bound to input digest and one-time consumption; AES-256-GCM vault secrets with key-versioned keyring, principal/provider AAD and owner/provider-scoped revocation; append-only redacted invocation audit; Sentinel policy/rate-limit/audit/approval mediation; one owner-authenticated, same-origin, fixed local read-only catalogue route. Evidence: docs/AEGIS_SECURITY_CENTRE.md, docs/AEGIS_SECURITY_SUITE.md, docs/AEGIS_CAPABILITY_GRANTS.md, docs/AEGIS_SENTINEL_COMPOSITION.md, docs/AEGIS_SENTINEL_RUNTIME_COMPOSITION.md, functions/lib/auth.mjs, functions/lib/capability-policy.mjs, functions/lib/secret-vault.mjs, functions/lib/sentinel.mjs, functions/api/sentinel/invoke.js and associated tests. Limits: D1 is not provisioned or deployed, vault keyring secrets and provider connections are not configured, and only the fixed local read-only catalogue route is exposed. No production VPN/endpoint suite exists; a post-execution audit can fail after a side effect, which must be surfaced as uncertain/audit-incomplete rather than represented as fully audited success."
     },
     {
       "id": "companion",
       "name": "Avatar & voice",
-      "auditStatus": "pending",
-      "summary": "Procedural WebGL2 renderer, uploaded-byte SHA-256 verification and transactional resource lifecycle are in place. PR #108 connects lifecycle cleanup to the renderer and has passing corrected-head CI. PR #109 adds an opt-in trusted adapter boundary, format allowlisting, telemetry/performance-budget checks and disposal-race coverage with a passing current-head CI run. No VRM parser/runtime is bundled and imported models are not yet rendered."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: owner-scoped companion profiles and bounded style controls; full-screen text Companion Mode; procedural WebGL2 bust with CSS fallback; renderer presence/expression/viseme inputs; uploaded-byte SHA-256 verification; transactional prepare/commit/destroy lifecycle; opt-in format-allowlisted adapter with telemetry and budgets. Evidence: docs/AEGIS_COMPANION.md, docs/AEGIS_COMPANION_RENDERER_RESEARCH.md, companion/renderer.mjs, PRs #107–#109 and workflows 44595564920 / 44595869026. Limits: production D1 and voice are not active; no imported VRM/GLB/VRMA is rendered; no mobile device benchmark is complete."
     },
     {
       "id": "research",
       "name": "Research & integrations",
-      "auditStatus": "pending",
-      "summary": "GitHub and Composio intake reviewed nine owner repositories and new external candidates. AI Sandbox, sessionmem and OrbMotion reuse decisions are documented; owner 3D-Website-Builder and Storied Gecko were inspected and flagged for licence/structure caution. Patterns only; no third-party runtime imported."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: Forge discovery and evidence/provenance lifecycle; research intake and candidate evaluation; GitHub public metadata reads and narrow Composio GitHub read-only tools; existing owner-repo inventory and reuse decisions; agent runtime, local inference, companion renderer, Ghost/T3 Code, OpenHands Agent Canvas, OpenCode, VirtusLab Orca, Godot Orca and text-to-CAD research. Evidence: docs/AEGIS_RESEARCH_INTAKE.md, docs/RESEARCH_SOURCE_REGISTER.md, docs/FORGE_INTELLIGENCE.md, docs/AEGIS_AGENT_RUNTIME_ECOSYSTEM_2026-11-19.md, docs/AEGIS_FORGE_ECOSYSTEM_INTAKE_2026-11-17.md, docs/AEGIS_AGENT_CONTROL_AND_CAD_RESEARCH_2026-11-19.md and PR #110. Limits: source review is not a formal security audit; no third-party runtime was installed; some candidate identities/licences remain held; Ghost/Phantom are distinct projects, Phantom has no root licence file in the inspected tree, and the Instagram Reel remains unconfirmed; no universal live repository watcher is implemented."
     },
     {
       "id": "platform",
       "name": "Cross-platform experience",
-      "auditStatus": "pending",
-      "summary": "Mobile, desktop, synchronisation, accessibility and deployment validation awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: one responsive browser/PWA shell with standalone manifest, SVG app icon, viewport-fit layout, responsive breakpoints, reduced-motion handling and a minimal service worker. The worker caches only the app shell/manifest/icons and a successful navigation response; authenticated API, login and MCP responses are explicitly excluded from cache. Evidence: docs/PLATFORM_COMPATIBILITY.md, manifest.webmanifest, service-worker.js, index.html and static build-progress regression checks. Limits: this is not a support certification; no real-device sign-in/chat/approval/file/voice/background/network-recovery matrix has been completed for Chromebook, iPad, iPhone or Android; no native iOS/Android app or desktop shell is released; offline support is shell-only and does not provide offline data or job execution."
     }
   ]
 }
