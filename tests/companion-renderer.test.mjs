@@ -33,7 +33,7 @@ test('expression input accepts only known expression IDs and bounded weights', (
 });
 
 test('companion presence states are presentation-only and do not expose action authority', () => {
-  assert.deepEqual(COMPANION_STATES, ['idle', 'listening', 'thinking', 'speaking', 'interrupted', 'paused', 'disconnected']);
+  assert.deepEqual(COMPANION_STATES, ['idle', 'listening', 'thinking', 'speaking', 'responding', 'interrupted', 'paused', 'disconnected', 'error']);
   assert.equal('execute' in COMPANION_STATES, false);
 });
 
