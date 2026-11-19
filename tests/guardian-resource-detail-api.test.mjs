@@ -127,4 +127,5 @@ test('Guardian Resource detail bounds event history returned to the caller', asy
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.events.length, 1);
+  assert.equal(body.events[0].eventType, 'reviewed', 'bounded history should retain the newest event');
 });
