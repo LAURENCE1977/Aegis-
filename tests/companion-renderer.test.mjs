@@ -379,3 +379,69 @@ test('renderer rejects invalid injected resources and preserves its active resou
   assert.equal((await renderer.commitModelResource({ id: 999 })).reason, 'unknown-ticket');
   renderer.dispose();
 });
+
+
+test('model adapter is opt-in and is called only after the uploaded digest is verified', async () => {
+  let calls = 0;
+  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+    formats: ['vrm'],
+    async load() { calls += 1; return { stats: { maxTextureDimension: 1024, drawCalls: 20 }, dispose() {} }; },
+  } });
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['jello']), webcrypto), {
+    loaded: false, reason: 'digest-mismatch',
+  });
+  assert.equal(calls, 0);
+  const loaded = await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto);
+  assert.equal(loaded.loaded, true);
+  assert.equal(calls, 1);
+  assert.equal(renderer.activeModelResource !== null, true);
+  renderer.dispose();
+  await renderer.modelCleanupPromise;
+});
+
+test('model adapter enforces format and declared texture and draw-call budgets', async () => {
+  let disposed = 0;
+  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+    formats: ['glb'],
+    async load() { throw new Error('must not be called for VRM'); },
+  } });
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto), {
+    loaded: false, reason: 'unsupported-model-adapter',
+  });
+  renderer.dispose();
+  await renderer.modelCleanupPromise;
+
+  const overBudget = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+    formats: ['vrm'],
+    async load() { return { stats: { maxTextureDimension: 4096, drawCalls: 20 }, dispose() { disposed += 1; } }; },
+  } });
+  assert.deepEqual(await overBudget.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto), {
+    loaded: false, reason: 'model-performance-budget-exceeded',
+  });
+  assert.equal(disposed, 1);
+  assert.equal(overBudget.activeModelResource, null);
+  overBudget.dispose();
+  await overBudget.modelCleanupPromise;
+});
+
+test('model adapter failures preserve the active model and reject incomplete resource telemetry', async () => {
+  let disposeCandidate = 0;
+  let fail = false;
+  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+    formats: ['vrm'],
+    async load() {
+      if (fail) return { dispose() { disposeCandidate += 1; } };
+      return { stats: { maxTextureDimension: 1024, drawCalls: 20 }, dispose() {} };
+    },
+  } });
+  assert.equal((await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto)).loaded, true);
+  const active = renderer.activeModelResource;
+  fail = true;
+  assert.deepEqual(await renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto), {
+    loaded: false, reason: 'invalid-model-resource',
+  });
+  assert.equal(disposeCandidate, 1);
+  assert.equal(renderer.activeModelResource, active);
+  renderer.dispose();
+  await renderer.modelCleanupPromise;
+});
