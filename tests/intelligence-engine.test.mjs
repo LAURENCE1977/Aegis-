@@ -64,7 +64,6 @@ test('rejects malformed model catalogues and message lists', () => {
   assert.throws(() => fitMessagesToContext([{ role: 'tool', content: 'x' }], 10), /message/i);
 });
 
-
 test('free-only routing excludes models whose input or output price is unknown', () => {
   const candidates = [
     { id: 'unknown-price', providerId: 'provider-unknown', contextTokens: 8192, maxOutputTokens: 1024, priority: 1 },
@@ -83,12 +82,12 @@ test('free-only routing excludes models whose input or output price is unknown',
 });
 
 test('reports unknown estimated cost instead of silently treating an unpriced model as free', () => {
-  const candidate = selectModelRoute({
+  const [candidate] = [selectModelRoute({
     models: [{ id: 'unknown-price', providerId: 'provider-a', contextTokens: 8192, maxOutputTokens: 1024 }],
     task: 'chat',
     estimatedInputTokens: 100,
     requestedOutputTokens: 100,
-  });
+  })];
   assert.equal(candidate.modelId, 'unknown-price');
   assert.equal(candidate.estimatedCost, null);
 });
