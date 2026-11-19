@@ -1,6 +1,7 @@
 import { getLearningPath } from './learning-forge.mjs';
 import { listLearningAttempts } from './learning-attempts.mjs';
 import { buildLearningMasteryCandidate } from './learning-mastery-evidence.mjs';
+import { hashLearningArtifact, validateLearningArtifactUpload } from './learning-applied-evidence.mjs';
 
 const OWNER_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -112,13 +113,47 @@ export async function loadLearningMasteryEvidence(db, ownerId, pathId, pathVersi
     }
   }
 
+  const appliedResult = await db.prepare(`
+    SELECT id, artifact_digest, byte_length, media_type, submitted_at
+    FROM learning_applied_task_evidence
+    WHERE owner_id = ? AND path_id = ? AND path_version = ? AND node_id = ?
+    ORDER BY submitted_at ASC, id ASC
+    LIMIT ?
+  `).bind(ownerId, pathId, pathVersion, nodeId, MAX_EVIDENCE + 1).all();
+  const appliedRows = appliedResult?.results ?? [];
+  if (appliedRows.length > MAX_EVIDENCE || evidence.length + appliedRows.length > MAX_EVIDENCE) {
+    throw new TypeError('Learning Mastery evidence exceeds the bounded applied-task receipt limit');
+  }
+  for (const row of appliedRows) {
+    if (typeof row.id !== 'string' || !/^evidence-[a-f0-9]{32}$/.test(row.id) ||
+        typeof row.artifact_digest !== 'string' || !/^[a-f0-9]{64}$/.test(row.artifact_digest) ||
+        !Number.isInteger(row.byte_length) || row.byte_length < 1 || row.byte_length > 2 * 1024 * 1024 ||
+        !['application/octet-stream', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain'].includes(row.media_type)) {
+      throw new TypeError('Stored Learning applied-task evidence receipt is invalid');
+    }
+    const occurredAt = {
+      occurredAt: row.submitted_at,
+    };
+    validateAttemptTime(occurredAt, now);
+    evidence.push(Object.freeze({
+      id: 'applied-task-' + row.id,
+      kind: 'applied_task',
+      artifactDigest: row.artifact_digest,
+      pathId,
+      pathVersion,
+      nodeId,
+      occurredAt: row.submitted_at,
+    }));
+  }
+
   return Object.freeze({
     path: registered.path,
     evidence: Object.freeze(evidence),
-    unavailableEvidenceKinds: Object.freeze(['applied_task', 'human_review']),
+    unavailableEvidenceKinds: Object.freeze(['human_review']),
     sourceCounts: Object.freeze({
       registeredAssessments: assessmentRows.length,
-      serverScoredAttempts: evidence.length,
+      serverScoredAttempts: evidence.filter(item => item.kind === 'assessment_pass').length,
+      appliedTaskReceipts: appliedRows.length,
     }),
   });
 }
@@ -138,8 +173,6 @@ export async function buildLearningMasteryCandidateFromStore(
 export async function recordLearningAppliedTaskEvidence(
   db, ownerId, pathId, pathVersion, nodeId, bytes, mediaType, now = Date.now(),
 ) {
-  const { validateLearningArtifactUpload, hashLearningArtifact } =
-    await import('./learning-applied-evidence.mjs');
   requireDatabase(db);
   validateIdentity(ownerId, pathId, pathVersion, nodeId);
   if (!Number.isFinite(now)) throw new TypeError('Invalid Learning applied-task evidence clock');
