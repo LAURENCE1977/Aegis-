@@ -2264,6 +2264,23 @@
       return reviewerAuthenticated;
     }
 
+    async function reviewerApi(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store',
+      });
+      let result = {};
+      try { result = await response.json(); } catch (error) {}
+      if (response.status === 401) {
+        reviewerAuthenticated = false;
+        await refreshReviewerSession();
+        throw new Error('Separate reviewer session expired. Sign in again.');
+      }
+      if (!response.ok) throw new Error(result.error || ('Reviewer service error ' + response.status));
+      return result;
+    }
+
     async function loadChatProjects() {
       const selectedChat = chatProjectSelect.value;
       const selectedMemory = memoryProjectSelect.value;
@@ -4093,7 +4110,7 @@
               }
               reviewButton.disabled = true;
               try {
-                await controlApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                await reviewerApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
                   method: 'PATCH',
                   body: JSON.stringify({
                     status: nextStatus,
@@ -4266,7 +4283,7 @@
                   button.disabled = true;
                   try {
                     const agentRunApproval = approval.capabilityId === 'aegis-agent-run';
-                    await controlApi(agentRunApproval
+                    await reviewerApi(agentRunApproval
                       ? '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id)
                       : '/api/approvals', {
                       method: agentRunApproval ? 'PATCH' : 'POST',
