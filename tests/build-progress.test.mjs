@@ -38,8 +38,8 @@ test('the register records verified dashboard and companion lifecycle checkpoint
   assert.match(progress.latestVerifiedCheckpoint, /44595564920/);
   assert.match(progress.latestVerifiedCheckpoint, /44595869026/);
   assert.match(progress.nextMilestone, /lazily loaded Three\.js\/VRM renderer/i);
-  assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /no VRM parser\/runtime is bundled/i);
-  assert.match(progress.workstreams.find(item => item.id === 'research').summary, /Composio intake reviewed/i);
+  assert.match(progress.workstreams.find(item => item.id === 'companion').summary, /no imported VRM\/GLB\/VRMA is rendered/i);
+  assert.match(progress.workstreams.find(item => item.id === 'research').summary, /narrow Composio GitHub read-only tools/i);
 });
 
 
