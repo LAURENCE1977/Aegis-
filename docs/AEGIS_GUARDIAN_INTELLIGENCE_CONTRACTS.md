@@ -1,6 +1,6 @@
 # Guardian Intelligence Contracts and Resource Catalogue
 
-**Status:** Resource validation, owner-scoped D1 persistence, authenticated read/create/detail APIs, bounded append-only event history, guarded review lifecycle and owner-facing catalogue/audit timeline are implemented on the stacked draft PR #103. Learning Graph and Security Finding remain pure validation contracts. No scanner, active test runner or security-worker execution is implemented.
+**Status:** Resource validation, owner-scoped D1 persistence, authenticated read/create/detail APIs, bounded append-only event history, guarded review lifecycle and owner-facing catalogue/audit timeline are implemented on the stacked draft PR #103. Learning Graph and Security Finding remain validation contracts; Learning Path, Progress, assessment attempts and digest-only applied-task receipts now have owner-scoped D1 persistence. No scanner, active test runner or security-worker execution is implemented.
 
 ## Purpose
 
@@ -42,7 +42,17 @@ Review lifecycle is implemented by `migrations/forge/0007_guardian_resource_revi
 - existing prerequisites and no self-dependencies;
 - acyclic prerequisite graph.
 
-The graph stores links and learning metadata, not copied course content. This validator does not infer learner mastery or redistribute third-party materials. Persistence, progress history and user-facing learning workflows remain future work.
+The graph stores links and learning metadata, not copied course content. This validator does not infer learner mastery or redistribute third-party materials. Learning Paths are persisted as owner-scoped immutable versions with canonical SHA-256 graph identity and append-only registration events. Learning Progress is owner-scoped, bound to the exact path version, prerequisite-gated and append-only; `self_reported_complete` is explicitly not mastery.
+
+### Applied-task evidence receipts
+
+- `POST /api/learning/paths/:id/evidence?version=:version&nodeId=:node` accepts a same-origin authenticated binary upload of 1 byte–2 MiB, restricted to PDF, plain text, PNG, JPEG or generic binary media types.
+- AEGIS computes SHA-256 server-side and binds the receipt to the authenticated owner, exact immutable path version and node. Browser-supplied digests and filenames are not accepted.
+- Only the digest, byte length, media type and submission timestamp are persisted. The uploaded bytes are discarded after hashing; the response explicitly tells the learner to retain the original artifact.
+- The owner can withdraw a receipt through `DELETE /api/learning/paths/:id/evidence/:evidenceId?version=:version&nodeId=:node`. The receipt row (including its digest) is deleted; an append-only withdrawal event remains without the digest.
+- Submission and withdrawal events are append-only. Receipt content/identity cannot be updated. The D1 migration is `0014_learning_applied_task_evidence.sql`.
+- `GET /api/learning/mastery` now loads owner-scoped applied-task receipts alongside server-scored assessment attempts. Human review remains unavailable; therefore evidence cannot currently reach a human-confirmation candidate or verify mastery.
+- This is a provenance receipt, not proof that a reviewer has inspected the artifact. Because the file is not retained or retrievable, a future independent-review workflow must arrange a separate user-controlled, privacy-preserving review channel before it can approve evidence.
 
 ## 4. Security findings
 
@@ -68,7 +78,7 @@ These checks do not establish production D1 migration, production deployment, le
 ## 6. Next gates
 
 1. Extend the resource timeline with cursor-based pagination if event volumes justify it; the current newest-window endpoint is bounded to 100 events.
-2. Persist learning graphs with owner scoping, versioning and append-only history; add mastery/progress only with user-visible controls.
+2. Implement independent reviewer identity and separation of duties, plus a user-controlled way for a reviewer to inspect an artifact without making AEGIS a permanent file store. Until then, mastery remains non-certifying.
 3. Add property-based/adversarial tests for URL parsing, graph size/depth, stale evidence and malformed findings.
 4. Add Security Research capability declarations only after exact target registration, Sentinel policy, isolated-worker enforcement, egress/resource controls, cancellation and effect-level audit verification exist.
 5. Keep active scanning disabled; no ambient shell, Docker socket, arbitrary network egress, C2, persistence or autonomous remediation.
