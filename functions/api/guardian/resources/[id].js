@@ -1,5 +1,10 @@
-import { authConfigAvailable, isAuthorized, isSameOriginRequest } from '../../../lib/auth.mjs';
-import { authorizeOwnerOrReviewer, authorizeReviewer, readJsonRequest, jsonResponse } from '../../../lib/owner-api.mjs';
+import { isSameOriginRequest } from '../../../lib/auth.mjs';
+import {
+  authorizeOwnerOrReviewer,
+  authorizeReviewer,
+  readJsonRequest,
+  jsonResponse,
+} from '../../../lib/owner-api.mjs';
 import {
   getGuardianResource,
   listGuardianResourceEvents,
@@ -10,7 +15,9 @@ const OWNER_ID = 'owner';
 const REVIEWER_ID = 'reviewer';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_EVENT_LIMIT = 100;
-const RESOURCE_ID_PATTERN = /^export async function onRequestGet({ request, env, params }) {
+const RESOURCE_ID_PATTERN = /^resource-[a-f0-9]{32}$/;
+
+export async function onRequestGet({ request, env, params }) {
   const denied = await authorizeOwnerOrReviewer(request, env);
   if (denied) return denied;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
@@ -33,16 +40,12 @@ const RESOURCE_ID_PATTERN = /^export async function onRequestGet({ request, env,
   }
 
   try {
-    const resource = await getGuardianResource(env.AEGIS_DB, OWNER_ID, params?.id);
+    const resource = await getGuardianResource(env.AEGIS_DB, OWNER_ID, params.id);
     if (!resource) return jsonResponse({ error: 'Guardian Resource not found.' }, 404);
     const events = await listGuardianResourceEvents(env.AEGIS_DB, OWNER_ID, params.id, eventLimit);
     return jsonResponse({ resource, events });
   } catch {
     return jsonResponse({ error: 'Guardian Resource detail is temporarily unavailable.' }, 503);
-  }
-}
-
-ailable.' }, 503);
   }
 }
 
