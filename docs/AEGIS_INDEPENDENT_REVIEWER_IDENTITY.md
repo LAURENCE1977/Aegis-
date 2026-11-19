@@ -37,7 +37,7 @@ Until both reviewer secrets are configured, reviewer-only operations fail closed
 
 ## Limitations and follow-up
 
-- The reviewer sign-in endpoint is an API foundation; a polished reviewer sign-in/inbox UI still needs to be added.
+- The Approval panel now has a separate reviewer sign-in/sign-out form. Approval decision controls are rendered only after the reviewer session is confirmed. Guardian review controls are also hidden until the reviewer session is active.
 - A single configured reviewer credential is supported. Reviewer account lifecycle, MFA/passkeys, recovery, rotation workflows, multiple named reviewers and external identity-provider integration are not yet implemented.
 - Separate credentials only provide real two-person control when credential custody is genuinely separated. Do not describe this as verified independent-human approval until an appropriate identity provider or equivalent control establishes that separation.
 - Do not merge or enable production reviewer-only workflows until the reviewer secrets are configured and the reviewer access path is tested in the target environment.
