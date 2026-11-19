@@ -17,6 +17,8 @@ test('approval decision controls are rendered only for a live reviewer session',
   assert.match(html, /if \(!approval\.expired && reviewerAuthenticated\)/);
   assert.match(html, /Independent reviewer sign-in is required before this decision can be recorded/);
   assert.match(html, /reviewer sign-in required for decisions/);
+  assert.match(html, /resource\.status !== 'archived' && reviewerAuthenticated/);
+  assert.match(html, /Open the Approvals panel to sign in before changing this resource/);
 });
 
 test('reviewer password is not persisted in browser storage', () => {
