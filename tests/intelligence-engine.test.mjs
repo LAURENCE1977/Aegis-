@@ -63,3 +63,42 @@ test('rejects malformed model catalogues and message lists', () => {
   assert.throws(() => selectModelRoute({ models: [{ id: 'bad' }], task: 'simple', estimatedInputTokens: 1, requestedOutputTokens: 1 }), /model/i);
   assert.throws(() => fitMessagesToContext([{ role: 'tool', content: 'x' }], 10), /message/i);
 });
+
+
+test('free-only routing excludes models whose input or output price is unknown', () => {
+  const candidates = [
+    { id: 'unknown-price', providerId: 'provider-unknown', contextTokens: 8192, maxOutputTokens: 1024, priority: 1 },
+    { id: 'verified-free', providerId: 'provider-free', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0, outputCost: 0, priority: 2 },
+  ];
+  const route = selectModelRoute({
+    models: candidates,
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+    maxInputCost: 0,
+    maxOutputCost: 0,
+  });
+  assert.equal(route.modelId, 'verified-free');
+  assert.equal(route.estimatedCost, 0);
+});
+
+test('reports unknown estimated cost instead of silently treating an unpriced model as free', () => {
+  const candidate = selectModelRoute({
+    models: [{ id: 'unknown-price', providerId: 'provider-a', contextTokens: 8192, maxOutputTokens: 1024 }],
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+  });
+  assert.equal(candidate.modelId, 'unknown-price');
+  assert.equal(candidate.estimatedCost, null);
+});
+
+test('rejects negative maximum provider cost constraints', () => {
+  assert.throws(() => selectModelRoute({
+    models,
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+    maxInputCost: -1,
+  }), /cost/i);
+});
