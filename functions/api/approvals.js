@@ -1,5 +1,4 @@
 import {
-  authorizeOwner,
   authorizeOwnerOrReviewer,
   authorizeReviewer,
   isOwnerWriteRequest,
