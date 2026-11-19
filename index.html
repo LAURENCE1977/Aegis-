@@ -222,6 +222,17 @@
       margin: 12px 0; padding: 18px; border: 1px solid var(--border);
       border-radius: 15px; background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
     }
+    #buildProgressAuditBar {
+      display: block; width: 100%; height: 12px; margin: 12px 0;
+      overflow: hidden; border: 0; border-radius: 999px;
+      accent-color: var(--accent-strong);
+    }
+    #buildProgressDepartments { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #buildProgressDepartments .workspace-card { margin: 0; }
+    #buildProgressRefresh { margin-top: 8px; }
+    @media (max-width: 520px) {
+      #buildProgressDepartments { grid-template-columns: minmax(0, 1fr); }
+    }
     .workspace-card h3, .approval-card h3 { margin: 0 0 7px; font-size: 1rem; overflow-wrap: anywhere; }
     .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
     .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
