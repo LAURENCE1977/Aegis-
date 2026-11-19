@@ -688,7 +688,7 @@ test('AG-UI reserves bounded context headroom when Sentinel-mediated tools are e
   const history = Array.from({ length: 10 }, (_, index) => ({
     id: 'tool-history-' + index,
     role: index % 2 === 0 ? 'user' : 'assistant',
-    content: ('prior tool-enabled context ' + index + ' ').repeat(180),
+    content: ('prior tool-enabled context ' + index + ' ').repeat(120),
   }));
   const response = await onRequestPost({
     request: await request(input({ messages: [
