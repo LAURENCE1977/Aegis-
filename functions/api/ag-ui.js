@@ -90,6 +90,22 @@ export async function onRequestPost(context) {
     promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
+    if (error?.code === "PROVIDER_DISABLED") {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({
+          message: "That AI provider is disabled by the free-only policy.",
+          code: "PROVIDER_DISABLED",
+        }),
+      ], 503);
+    }
+    if (error?.code === "POLICY_CONFIGURATION_INVALID") {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({
+          message: "The model provider policy is not configured correctly.",
+          code: "POLICY_CONFIGURATION_INVALID",
+        }),
+      ], 503);
+    }
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
         (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
       return createAgUiSseResponse([
