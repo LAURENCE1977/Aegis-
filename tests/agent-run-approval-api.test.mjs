@@ -10,7 +10,9 @@ import {
 const secret = 'agent-run-approval-test-session-secret-with-entropy';
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
-  AEGIS_SESSION_SECRET: secret,\n  AEGIS_REVIEWER_PASSWORD: 'reviewer-password-long-enough',\n  AEGIS_REVIEWER_SESSION_SECRET: 'agent-run-reviewer-session-secret-with-entropy',
+  AEGIS_SESSION_SECRET: secret,
+  AEGIS_REVIEWER_PASSWORD: 'reviewer-password-long-enough',
+  AEGIS_REVIEWER_SESSION_SECRET: 'agent-run-reviewer-session-secret-with-entropy',
   AEGIS_DB: { prepare() { throw new Error('Unexpected database access'); } },
 };
 const runId = '00000000-0000-4000-8000-000000000001';
@@ -30,9 +32,10 @@ const plan = {
   },
 };
 
-async function makeRequest(path, method, body, { authenticated = true, origin = 'https://aegis.example' } = {}) {
+async function makeRequest(path, method, body, { authenticated = true, origin = 'https://aegis.example', principal = 'owner' } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
+  if (authenticated && principal === 'reviewer') headers.Cookie = reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET));
+  else if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
   if (origin !== null) headers.Origin = origin;
   return new Request('https://aegis.example' + path, {
     method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -204,7 +207,7 @@ test('Sentinel refuses changed plans and unapproved requests without consuming a
   const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
   let consumed = false;
   const handler = createAgentRunApprovalAuthorizationHandlers({
-    loadRequest: async () => ({ id: 'approval-consume-2', ...binding, status: 'approved', decidedBy: 'owner', requestedBy: 'owner', connectionId: null }),
+    loadRequest: async () => ({ id: 'approval-consume-2', ...binding, status: 'approved', decidedBy: 'reviewer', requestedBy: 'owner', connectionId: null }),
     consumeRequest: async () => { consumed = true; return null; },
     proxy: async ({ method }) => method === 'GET'
       ? Response.json({ run: { id: runId, status: 'planned', plan: { ...plan, objective: 'changed' } } })
@@ -229,7 +232,7 @@ test('Sentinel requires an active exact-resource grant with every manifest scope
       id: 'approval-needs-grant',
       ...binding,
       status: 'approved',
-      decidedBy: 'owner',
+      decidedBy: 'reviewer',
       requestedBy: 'owner',
       connectionId: null,
     }),
@@ -263,7 +266,7 @@ test('Sentinel safely retries runtime authorisation after the exact approval was
   const binding = await buildAgentPlanApprovalBinding(plan, 'owner');
   const approval = {
     id: 'approval-retry-1', ...binding, status: 'approved',
-    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+    decidedBy: 'reviewer', requestedBy: 'owner', connectionId: null,
   };
   const consumed = { ...approval, status: 'consumed', consumedAt: '2026-11-17T10:00:00.000Z' };
   let consumedWrites = 0;
@@ -311,7 +314,7 @@ test('Sentinel refuses consumed-approval recovery after its exact grant has been
   const consumed = {
     id: 'approval-revoked-retry', ...binding, status: 'consumed',
     consumedAt: '2026-11-17T10:00:00.000Z',
-    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+    decidedBy: 'reviewer', requestedBy: 'owner', connectionId: null,
   };
   let runtimeAuthoriseCalled = false;
   const handler = createAgentRunApprovalAuthorizationHandlers({
@@ -342,7 +345,7 @@ test('Sentinel rejects consumed-approval recovery when the persisted plan has ch
   const consumed = {
     id: 'approval-changed-plan-retry', ...binding, status: 'consumed',
     consumedAt: '2026-11-17T10:00:00.000Z',
-    decidedBy: 'owner', requestedBy: 'owner', connectionId: null,
+    decidedBy: 'reviewer', requestedBy: 'owner', connectionId: null,
   };
   let runtimeAuthoriseCalled = false;
   const handler = createAgentRunApprovalAuthorizationHandlers({
