@@ -24,9 +24,9 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.equal(progress.overallCompletion, null);
   assert.equal(progress.workstreams.length, 6);
   const audited = progress.workstreams.filter(item => item.auditStatus === 'audited');
-  assert.equal(audited.length, 3);
-  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'research', 'security']);
-  assert.ok(progress.workstreams.filter(item => !['companion', 'research', 'security'].includes(item.id))
+  assert.equal(audited.length, 4);
+  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'engineering', 'research', 'security']);
+  assert.ok(progress.workstreams.filter(item => !['companion', 'engineering', 'research', 'security'].includes(item.id))
     .every(item => item.auditStatus === 'pending'));
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
@@ -64,4 +64,16 @@ test('security audit distinguishes implemented primitives from a deployed securi
   assert.match(security.summary, /human-always/i);
   assert.match(security.summary, /D1 is not provisioned/i);
   assert.match(security.summary, /post-execution audit can fail/i);
+});
+
+
+test('engineering audit keeps agent plans separate from executable authority', () => {
+  const engineering = progress.workstreams.find(item => item.id === 'engineering');
+  assert.match(engineering.summary, /docs\/AEGIS_AGENT_ORCHESTRATION\.md/);
+  assert.match(engineering.summary, /execution: plan-only/);
+  assert.match(engineering.summary, /AGENT_RUNS_ENABLED/);
+  assert.match(engineering.summary, /functions\/lib\/agent-tools\.mjs/);
+  assert.match(engineering.summary, /four fixed read-only tools/i);
+  assert.match(engineering.summary, /no shell, filesystem, browser or arbitrary MCP execution/i);
+  assert.match(engineering.summary, /OpenAI-compatible endpoint adapter remains planned/i);
 });
