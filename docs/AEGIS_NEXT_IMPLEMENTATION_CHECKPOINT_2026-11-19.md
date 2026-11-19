@@ -5,9 +5,9 @@
 - Canonical repository: `LAURENCE1977/Aegis-`.
 - Active development PR: #103, branch `feature/rea-open-source-security-learning-batch`.
 - PR #103 is open, draft and unmerged; it remains stacked on PR #101.
-- Verified code head: `601a5ace460a854795206c80dfa3eab9bb75be72`.
-- Push workflow [44488935201](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44488941763](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed.
-- Node.js suite: **989 tests, 988 passed, 0 failed, 1 skipped**.
+- Verified code head: `ace28bfa11e09cb50f719d5fc61e988367cb5189`.
+- Push workflow [44489708170](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44489715270](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed.
+- Node.js suite: **1002 tests, 1001 passed, 0 failed, 1 skipped**.
 - Cloudflare Pages preview passed.
 - Runtime D1 and Queue integration passed.
 - Isolated capability D1, Forge D1, Eval Forge, Learning Forge and Companion Profile migration/smoke checks passed.
@@ -43,13 +43,13 @@
 - Added hash/validation, API, store, migration and D1 lifecycle tests for applied-task evidence.
 - Initial RED run on the test-only commit failed because the digest helper did not yet exist, as intended.
 - A later quota regression test caught an application preflight threshold that did not match the stricter D1 per-node limit. The store threshold was corrected to use the shared quota constant; D1 triggers remain the concurrency-safe authority.
-- The final verified head is `56aa8e05220d345c3f7470dac0a2f0ac8aaf1ade`; both push and PR workflows passed with 989 Node tests (988 pass, one skipped), runtime/Queue integration and all isolated D1/Forge/Companion smoke checks.
+- The final verified head is `56aa8e05220d345c3f7470dac0a2f0ac8aaf1ade`; both push and PR workflows passed with 1002 Node tests (1001 pass, one skipped), runtime/Queue integration and all isolated D1/Forge/Companion smoke checks.
 
 ## Next engineering gates
 
 1. **Independent reviewer identity:** establish a distinct authenticated reviewer principal and separation-of-duties before accepting human review. The current single-owner session is not a multi-person identity system.
 2. **User-controlled artifact inspection:** design a privacy-preserving, time-bounded review handoff that lets an authorised reviewer inspect the learner's original artifact without turning AEGIS into a permanent file store. Until this exists, receipts are provenance fingerprints only.
-3. **Learning user experience:** add Learning Path authoring/registration and a curated starter catalogue; the new learner evidence workspace currently depends on an already registered path.
+3. **Learning user experience:** add a curated starter catalogue, guided node authoring instead of JSON-only path creation, and a user-friendly new-version workflow. Current path registration uses an editable JSON definition.
 4. **Companion renderer:** the current avatar is a CSS presentation placeholder. Proposed direction: a distinctive, expressive, stylised 3D human companion with a restrained semi-realistic look (avoid uncanny photorealism), configurable appearance, accessible presence states, reduced-motion/static fallback and provider-neutral rendering. No mandatory paid avatar/voice service.
 5. **Feature-level product inventory:** score each capability separately for working UI, persistence, permissions, recovery, accessibility, tests and deployment readiness. Do not report completion percentages from commits or research volume.
 6. **Guardian pagination:** current history is bounded to the newest 100 events; add cursor pagination only if real catalogue use justifies it.
