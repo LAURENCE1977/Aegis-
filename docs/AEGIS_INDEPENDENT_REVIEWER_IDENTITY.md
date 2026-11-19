@@ -30,7 +30,7 @@ Until both reviewer secrets are configured, reviewer-only operations fail closed
 - Reviewer sign-in is at `/api/reviewer-login` and uses `__Host-aegis_reviewer_session`.
 - Both cookies are HttpOnly, Secure, SameSite=Strict, host-only, and have a 12-hour lifetime.
 - Reviewer tokens are signed with `AEGIS_REVIEWER_SESSION_SECRET` and must contain the fixed `reviewer` principal. Owner tokens cannot be replayed as reviewer tokens.
-- Guardian Resource review transitions require the reviewer session. Resource reads and owner-scoped catalogue operations remain owner-authenticated.
+- Guardian Resource review transitions require the reviewer session. Read-only approval and Guardian catalogue/resource-detail routes accept either the owner or reviewer session. Guardian Resource intake remains owner-only.
 - General capability approval decisions and agent-run approval decisions require the reviewer session. Approval requests remain bound to the owner principal and exact operation.
 - Agent-run runtime authorisation still requires the owner session, an approval whose decision actor is `reviewer`, and the existing active exact-resource Sentinel grant. Recording a review does not execute a run.
 - The reviewer principal has no general owner API access and does not receive capability grants or execution authority.
