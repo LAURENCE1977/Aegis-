@@ -116,3 +116,53 @@ Recommended sequence:
 - CADAM README, package.json and LICENSE.
 
 This review did not install, run, connect, copy or deploy any candidate. Licence verification is limited to the checked repository LICENSE files and does not replace review of transitive dependencies, assets or any later version.
+
+
+## 1A. Ghost identity check — multiple unrelated repositories share this name
+
+The Instagram reference is not conclusively identified from the public evidence retrieved. The creator attribution to Robert Guiterraz was not independently verified. Do not treat any one of these repositories as the Reel's project without a direct Reel link or matching screenshot.
+
+### [ghostapp-ai/ghost](https://github.com/ghostapp-ai/ghost) — likely meaning of "Ghost platform"
+
+- GitHub metadata currently reports `NOASSERTION`, but the inspected root `LICENSE` and `package.json` explicitly state MIT. The root licence reserves any `pro/` directory, if present, to a separate `pro/LICENSE`; no top-level `pro/` directory was present in the inspected 319-entry recursive tree.
+- The inspected recursive Git tree contained 319 entries and was not truncated. The repository is a Tauri v2 + Rust + React application; the root README and core source files, product/roadmap/security documents, Cargo manifest and package manifest were inspected.
+- Product direction: local-first "Agent OS" with file indexing, FTS5/vector search, native Candle embeddings, local Qwen GGUF chat/agent inference, ReAct tool calling, MCP client/server, AG-UI, A2UI and A2A. The app advertises Windows/macOS/Linux/Android releases and says iOS is "ready", but the README's download table has no iOS release.
+- The README's "zero cloud" claim needs a qualification: the first-run model download is from Hugging Face over HTTPS; optional Ollama is localhost; MCP servers may themselves be remote/external. Its Security document describes zero telemetry and only Hugging Face first-run model download plus localhost Ollama as network exceptions.
+- Pricing is not simply "everything free": the inspected PRODUCT.md describes Free ($0), Pro ($8/month) and Teams ($15/user/month), with semantic search, full MCP catalogue and team capabilities listed as paid tiers. The main application licence is MIT; feature availability/pricing is a separate product decision.
+- The native agent uses local Qwen model tiers, with a ReAct loop and bounded iteration/tool-call limits. Its agent configuration defaults `auto_approve_safe=true`; code classifies read-only built-ins as Safe, ordinary file writes as Moderate, and shell commands as Dangerous (always approval-required). Sensitive path detection is substring-based and external MCP tool risk is heuristic. This is not a substitute for AEGIS's exact capability/resource/scope/connection/approval policy.
+- The MCP catalogue can install runtimes and configure/connect third-party MCP servers. That is a supply-chain and execution boundary: no one-click install or auto-connect should be copied into AEGIS without pinned packages, verified provenance/licences, isolated execution, least privilege, egress policy, secret custody and explicit approval.
+- AEGIS decision: **high-value architecture reference, not a replacement for AEGIS and not yet an adopted dependency**. Study the local model fallback chain, hybrid local search, protocol adapters and capability discovery UX. Retain AEGIS as the canonical project/workspace, memory, task ledger, Sentinel, approval, secrets and audit authority. The Android release could be a research option; no evidence yet establishes reliable ChromeOS/iPad browser compatibility or suitability for this user's iPad hardware. Do not install it or move user data into it as part of this research.
+
+### [NORTHTEKDevs/ghost](https://github.com/NORTHTEKDevs/ghost) — desktop computer-use tool, not the same app
+
+- Root LICENSE is MIT. The inspected recursive tree contained 345 entries and was not truncated; README, SECURITY.md, Cargo workspace manifest, MCP server, HTTP server, shell/session code, focus policy, audit and doctor implementation were inspected.
+- Provides local MCP stdio, CLI and REST control for native Windows/Linux desktop apps, windows, browser tabs and terminal sessions. Its purpose is verified desktop automation, not a unified ChatGPT/Claude account cockpit.
+- Security policy says the MCP server is stdio-only; the HTTP server binds `127.0.0.1:7878` by default and has **no authentication**. The address can be changed, so exposing it to a network would hand desktop control to anyone who can reach it. The shell can run arbitrary commands and can be disabled with `GHOST_SHELL=off`.
+- Its default background-focus policy, independent foreground-interference audit, explicit emergency stop and action verification are useful design patterns. AEGIS should adopt the concepts of verified action receipts, observable state, foreground safety and a global stop control, not grant the tool broad desktop authority.
+- AEGIS decision: **use as a reference for a future opt-in, separately isolated desktop worker**. It is not a browser-only service and is not directly usable from an iPad or phone without a supported Windows/Linux host. No binary, service, MCP server or shell was installed or run.
+
+### [zruss11/Phantom](https://github.com/zruss11/Phantom) — closest match to "Claude and ChatGPT in one platform"
+
+- README describes one desktop cockpit for running Claude Code, Codex, Amp and OpenCode simultaneously, with unified ChatGPT subscription and Claude Code OAuth sign-in, parallel tasks, per-task Git worktrees, shared context, usage tracking and a local MCP server.
+- The inspected recursive tree contained 3,075 entries and was not truncated. README, MCP guide and Rust backend/Tauri manifests were inspected. The README's download table lists macOS Apple Silicon and Intel only. It requires installed coding-agent CLIs.
+- No root LICENSE file was present at the inspected default branch. Public source visibility is not an open-source licence; **do not copy, bundle or adapt its code** unless an explicit licence is added and reviewed.
+- Its worktrees provide task-level Git separation, not a security sandbox. Its local MCP server is documented as loopback-only with a bearer token and optional project allowlist; its tools include task/workspace deletion, so access still needs a strict owner-controlled boundary.
+- AEGIS decision: **strong product/workflow reference for the exact multi-agent cockpit idea, but not a usable or approved dependency**. It is macOS-only in the inspected release instructions and has no verified licence. AEGIS can implement the useful UX natively: provider/agent selection, parallel task views, task-linked context, usage/cost visibility and local MCP control, while retaining AEGIS Sentinel and its own worker isolation.
+
+### [CryptoDmitry/Ghost-Agent](https://github.com/CryptoDmitry/Ghost-Agent) — identity/provenance mismatch
+
+- GitHub metadata and root LICENSE report MIT, and the recursive tree contained 82 entries without truncation.
+- The current README describes a Coreon MCP execution engine and points to a separate Coreon repository/branch. However, `package.json` names the package `ralph-claude-code` and points its repository metadata to `frankbria/ralph-claude-code`; the implementation status document also describes Ralph CLI loops. This is a material project identity/provenance mismatch.
+- AEGIS decision: **quarantine from adoption until upstream identity, current source lineage, package metadata and actual purpose are reconciled**. Do not assume it is the Instagram Ghost or use its README as reliable evidence.
+
+### Overall Ghost conclusion
+
+The public evidence points to several different products:
+- `ghostapp-ai/ghost`: local-first private Agent OS, MIT code, Free/Pro/Teams product tiers.
+- `NORTHTEKDevs/ghost`: local Windows/Linux computer-use MCP/CLI/HTTP worker, MIT.
+- `Phantom`: closest explicit ChatGPT + Claude Code cockpit, but macOS-only in README and no licence file found.
+- `CryptoDmitry/Ghost-Agent`: MIT-labelled repository with inconsistent README/package/source identity.
+
+The exact Robert Guiterraz Reel cannot be conclusively matched without its URL or a screenshot. The safest AEGIS direction is to combine the *ideas* — provider-neutral agent cockpit, local-first memory/search, optional desktop computer-use worker, MCP/ACP interoperability and task-linked shared context — under AEGIS's existing policy and execution architecture. Do not import any of these whole applications or expose a desktop-control server over the public network.
+
+No Ghost/Phantom package, binary, model, local agent, MCP server, credentials or service was installed, connected, run or deployed.
