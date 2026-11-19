@@ -22,7 +22,7 @@ test('learner UI loads registered paths and lists exact-node digest receipts', (
 
 test('learner UI uploads raw file bytes and withdraws receipts without rendering untrusted HTML', () => {
   assert.match(html, /body:\s*file/);
-  assert.match(html, /Content-Type['"]?\s*:\s*file\.type/);
+  assert.match(html, /headers:\s*\{\s*['"]Content-Type['"]:\s*mediaType/);
   assert.match(html, /method:\s*['"]DELETE['"]/);
   assert.match(html, /learningEvidenceList\.append\(entry\)/);
   assert.match(html, /entry\.textContent\s*=/);
