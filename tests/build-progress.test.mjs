@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const serviceWorker = await readFile(new URL('../service-worker.js', import.meta.url), 'utf8');
+const manifest = JSON.parse(await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8'));
+const platformStrategy = await readFile(new URL('../docs/PLATFORM_COMPATIBILITY.md', import.meta.url), 'utf8');
 const progress = JSON.parse(await readFile(new URL('../build-progress.json', import.meta.url), 'utf8'));
 
 test('build progress is reachable from the signed-in AEGIS navigation', () => {
@@ -24,9 +27,9 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.equal(progress.overallCompletion, null);
   assert.equal(progress.workstreams.length, 6);
   const audited = progress.workstreams.filter(item => item.auditStatus === 'audited');
-  assert.equal(audited.length, 4);
-  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'engineering', 'research', 'security']);
-  assert.ok(progress.workstreams.filter(item => !['companion', 'engineering', 'research', 'security'].includes(item.id))
+  assert.equal(audited.length, 5);
+  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'engineering', 'platform', 'research', 'security']);
+  assert.ok(progress.workstreams.filter(item => !['companion', 'engineering', 'platform', 'research', 'security'].includes(item.id))
     .every(item => item.auditStatus === 'pending'));
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
@@ -76,4 +79,20 @@ test('engineering audit keeps agent plans separate from executable authority', (
   assert.match(engineering.summary, /four fixed read-only tools/i);
   assert.match(engineering.summary, /no shell, filesystem, browser or arbitrary MCP execution/i);
   assert.match(engineering.summary, /OpenAI-compatible endpoint adapter remains planned/i);
+});
+
+
+test('platform audit distinguishes a responsive PWA shell from certified native support', () => {
+  const platform = progress.workstreams.find(item => item.id === 'platform');
+  assert.match(platform.summary, /docs\/PLATFORM_COMPATIBILITY\.md/);
+  assert.match(platform.summary, /manifest\.webmanifest/);
+  assert.match(platform.summary, /service-worker\.js/);
+  assert.match(platform.summary, /API, login and MCP responses are not cached/i);
+  assert.match(platform.summary, /real-device validation remains outstanding/i);
+  assert.equal(manifest.display, 'standalone');
+  assert.match(html, /viewport-fit=cover/);
+  assert.match(html, /@media \(max-width: 820px\)/);
+  assert.match(serviceWorker, /url\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(serviceWorker, /url\.pathname === '\/mcp'/);
+  assert.match(platformStrategy, /not a support certification/i);
 });
