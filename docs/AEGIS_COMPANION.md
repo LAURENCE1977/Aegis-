@@ -99,3 +99,12 @@ No production deployment, D1 provisioning or PR merge was performed.
 - No third-party model, character asset, renderer package, voice provider or audio capture was added.
 - **CI verified:** AEGIS tests workflow [44565947826](https://github.com/LAURENCE1977/Aegis-/actions/runs/44565947826) passed on renderer code head `71edd250f59cfd347a6338ec916f8acf560f20a5`: 1,024 Node tests, 1,023 passed, 0 failed, 1 skipped; the separate Cloudflare runtime integration test passed; all isolated capability, runtime/Queue, Forge, Eval Forge, Learning Forge and Companion Profile D1 migration/smoke checks passed. WebGL2 setup, cleanup and model-loader boundary regression tests are included.
 - **Still not verified in a real browser:** no live visual test or device benchmark has been run on iOS Safari, Android Chrome or desktop. The CI validates code contracts and backend integration, not GPU rendering on a physical device.
+
+
+## Renderer resilience follow-up — 19 November 2026
+
+- Added automatic WebGL2 context restoration while preserving the accessible CSS fallback if reinitialisation fails.
+- Added a second regression test for repeated context loss/restoration. It reproduced duplicate document visibility listeners and ResizeObserver instances (three registrations after two recoveries); the renderer now reuses its existing observer/listener lifecycle.
+- Renderer disposal removes the context listeners, visibility listener and observer.
+- Verified by workflow [44584048574](https://github.com/LAURENCE1977/Aegis-/actions/runs/44584048574) on code head `eb19c23785cbd82feb461d2d1b9e3a199e644448`: **1,037 Node tests, 1,036 passed, 0 failed, 1 skipped**; Cloudflare runtime integration and all isolated capability, runtime/Queue, Forge, Eval Forge, Learning and Companion Profile D1 checks passed.
+- No external renderer dependency or character asset was installed. The imported-model loader remains deliberately disabled pending the separate VRM adapter and asset-provenance gates.
