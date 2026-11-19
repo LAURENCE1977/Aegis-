@@ -3477,6 +3477,58 @@
             ' · Pricing evidence: ' + resource.pricing.evidenceUrl;
           item.append(heading, meta, source, detail, limits, evidence);
 
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'View audit history';
+          historyButton.setAttribute('aria-expanded', 'false');
+          const historyRegion = document.createElement('section');
+          historyRegion.hidden = true;
+          historyRegion.setAttribute('role', 'region');
+          historyRegion.setAttribute('aria-label', 'Guardian Resource audit history');
+          const historyList = document.createElement('ol');
+          historyRegion.append(historyList);
+          let historyLoaded = false;
+          historyButton.addEventListener('click', async () => {
+            if (!historyRegion.hidden) {
+              historyRegion.hidden = true;
+              historyButton.setAttribute('aria-expanded', 'false');
+              return;
+            }
+            historyRegion.hidden = false;
+            historyButton.setAttribute('aria-expanded', 'true');
+            if (historyLoaded) return;
+            historyList.textContent = 'Loading audit history…';
+            historyButton.disabled = true;
+            try {
+              const history = await controlApi('/api/guardian/resources/' +
+                encodeURIComponent(resource.id) + '?eventLimit=100');
+              historyList.replaceChildren();
+              const events = Array.isArray(history.events) ? history.events : [];
+              if (!events.length) {
+                historyList.textContent = 'No audit events recorded.';
+              } else {
+                events.forEach(event => {
+                  const entry = document.createElement('li');
+                  const occurredAt = new Date(event.occurredAt);
+                  const timestamp = Number.isNaN(occurredAt.getTime())
+                    ? event.occurredAt : occurredAt.toLocaleString();
+                  const detailText = event.detail && typeof event.detail.note === 'string'
+                    ? ' · ' + event.detail.note : '';
+                  const reviewerText = event.reviewerId ? ' · reviewer: ' + event.reviewerId : '';
+                  entry.textContent = timestamp + ' · ' + event.eventType + reviewerText + detailText;
+                  historyList.append(entry);
+                });
+              }
+              historyLoaded = true;
+            } catch (error) {
+              historyList.textContent = 'Audit history unavailable: ' + error.message;
+            } finally {
+              historyButton.disabled = false;
+            }
+          });
+          item.append(historyButton, historyRegion);
+
           let nextStatus = null;
           if (resource.status === 'draft') nextStatus = 'reviewed';
           else if (resource.status === 'reviewed') nextStatus = 'accepted';
