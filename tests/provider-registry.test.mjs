@@ -13,6 +13,8 @@ const registry = () => ({
     verifiedAt: '2026-11-15T18:00:00.000Z',
     models: [{
       id: 'model-a',
+      sourceUrl: 'https://developers.cloudflare.com/workers-ai/models/',
+      verifiedAt: '2026-11-15T18:00:00.000Z',
       contextTokens: 8192,
       maxOutputTokens: 1024,
       tasks: ['chat', 'simple'],
@@ -57,6 +59,18 @@ test('rejects unverified, stale-format or insecure provenance metadata', () => {
   assert.throws(() => validateProviderRegistry(badDate), /verified/i);
 });
 
+test('requires HTTPS source provenance and a canonical verification timestamp per model', () => {
+  const missing = registry();
+  delete missing.providers[0].models[0].sourceUrl;
+  assert.throws(() => validateProviderRegistry(missing), /source/i);
+  const insecure = registry();
+  insecure.providers[0].models[0].sourceUrl = 'http://example.com/model';
+  assert.throws(() => validateProviderRegistry(insecure), /https/i);
+  const badDate = registry();
+  badDate.providers[0].models[0].verifiedAt = 'last week';
+  assert.throws(() => validateProviderRegistry(badDate), /verified/i);
+});
+
 test('rejects duplicate provider/model IDs and invalid model capabilities', () => {
   const duplicate = registry();
   duplicate.providers.push({ ...duplicate.providers[0] });
@@ -72,7 +86,11 @@ test('lists only enabled models with supported task and a recent verification', 
     id: 'provider-b', adapterId: 'workers-ai', displayName: 'Future',
     status: 'disabled', termsUrl: 'https://example.com/terms',
     verifiedAt: '2026-11-15T18:00:00.000Z',
-    models: [{ id: 'model-b', contextTokens: 1000000, maxOutputTokens: 1000, tasks: ['research'] }],
+    models: [{
+      id: 'model-b', sourceUrl: 'https://example.com/model-b',
+      verifiedAt: '2026-11-15T18:00:00.000Z',
+      contextTokens: 1000000, maxOutputTokens: 1000, tasks: ['research'],
+    }],
   });
   const result = listEligibleModels(input, { task: 'chat', now: '2026-11-15T19:00:00.000Z', maxAgeMs: 86400000 });
   assert.deepEqual(result.map(model => model.id), ['model-a']);
@@ -92,6 +110,14 @@ test('fails closed for stale verification and malformed catalogue structure', ()
   assert.throws(() => validateProviderRegistry({ version: 1, providers: [] }), /providers/i);
 });
 
+test('excludes a model with stale model-specific evidence even when its provider record is fresh', () => {
+  const input = registry();
+  input.providers[0].verifiedAt = '2026-11-15T18:30:00.000Z';
+  input.providers[0].models[0].verifiedAt = '2026-11-14T18:00:00.000Z';
+  assert.deepEqual(listEligibleModels(input, {
+    task: 'chat', now: '2026-11-15T19:00:00.000Z', maxAgeMs: 86400000,
+  }), []);
+});
 
 test('preserves unknown provider pricing as null rather than reporting it as free', () => {
   const input = registry();
