@@ -17,9 +17,9 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 This is a policy/planning safeguard only. It does not verify provider invoices, enforce a durable spend ledger, or activate automatic failover. The planner is still not wired into AG-UI or the live model adapter.
 
 
-## Explicit free-only provider mode
+## Default free-first provider policy
 
-Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anthropic or Alibaba Qwen. In this mode only the existing Cloudflare Workers AI binding is permitted; no external provider request is made. The setting is opt-in and defaults to the existing provider-selection behavior. Invalid values fail closed. This is a provider-selection guard, not a guarantee of unlimited free usage: Workers AI has account-level quotas and may require a paid Cloudflare plan or billing configuration for usage beyond its free allowance. The setting does not yet provide automatic fallback if Workers AI is unavailable. Any future fallback must check provider quota and verified pricing before retrying; it must not silently route to a metered external provider.
+Cloudflare Workers AI remains the default provider. When `AEGIS_FREE_ONLY` is omitted, an explicitly selected external provider (Anthropic or Alibaba Qwen) is blocked before any network request. Operators must deliberately set `AEGIS_FREE_ONLY=false` to opt into those external providers. Setting `AEGIS_FREE_ONLY=true` also blocks external providers. Invalid values fail closed. This policy prevents accidental metered-provider use caused by a missing environment setting; it does not guarantee unlimited free usage. Workers AI remains subject to account-level quotas, service limits and Cloudflare terms, and may require paid billing for usage beyond an applicable free allowance. There is no automatic paid-provider fallback when Workers AI is unavailable or quota-limited.
 
 ## Design boundaries
 
@@ -43,7 +43,7 @@ Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anth
 
 1. **Trusted model/provider registry:** versioned provider and model metadata, evidence/provenance, verified context/output limits, licence/terms and last-checked time. External catalogues may suggest candidates but may not define arbitrary endpoints.
 2. **Durable token accounting:** D1 usage ledger with owner/project/provider/model attribution, estimated vs actual usage, idempotency, reservation/reconciliation, daily/monthly ceilings and append-only audit.
-3. **Adapter integration:** route the existing Workers AI and Qwen paths through the policy engine without changing current default behavior until verified.
+3. **Adapter integration:** connect the planner to live model selection only after a trusted registry has verified provider IDs, model IDs, context/output limits, prices and quota semantics. Preserve the default free-first policy; never fall back to a metered provider without explicit operator opt-in.
 4. **Free-tier discovery:** ingest public catalogue data as untrusted candidates, verify each provider against official docs/terms and keep quotas explicitly time-stamped.
 5. **Failover and local inference:** bounded retries, circuit breakers and optional local model adapters where the host/device can support them.
 
@@ -52,6 +52,4 @@ Set `AEGIS_FREE_ONLY=true` to prevent the live model adapter from selecting Anth
 PR #33 uses Node.js built-in tests. The first test-only commit intentionally produced a failing CI run (RED). The implementation commit then passed the repository's full Node.js 22 suite: GitHub Actions run 43754887238, 0 failures. The library currently has six focused tests covering estimation, routing, quota exhaustion, context rejection, context fitting and malformed inputs.
 
 
-## Default free-first provider policy
 
-The live model adapter now treats an omitted `AEGIS_FREE_ONLY` setting as free-only whenever an external provider is selected. Cloudflare Workers AI remains the default provider. Anthropic and Alibaba Qwen are blocked before network access unless the operator explicitly sets `AEGIS_FREE_ONLY=false`. Setting `AEGIS_FREE_ONLY=true` continues to block external providers; invalid values fail closed. This is a provider-selection safeguard, not a promise of unlimited free inference: Workers AI usage remains subject to Cloudflare's current quotas and terms. The safeguard does not yet connect the model catalogue and token planner to live model selection, and it does not provide a durable usage ledger or automatic failover.
