@@ -76,7 +76,7 @@ test('engineering audit keeps agent plans separate from executable authority', (
   assert.match(engineering.summary, /functions\/lib\/agent-tools\.mjs/);
   assert.match(engineering.summary, /four fixed read-only tools/i);
   assert.match(engineering.summary, /no LLM, tool, filesystem, browser, shell or external API calls/i);
-  assert.match(engineering.summary, /OpenAI-compatible endpoint adapter remains planned/i);
+  assert.match(engineering.summary, /OpenAI-compatible endpoint.*remain planned/i);
 });
 
 
@@ -86,7 +86,7 @@ test('platform audit distinguishes a responsive PWA shell from certified native 
   assert.match(platform.summary, /manifest\.webmanifest/);
   assert.match(platform.summary, /service-worker\.js/);
   assert.match(platform.summary, /authenticated API, login and MCP responses are explicitly excluded from cache/i);
-  assert.match(platform.summary, /real-device validation remains outstanding/i);
+  assert.match(platform.summary, /no real-device .* matrix has been completed/i);
   assert.equal(manifest.display, 'standalone');
   assert.match(html, /viewport-fit=cover/);
   assert.match(html, /@media \(max-width: 820px\)/);
