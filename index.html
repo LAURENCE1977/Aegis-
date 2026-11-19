@@ -3656,7 +3656,11 @@
         learningPathGuidedStatus.textContent = 'The JSON draft is invalid. Correct it before adding a guided node.';
         return;
       }
-      if (!pathDefinition || typeof pathDefinition !== 'object' || Array.isArray(pathDefinition) || !Array.isArray(pathDefinition.nodes)) {\n        learningPathGuidedStatus.textContent = 'The JSON draft must contain a Learning Path object with a nodes array.';\n        return;\n      }\n      const nodes = pathDefinition.nodes;
+      if (!pathDefinition || typeof pathDefinition !== 'object' || Array.isArray(pathDefinition) || !Array.isArray(pathDefinition.nodes)) {
+        learningPathGuidedStatus.textContent = 'The JSON draft must contain a Learning Path object with a nodes array.';
+        return;
+      }
+      const nodes = pathDefinition.nodes;
       if (nodes.some(node => node.id === nodeId)) {
         learningPathGuidedStatus.textContent = 'That node ID already exists in this draft.';
         return;
