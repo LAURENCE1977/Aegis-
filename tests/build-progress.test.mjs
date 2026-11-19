@@ -24,9 +24,9 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.equal(progress.overallCompletion, null);
   assert.equal(progress.workstreams.length, 6);
   const audited = progress.workstreams.filter(item => item.auditStatus === 'audited');
-  assert.equal(audited.length, 2);
-  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'research']);
-  assert.ok(progress.workstreams.filter(item => item.id !== 'companion' && item.id !== 'research')
+  assert.equal(audited.length, 3);
+  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'research', 'security']);
+  assert.ok(progress.workstreams.filter(item => !['companion', 'research', 'security'].includes(item.id))
     .every(item => item.auditStatus === 'pending'));
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
@@ -53,4 +53,15 @@ test('audited workstreams cite concrete implementation and research evidence', (
   assert.match(research.summary, /docs\/AEGIS_AGENT_RUNTIME_ECOSYSTEM_2026-11-19\.md/);
   assert.match(research.summary, /docs\/AEGIS_AGENT_CONTROL_AND_CAD_RESEARCH_2026-11-19\.md/);
   assert.match(research.summary, /Phantom.*licence/i);
+});
+
+
+test('security audit distinguishes implemented primitives from a deployed security service', () => {
+  const security = progress.workstreams.find(item => item.id === 'security');
+  assert.match(security.summary, /functions\/lib\/sentinel\.mjs/);
+  assert.match(security.summary, /functions\/lib\/secret-vault\.mjs/);
+  assert.match(security.summary, /AES-GCM/);
+  assert.match(security.summary, /human-always/i);
+  assert.match(security.summary, /D1 is not provisioned/i);
+  assert.match(security.summary, /post-execution audit can fail/i);
 });
