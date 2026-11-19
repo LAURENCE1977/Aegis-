@@ -1,5 +1,6 @@
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
 const TASKS = new Set(['simple', 'chat', 'coding', 'research', 'reasoning']);
+const ADAPTERS = new Set(['workers-ai', 'anthropic', 'alibaba-qwen']);
 const PROVIDER_KEYS = new Set(['id', 'adapterId', 'displayName', 'status', 'termsUrl', 'verifiedAt', 'models']);
 const MODEL_KEYS = new Set(['id', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
 
@@ -59,7 +60,7 @@ export function validateProviderRegistry(registry) {
       throw new TypeError('Invalid or duplicate provider identifier');
     }
     providerIds.add(provider.id);
-    if (typeof provider.adapterId !== 'string' || !ID.test(provider.adapterId)) {
+    if (typeof provider.adapterId !== 'string' || !ADAPTERS.has(provider.adapterId)) {
       throw new TypeError('Invalid provider adapter identifier');
     }
     if (typeof provider.displayName !== 'string' || !provider.displayName.trim() || provider.displayName.length > 100) {
