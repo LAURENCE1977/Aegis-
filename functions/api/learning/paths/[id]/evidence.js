@@ -1,5 +1,5 @@
 import { authorizeOwner, isOwnerWriteRequest, jsonResponse } from '../../../../lib/owner-api.mjs';
-import { recordLearningAppliedTaskEvidence, LearningMasteryPathNotFoundError, LearningAppliedEvidenceLimitError } from '../../../../lib/learning-mastery-evidence-store.mjs';
+import { recordLearningAppliedTaskEvidence, listLearningAppliedTaskEvidence, LearningMasteryPathNotFoundError, LearningAppliedEvidenceLimitError } from '../../../../lib/learning-mastery-evidence-store.mjs';
 import { MAX_LEARNING_ARTIFACT_BYTES, validateLearningArtifactUpload } from '../../../../lib/learning-applied-evidence.mjs';
 
 const OWNER_ID = 'owner';
@@ -36,6 +36,38 @@ async function readBoundedBody(request) {
     offset += chunk.byteLength;
   }
   return bytes;
+}
+
+
+export async function onRequestGet({ request, env, params }) {
+  const denied = await authorizeOwner(request, env);
+  if (denied) return denied;
+  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+    return jsonResponse({ error: 'Learning Forge storage is not configured.' }, 503);
+  }
+  const query = new URL(request.url).searchParams;
+  for (const key of query.keys()) {
+    if (!['version', 'nodeId'].includes(key) || query.getAll(key).length !== 1) {
+      return jsonResponse({ error: 'Invalid or repeated Learning evidence query parameter.' }, 400);
+    }
+  }
+  const pathId = params?.id;
+  const version = query.get('version');
+  const nodeId = query.get('nodeId');
+  if (typeof pathId !== 'string' || !ID_PATTERN.test(pathId) ||
+      typeof version !== 'string' || !VERSION_PATTERN.test(version) ||
+      typeof nodeId !== 'string' || !ID_PATTERN.test(nodeId)) {
+    return jsonResponse({ error: 'Exact registered path, version and node identity are required.' }, 400);
+  }
+  try {
+    const evidence = await listLearningAppliedTaskEvidence(env.AEGIS_DB, OWNER_ID, pathId, version, nodeId);
+    return jsonResponse({ evidence, contentRetained: false, masteryVerified: false });
+  } catch (error) {
+    if (error instanceof LearningMasteryPathNotFoundError || error?.status === 404) {
+      return jsonResponse({ error: 'Exact registered Learning Path version or node not found.' }, 404);
+    }
+    return jsonResponse({ error: 'Learning applied-task evidence is temporarily unavailable.' }, 503);
+  }
 }
 
 export async function onRequestPost({ request, env, params }) {
