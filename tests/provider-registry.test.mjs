@@ -141,3 +141,20 @@ test('preserves explicitly verified zero pricing as zero', () => {
   assert.equal(model.inputCost, 0);
   assert.equal(model.outputCost, 0);
 });
+
+
+test('keeps internal catalogue IDs separate from native provider model IDs', () => {
+  const input = registry();
+  input.providers[0].models[0].providerModelId = '@cf/meta/llama-3.3-70b-instruct';
+  const [model] = listEligibleModels(input, {
+    task: 'chat', now: '2026-11-15T19:00:00.000Z', maxAgeMs: 86400000,
+  });
+  assert.equal(model.id, 'model-a');
+  assert.equal(model.providerModelId, '@cf/meta/llama-3.3-70b-instruct');
+});
+
+test('rejects malformed native provider model identifiers', () => {
+  const input = registry();
+  input.providers[0].models[0].providerModelId = 'https://attacker.example/model';
+  assert.throws(() => validateProviderRegistry(input), /provider model/i);
+});
