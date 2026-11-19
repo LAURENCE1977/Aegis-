@@ -9,12 +9,16 @@ import {
 const OWNER_ID = 'owner';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_EVENT_LIMIT = 100;
+const RESOURCE_ID_PATTERN = /^resource-[a-f0-9]{32}$/;
 
 export async function onRequestGet({ request, env, params }) {
   if (!authConfigAvailable(env)) return jsonResponse({ error: 'Authentication is not configured.' }, 503);
   if (!(await isAuthorized(request, env))) return jsonResponse({ error: 'Authentication required.' }, 401);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Guardian Resource storage is not configured.' }, 503);
+  }
+  if (typeof params?.id !== 'string' || !RESOURCE_ID_PATTERN.test(params.id)) {
+    return jsonResponse({ error: 'Invalid Guardian Resource identifier.' }, 400);
   }
 
   const query = new URL(request.url).searchParams;
@@ -34,8 +38,8 @@ export async function onRequestGet({ request, env, params }) {
     if (!resource) return jsonResponse({ error: 'Guardian Resource not found.' }, 404);
     const events = await listGuardianResourceEvents(env.AEGIS_DB, OWNER_ID, params.id, eventLimit);
     return jsonResponse({ resource, events });
-  } catch (error) {
-    if (error instanceof TypeError) return jsonResponse({ error: error.message }, 400);
+  } catch {
+    // Any TypeError here is from persisted record/event validation, not request input.
     return jsonResponse({ error: 'Guardian Resource detail is temporarily unavailable.' }, 503);
   }
 }
