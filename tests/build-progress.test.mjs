@@ -27,10 +27,8 @@ test('overall completion stays unpublished until every workstream has an audited
   assert.equal(progress.overallCompletion, null);
   assert.equal(progress.workstreams.length, 6);
   const audited = progress.workstreams.filter(item => item.auditStatus === 'audited');
-  assert.equal(audited.length, 5);
-  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'engineering', 'platform', 'research', 'security']);
-  assert.ok(progress.workstreams.filter(item => !['companion', 'engineering', 'platform', 'research', 'security'].includes(item.id))
-    .every(item => item.auditStatus === 'pending'));
+  assert.equal(audited.length, 6);
+  assert.deepEqual(audited.map(item => item.id).sort(), ['companion', 'engineering', 'intelligence', 'platform', 'research', 'security']);
   assert.match(progress.progressPolicy, /not a measure of total product completion/i);
 });
 
@@ -95,4 +93,17 @@ test('platform audit distinguishes a responsive PWA shell from certified native 
   assert.match(serviceWorker, /url\.pathname\.startsWith\('\/api\/'\)/);
   assert.match(serviceWorker, /url\.pathname === '\/mcp'/);
   assert.match(platformStrategy, /not a support certification/i);
+});
+
+
+test('intelligence audit separates reusable foundations from an unintegrated routing plan', () => {
+  const intelligence = progress.workstreams.find(item => item.id === 'intelligence');
+  assert.match(intelligence.summary, /functions\/lib\/intelligence-engine\.mjs/);
+  assert.match(intelligence.summary, /functions\/lib\/provider-registry\.mjs/);
+  assert.match(intelligence.summary, /functions\/lib\/memory-substrate\.mjs/);
+  assert.match(intelligence.summary, /functions\/lib\/knowledge-retrieval\.mjs/);
+  assert.match(intelligence.summary, /functions\/lib\/model-provider\.mjs/);
+  assert.match(intelligence.summary, /planner is not wired into live provider routing/i);
+  assert.match(intelligence.summary, /no durable token ledger or automatic failover/i);
+  assert.match(intelligence.summary, /legacy KV notes endpoint/i);
 });
