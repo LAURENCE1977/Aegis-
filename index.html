@@ -2078,7 +2078,7 @@
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
-      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadGuardianResources(); }
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadLearningPaths(); loadGuardianResources(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'home') loadCompanionProfiles();
       if (panel === 'chat') userInput.focus();
