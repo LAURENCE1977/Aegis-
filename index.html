@@ -3627,7 +3627,7 @@
       const description = document.getElementById('learningPathGuidedDescription').value.trim();
       const nodeId = document.getElementById('learningPathGuidedNodeId').value.trim();
       const nodeTitle = document.getElementById('learningPathGuidedNodeTitle').value.trim();
-      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       const outcomes = splitLines(document.getElementById('learningPathGuidedOutcomes').value);
       const prerequisites = splitLines(document.getElementById('learningPathGuidedPrerequisites').value);
       const sourceRefs = splitLines(document.getElementById('learningPathGuidedSources').value);
@@ -3636,7 +3636,7 @@
         learningPathGuidedStatus.textContent = 'Use lowercase letters, numbers and hyphens for path and node IDs (2–64 characters).';
         return;
       }
-      if (!/^\\d+\\.\\d+\\.\\d+$/.test(version) || !title || !nodeTitle || !outcomes.length || !sourceRefs.length) {
+      if (!/^\d+\.\d+\.\d+$/.test(version) || !title || !nodeTitle || !outcomes.length || !sourceRefs.length) {
         learningPathGuidedStatus.textContent = 'Add a valid version, path title, node title, at least one outcome and at least one HTTPS source.';
         return;
       }
@@ -4082,7 +4082,7 @@
 
     guardianResourceForm.addEventListener('submit', async event => {
       event.preventDefault();
-      const splitLines = value => value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       guardianResourceSaveBtn.disabled = true;
       guardianResourceStatus.textContent = 'Saving Guardian Resource as a draft…';
       try {
