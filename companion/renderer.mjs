@@ -597,8 +597,13 @@ export function createCompanionRenderer(canvas, options = {}) {
 
     const prepared = await prepareModelResource(async () => resource);
     if (!prepared.prepared) {
-      // A renderer destroyed during asynchronous adapter work never adopts
-      // the candidate. The lifecycle disposes late resources after destroy.
+      // If disposal happened before the lifecycle accepted the candidate,
+      // ownership never transferred and the renderer must release it here.
+      if (prepared.reason === 'renderer-disposed') {
+        try { await resource.dispose(); } catch { /* best-effort cleanup */ }
+      }
+      // If destroy raced with lifecycle preparation, the lifecycle itself
+      // has already disposed the late candidate.
       return { loaded: false, reason: prepared.reason };
     }
     const committed = await commitModelResource(prepared.ticket);
