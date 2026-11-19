@@ -101,3 +101,19 @@ The existing Sentinel invocation path has two distinct audit boundaries:
 A production browser integration therefore needs a durable reconciliation path for missing outcome receipts. The broker should persist a bounded, tamper-evident execution receipt keyed by invocation ID and input digest, retry outcome-event delivery idempotently, and expose an operator-visible audit-degraded state until reconciliation succeeds. Receipt storage must not contain cookies, credentials, page bodies or raw form values. Reconciliation must never replay the browser action; it only repairs the audit record. If receipt persistence itself fails after a side effect, surface an explicit critical unresolved-outcome state and retain enough non-secret correlation metadata for manual investigation.
 
 Denied and pre-execution failures must also preserve Sentinel's audit-unavailable behaviour: inability to durably record a denial must never cause the requested browser action to run. Tests must separately cover pre-execution audit failure, post-execution audit failure, receipt retry, duplicate delivery, worker crash after side effect, and receipt-store failure. The broker must not claim that an action failed merely because its final audit write failed.
+
+## Ambiguous adapter outcomes and safe retry
+
+A browser action can take effect even when the adapter does not return normally. A timeout, worker disconnect, process crash, lost response or adapter exception may occur after a remote page has accepted a click, form submission, upload or other side effect. Therefore, an adapter exception is not proof that the action did not happen.
+
+Sentinel currently distinguishes policy authorisation from adapter outcome: an adapter exception is returned as an allowed invocation with `reasonCode: EXECUTION_FAILED`; if recording that failure event also fails, the result is `EXECUTION_FAILED_AUDIT_UNAVAILABLE`. The `allowed` field must not be interpreted as a successful action, and neither failure code proves that a remote side effect was absent. The browser adapter must preserve this distinction instead of flattening every non-success into a retryable failure.
+
+The broker must classify outcomes as:
+
+- **Confirmed success:** a worker receipt proves the exact invocation completed; record the outcome and return the bounded result.
+- **Confirmed no-effect failure:** the worker can prove dispatch never began or that the operation was rejected before any side effect; report failure with the correlated receipt.
+- **Unknown outcome:** dispatch may have begun but no authoritative receipt is available. Mark the invocation `outcome_unknown`, surface it to the operator, and reconcile by querying the same invocation/receipt identity. Do not automatically repeat the action.
+
+Every operation must carry a stable idempotency key derived from the invocation ID and exact input digest. The worker must persist a dispatch-start marker before crossing the side-effect boundary and a terminal receipt after it. For operations whose remote target does not support idempotency or status lookup, an unknown outcome requires human investigation before another attempt. A new invocation ID is not a safe way to retry an unresolved operation.
+
+Tests must simulate: remote side effect followed by dropped response; worker crash immediately before and immediately after dispatch; timeout while the page is still processing; duplicate delivery of the same invocation; retry with the same idempotency key; and an operator attempting to create a second invocation while the first is unresolved. The expected invariant is **at most one side-effecting dispatch per invocation**, with unresolved outcomes visible rather than silently retried. Reconciliation may update audit state but must never replay the browser action.
