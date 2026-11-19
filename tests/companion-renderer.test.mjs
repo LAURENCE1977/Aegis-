@@ -445,3 +445,30 @@ test('model adapter failures preserve the active model and reject incomplete res
   renderer.dispose();
   await renderer.modelCleanupPromise;
 });
+
+
+test('model adapter candidate is released when the renderer is disposed during loading', async () => {
+  let beginLoad;
+  let finishLoad;
+  let disposed = 0;
+  const started = new Promise(resolve => { beginLoad = resolve; });
+  const candidate = {
+    stats: { maxTextureDimension: 1024, drawCalls: 20 },
+    dispose() { disposed += 1; },
+  };
+  const renderer = createCompanionRenderer({ getContext: () => null, modelAdapter: {
+    formats: ['vrm'],
+    async load() {
+      beginLoad();
+      return new Promise(resolve => { finishLoad = resolve; });
+    },
+  } });
+  const loading = renderer.loadModel(validCompanionAsset(), new Blob(['hello']), webcrypto);
+  await started;
+  renderer.dispose();
+  await renderer.modelCleanupPromise;
+  finishLoad(candidate);
+  assert.deepEqual(await loading, { loaded: false, reason: 'renderer-disposed' });
+  assert.equal(disposed, 1);
+  assert.equal(renderer.activeModelResource, null);
+});
