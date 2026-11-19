@@ -203,7 +203,7 @@ export async function recordLearningAppliedTaskEvidence(
   if (!Number.isInteger(nodeCount?.total) || !Number.isInteger(ownerCount?.total)) {
     throw new TypeError('Stored Learning applied-task evidence counts are invalid');
   }
-  if (nodeCount.total >= 100 || ownerCount.total >= 500) {
+  if (nodeCount.total >= MAX_APPLIED_EVIDENCE || ownerCount.total >= 500) {
     throw new LearningAppliedEvidenceLimitError();
   }
 
