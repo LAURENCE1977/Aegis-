@@ -6,7 +6,7 @@ export function isSupportedProviderAdapter(adapterId) {
   return typeof adapterId === 'string' && ADAPTERS.has(adapterId);
 }
 const PROVIDER_KEYS = new Set(['id', 'adapterId', 'displayName', 'status', 'termsUrl', 'verifiedAt', 'models']);
-const MODEL_KEYS = new Set(['id', 'sourceUrl', 'verifiedAt', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
+const MODEL_KEYS = new Set(['id', 'providerModelId', 'sourceUrl', 'verifiedAt', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
 
 function exactKeys(value, allowed, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -38,7 +38,7 @@ function validHttpsUrl(value, label) {
   return value;
 }
 
-function validateModel(model, ids) {
+function validateProviderModelId(value) {\n  if (typeof value !== 'string' || value.length > 180 ||\n      !/^[A-Za-z0-9@][A-Za-z0-9@._/-]*$/.test(value) ||\n      value.includes('//') || value.split('/').some(part => !part || part === '.' || part === '..')) {\n    throw new TypeError('Invalid provider model identifier');\n  }\n}\n\nfunction validateModel(model, ids) {
   exactKeys(model, MODEL_KEYS, 'model');
   if (typeof model.id !== 'string' || !ID.test(model.id) || ids.has(model.id)) {
     throw new TypeError('Invalid or duplicate model identifier');
