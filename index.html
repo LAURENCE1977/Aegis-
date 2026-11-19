@@ -309,6 +309,8 @@
       content: ""; position: absolute; inset: 13%; border: 1px solid rgba(129,140,248,.15); border-radius: 50%;
     }
     .companion-orbit::after { inset: 27%; border-color: rgba(103,232,249,.12); }
+    .companion-render-canvas { position: absolute; inset: 0; width: 100%; height: 100%; min-height: inherit; display: block; pointer-events: none; }
+    .companion-presence[data-renderer="webgl2"] .companion-avatar { display: none; }
     .companion-avatar {
       position: relative; width: 164px; height: 218px; display: flex; flex-direction: column;
       align-items: center; justify-content: flex-start; filter: drop-shadow(0 16px 38px rgba(34,211,238,.12));
@@ -351,6 +353,123 @@
     .companion-profile-create { display: flex; gap: 8px; }
     .companion-profile-create button { flex: 0 0 auto; padding: 9px 13px; }
     .companion-profile-note { margin: 2px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    .companion-data-controls { width: 100%; margin-top: 7px; padding: 9px 10px; border: 1px solid rgba(160,180,210,.13); border-radius: 11px; background: rgba(255,255,255,.025); }
+    .companion-data-controls summary { color: var(--muted-strong); cursor: pointer; font-size: .72rem; font-weight: 700; }
+    .companion-data-controls-content { display: grid; gap: 8px; margin-top: 10px; }
+    .companion-data-controls-content button { min-height: 38px; }
+    #purgeCompanionProfiles { border-color: rgba(248,113,113,.42); color: #fecaca; }
+    #purgeCompanionProfiles:disabled { opacity: .55; }
+    .companion-data-controls-content input { width: 100%; min-width: 0; }
+    .companion-personality-settings {
+      width: 100%; margin-top: 8px; padding: 10px 11px;
+      border: 1px solid rgba(160,180,210,.13); border-radius: 11px;
+      background: rgba(255,255,255,.025);
+    }
+    .companion-personality-settings summary { color: var(--muted-strong); cursor: pointer; font-size: .73rem; font-weight: 700; }
+    .companion-setting-grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px 10px; margin-top: 12px; }
+    .companion-setting-grid label { align-self: center; color: var(--muted); font-size: .68rem; }
+    .companion-setting-grid output { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .companion-setting-grid input[type="range"] { grid-column: 1 / -1; width: 100%; min-width: 0; accent-color: var(--accent-strong); }
+    .companion-setting-grid select { grid-column: 1 / -1; width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 10px; color: var(--text); background: rgba(5,10,18,.72); }
+    .companion-setting-grid button { grid-column: 1 / -1; min-height: 38px; }
+    .companion-setting-grid .companion-profile-note { grid-column: 1 / -1; }
+    .companion-stage[data-visual-preset="neutral"] .avatar-light,
+    .companion-mode-presence[data-visual-preset="neutral"] .avatar-light {
+      background: rgba(226,232,240,.86); box-shadow: 0 0 12px rgba(226,232,240,.55);
+    }
+    .companion-stage[data-visual-preset="custom"] .avatar-light,
+    .companion-mode-presence[data-visual-preset="custom"] .avatar-light {
+      background: rgba(196,181,253,.9); box-shadow: 0 0 15px rgba(167,139,250,.72);
+    }
+    .companion-mode-action { width: 100%; max-width: 320px; margin-top: 14px; display: grid; gap: 7px; }
+    .companion-mode-action button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .companion-mode-action p { margin: 0; color: var(--muted); font-size: .66rem; line-height: 1.45; }
+    body.companion-mode-open { overflow: hidden; }
+    #appPanel.companion-mode-active { display: block; }
+    #appPanel.companion-mode-active > .toolbar { display: none; }
+    .companion-mode-overlay:not([hidden]) {
+      position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column;
+      gap: 18px; padding: clamp(16px, 2.5vw, 34px);
+      overflow: auto; color: var(--text);
+      background:
+        radial-gradient(ellipse at 14% 0%, rgba(34,211,238,.13), transparent 38rem),
+        radial-gradient(ellipse at 88% 78%, rgba(99,102,241,.12), transparent 34rem),
+        #080b12;
+    }
+    .companion-mode-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      width: min(100%, 1600px); margin: 0 auto; padding: 2px 2px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+    .companion-mode-kicker { margin: 0 0 5px; color: #8da9bb; font-size: .64rem; font-weight: 780; letter-spacing: .16em; }
+    .companion-mode-header h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.4rem); letter-spacing: -.055em; }
+    .companion-mode-header-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+    .companion-mode-indicator { color: #9cc7ca; font-size: .66rem; font-weight: 750; letter-spacing: .1em; }
+    .companion-mode-layout {
+      display: grid; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.15fr);
+      gap: 18px; width: min(100%, 1600px); margin: 0 auto; flex: 1; min-height: 0;
+    }
+    .companion-mode-presence-panel, .companion-mode-chat-panel {
+      min-width: 0; border: 1px solid var(--border); border-radius: 20px;
+      background: linear-gradient(145deg, rgba(18,26,41,.94), rgba(12,18,29,.96));
+      box-shadow: var(--shadow);
+    }
+    .companion-mode-presence-panel {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: clamp(18px, 3vw, 32px); overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(34,211,238,.13), transparent 52%),
+        linear-gradient(155deg, rgba(16,30,45,.96), rgba(9,15,26,.99));
+    }
+    .companion-mode-presence { width: 100%; max-width: 560px; min-height: clamp(300px, 54vh, 570px); flex: 0 0 auto; }
+    .companion-mode-presence .companion-orbit { width: min(90%, 440px); }
+    .companion-mode-presence .companion-avatar { transform: scale(1.55); }
+    @keyframes companion-presence-pulse {
+      0%, 100% { opacity: .68; transform: scale(.94); }
+      50% { opacity: 1; transform: scale(1.12); }
+    }
+    .companion-mode-presence[data-presence="thinking"] .avatar-light,
+    .companion-stage[data-presence="thinking"] .avatar-light,
+    .companion-mode-presence[data-presence="responding"] .avatar-light,
+    .companion-stage[data-presence="responding"] .avatar-light {
+      animation: companion-presence-pulse 1.8s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .companion-mode-presence .avatar-light,
+      .companion-stage .avatar-light { animation: none !important; }
+    }
+    .companion-mode-profile-copy { width: min(100%, 440px); text-align: center; }
+    .companion-mode-profile-copy h3 { margin: 0 0 7px; font-size: 1.35rem; letter-spacing: -.035em; }
+    .companion-mode-profile-copy p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+    .companion-mode-profile-copy #companionModeState { margin-top: 10px; color: #8da9bb; font-size: .7rem; }
+    .companion-mode-chat-panel { display: flex; flex-direction: column; min-height: 0; padding: clamp(12px, 1.8vw, 22px); }
+    #companionModeChatSlot { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 12px; }
+    #companionModeChatSlot .project-context { margin: 0; }
+    #companionModeChatSlot #chatBox { flex: 1; min-height: 300px; max-height: none; margin: 0; }
+    #companionModeChatSlot .input-area { margin: 0; }
+    #companionModeChatSlot > .status { margin: 0; }
+    @media (max-width: 820px) {
+      .companion-mode-overlay:not([hidden]) { gap: 12px; padding: 12px; }
+      .companion-mode-header { align-items: flex-start; flex-direction: column; }
+      .companion-mode-header-actions { width: 100%; justify-content: space-between; }
+      .companion-mode-layout { grid-template-columns: minmax(0, 1fr); }
+      .companion-mode-presence-panel { display: grid; grid-template-columns: minmax(130px, .65fr) minmax(0, 1fr); gap: 8px; }
+      .companion-mode-presence { min-height: 190px; max-width: 260px; }
+      .companion-mode-presence .companion-orbit { width: 190px; }
+      .companion-mode-presence .companion-avatar { transform: scale(.9); }
+      .companion-mode-profile-copy { text-align: left; }
+      .companion-mode-chat-panel { min-height: 58vh; }
+      #companionModeChatSlot #chatBox { min-height: 38vh; }
+    }
+    @media (max-width: 520px) {
+      .companion-mode-header-actions { align-items: flex-start; flex-direction: column; }
+      .companion-mode-presence-panel { grid-template-columns: minmax(0, 1fr); }
+      .companion-mode-presence { min-height: 170px; margin: 0 auto; }
+      .companion-mode-presence .companion-orbit { width: 165px; }
+      .companion-mode-presence .companion-avatar { transform: scale(.72); }
+      .companion-mode-profile-copy { text-align: center; }
+      .companion-mode-chat-panel { min-height: 60vh; padding: 10px; }
+    }
     @media (max-width: 520px) {
       .companion-profile-controls { max-width: 100%; text-align: left; }
     }
@@ -675,7 +794,7 @@
         <div class="companion-copy">
           <h2 id="companionTitle">Here with you.</h2>
           <p>Agent AEGIS is your personal guardian: an intelligent companion designed to understand your context, help you think things through and support you across your devices — always with you in control.</p>
-          <p class="companion-status" id="companionStatus" aria-live="polite">Companion presentation layer · interactive avatar runtime is in development.</p>
+          <p class="companion-status" id="companionStatus" aria-live="polite">3D procedural companion prototype where WebGL2 is available · imported avatars and voice are not connected.</p>
           <div class="companion-profile-controls" aria-label="Companion profile controls">
             <label for="companionProfileSelect">Your companion</label>
             <select id="companionProfileSelect">
@@ -686,7 +805,48 @@
               <input id="customCompanionName" type="text" maxlength="48" autocomplete="off" placeholder="Give your companion a name" />
               <button id="createCompanionProfile" type="button">Create</button>
             </div>
-            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Custom profiles stay in this browser session only. Secure account saving is not connected yet.</p>
+            <p id="companionProfileStatus" class="companion-profile-note" aria-live="polite">Loading saved companion profiles…</p>
+            <details class="companion-personality-settings">
+              <summary>Personalise your companion</summary>
+              <div class="companion-setting-grid">
+                <label for="companionWarmth">Warmth <output id="companionWarmthValue">70</output></label>
+                <input id="companionWarmth" type="range" min="0" max="100" value="70" />
+                <label for="companionHumour">Humour <output id="companionHumourValue">35</output></label>
+                <input id="companionHumour" type="range" min="0" max="100" value="35" />
+                <label for="companionDirectness">Directness <output id="companionDirectnessValue">65</output></label>
+                <input id="companionDirectness" type="range" min="0" max="100" value="65" />
+                <label for="companionInitiative">Initiative <output id="companionInitiativeValue">50</output></label>
+                <input id="companionInitiative" type="range" min="0" max="100" value="50" />
+                <label for="companionVerbosity">Response detail</label>
+                <select id="companionVerbosity">
+                  <option value="concise">Concise</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="detailed">Detailed</option>
+                </select>
+                <label for="companionVisualPreset">Visual theme</label>
+                <select id="companionVisualPreset">
+                  <option value="aegis">AEGIS</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="custom">Custom glow</option>
+                </select>
+                <button id="saveCompanionSettings" type="button" disabled>Save companion settings</button>
+                <p id="companionSettingsStatus" class="companion-profile-note" role="status" aria-live="polite">Custom presentation settings do not change permissions, tools or memory access.</p>
+              </div>
+            </details>
+            <details class="companion-data-controls">
+              <summary>Privacy &amp; saved profile data</summary>
+              <div class="companion-data-controls-content">
+                <button id="exportCompanionProfiles" type="button" class="secondary" disabled>Export profiles and history</button>
+                <label for="purgeCompanionConfirmation">To permanently delete saved custom profiles and their history, type DELETE MY COMPANION PROFILES.</label>
+                <input id="purgeCompanionConfirmation" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Type the exact confirmation phrase" />
+                <button id="purgeCompanionProfiles" type="button" class="secondary danger" disabled>Delete custom profiles and history</button>
+                <p id="companionDataStatus" class="companion-profile-note" role="status" aria-live="polite">Export and deletion are available when secure account profile storage is connected. The deletion audit retains only a minimal content-free event.</p>
+              </div>
+            </details>
+          </div>
+          <div class="companion-mode-action">
+            <button id="openCompanionMode" type="button">Enter full-screen companion mode <span aria-hidden="true">↗</span></button>
+            <p>3D procedural prototype where supported · imported lifelike avatars and voice are not connected yet.</p>
           </div>
         </div>
       </section>
@@ -717,6 +877,38 @@
             </button>
           </div>
         </section>
+      </section>
+      <section id="companionModeOverlay" class="companion-mode-overlay" hidden aria-labelledby="companionModeTitle">
+        <header class="companion-mode-header">
+          <div>
+            <p class="companion-mode-kicker">AGENT AEGIS / YOUR PERSONAL GUARDIAN</p>
+            <h2 id="companionModeTitle">Here with you.</h2>
+          </div>
+          <div class="companion-mode-header-actions">
+            <span class="companion-mode-indicator">TEXT MODE · VOICE NOT CONNECTED</span>
+            <button id="closeCompanionMode" class="secondary" type="button">Close companion</button>
+          </div>
+        </header>
+        <div class="companion-mode-layout">
+          <section class="companion-mode-presence-panel" aria-label="Companion presence">
+            <div id="companionModeVisual" class="companion-presence companion-mode-presence" role="img" aria-label="Stylised Agent AEGIS avatar presentation. A lifelike avatar runtime is not connected.">
+              <div class="companion-orbit" aria-hidden="true"></div>
+              <div class="companion-avatar" aria-hidden="true">
+                <span class="avatar-head"></span>
+                <span class="avatar-body"></span>
+                <span class="avatar-light"></span>
+              </div>
+            </div>
+            <div class="companion-mode-profile-copy">
+              <h3 id="companionModeProfileTitle">Agent AEGIS</h3>
+              <p id="companionModeProfileDescription">Your Personal Guardian · one shared intelligence and security system.</p>
+              <p id="companionModeState" role="status" aria-live="polite">3D procedural prototype where supported. Microphone capture and spoken responses are not connected.</p>
+            </div>
+          </section>
+          <section class="companion-mode-chat-panel" aria-label="Live companion conversation">
+            <div id="companionModeChatSlot"></div>
+          </section>
+        </div>
       </section>
       <section id="chatSection">
 
@@ -755,7 +947,7 @@
         <h3>Saved source candidates</h3>
         <div id="forgeCandidateList" aria-live="polite"></div>
         <h3>Knowledge Library</h3>
-        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Only owner-reviewed high/medium evidence can be accepted; accepted records are not yet automatically injected into agent plans.</p>
+        <p class="memory-help">Save reusable findings with attributable HTTPS sources, limitations and capability tags. Every submission starts as a draft. Accepted high/medium evidence is ranked against each Project Space agent objective and attached as untrusted reference data; it never grants permissions.</p>
         <form class="memory-form" id="forgeKnowledgeForm">
           <label for="forgeKnowledgeTitle">Knowledge title</label>
           <input id="forgeKnowledgeTitle" maxlength="200" required placeholder="A clear, reusable finding" />
@@ -802,6 +994,156 @@
         <textarea id="forgeKnowledgeReviewNote" rows="2" maxlength="1000" placeholder="Explain what you checked, evidence quality and remaining limitations."></textarea>
         <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
         <div id="forgeKnowledgeList" aria-live="polite"></div>
+        <h3>Learning Forge</h3>
+        <p class="memory-help">Register immutable learning-path versions, then attach digest-only applied-work receipts to exact nodes. Paths store learning metadata and source links, not copied course content.</p>
+        <div class="memory-form" aria-labelledby="learningPathStarterLabel">
+          <label id="learningPathStarterLabel" for="learningPathStarterSelect">Start with a curated learning path</label>
+          <select id="learningPathStarterSelect">
+            <option value="">Choose a starter path…</option>
+            <option value="javascript-foundations">JavaScript Foundations · beginner</option>
+            <option value="web-safety-foundations">Web Safety Foundations · beginner</option>
+          </select>
+          <button id="learningPathLoadStarterBtn" class="secondary" type="button">Load starter into editor</button>
+          <p class="memory-help">Loading a starter only fills the local editor; it is not registered until you submit the form. Examples contain learning metadata and source links only, not copied course content.</p>
+        </div>
+        <div class="memory-form" id="learningPathGuidedEditor" aria-labelledby="learningPathGuidedHeading">
+          <h4 id="learningPathGuidedHeading">Guided path builder</h4>
+          <p class="memory-help">Create a path and add learning nodes using ordinary fields. Each node is added to the editable draft below; nothing is registered until you submit the separate registration form.</p>
+          <label for="learningPathGuidedId">Path ID</label>
+          <input id="learningPathGuidedId" maxlength="64" value="javascript-foundations" autocomplete="off">
+          <label for="learningPathGuidedVersion">Version</label>
+          <input id="learningPathGuidedVersion" maxlength="32" value="1.0.0" autocomplete="off">
+          <label for="learningPathGuidedTitle">Path title</label>
+          <input id="learningPathGuidedTitle" maxlength="120" value="JavaScript Foundations">
+          <label for="learningPathGuidedDescription">Description</label>
+          <textarea id="learningPathGuidedDescription" rows="2" maxlength="1000">A practical introduction to JavaScript fundamentals.</textarea>
+          <h5>Add a learning node</h5>
+          <label for="learningPathGuidedNodeId">Node ID</label>
+          <input id="learningPathGuidedNodeId" maxlength="64" placeholder="e.g. javascript-functions" autocomplete="off">
+          <label for="learningPathGuidedNodeTitle">Node title</label>
+          <input id="learningPathGuidedNodeTitle" maxlength="120" placeholder="e.g. Functions and scope">
+          <label for="learningPathGuidedOutcomes">Learning outcomes (one per line)</label>
+          <textarea id="learningPathGuidedOutcomes" rows="3" maxlength="4000" placeholder="Explain what the learner should understand or be able to do"></textarea>
+          <label for="learningPathGuidedPrerequisites">Prerequisite node IDs (one per line, optional)</label>
+          <textarea id="learningPathGuidedPrerequisites" rows="2" maxlength="2000" placeholder="javascript-basics"></textarea>
+          <label for="learningPathGuidedDifficulty">Difficulty</label>
+          <select id="learningPathGuidedDifficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+          <label for="learningPathGuidedSources">Source links (HTTPS, one per line)</label>
+          <textarea id="learningPathGuidedSources" rows="3" maxlength="4000" placeholder="https://developer.mozilla.org/"></textarea>
+          <button id="learningPathGuidedAddNodeBtn" class="secondary" type="button">Add node to local draft</button>
+          <p class="status" id="learningPathGuidedStatus" role="status" aria-live="polite">Guided builder edits a local draft only. Add at least one node before registering.</p>
+        </div>
+        <form class="memory-form" id="learningPathForm">
+          <label for="learningPathGraphJson">Learning Path definition (JSON)</label>
+          <textarea id="learningPathGraphJson" rows="9" maxlength="128000" spellcheck="false">{
+  "id": "javascript-foundations",
+  "version": "1.0.0",
+  "title": "JavaScript Foundations",
+  "description": "A practical introduction to JavaScript fundamentals.",
+  "nodes": [
+    {
+      "id": "javascript-basics",
+      "title": "JavaScript basics",
+      "outcomes": ["Explain variables, values and basic expressions"],
+      "prerequisites": [],
+      "difficulty": "beginner",
+      "sourceRefs": ["https://developer.mozilla.org/en-US/docs/Web/JavaScript"],
+      "contentLicenseStatus": "link-only"
+    }
+  ]
+}</textarea>
+          <button id="learningPathRegisterBtn" type="submit">Register immutable path version</button>
+        </form>
+        <p class="status" id="learningPathAuthorStatus" role="status" aria-live="polite">Path definition is an editable local draft; it is not registered until submitted.</p>
+        <p class="memory-help">Applied-work receipts are bound to a registered path and node. AEGIS stores the SHA-256 digest and minimal metadata only — never the uploaded file. Keep your original artifact; independent reviewer workflow is not available yet and this does not certify mastery.</p>
+        <div class="memory-form">
+          <label for="learningPathSelect">Registered Learning Path</label>
+          <select id="learningPathSelect" required>
+            <option value="">Load a registered path…</option>
+          </select>
+          <label for="learningNodeSelect">Learning node</label>
+          <select id="learningNodeSelect" required disabled>
+            <option value="">Choose a path first…</option>
+          </select>
+          <button id="learningEvidenceRefreshBtn" class="secondary" type="button">Refresh learning paths and receipts</button>
+        </div>
+        <form class="memory-form" id="learningEvidenceForm">
+          <label for="learningEvidenceFile">Applied-work artifact (PDF, text, PNG, JPEG or other binary up to 2 MiB)</label>
+          <input id="learningEvidenceFile" type="file" accept=".pdf,.txt,.png,.jpg,.jpeg,application/pdf,text/plain,image/png,image/jpeg,application/octet-stream" required />
+          <button id="learningEvidenceUploadBtn" type="submit" disabled>Submit SHA-256 receipt</button>
+        </form>
+        <div class="memory-actions">
+          <button id="learningMasteryCheckBtn" class="secondary" type="button" disabled>Check evidence gaps</button>
+        </div>
+        <p class="status" id="learningEvidenceStatus" role="status" aria-live="polite">Learning evidence not loaded.</p>
+        <div id="learningEvidenceList" aria-live="polite"></div>
+        <h3>Guardian Resource Intelligence</h3>
+        <p class="memory-help">Catalogue tools, models, datasets and learning resources with pinned source revisions, licence evidence, pricing limits and hosting requirements. New records are drafts. Acceptance requires an explicit review and verified HTTPS licence evidence.</p>
+        <form class="memory-form" id="guardianResourceForm">
+          <label for="guardianResourceName">Resource name</label>
+          <input id="guardianResourceName" maxlength="200" required placeholder="Project or resource name" />
+          <label for="guardianResourceUrl">Canonical HTTPS source URL</label>
+          <input id="guardianResourceUrl" type="url" inputmode="url" maxlength="2048" required placeholder="https://github.com/owner/project" />
+          <label for="guardianResourceCategory">Category</label>
+          <select id="guardianResourceCategory" required>
+            <option value="developer-tool">Developer tool</option>
+            <option value="self-hosted-service">Self-hosted service</option>
+            <option value="model">Model</option>
+            <option value="dataset">Dataset</option>
+            <option value="learning-resource">Learning resource</option>
+            <option value="api">API</option>
+            <option value="framework">Framework</option>
+            <option value="security-tool">Security tool</option>
+          </select>
+          <label for="guardianResourceRevision">Pinned source revision (commit, tag or version)</label>
+          <input id="guardianResourceRevision" maxlength="128" required placeholder="Exact revision reviewed" />
+          <label for="guardianResourceLicence">Licence identifier</label>
+          <input id="guardianResourceLicence" maxlength="100" required placeholder="MIT, Apache-2.0, AGPL-3.0…" />
+          <label for="guardianResourceLicenceReview">Licence review state</label>
+          <select id="guardianResourceLicenceReview" required>
+            <option value="review-required">Review required</option>
+            <option value="unknown">Unknown</option>
+            <option value="incompatible">Incompatible</option>
+            <option value="verified">Verified (requires evidence URL)</option>
+          </select>
+          <label for="guardianResourceLicenceEvidence">HTTPS licence evidence URL (required when verified)</label>
+          <input id="guardianResourceLicenceEvidence" type="url" inputmode="url" maxlength="2048" placeholder="https://…/LICENSE" />
+          <label for="guardianResourcePricing">Pricing model</label>
+          <select id="guardianResourcePricing" required>
+            <option value="free">Free</option>
+            <option value="free-tier">Free tier</option>
+            <option value="trial">Trial</option>
+            <option value="paid">Paid</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <label for="guardianResourcePricingLimits">Pricing limits (one per line; required for free-tier/trial)</label>
+          <textarea id="guardianResourcePricingLimits" rows="2" maxlength="3000" placeholder="Requests, storage, seats, usage or expiry limits"></textarea>
+          <label for="guardianResourcePricingEvidence">HTTPS pricing evidence URL</label>
+          <input id="guardianResourcePricingEvidence" type="url" inputmode="url" maxlength="2048" required placeholder="https://…/pricing" />
+          <label for="guardianResourceHosting">Hosting mode</label>
+          <select id="guardianResourceHosting" required>
+            <option value="self-hosted">Self-hosted</option>
+            <option value="hosted">Hosted</option>
+            <option value="both">Both</option>
+            <option value="none">No hosting</option>
+          </select>
+          <label for="guardianResourceHostingRequirements">Hosting requirements (one per line)</label>
+          <textarea id="guardianResourceHostingRequirements" rows="2" maxlength="3000" placeholder="Runtime, hardware, operating system, dependencies"></textarea>
+          <label for="guardianResourceLimitations">Known limitations (one per line)</label>
+          <textarea id="guardianResourceLimitations" rows="3" maxlength="3000" placeholder="Maintenance, platform, licence, security or feature limitations"></textarea>
+          <button id="guardianResourceSaveBtn" type="submit">Save Guardian resource as draft</button>
+        </form>
+        <div class="memory-actions">
+          <button id="guardianResourceRefreshBtn" class="secondary" type="button">Refresh Guardian catalogue</button>
+        </div>
+        <label for="guardianResourceReviewNote">Owner review note (at least one character before a transition)</label>
+        <textarea id="guardianResourceReviewNote" rows="2" maxlength="2000" placeholder="What did you verify? Include remaining limitations or reasons for archiving."></textarea>
+        <p class="status" id="guardianResourceStatus" role="status" aria-live="polite">Guardian Resource catalogue not loaded.</p>
+        <div id="guardianResourceList" aria-live="polite"></div>
         <h3 id="forgePreviewTitle" hidden>Source preview</h3>
         <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
       </section>
@@ -926,7 +1268,17 @@
       </section>
       <section class="memory-panel" id="approvalSection" hidden>
         <h2>Approval inbox</h2>
-        <p class="memory-help">Review exact operations proposed by AEGIS. Approving here records your decision only; it does not itself execute an operation.</p>
+        <p class="memory-help">Review exact operations proposed by AEGIS. Decisions require a separate reviewer sign-in. Approving here records a decision only; it does not itself execute an operation.</p>
+        <p class="memory-help"><a href="/reviewer.html">Open the standalone reviewer portal</a> — share this address with the trusted reviewer; they do not need the owner's login.</p>
+        <div class="approval-card" id="reviewerAuthPanel">
+          <p class="memory-help" id="reviewerAuthStatus" role="status" aria-live="polite">Checking independent reviewer session…</p>
+          <form class="memory-form" id="reviewerLoginForm">
+            <label for="reviewerPassword">Independent reviewer password</label>
+            <input id="reviewerPassword" type="password" autocomplete="current-password" maxlength="1024" required>
+            <button type="submit">Sign in as reviewer</button>
+          </form>
+          <button class="secondary" id="reviewerLogoutBtn" type="button" hidden>Sign out reviewer</button>
+        </div>
         <p class="status" id="approvalStatus" role="status" aria-live="polite">Loading approvals…</p>
         <div id="approvalList" aria-live="polite"></div>
       </section>
@@ -946,6 +1298,7 @@
     </main>
   </div>
 
+  <script type="module" src="/companion/renderer.mjs"></script>
   <script>
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
@@ -1050,6 +1403,43 @@
     const forgeKnowledgeReviewNote = document.getElementById('forgeKnowledgeReviewNote');
     const forgeKnowledgeStatus = document.getElementById('forgeKnowledgeStatus');
     const forgeKnowledgeList = document.getElementById('forgeKnowledgeList');
+    const guardianResourceForm = document.getElementById('guardianResourceForm');
+    const guardianResourceName = document.getElementById('guardianResourceName');
+    const guardianResourceUrl = document.getElementById('guardianResourceUrl');
+    const guardianResourceCategory = document.getElementById('guardianResourceCategory');
+    const guardianResourceRevision = document.getElementById('guardianResourceRevision');
+    const guardianResourceLicence = document.getElementById('guardianResourceLicence');
+    const guardianResourceLicenceReview = document.getElementById('guardianResourceLicenceReview');
+    const guardianResourceLicenceEvidence = document.getElementById('guardianResourceLicenceEvidence');
+    const guardianResourcePricing = document.getElementById('guardianResourcePricing');
+    const guardianResourcePricingLimits = document.getElementById('guardianResourcePricingLimits');
+    const guardianResourcePricingEvidence = document.getElementById('guardianResourcePricingEvidence');
+    const guardianResourceHosting = document.getElementById('guardianResourceHosting');
+    const guardianResourceHostingRequirements = document.getElementById('guardianResourceHostingRequirements');
+    const guardianResourceLimitations = document.getElementById('guardianResourceLimitations');
+    const guardianResourceSaveBtn = document.getElementById('guardianResourceSaveBtn');
+    const guardianResourceRefreshBtn = document.getElementById('guardianResourceRefreshBtn');
+    const guardianResourceReviewNote = document.getElementById('guardianResourceReviewNote');
+    const guardianResourceStatus = document.getElementById('guardianResourceStatus');
+    const guardianResourceList = document.getElementById('guardianResourceList');
+    const learningPathForm = document.getElementById('learningPathForm');
+    const learningPathStarterSelect = document.getElementById('learningPathStarterSelect');
+    const learningPathLoadStarterBtn = document.getElementById('learningPathLoadStarterBtn');
+    const learningPathGuidedAddNodeBtn = document.getElementById('learningPathGuidedAddNodeBtn');
+    const learningPathGuidedStatus = document.getElementById('learningPathGuidedStatus');
+    const learningPathGraphJson = document.getElementById('learningPathGraphJson');
+    const learningPathRegisterBtn = document.getElementById('learningPathRegisterBtn');
+    const learningPathAuthorStatus = document.getElementById('learningPathAuthorStatus');
+    const learningPathSelect = document.getElementById('learningPathSelect');
+    const learningNodeSelect = document.getElementById('learningNodeSelect');
+    const learningEvidenceForm = document.getElementById('learningEvidenceForm');
+    const learningEvidenceFile = document.getElementById('learningEvidenceFile');
+    const learningEvidenceUploadBtn = document.getElementById('learningEvidenceUploadBtn');
+    const learningEvidenceRefreshBtn = document.getElementById('learningEvidenceRefreshBtn');
+    const learningMasteryCheckBtn = document.getElementById('learningMasteryCheckBtn');
+    const learningEvidenceStatus = document.getElementById('learningEvidenceStatus');
+    const learningEvidenceList = document.getElementById('learningEvidenceList');
+    let learningPaths = [];
 
     const forgeFilePreview = document.getElementById('forgeFilePreview');
     const forgePreviewTitle = document.getElementById('forgePreviewTitle');
@@ -1063,6 +1453,11 @@
     const workspaceList = document.getElementById('workspaceList');
     const approvalStatus = document.getElementById('approvalStatus');
     const approvalList = document.getElementById('approvalList');
+    const reviewerAuthStatus = document.getElementById('reviewerAuthStatus');
+    const reviewerLoginForm = document.getElementById('reviewerLoginForm');
+    const reviewerPassword = document.getElementById('reviewerPassword');
+    const reviewerLogoutBtn = document.getElementById('reviewerLogoutBtn');
+    let reviewerAuthenticated = false;
     const chatSection = document.getElementById('chatSection');
     const chatProjectSelect = document.getElementById('chatProjectSelect');
     const memorySection = document.getElementById('memorySection');
@@ -1414,42 +1809,205 @@
       finally { saveMemoryBtn.disabled = false; }
     });
 
-    // Profile controls alter presentation only. They do not create identities,
-    // permissions, memory stores or Sentinel policy. Until owner-scoped persistence
-    // is implemented, custom profiles intentionally live only in this page session.
+    // Companion profiles are owner-scoped presentation preferences. They never create
+    // a second security identity, grant tools, alter Sentinel policy or widen memory access.
     const companionProfileSelect = document.getElementById('companionProfileSelect');
     const customCompanionName = document.getElementById('customCompanionName');
     const createCompanionProfile = document.getElementById('createCompanionProfile');
     const companionProfileStatus = document.getElementById('companionProfileStatus');
     const companionTitle = document.getElementById('companionTitle');
-    const companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS' }];
-    const customIdPattern = /^custom-[a-z0-9-]+$/;
+    const companionModeOverlay = document.getElementById('companionModeOverlay');
+    const openCompanionMode = document.getElementById('openCompanionMode');
+    const closeCompanionMode = document.getElementById('closeCompanionMode');
+    const companionModeChatSlot = document.getElementById('companionModeChatSlot');
+    const companionModeProfileTitle = document.getElementById('companionModeProfileTitle');
+    const companionModeProfileDescription = document.getElementById('companionModeProfileDescription');
+    const companionModeState = document.getElementById('companionModeState');
+    const companionStage = document.getElementById('companionStage');
+    const companionModeVisual = document.getElementById('companionModeVisual');
+    const companionWarmth = document.getElementById('companionWarmth');
+    const companionHumour = document.getElementById('companionHumour');
+    const companionDirectness = document.getElementById('companionDirectness');
+    const companionInitiative = document.getElementById('companionInitiative');
+    const companionVerbosity = document.getElementById('companionVerbosity');
+    const companionVisualPreset = document.getElementById('companionVisualPreset');
+    const saveCompanionSettings = document.getElementById('saveCompanionSettings');
+    const companionSettingsStatus = document.getElementById('companionSettingsStatus');
+    const exportCompanionProfilesButton = document.getElementById('exportCompanionProfiles');
+    const purgeCompanionProfilesButton = document.getElementById('purgeCompanionProfiles');
+    const purgeCompanionConfirmation = document.getElementById('purgeCompanionConfirmation');
+    const companionDataStatus = document.getElementById('companionDataStatus');
+    const COMPANION_PURGE_CONFIRMATION = 'DELETE MY COMPANION PROFILES';
+    const companionSettingOutputs = {
+      companionWarmth: document.getElementById('companionWarmthValue'),
+      companionHumour: document.getElementById('companionHumourValue'),
+      companionDirectness: document.getElementById('companionDirectnessValue'),
+      companionInitiative: document.getElementById('companionInitiativeValue'),
+    };
+    const chatComposer = chatSection.querySelector('.input-area');
+    let companionProfiles = [{ id: 'aegis', kind: 'official', displayName: 'Agent AEGIS', version: null }];
+    let companionProfilePersistenceAvailable = false;
+    let activeCompanionProfileId = 'aegis';
+    let suppressCompanionProfileChange = false;
+    let hasLoadedCompanionProfiles = false;
 
-    companionProfileSelect.addEventListener('change', () => {
+    function renderCompanionProfileOptions() {
+      companionProfileSelect.replaceChildren();
+      companionProfiles.forEach(profile => {
+        const option = document.createElement('option');
+        option.value = profile.id;
+        option.dataset.version = profile.version === null ? '' : String(profile.version);
+        option.textContent = profile.displayName;
+        companionProfileSelect.append(option);
+      });
+      companionProfileSelect.value = activeCompanionProfileId;
+    }
+
+    function setCompanionModePresence(state, message) {
+      const allowed = ['idle', 'thinking', 'responding', 'error', 'disconnected'];
+      const safeState = allowed.includes(state) ? state : 'idle';
+      companionStage.dataset.presence = safeState;
+      companionModeVisual.dataset.presence = safeState;
+      companionModeState.textContent = message;
+    }
+
+    function getActiveCompanionInteraction() {
+      const profile = companionProfiles.find(item => item.id === activeCompanionProfileId);
+      const defaults = { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' };
+      return { ...defaults, ...(profile?.interaction || {}) };
+    }
+
+    function renderCompanionProfile(profile, persistent = companionProfilePersistenceAvailable) {
+      companionTitle.textContent = profile.kind === 'official' ? 'Here with you.' : 'Meet ' + profile.displayName + '.';
+      companionModeProfileTitle.textContent = profile.displayName;
+      companionModeProfileDescription.textContent = profile.kind === 'official'
+        ? 'Your Personal Guardian · one shared intelligence and security system.'
+        : (profile.description || 'A custom companion presentation profile · no separate permissions or memory.');
+      const interaction = profile.interaction || { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' };
+      companionWarmth.value = interaction.warmth;
+      companionHumour.value = interaction.humour;
+      companionDirectness.value = interaction.directness;
+      companionInitiative.value = interaction.initiative;
+      companionVerbosity.value = interaction.verbosity;
+    Object.entries(companionSettingOutputs).forEach(([id, output]) => {
+        output.textContent = String(document.getElementById(id).value);
+      });
+      const visualPreset = profile.appearance?.visualPreset || 'aegis';
+      companionVisualPreset.value = visualPreset;
+      companionStage.dataset.visualPreset = visualPreset;
+      companionModeVisual.dataset.visualPreset = visualPreset;
+      const custom = profile.kind === 'custom';
+      [companionWarmth, companionHumour, companionDirectness, companionInitiative,
+        companionVerbosity, companionVisualPreset].forEach(control => { control.disabled = !custom; });
+      saveCompanionSettings.disabled = !custom;
+      exportCompanionProfilesButton.disabled = !persistent;
+      purgeCompanionProfilesButton.disabled = !persistent || purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+      companionSettingsStatus.textContent = !custom
+        ? 'Choose a custom companion to personalise its presentation and interaction style.'
+        : persistent
+          ? 'These preferences are saved to your account and do not change permissions, tools or memory access.'
+          : 'Changes will remain in this browser session only until account storage is configured.';
+      if (profile.kind === 'official') {
+        companionProfileStatus.textContent = persistent
+          ? 'Agent AEGIS · Your Personal Guardian · official identity, one shared intelligence and security system.'
+          : 'Agent AEGIS · Your Personal Guardian · persistent profile storage is unavailable; the official companion remains available.';
+      } else {
+        companionProfileStatus.textContent = persistent
+          ? profile.displayName + ' · saved to your AEGIS account · presentation preferences only, with no separate permissions or memory.'
+          : profile.displayName + ' · session only because persistent profile storage is unavailable · no separate permissions or memory.';
+      }
+    }
+
+    async function loadCompanionProfiles() {
+      try {
+        const data = await controlApi('/api/companion/profiles');
+        if (!Array.isArray(data.profiles) || !data.activeProfile || !data.activeProfile.profile) {
+          throw new Error('Companion Profile response is invalid.');
+        }
+        companionProfiles = data.profiles.map(entry => ({
+          ...entry.profile,
+          version: entry.version === null ? null : entry.version,
+        }));
+        activeCompanionProfileId = data.activeProfile.profile.id;
+        companionProfilePersistenceAvailable = true;
+        hasLoadedCompanionProfiles = true;
+        suppressCompanionProfileChange = true;
+        renderCompanionProfileOptions();
+        const active = companionProfiles.find(profile => profile.id === activeCompanionProfileId);
+        if (active) renderCompanionProfile(active, true);
+        suppressCompanionProfileChange = false;
+      } catch (error) {
+        if (hasLoadedCompanionProfiles) {
+          companionProfileStatus.textContent = 'Could not refresh saved profiles. Your last loaded account profile remains selected.';
+          return;
+        }
+        companionProfilePersistenceAvailable = false;
+        suppressCompanionProfileChange = true;
+        renderCompanionProfileOptions();
+        const active = companionProfiles.find(profile => profile.id === activeCompanionProfileId) || companionProfiles[0];
+        companionProfileSelect.value = active.id;
+        renderCompanionProfile(active, false);
+        suppressCompanionProfileChange = false;
+        companionProfileStatus.textContent = 'Persistent profile storage is unavailable. Custom profiles will remain session only until account storage is configured.';
+      }
+    }
+
+    companionProfileSelect.addEventListener('change', async () => {
+      if (suppressCompanionProfileChange) return;
       const selected = companionProfiles.find(profile => profile.id === companionProfileSelect.value);
       if (!selected) {
-        companionProfileSelect.value = 'aegis';
-        companionProfileStatus.textContent = 'Unknown profile. Returned to official AEGIS.';
+        companionProfileSelect.value = activeCompanionProfileId;
+        companionProfileStatus.textContent = 'Unknown profile. Restored the last active companion.';
         return;
       }
-      companionTitle.textContent = selected.kind === 'official' ? 'Here with you.' : 'Meet ' + selected.displayName + '.';
-      companionProfileStatus.textContent = selected.kind === 'official'
-        ? 'Agent AEGIS · Your Personal Guardian · one shared intelligence and security system.'
-        : selected.displayName + ' is a custom presentation profile · session only, with no separate permissions or memory.';
+      if (companionProfilePersistenceAvailable) {
+        companionProfileStatus.textContent = 'Saving companion selection…';
+        try {
+          const selection = await controlApi('/api/companion/profile-selection', {
+            method: 'POST',
+            body: JSON.stringify({
+              profileId: selected.kind === 'official' ? null : selected.id,
+              version: selected.kind === 'official' ? null : selected.version,
+            }),
+          });
+          activeCompanionProfileId = selection.activeProfile.profile.id;
+          renderCompanionProfile(selection.activeProfile.profile, true);
+        } catch (error) {
+          companionProfileSelect.value = activeCompanionProfileId;
+          companionProfileStatus.textContent = 'Selection could not be saved: ' + error.message;
+        }
+        return;
+      }
+      activeCompanionProfileId = selected.id;
+      renderCompanionProfile(selected, false);
     });
 
-    createCompanionProfile.addEventListener('click', () => {
+    createCompanionProfile.addEventListener('click', async () => {
       const displayName = customCompanionName.value.trim();
       if (displayName.length < 2 || displayName.length > 48 || /[\\u0000-\\u001f\\u007f]/.test(displayName)) {
         companionProfileStatus.textContent = 'Choose a name between 2 and 48 characters.';
         customCompanionName.focus();
         return;
       }
+      if (companionProfilePersistenceAvailable) {
+        try {
+          await controlApi('/api/companion/profiles', {
+            method: 'POST',
+            body: JSON.stringify({ displayName }),
+          });
+          customCompanionName.value = '';
+          await loadCompanionProfiles();
+          companionProfileStatus.textContent = displayName + ' saved to your AEGIS account. It changes presentation only.';
+        } catch (error) {
+          companionProfileStatus.textContent = 'Profile could not be saved: ' + error.message;
+        }
+        return;
+      }
       const slug = displayName.toLowerCase().normalize('NFKD')
         .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/g, '');
       const profileId = 'custom-' + (slug || 'companion');
-      if (!customIdPattern.test(profileId) || profileId === 'custom-aegis') {
+      if (!/^custom-[a-z0-9-]+$/.test(profileId) || profileId === 'custom-aegis') {
         companionProfileStatus.textContent = 'That name cannot be used. Try another.';
         return;
       }
@@ -1457,20 +2015,142 @@
         companionProfileStatus.textContent = 'A companion with that name already exists in this session.';
         return;
       }
-      const profile = { id: profileId, kind: 'custom', displayName };
+      const profile = {
+        id: profileId, kind: 'custom', displayName, version: null, description: '',
+        appearance: { mode: 'adaptive', visualPreset: 'aegis', assetPackId: null },
+        interaction: { warmth: 70, humour: 35, directness: 65, initiative: 50, verbosity: 'balanced' },
+      };
       companionProfiles.push(profile);
-      const option = document.createElement('option');
-      option.value = profile.id;
-      option.dataset.companionProfile = profile.id;
-      option.textContent = profile.displayName;
-      companionProfileSelect.appendChild(option);
-      companionProfileSelect.value = profile.id;
-      companionProfileSelect.dispatchEvent(new Event('change'));
-      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account saving is not connected yet.';
+      activeCompanionProfileId = profile.id;
+      renderCompanionProfileOptions();
+      renderCompanionProfile(profile, false);
+      companionProfileStatus.textContent = profile.displayName + ' created for this browser session only. Account storage is not available.';
       customCompanionName.value = '';
     });
 
+    purgeCompanionConfirmation.addEventListener('input', () => {
+    purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+      purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+    });
+
+    exportCompanionProfilesButton.addEventListener('click', async () => {
+    if (!companionProfilePersistenceAvailable) {
+      companionDataStatus.textContent = 'Secure account profile storage is unavailable; no export was requested.';
+      return;
+    }
+    exportCompanionProfilesButton.disabled = true;
+    companionDataStatus.textContent = 'Preparing your companion profile and history export…';
+    try {
+      const response = await fetch('/api/companion/profiles/export', { cache: 'no-store' });
+      if (response.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!response.ok) {
+        let data = {};
+        try { data = await response.json(); } catch (error) {}
+        throw new Error(data.error || ('Service error ' + response.status));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'aegis-companion-profiles.json';
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      companionDataStatus.textContent = 'Your custom profiles, revisions and available profile history have been exported.';
+    } catch (error) {
+      companionDataStatus.textContent = 'Export could not be completed: ' + error.message;
+    } finally {
+      exportCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable;
+    }
+    });
+
+    purgeCompanionProfilesButton.addEventListener('click', async () => {
+    if (!companionProfilePersistenceAvailable ||
+        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION) {
+      companionDataStatus.textContent = 'Type the exact confirmation phrase before deleting saved profiles.';
+      return;
+    }
+    purgeCompanionProfilesButton.disabled = true;
+    companionDataStatus.textContent = 'Deleting custom profiles and their profile history…';
+    try {
+      await controlApi('/api/companion/profiles/purge', {
+        method: 'POST',
+        body: JSON.stringify({ confirmation: COMPANION_PURGE_CONFIRMATION }),
+      });
+      purgeCompanionConfirmation.value = '';
+      await loadCompanionProfiles();
+      companionDataStatus.textContent = 'Custom profiles, revisions, selections and profile history were deleted. A minimal content-free purge audit remains.';
+    } catch (error) {
+      companionDataStatus.textContent = 'Deletion could not be completed: ' + error.message;
+      purgeCompanionProfilesButton.disabled = !companionProfilePersistenceAvailable ||
+        purgeCompanionConfirmation.value !== COMPANION_PURGE_CONFIRMATION;
+    }
+    });
+
+    Object.entries(companionSettingOutputs).forEach(([id, output]) => {
+      document.getElementById(id).addEventListener('input', event => {
+        output.textContent = String(event.currentTarget.value);
+      });
+    });
+
+    saveCompanionSettings.addEventListener('click', async () => {
+      const selected = companionProfiles.find(profile => profile.id === activeCompanionProfileId);
+      if (!selected || selected.kind !== 'custom') return;
+      const interaction = {
+        warmth: Number(companionWarmth.value),
+        humour: Number(companionHumour.value),
+        directness: Number(companionDirectness.value),
+        initiative: Number(companionInitiative.value),
+        verbosity: companionVerbosity.value,
+      };
+      const appearance = { visualPreset: companionVisualPreset.value };
+      if (companionProfilePersistenceAvailable && Number.isInteger(selected.version)) {
+        saveCompanionSettings.disabled = true;
+        companionSettingsStatus.textContent = 'Saving your companion preferences…';
+        try {
+          const result = await controlApi('/api/companion/profiles/' + encodeURIComponent(selected.id), {
+            method: 'PATCH',
+            body: JSON.stringify({ expectedVersion: selected.version, interaction, appearance }),
+          });
+          const updated = {
+            ...result.profile.profile,
+            version: result.profile.version,
+          };
+          const index = companionProfiles.findIndex(profile => profile.id === selected.id);
+          if (index >= 0) companionProfiles[index] = updated;
+          renderCompanionProfile(updated, true);
+          companionSettingsStatus.textContent = 'Saved to your AEGIS account · profile revision ' + updated.version + '.';
+        } catch (error) {
+          companionSettingsStatus.textContent = 'Preferences could not be saved: ' + error.message;
+          saveCompanionSettings.disabled = false;
+        }
+        return;
+      }
+      selected.interaction = interaction;
+      selected.appearance = { ...(selected.appearance || {}), ...appearance };
+      renderCompanionProfile(selected, false);
+      companionSettingsStatus.textContent = 'Updated for this browser session only. Account storage is unavailable.';
+    });
+
+        function moveChatToCompanionMode() {
+      companionModeChatSlot.append(chatProjectSelect, chatBox, chatComposer, status);
+    }
+
+    function restoreChatFromCompanionMode() {
+      if (chatProjectSelect.parentElement === companionModeChatSlot) {
+        chatSection.append(chatProjectSelect, chatBox, chatComposer, status);
+      }
+    }
+
     function showPanel(panel) {
+      if (panel !== 'companion') restoreChatFromCompanionMode();
+      appPanel.classList.toggle('companion-mode-active', panel === 'companion');
+      document.body.classList.toggle('companion-mode-open', panel === 'companion');
       const panelTabs = {
         home: homeTab, chat: chatTab, projects: workspaceTab, memory: memoryTab,
         approvals: approvalTab, forge: forgeTab, security: securityTab,
@@ -1482,18 +2162,36 @@
       });
       homeSection.hidden = panel !== 'home';
       chatSection.hidden = panel !== 'chat';
+      companionModeOverlay.hidden = panel !== 'companion';
       workspaceSection.hidden = panel !== 'projects';
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
-      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); }
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadLearningPaths(); loadGuardianResources(); }
       if (panel === 'security') loadSecurityCentre();
+      if (panel === 'home') loadCompanionProfiles();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
       if (panel === 'approvals') loadApprovals();
     }
+    openCompanionMode.addEventListener('click', () => {
+      moveChatToCompanionMode();
+      showPanel('companion');
+      if (!busy) setCompanionModePresence('idle', 'Text companion ready. Microphone capture and spoken responses are not connected.');
+      userInput.focus();
+    });
+    closeCompanionMode.addEventListener('click', () => {
+      showPanel('home');
+      openCompanionMode.focus();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !companionModeOverlay.hidden) {
+        showPanel('home');
+        openCompanionMode.focus();
+      }
+    });
     homeTab.addEventListener('click', () => showPanel('home'));
     document.querySelectorAll('[data-panel-target]').forEach(button => {
       button.addEventListener('click', () => showPanel(button.dataset.panelTarget));
@@ -1519,6 +2217,72 @@
       }
       if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
       return data;
+    }
+
+    reviewerLoginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      reviewerAuthStatus.textContent = 'Signing in…';
+      const response = await fetch('/api/reviewer-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ password: reviewerPassword.value }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        reviewerAuthStatus.textContent = result.error || 'Reviewer sign-in failed.';
+        return;
+      }
+      reviewerPassword.value = '';
+      reviewerAuthStatus.textContent = 'Reviewer sign-in successful.';
+      await loadApprovals();
+    });
+
+    reviewerLogoutBtn.addEventListener('click', async () => {
+      const response = await fetch('/api/reviewer-login', { method: 'DELETE', cache: 'no-store' });
+      if (!response.ok) {
+        reviewerAuthStatus.textContent = 'Reviewer sign-out could not be confirmed.';
+        return;
+      }
+      await loadApprovals();
+    });
+
+    async function refreshReviewerSession() {
+      try {
+        const response = await fetch('/api/reviewer-login', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        reviewerAuthenticated = response.ok && result.authenticated === true;
+        reviewerAuthStatus.textContent = response.status === 503
+          ? 'Independent reviewer credentials are not configured in this environment.'
+          : reviewerAuthenticated
+            ? 'Separate reviewer session active. Decisions will be recorded as reviewer.'
+            : 'Sign in with the separate reviewer credentials to record decisions.';
+        reviewerLoginForm.hidden = reviewerAuthenticated || response.status === 503;
+        reviewerLogoutBtn.hidden = !reviewerAuthenticated;
+      } catch {
+        reviewerAuthenticated = false;
+        reviewerAuthStatus.textContent = 'Reviewer session status is unavailable.';
+        reviewerLoginForm.hidden = false;
+        reviewerLogoutBtn.hidden = true;
+      }
+      return reviewerAuthenticated;
+    }
+
+    async function reviewerApi(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store',
+      });
+      let result = {};
+      try { result = await response.json(); } catch (error) {}
+      if (response.status === 401) {
+        reviewerAuthenticated = false;
+        await refreshReviewerSession();
+        throw new Error('Separate reviewer session expired. Sign in again.');
+      }
+      if (!response.ok) throw new Error(result.error || ('Reviewer service error ' + response.status));
+      return result;
     }
 
     async function loadChatProjects() {
@@ -2864,6 +3628,595 @@
       }
     });
 
+
+    const LEARNING_PATH_STARTER_TEMPLATES = Object.freeze({
+      'javascript-foundations': {
+        id: 'javascript-foundations',
+        version: '1.0.0',
+        title: 'JavaScript Foundations',
+        description: 'A beginner-friendly route through core JavaScript concepts.',
+        nodes: [
+          {
+            id: 'javascript-basics',
+            title: 'JavaScript basics',
+            outcomes: ['Explain variables, values and basic expressions'],
+            prerequisites: [],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide'],
+            contentLicenseStatus: 'link-only',
+          },
+          {
+            id: 'javascript-functions',
+            title: 'Functions and scope',
+            outcomes: ['Describe how functions receive inputs and return values', 'Explain the purpose of local scope'],
+            prerequisites: ['javascript-basics'],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions'],
+            contentLicenseStatus: 'link-only',
+          },
+        ],
+      },
+      'web-safety-foundations': {
+        id: 'web-safety-foundations',
+        version: '1.0.0',
+        title: 'Web Safety Foundations',
+        description: 'A beginner-friendly route through browser security and secure connections.',
+        nodes: [
+          {
+            id: 'web-security-basics',
+            title: 'Web security basics',
+            outcomes: ['Identify common browser and web application security boundaries'],
+            prerequisites: [],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/Security'],
+            contentLicenseStatus: 'link-only',
+          },
+          {
+            id: 'secure-transport',
+            title: 'Secure transport and origins',
+            outcomes: ['Explain what HTTPS protects', 'Describe why browser origins matter'],
+            prerequisites: ['web-security-basics'],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security'],
+            contentLicenseStatus: 'link-only',
+          },
+        ],
+      },
+    });
+
+    learningPathLoadStarterBtn.addEventListener('click', () => {
+      const template = LEARNING_PATH_STARTER_TEMPLATES[learningPathStarterSelect.value];
+      if (!template) {
+        learningPathAuthorStatus.textContent = 'Choose a starter path first.';
+        return;
+      }
+      learningPathGraphJson.value = JSON.stringify(template, null, 2);
+      document.getElementById('learningPathGuidedId').value = template.id;
+      document.getElementById('learningPathGuidedVersion').value = template.version;
+      document.getElementById('learningPathGuidedTitle').value = template.title;
+      document.getElementById('learningPathGuidedDescription').value = template.description;
+      document.getElementById('learningPathGuidedNodeId').value = '';
+      document.getElementById('learningPathGuidedNodeTitle').value = '';
+      document.getElementById('learningPathGuidedOutcomes').value = '';
+      document.getElementById('learningPathGuidedPrerequisites').value = '';
+      document.getElementById('learningPathGuidedSources').value = '';
+      learningPathGuidedStatus.textContent = 'Starter loaded into the local draft. Add nodes below or edit the JSON directly; nothing has been registered yet.';
+      learningPathAuthorStatus.textContent = 'Starter loaded into the local editor. Review the path, source links and version before submitting; nothing has been registered yet.';
+    });
+
+    learningPathGuidedAddNodeBtn.addEventListener('click', () => {
+      const pathId = document.getElementById('learningPathGuidedId').value.trim();
+      const version = document.getElementById('learningPathGuidedVersion').value.trim();
+      const title = document.getElementById('learningPathGuidedTitle').value.trim();
+      const description = document.getElementById('learningPathGuidedDescription').value.trim();
+      const nodeId = document.getElementById('learningPathGuidedNodeId').value.trim();
+      const nodeTitle = document.getElementById('learningPathGuidedNodeTitle').value.trim();
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const outcomes = splitLines(document.getElementById('learningPathGuidedOutcomes').value);
+      const prerequisites = splitLines(document.getElementById('learningPathGuidedPrerequisites').value);
+      const sourceRefs = splitLines(document.getElementById('learningPathGuidedSources').value);
+      const difficulty = document.getElementById('learningPathGuidedDifficulty').value;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathId) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nodeId)) {
+        learningPathGuidedStatus.textContent = 'Use lowercase letters, numbers and hyphens for path and node IDs (2–64 characters).';
+        return;
+      }
+      if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(version) || !title || !nodeTitle || !outcomes.length || outcomes.length > 20 || outcomes.some(outcome => outcome.length > 300) || !sourceRefs.length || sourceRefs.length > 20) {
+        learningPathGuidedStatus.textContent = 'Add a valid version, path title, node title, at least one outcome and at least one HTTPS source.';
+        return;
+      }
+      try {
+        if (sourceRefs.some(source => {
+          const url = new URL(source);
+          return url.protocol !== 'https:';
+        })) throw new Error('Only HTTPS source links are accepted.');
+      } catch {
+        learningPathGuidedStatus.textContent = 'Every source must be a valid HTTPS URL.';
+        return;
+      }
+      let pathDefinition;
+      try {
+        pathDefinition = JSON.parse(learningPathGraphJson.value);
+      } catch {
+        learningPathGuidedStatus.textContent = 'The JSON draft is invalid. Correct it before adding a guided node.';
+        return;
+      }
+      if (!pathDefinition || typeof pathDefinition !== 'object' || Array.isArray(pathDefinition) || !Array.isArray(pathDefinition.nodes)) {
+        learningPathGuidedStatus.textContent = 'The JSON draft must contain a Learning Path object with a nodes array.';
+        return;
+      }
+      const nodes = pathDefinition.nodes;
+      if (nodes.some(node => node.id === nodeId)) {
+        learningPathGuidedStatus.textContent = 'That node ID already exists in this draft.';
+        return;
+      }
+      const knownNodeIds = new Set(nodes.map(node => node.id));
+      if (prerequisites.some(id => id === nodeId || !knownNodeIds.has(id))) {
+        learningPathGuidedStatus.textContent = 'Prerequisites must refer to existing nodes in this draft, and a node cannot depend on itself.';
+        return;
+      }
+      pathDefinition = {
+        id: pathId,
+        version,
+        title,
+        description,
+        nodes: [...nodes, {
+          id: nodeId,
+          title: nodeTitle,
+          outcomes,
+          prerequisites,
+          difficulty,
+          sourceRefs,
+          contentLicenseStatus: 'link-only',
+        }],
+      };
+      learningPathGraphJson.value = JSON.stringify(pathDefinition, null, 2);
+      learningPathGuidedStatus.textContent = 'Node added to the local draft. Review the JSON and add another node or submit the separate registration form.';
+      learningPathAuthorStatus.textContent = 'Local draft updated. Nothing has been registered yet.';
+      document.getElementById('learningPathGuidedNodeId').value = '';
+      document.getElementById('learningPathGuidedNodeTitle').value = '';
+      document.getElementById('learningPathGuidedOutcomes').value = '';
+      document.getElementById('learningPathGuidedPrerequisites').value = '';
+      document.getElementById('learningPathGuidedSources').value = '';
+    });
+
+    learningPathForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      let pathDefinition;
+      try {
+        pathDefinition = JSON.parse(learningPathGraphJson.value);
+      } catch {
+        learningPathAuthorStatus.textContent = 'Learning Path definition is not valid JSON. Correct it and try again.';
+        return;
+      }
+      learningPathRegisterBtn.disabled = true;
+      learningPathAuthorStatus.textContent = 'Validating and registering the immutable Learning Path version…';
+      try {
+        const result = await controlApi('/api/learning/paths', {
+          method: 'POST',
+          body: JSON.stringify(pathDefinition),
+        });
+        learningPathAuthorStatus.textContent = result.learningPath?.created
+          ? 'Immutable Learning Path version registered. Only graph metadata and source links are stored.'
+          : 'This exact Learning Path version already exists. Existing immutable content was not replaced.';
+        await loadLearningPaths();
+        const registered = result.learningPath?.path;
+        if (registered) {
+          learningPathSelect.value = registered.id + '@' + registered.version;
+          updateLearningNodeOptions();
+          if (registered.nodes[0]) learningNodeSelect.value = registered.nodes[0].id;
+          await loadLearningEvidence();
+        }
+      } catch (error) {
+        learningPathAuthorStatus.textContent = 'Learning Path could not be registered: ' + error.message;
+      } finally {
+        learningPathRegisterBtn.disabled = false;
+      }
+    });
+
+    function selectedLearningPath() {
+      const key = learningPathSelect.value;
+      return learningPaths.find(item => item.path.id + '@' + item.path.version === key) || null;
+    }
+
+    function selectedLearningNode() {
+      const path = selectedLearningPath();
+      return path?.path.nodes.find(node => node.id === learningNodeSelect.value) || null;
+    }
+
+    function updateLearningNodeOptions() {
+      const selected = selectedLearningPath();
+      learningNodeSelect.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = selected ? 'Choose a learning node…' : 'Choose a path first…';
+      learningNodeSelect.append(placeholder);
+      (selected?.path.nodes || []).forEach(node => {
+        const option = document.createElement('option');
+        option.value = node.id;
+        option.textContent = node.title + ' · ' + node.id;
+        learningNodeSelect.append(option);
+      });
+      learningNodeSelect.disabled = !selected || selected.path.nodes.length === 0;
+      updateLearningEvidenceActions();
+    }
+
+    function updateLearningEvidenceActions() {
+      const ready = Boolean(selectedLearningPath() && selectedLearningNode());
+      learningEvidenceUploadBtn.disabled = !ready || !learningEvidenceFile.files?.length;
+      learningMasteryCheckBtn.disabled = !ready;
+    }
+
+    async function loadLearningPaths() {
+      learningEvidenceStatus.textContent = 'Loading registered Learning Paths…';
+      learningEvidenceList.replaceChildren();
+      try {
+        const data = await controlApi('/api/learning/paths?limit=100');
+        learningPaths = Array.isArray(data.learningPaths)
+          ? data.learningPaths.filter(item => item?.path?.id && item?.path?.version && Array.isArray(item.path.nodes))
+          : [];
+        learningPathSelect.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = learningPaths.length ? 'Choose a registered path…' : 'No registered paths available';
+        learningPathSelect.append(placeholder);
+        learningPaths.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.path.id + '@' + item.path.version;
+          option.textContent = item.path.title + ' · v' + item.path.version;
+          learningPathSelect.append(option);
+        });
+        learningPathSelect.disabled = learningPaths.length === 0;
+        updateLearningNodeOptions();
+        learningEvidenceStatus.textContent = learningPaths.length
+          ? learningPaths.length + ' registered path(s). Choose a path and node to manage evidence receipts.'
+          : 'No registered Learning Paths yet. Register a reviewed path before submitting applied work.';
+        if (learningPaths.length) await loadLearningEvidence();
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Learning Paths unavailable: ' + error.message;
+      }
+    }
+
+    async function loadLearningEvidence() {
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      learningEvidenceList.replaceChildren();
+      updateLearningEvidenceActions();
+      if (!selectedPath || !selectedNode) {
+        learningEvidenceStatus.textContent = 'Choose an exact registered path and node to view evidence receipts.';
+        return;
+      }
+      learningEvidenceStatus.textContent = 'Loading evidence receipts…';
+      try {
+        const url = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+          '/evidence?version=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const data = await controlApi(url);
+        const receipts = Array.isArray(data.evidence) ? data.evidence : [];
+        learningEvidenceStatus.textContent = receipts.length +
+          ' digest receipt(s) for ' + selectedNode.title +
+          '. Original files are not stored; keep your own copies. Mastery is not verified.';
+        if (!receipts.length) {
+          learningEvidenceList.textContent = 'No applied-work receipts for this node yet.';
+          return;
+        }
+        receipts.forEach(receipt => {
+          const entry = document.createElement('article');
+          entry.className = 'workspace-card';
+          entry.textContent = '';
+          const summary = document.createElement('p');
+          summary.textContent = receipt.occurredAt + ' · ' + receipt.byteLength +
+            ' bytes · ' + receipt.mediaType + ' · SHA-256 ' +
+            receipt.artifactDigest.slice(0, 16) + '…';
+          const withdrawButton = document.createElement('button');
+          withdrawButton.type = 'button';
+          withdrawButton.className = 'secondary';
+          withdrawButton.textContent = 'Withdraw receipt';
+          withdrawButton.addEventListener('click', async () => {
+            withdrawButton.disabled = true;
+            try {
+              const deleteUrl = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+                '/evidence/' + encodeURIComponent(receipt.id) +
+                '?version=' + encodeURIComponent(selectedPath.path.version) +
+                '&nodeId=' + encodeURIComponent(selectedNode.id);
+              await controlApi(deleteUrl, { method: 'DELETE' });
+              learningEvidenceStatus.textContent = 'Receipt withdrawn. Its digest was deleted; a content-free audit event remains.';
+              await loadLearningEvidence();
+            } catch (error) {
+              learningEvidenceStatus.textContent = 'Receipt could not be withdrawn: ' + error.message;
+              withdrawButton.disabled = false;
+            }
+          });
+          entry.append(summary, withdrawButton);
+          learningEvidenceList.append(entry);
+        });
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Evidence receipts unavailable: ' + error.message;
+      }
+    }
+
+    learningPathSelect.addEventListener('change', () => {
+      updateLearningNodeOptions();
+      loadLearningEvidence();
+    });
+    learningNodeSelect.addEventListener('change', loadLearningEvidence);
+    learningEvidenceFile.addEventListener('change', updateLearningEvidenceActions);
+    learningEvidenceRefreshBtn.addEventListener('click', loadLearningPaths);
+
+    learningEvidenceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      const file = learningEvidenceFile.files?.[0];
+      if (!selectedPath || !selectedNode || !file) return;
+      if (file.size < 1 || file.size > 2 * 1024 * 1024) {
+        learningEvidenceStatus.textContent = 'Choose a non-empty file no larger than 2 MiB.';
+        return;
+      }
+      const allowedMediaTypes = new Set([
+        'application/octet-stream', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain',
+      ]);
+      const mediaType = allowedMediaTypes.has(file.type) ? file.type : 'application/octet-stream';
+      learningEvidenceUploadBtn.disabled = true;
+      learningEvidenceStatus.textContent = 'Computing and saving a SHA-256 receipt… The file itself will not be retained.';
+      try {
+        const url = '/api/learning/paths/' + encodeURIComponent(selectedPath.path.id) +
+          '/evidence?version=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const result = await controlApi(url, {
+          method: 'POST',
+          body: file,
+          headers: { 'Content-Type': mediaType },
+        });
+        learningEvidenceFile.value = '';
+        learningEvidenceStatus.textContent = 'SHA-256 receipt saved. The uploaded file was not retained; keep your original. Mastery is not verified.';
+        await loadLearningEvidence();
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Evidence receipt failed: ' + error.message;
+      } finally {
+        updateLearningEvidenceActions();
+      }
+    });
+
+    learningMasteryCheckBtn.addEventListener('click', async () => {
+      const selectedPath = selectedLearningPath();
+      const selectedNode = selectedLearningNode();
+      if (!selectedPath || !selectedNode) return;
+      learningMasteryCheckBtn.disabled = true;
+      learningEvidenceStatus.textContent = 'Checking evidence gaps…';
+      try {
+        const query = '?pathId=' + encodeURIComponent(selectedPath.path.id) +
+          '&pathVersion=' + encodeURIComponent(selectedPath.path.version) +
+          '&nodeId=' + encodeURIComponent(selectedNode.id);
+        const result = await controlApi('/api/learning/mastery' + query);
+        const missing = result.candidate?.missing || [];
+        learningEvidenceStatus.textContent = 'Evidence status: ' + result.candidate.status +
+          '. Missing: ' + (missing.join(', ') || 'none') +
+          '. Independent human review is not connected; masteryVerified remains false.';
+      } catch (error) {
+        learningEvidenceStatus.textContent = 'Mastery evidence check unavailable: ' + error.message;
+      } finally {
+        updateLearningEvidenceActions();
+      }
+    });
+
+    async function loadGuardianResources() {
+      guardianResourceList.replaceChildren();
+      guardianResourceStatus.textContent = 'Loading Guardian Resource catalogue…';
+      try {
+        await refreshReviewerSession();
+        const data = await controlApi('/api/guardian/resources?limit=100');
+        const resources = Array.isArray(data.resources) ? data.resources : [];
+        guardianResourceStatus.textContent = resources.length + ' resource(s) · owner-scoped catalogue.' +
+          (reviewerAuthenticated ? ' · reviewer session active' : ' · open Approvals to sign in as reviewer before changing review states');
+        if (!resources.length) {
+          guardianResourceList.textContent = 'No Guardian Resources yet. Add a pinned source above; it will start as a draft.';
+          guardianResourceList.className = 'memory-empty';
+          return;
+        }
+        guardianResourceList.className = '';
+        resources.forEach(resource => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const heading = document.createElement('h4');
+          heading.textContent = resource.name;
+          const meta = document.createElement('p');
+          meta.textContent = resource.status + ' · ' + resource.category + ' · licence: ' +
+            resource.licence.identifier + ' (' + resource.licence.review + ') · pricing: ' +
+            resource.pricing.model + ' · hosting: ' + resource.hosting.mode;
+          const source = document.createElement('a');
+          source.href = resource.canonicalUrl;
+          source.target = '_blank';
+          source.rel = 'noopener noreferrer';
+          source.textContent = 'Open canonical source · revision ' + resource.sourceRevision;
+          const detail = document.createElement('p');
+          detail.textContent = 'Pricing limits: ' + (resource.pricing.limits || []).join(' · ') +
+            ' · Hosting requirements: ' + (resource.hosting.requirements || []).join(' · ');
+          const limits = document.createElement('p');
+          limits.textContent = 'Limitations: ' + (resource.limitations || []).join(' · ');
+          const evidence = document.createElement('p');
+          evidence.textContent = 'Licence evidence: ' + (resource.licence.evidenceUrl || 'not supplied') +
+            ' · Pricing evidence: ' + resource.pricing.evidenceUrl;
+          item.append(heading, meta, source, detail, limits, evidence);
+
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'View audit history';
+          historyButton.setAttribute('aria-expanded', 'false');
+          const historyRegion = document.createElement('section');
+          historyRegion.hidden = true;
+          historyRegion.setAttribute('role', 'region');
+          historyRegion.setAttribute('aria-label', 'Guardian Resource audit history');
+          const historyList = document.createElement('ol');
+          historyRegion.append(historyList);
+          let historyLoaded = false;
+          historyButton.addEventListener('click', async () => {
+            if (!historyRegion.hidden) {
+              historyRegion.hidden = true;
+              historyButton.setAttribute('aria-expanded', 'false');
+              return;
+            }
+            historyRegion.hidden = false;
+            historyButton.setAttribute('aria-expanded', 'true');
+            if (historyLoaded) return;
+            historyList.textContent = 'Loading audit history…';
+            historyButton.disabled = true;
+            try {
+              const history = await controlApi('/api/guardian/resources/' +
+                encodeURIComponent(resource.id) + '?eventLimit=100');
+              historyList.replaceChildren();
+              const events = Array.isArray(history.events) ? history.events : [];
+              if (!events.length) {
+                historyList.textContent = 'No audit events recorded.';
+              } else {
+                events.forEach(event => {
+                  const entry = document.createElement('li');
+                  const occurredAt = new Date(event.occurredAt);
+                  const timestamp = Number.isNaN(occurredAt.getTime())
+                    ? event.occurredAt : occurredAt.toLocaleString();
+                  const detailText = event.detail && typeof event.detail.note === 'string'
+                    ? ' · ' + event.detail.note : '';
+                  const reviewerText = event.reviewerId ? ' · reviewer: ' + event.reviewerId : '';
+                  entry.textContent = timestamp + ' · ' + event.eventType + reviewerText + detailText;
+                  historyList.append(entry);
+                });
+              }
+              historyLoaded = true;
+            } catch (error) {
+              historyList.textContent = 'Audit history unavailable: ' + error.message;
+            } finally {
+              historyButton.disabled = false;
+            }
+          });
+          item.append(historyButton, historyRegion);
+
+          let nextStatus = null;
+          if (resource.status === 'draft') nextStatus = 'reviewed';
+          else if (resource.status === 'reviewed') nextStatus = 'accepted';
+          else if (resource.status === 'accepted') nextStatus = 'archived';
+          if (resource.status !== 'archived' && reviewerAuthenticated) {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = nextStatus === 'reviewed' ? 'Mark reviewed'
+              : nextStatus === 'accepted' ? 'Accept resource'
+              : 'Archive resource';
+            reviewButton.addEventListener('click', async () => {
+              const note = guardianResourceReviewNote.value.trim();
+              if (!note) {
+                guardianResourceStatus.textContent = 'Add a review note before changing the resource status.';
+                guardianResourceReviewNote.focus();
+                return;
+              }
+              if (nextStatus === 'accepted' &&
+                  (resource.licence.review !== 'verified' || !resource.licence.evidenceUrl)) {
+                guardianResourceStatus.textContent = 'Acceptance is blocked: licence state must be verified with an HTTPS evidence URL.';
+                return;
+              }
+              reviewButton.disabled = true;
+              try {
+                await reviewerApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: nextStatus,
+                    note,
+                    expectedUpdatedAt: resource.updatedAt,
+                  }),
+                });
+                guardianResourceReviewNote.value = '';
+                await loadGuardianResources();
+              } catch (error) {
+                guardianResourceStatus.textContent = error.message;
+                reviewButton.disabled = false;
+              }
+            });
+            item.append(reviewButton);
+            const archiveButton = document.createElement('button');
+            archiveButton.type = 'button';
+            archiveButton.className = 'secondary';
+            archiveButton.textContent = 'Archive resource';
+            archiveButton.addEventListener('click', async () => {
+              const note = guardianResourceReviewNote.value.trim();
+              if (!note) {
+                guardianResourceStatus.textContent = 'Add a review note before archiving this resource.';
+                guardianResourceReviewNote.focus();
+                return;
+              }
+              archiveButton.disabled = true;
+              try {
+                await reviewerApi('/api/guardian/resources/' + encodeURIComponent(resource.id), {
+                  method: 'PATCH',
+                  body: JSON.stringify({
+                    status: 'archived',
+                    note,
+                    expectedUpdatedAt: resource.updatedAt,
+                  }),
+                });
+                guardianResourceReviewNote.value = '';
+                await loadGuardianResources();
+              } catch (error) {
+                guardianResourceStatus.textContent = error.message;
+                archiveButton.disabled = false;
+              }
+            });
+            item.append(archiveButton);
+          } else if (resource.status !== 'archived') {
+            const reviewerNotice = document.createElement('p');
+            reviewerNotice.textContent = 'Independent reviewer sign-in is required. Open the Approvals panel to sign in before changing this resource.';
+            item.append(reviewerNotice);
+          }
+          guardianResourceList.append(item);
+        });
+      } catch (error) {
+        guardianResourceStatus.textContent = error.message.includes('not configured')
+          ? 'Guardian Resource storage is not active yet. The Forge D1 migration and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        guardianResourceList.className = 'memory-empty';
+      }
+    }
+
+    guardianResourceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const splitLines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      guardianResourceSaveBtn.disabled = true;
+      guardianResourceStatus.textContent = 'Saving Guardian Resource as a draft…';
+      try {
+        await controlApi('/api/guardian/resources', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: guardianResourceName.value.trim(),
+            canonicalUrl: guardianResourceUrl.value.trim(),
+            category: guardianResourceCategory.value,
+            sourceRevision: guardianResourceRevision.value.trim(),
+            licence: {
+              identifier: guardianResourceLicence.value.trim(),
+              review: guardianResourceLicenceReview.value,
+              evidenceUrl: guardianResourceLicenceEvidence.value.trim() || null,
+            },
+            pricing: {
+              model: guardianResourcePricing.value,
+              limits: splitLines(guardianResourcePricingLimits.value),
+              evidenceUrl: guardianResourcePricingEvidence.value.trim(),
+              checkedAt: new Date().toISOString(),
+            },
+            hosting: {
+              mode: guardianResourceHosting.value,
+              requirements: splitLines(guardianResourceHostingRequirements.value),
+            },
+            limitations: splitLines(guardianResourceLimitations.value),
+          }),
+        });
+        guardianResourceForm.reset();
+        await loadGuardianResources();
+        guardianResourceStatus.textContent = 'Draft saved. It is not approved for installation or execution.';
+      } catch (error) {
+        guardianResourceStatus.textContent = error.message;
+      } finally {
+        guardianResourceSaveBtn.disabled = false;
+      }
+    });
+
+    guardianResourceRefreshBtn.addEventListener('click', loadGuardianResources);
+
     async function saveForgeCandidate() {
       if (!forgeRepository) return;
       const button = document.getElementById('forgeSaveCandidateBtn');
@@ -2906,6 +4259,7 @@
       approvalStatus.textContent = 'Loading approval inbox…';
       approvalList.replaceChildren();
       try {
+        await refreshReviewerSession();
         const data = await controlApi('/api/approvals');
         if (!Array.isArray(data.approvals) || !data.approvals.length) {
           approvalList.textContent = 'No pending approvals.';
@@ -2922,7 +4276,7 @@
             const expiry = document.createElement('p');
             expiry.textContent = (approval.expired ? 'Expired' : 'Expires') + ' · ' + new Date(approval.expiresAt).toLocaleString();
             card.append(title, detail, expiry);
-            if (!approval.expired) {
+            if (!approval.expired && reviewerAuthenticated) {
               const actions = document.createElement('div');
               actions.className = 'approval-actions';
               for (const decision of ['approved', 'denied']) {
@@ -2933,7 +4287,7 @@
                   button.disabled = true;
                   try {
                     const agentRunApproval = approval.capabilityId === 'aegis-agent-run';
-                    await controlApi(agentRunApproval
+                    await reviewerApi(agentRunApproval
                       ? '/api/sentinel/agent-run-approval/' + encodeURIComponent(approval.id)
                       : '/api/approvals', {
                       method: agentRunApproval ? 'PATCH' : 'POST',
@@ -2959,11 +4313,17 @@
                 actions.append(button);
               }
               card.append(actions);
+            } else if (!approval.expired) {
+              const reviewerNotice = document.createElement('p');
+              reviewerNotice.textContent = 'Independent reviewer sign-in is required before this decision can be recorded.';
+              card.append(reviewerNotice);
             }
             approvalList.append(card);
           });
         }
-        approvalStatus.textContent = data.total + ' pending request(s) · approved plans can be authorised; specialist execution remains disabled';
+        approvalStatus.textContent = data.total + ' pending request(s) · ' +
+          (reviewerAuthenticated ? 'reviewer session active' : 'reviewer sign-in required for decisions') +
+          ' · specialist execution remains disabled';
       } catch (error) {
         approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
@@ -3092,10 +4452,12 @@
       addMessage(text, 'user');
       userInput.value = '';
       status.textContent = 'Thinking…';
+      setCompanionModePresence('thinking', 'Thinking through your message…');
 
       try {
         if (await handleCommand(text)) {
           status.textContent = 'Ready';
+          setCompanionModePresence('idle', 'Ready when you are.');
           return;
         }
 
@@ -3120,9 +4482,11 @@
             tools: [],
             context: [],
             projectId: chatProjectSelect.value || undefined,
+            companionInteraction: getActiveCompanionInteraction(),
           })
         });
         if (res.status === 401) {
+          setCompanionModePresence('disconnected', 'Your AEGIS session has ended. Sign in again to continue.');
           showLogin('Your session has expired. Sign in again.');
           return;
         }
@@ -3137,6 +4501,7 @@
         }
         const assistantMessage = addMessage('', 'assistant');
         const assistantText = assistantMessage.lastChild;
+        setCompanionModePresence('responding', 'Putting a reply together…');
         const reply = await readAgUiReply(res, delta => {
           assistantText.textContent += delta;
           chatBox.scrollTop = chatBox.scrollHeight;
@@ -3144,9 +4509,11 @@
         history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
         saveHistory();
         status.textContent = 'Ready';
+        setCompanionModePresence('idle', 'Here when you need me.');
       } catch (err) {
         addMessage('Sorry, something went wrong: ' + err.message, 'assistant');
         status.textContent = 'Error';
+        setCompanionModePresence('error', 'The last message could not be completed. You can try again.');
       } finally {
         busy = false;
         sendBtn.disabled = false;

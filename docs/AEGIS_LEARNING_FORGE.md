@@ -1,0 +1,191 @@
+# AEGIS Learning Forge
+
+**Status:** Immutable learning-path registry and prerequisite-gated self-reported progress implemented and full PR CI verified on draft PR #103 (17 November 2026).
+
+## Contract
+
+A learning path is a versioned graph:
+
+- `id`, semantic `version`, `title` and bounded `description`;
+- 1–500 learning nodes validated by `validateLearningGraph`;
+- each node has a unique slug, outcomes, prerequisites, difficulty, attributable HTTPS source references and an explicit content-licence state;
+- prerequisites must exist, cannot self-reference and must form an acyclic graph;
+- external source material is linked and attributed; link-only status does not imply permission to copy or redistribute content.
+
+## Persistence and API
+
+- `migrations/forge/0010_learning_paths.sql` stores owner-scoped immutable graph versions with a unique owner/path/version key and SHA-256 graph digest.
+- Registration emits one append-only event. Database triggers reject update/delete of graph versions and audit events.
+- `functions/lib/learning-forge.mjs` canonicalises JSON independent of key order, validates the graph, registers idempotently and rejects different content under an existing version.
+- Authenticated same-origin `POST /api/learning/paths` registers a path; authenticated `GET /api/learning/paths` lists owner-scoped paths with bounded page size.
+- Owner identity is server-derived. Caller-supplied owner fields and unknown graph/node fields are rejected.
+
+### Curated local starter paths (19 November 2026)
+
+- The owner-facing Learning Forge authoring form now offers two editable beginner templates: JavaScript Foundations and Web Safety Foundations.
+- Templates include learning outcomes, prerequisite relationships, difficulty, HTTPS links to MDN reference pages and the explicit `link-only` content-licence state. They do not copy course material.
+- Selecting and loading a starter only fills the local JSON editor. Registration still requires the owner to review the definition and explicitly submit it through the authenticated same-origin Learning Forge API.
+- A starter is not a verified course, an endorsed curriculum or evidence of mastery. It is a convenient editable graph example; the existing immutable version and graph-validation rules remain authoritative.
+- Guided node authoring and a user-friendly new-version workflow remain future work.
+
+## Scope boundary
+
+The Learning Forge now includes owner-scoped progress, server-scored assessment attempts, explainable next actions, a non-certifying mastery-evidence candidate policy and local spaced-review suggestions (see the implementation slices below). It is still not a complete adaptive tutor or verified mastery system: authoritative evidence provenance, independent reviewer identity, learner tenancy, learner UI, persistent recommendations/schedules and a supervised tutor workflow remain outstanding.
+
+It does not ingest or copy course content, scrape source sites, infer skill from time-on-task, or send learning data to external providers. Self-reported completion, assessment passes and scheduler suggestions remain distinct from verified mastery.
+
+
+## Learner progress and prerequisite gates
+
+A second slice adds owner-scoped learner progress:
+
+- `migrations/forge/0011_learning_progress.sql` stores node state against an exact immutable path version and appends progress events. Progress rows cannot be deleted; events cannot be updated or deleted.
+- The state labels are deliberately modest: `in_progress` and `self_reported_complete`. A completion click is not proof of learning; every response explicitly reports `masteryVerified: false`.
+- `functions/lib/learning-progress.mjs` enforces optimistic concurrency, allowed transitions, exact path/node identity and prerequisite completion before a learner can start or self-report completion of a downstream node.
+- D1 triggers independently enforce the prerequisite rule on insert and update, preventing direct database writes from bypassing the graph gate.
+- Authenticated `GET/PATCH /api/learning/paths/:id/progress` lists and records progress with same-origin write protection and bounded request bodies.
+- Assessment attempts, local review suggestions and a non-certifying mastery candidate policy are implemented in later slices; none certifies mastery or enables automatic skill inference.
+
+
+## Deterministic assessment contract — first slice (17 November 2026)
+
+**Status:** Pure assessment validation and scoring contract implemented; CI verification pending.
+
+- Added `functions/lib/learning-mastery.mjs` with immutable-shape, semantic-version-bound assessment validation.
+- Assessments bind to an exact Learning Path version and node, contain 1–50 uniquely identified questions, bounded point weights and a 1–100% pass threshold.
+- The scorer requires exactly one bounded answer for every question, rejects missing/extra/malformed answers, and calculates a deterministic weighted percentage.
+- The result includes the exact assessment/path/node identity and earned/possible points. It explicitly returns `masteryVerified: false`: pure scoring is not yet a persisted, authenticated mastery record.
+- Correct answers are part of the trusted assessment definition and must not be exposed by a future learner-facing assessment-delivery API.
+- This slice does not yet persist assessments or attempts, provide a learner UI, enforce retry/cooldown rules, or issue verified mastery. Those require immutable assessment registration, server-side answer handling, append-only attempt evidence, and an independently tested mastery policy.
+- No learning data is sent to an external model or provider; no model-as-judge is used.
+
+
+## Learner-safe assessment delivery contract — second slice (17 November 2026)
+
+**Status:** Pure validation, learner projection and deterministic scoring implemented; persistence and CI verification remain pending.
+
+- Assessment questions now carry bounded prompts and exactly four unique answer options.
+- `projectLearnerAssessment` creates an explicit allowlisted learner-facing projection. It omits the answer key and pass threshold rather than serialising the trusted assessment object directly.
+- Scoring remains server-side and deterministic; malformed, missing and extra answers are rejected.
+- Results continue to state `masteryVerified: false`. A passing score alone is not a durable mastery credential.
+- The learner projection is a pure contract, not yet an HTTP endpoint. A future endpoint must load trusted registered assessment versions server-side and must never accept an assessment definition or answer key supplied by the learner.
+- Still required: immutable assessment persistence, attempt-rate policy, append-only attempts, authenticated learner endpoints, assessment version revocation/supersession policy, and independent mastery verification.
+
+
+### Learning assessment CI correction — weighted-score expectation (17 Nov 2026)
+- The full test run exposed an incorrect test expectation, not a scoring defect: with weights 1, 1 and 2, answering only the second question correctly earns 25%, not 50%.
+- Corrected the fixture to test a genuine 50% case (the two one-point questions correct) and added a separate 25% assertion.
+- The failed run 44176407237 executed 815 tests: 813 passed, one failed, one skipped. D1/runtime steps were skipped because the Node.js step failed.
+- Corrected test commit: 415d06067c0695a4351be7dd272d72825c4890a6. Fresh CI is pending; no pass is claimed.
+
+
+## Immutable assessment registry — third slice (17 November 2026)
+
+**Status:** Implementation committed to draft PR #103; CI verification pending.
+
+- Migration `0012_learning_assessments.sql` stores immutable, owner-scoped assessment versions and append-only registration events, bound to the exact path version through a composite foreign key.
+- The store validates the assessment, verifies the exact path version and node, hashes canonical assessment JSON, treats identical registration as idempotent and rejects content changes under an existing version.
+- Authenticated same-origin `GET/POST /api/learning/assessments` is bounded and owner-scoped. POST returns metadata only; GET returns `projectLearnerAssessment` projections, not trusted assessment definitions.
+- The learner projection excludes `correctOption` and `passPercent`. Trusted answer keys remain in the server-side assessment record and must never be returned to learner clients.
+- Database triggers prevent update/delete of assessment versions and audit events.
+- Tests cover exact path/node binding, idempotency, immutable conflicts, owner isolation, page limits and answer-key/pass-threshold omission.
+
+This still does not implement learner attempt submission, retry/cooldown policy, append-only attempt history, revocation/supersession, or mastery certification. A score remains learning evidence only; it cannot confer permissions or authority. CI and D1 runtime verification are pending.
+
+
+## Server-scored attempts and explainable next actions — fourth slice (17 November 2026)
+
+**Status:** Implemented on draft PR #103. Latest push and D1 migration/smoke verification passed.
+
+### Immutable attempt history
+
+- Added `migrations/forge/0013_learning_assessment_attempts.sql` with owner-scoped attempts bound by foreign key and database trigger to an exact registered assessment version and its path/node identity.
+- Attempts persist the deterministic score, pass/fail result, assessment digest and timestamp. **Raw answers are not stored, and no hash of the low-entropy multiple-choice answers is stored either.**
+- The API accepts only assessment ID/version and answers. It never accepts a client score, pass flag, owner ID or mastery claim.
+- Scoring loads the trusted immutable assessment server-side and rejects missing, extra or malformed answers.
+- D1 enforces a 30-second cooldown and a maximum of five attempts per assessment version in a rolling 15-minute window. This is enforced at the database write boundary, not just in application code.
+- Attempt records and submission events are append-only and reject update/delete. Attempt history is private, owner-scoped and bounded.
+- Every result explicitly reports `masteryVerified: false`. Passing an assessment does not issue a credential, alter progress or grant capability/agent authority.
+
+### Adaptive next-action engine
+
+- Added `functions/lib/learning-recommendations.mjs`, a deterministic, local, explainable recommendation function.
+- It considers only the exact path revision, validates progress and attempt projections, and honours prerequisite completion.
+- It prioritises review after a failed check, reinforcement after a pass, continuation of an in-progress node, and starting the next eligible node.
+- Each recommendation includes a plain-language reason, source references, deterministic priority and timestamp.
+- Attempts from another path revision are ignored; malformed evidence is rejected rather than guessed.
+- Recommendations never change progress or certify mastery. This is a pure engine; a persisted recommendation feed/UI and spaced-repetition scheduler are not yet implemented.
+
+### Verification
+
+- GitHub Actions run `44183737666` passed on code head `f50b4bfd9b4faf149cddedd3385bf9d31abe577a`: **838 tests, 837 passed, 0 failed, 1 skipped**, plus all isolated D1 migration/runtime/Forge checks.
+- Follow-up run `44184401063` passed on `8d52871d98768334df4de350731b9728de424714`: **844 tests, 843 passed, 0 failed, 1 skipped**, plus isolated D1 migration/runtime/Forge checks.
+- The first run exposed an SQL column-order syntax defect in migration `0012`; the column definition was moved ahead of table constraints and the subsequent complete migration/smoke run passed.
+- The new attempt-history migration, assessment and attempt integrity checks, invalid-node rejection, append-only triggers and rapid-retry cooldown were exercised by the Forge D1 CI smoke workflow.
+
+Still not implemented: learner-facing identity/accounts beyond the existing owner-auth boundary, a learner UI, independent mastery certification, attempt retention/deletion policy, recommendation persistence, spaced repetition and a supervised tutor conversation. The current owner API is the existing single-owner pattern; it is not presented as a multi-tenant learner platform.
+
+
+## Independent mastery evidence — candidate policy (17 November 2026)
+
+**Status:** Pure deterministic policy added; full CI passed on code commit `37be686edb42e9f482a936d4c8d46914448e890a` (workflow `44187738206`). This is not a mastery certificate or an active learner-facing workflow.
+
+- Added `functions/lib/learning-mastery-evidence.mjs` and `tests/learning-mastery-evidence.test.mjs`.
+- A candidate requires at least two distinct passed assessment attempts on separate UTC dates, an applied-task artifact identified by SHA-256 digest, and an approving human review that explicitly references every qualifying evidence record.
+- Every record is bound to the exact immutable path version and node. Duplicate evidence identifiers, malformed identities, future timestamps, cross-version evidence and unsupported evidence kinds are rejected.
+- A single assessment pass, repeated attempts on one day, a missing applied task, incomplete review references or AI-only review cannot produce a candidate.
+- The output is `candidate_for_human_confirmation` with `masteryVerified: false`; insufficient evidence returns explicit missing-evidence reasons. No capability, autonomy, credential or permission follows.
+- **Trust boundary:** this pure policy validates structure and relationships, not the truth or provenance of the evidence. Before production use, a trusted service must load attempt records and artifact-review records from their authoritative stores, authenticate reviewer identity and independence, and bind artifact digests to retained or independently verifiable evidence. Caller-supplied JSON must never be treated as authoritative.
+- Full workflow `44187738206` passed: **850 tests, 849 passed, 0 failed, 1 skipped**; capability/runtime/Queue/Forge D1 migrations and smoke checks all passed.
+- No learner identity expansion, automatic certification, AI-as-reviewer, public API or UI is introduced.
+
+### Next controls
+
+1. Extend store-backed evidence loading with authoritative applied-task artifact records and authenticated, independent human-review records before exposing candidate generation.
+2. Decide a privacy-preserving attempt retention/deletion policy; the current append-only attempt store needs a governed retention design rather than an unreviewed delete path.
+3. Keep schedule persistence and notification delivery disabled until user-controlled scheduling and explicit reminder consent are designed.
+4. Resolve learner identity and tenancy before building a multi-user UI.
+
+
+## Adaptive spaced review — local schedule suggestions (17 November 2026)
+
+**Status:** Pure deterministic review scheduler implemented and full CI passed on code commit `3ee155670cce21e1504a1a6ba45ff36305633061` (workflow `44189175803`). No notification or reminder service is connected.
+
+- Added `functions/lib/learning-spaced-repetition.mjs` and six focused tests.
+- Uses the latest attempt per UTC day for each node, so multiple attempts on one day cannot inflate the review streak.
+- Failed checks reset the successful-review sequence and suggest a one-day revisit. Successful review days expand the interval through 1, 3, 7, 14 and 30 days, capped at 30.
+- Schedules are bound to the exact immutable learning-path version and node. Attempts from other path versions are ignored; malformed, duplicate and future-dated attempts are rejected.
+- Output includes the due date, interval, overdue state and explanation. It explicitly returns `masteryVerified: false` and `notificationScheduled: false`.
+- This is a suggestion engine only: it does not write progress, persist schedules, send notifications or grant mastery. Any future reminder delivery must be user-controlled and separately consented.
+- Full workflow `44189175803` passed: **850 tests, 849 passed, 0 failed, 1 skipped**, plus all capability/runtime/Queue/Forge D1 migration and smoke checks.
+- The preceding full run `44188619578` also verified that a human review must occur strictly after every evidence item it approves; premature reviews remain insufficient evidence.
+
+## Store-backed mastery evidence ingestion — assessment source (17 November 2026)
+
+**Status:** Internal, owner-scoped evidence loader implemented; full workflow `44198403611` passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`.
+
+- Added `getLearningPath` for exact owner/path/version retrieval through the existing immutable registry mapper, including graph JSON and SHA-256 digest verification.
+- Added `functions/lib/learning-mastery-evidence-store.mjs`. It loads the exact path, enumerates assessments bound to the target path revision/node, counts attempts with a hard bound, and loads server-scored attempts through the integrity-checking attempt store.
+- Each attempt is projected into a minimal assessment evidence record; raw learner answers, answer hashes and assessment answer keys are not exposed.
+- Attempt history retrieval now revalidates the registered assessment content digest and checks each attempt's stored assessment digest against the exact immutable assessment version. Tampered assessment content or mismatched attempt digest is rejected.
+- The loader rejects cross-owner/path/node records, malformed or future-dated attempts and evidence sets exceeding bounded assessment/attempt limits.
+- Added a store-backed candidate builder. It cannot accept caller-injected task or reviewer claims; with only assessment evidence available it remains `insufficient_evidence`, `masteryVerified: false`.
+- Applied-task and human-review evidence are explicitly reported as unavailable. No candidate API, learner UI, certification, capability grant or reviewer identity is fabricated.
+- RED/GREEN regression evidence: workflow `44198022972` failed on the two new digest-tampering tests with “Missing expected rejection”; the implementation was added, then full workflow `44198403611` passed: **855 tests, 854 passed, 0 failed, 1 skipped**, including all capability/runtime/Queue/Forge D1 migrations and smoke checks.
+
+### Remaining trust boundary
+
+The existing owner session is still a single-owner identity boundary, not a multi-learner identity model. Applied-task evidence needs a durable artifact store with content-addressed verification and retention controls. Human review needs authenticated reviewer identities, separation-of-duties rules and auditable decisions. Until both exist, mastery remains a non-certifying candidate policy only.
+
+
+## Authenticated Learning Mastery diagnostics — API slice (18 November 2026)
+
+**Status:** Added to draft PR #103; CI verification pending.
+
+- Added authenticated, read-only `GET /api/learning/mastery?pathId=...&pathVersion=...&nodeId=...`.
+- The endpoint derives the owner from the existing authenticated single-owner boundary, rejects unknown/repeated query parameters and requires an exact semantic path version and node identity.
+- It loads evidence only through the store-backed loader, which verifies the immutable Learning Path and Assessment digests and uses server-scored immutable attempt records. No caller-supplied evidence JSON, score, reviewer identity or owner identifier is accepted.
+- The response exposes evidence counts and explicit unavailable evidence kinds. With the current authoritative sources it cannot produce a qualifying candidate because applied-task artifacts and independent human reviews are not yet backed by trusted stores.
+- Every response includes `certificationGranted: false`; the candidate policy continues to return `masteryVerified: false`. This endpoint is diagnostic only and does not certify skills, alter progress, grant authority or trigger automation.
+- Added API tests for authentication, strict query allowlisting, repeated/missing parameters, unavailable storage and an insufficient-evidence response.
+- This does not close the reviewer-identity or artifact-provenance gap. Do not describe the feature as verified mastery or multi-learner support.

@@ -113,6 +113,72 @@ jobs:
         shell: bash
         run: |
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-seed.sql
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-assessment.sql
+          assessment_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessments WHERE id = 'learning-assessment-smoke'")
+          echo "$assessment_count"
+          grep -q "1" <<< "$assessment_count"
+          assessment_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_events WHERE assessment_id = 'assessment-smoke-check'")
+          echo "$assessment_events"
+          grep -q "1" <<< "$assessment_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_assessments SET assessment_json = '{}' WHERE id = 'learning-assessment-smoke'"; then
+            echo "Expected immutable Learning Assessment version trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_assessment_events WHERE assessment_id = 'assessment-smoke-check'"; then
+            echo "Expected append-only Learning Assessment event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-assessment-invalid-node.sql; then
+            echo "Expected Learning Assessment node binding trigger to reject an unknown node."
+            exit 1
+          fi
+          attempt_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_attempts WHERE id = 'learning-attempt-smoke'")
+          echo "$attempt_count"
+          grep -q "1" <<< "$attempt_count"
+          attempt_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_assessment_attempt_events WHERE attempt_id = 'learning-attempt-smoke'")
+          echo "$attempt_events"
+          grep -q "1" <<< "$attempt_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_assessment_attempts SET score_percent = 0 WHERE id = 'learning-attempt-smoke'"; then
+            echo "Expected immutable Learning Attempt trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_assessment_attempt_events WHERE attempt_id = 'learning-attempt-smoke'"; then
+            echo "Expected append-only Learning Attempt event trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-attempt-rate-limit.sql; then
+            echo "Expected Learning Attempt cooldown trigger to reject a rapid retry."
+            exit 1
+          fi
+          guardian_resource_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT review_status FROM guardian_resources WHERE id = 'guardian-resource-smoke'")
+          echo "$guardian_resource_state"
+          grep -q "draft" <<< "$guardian_resource_state"
+          guardian_resource_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM guardian_resource_events WHERE resource_id = 'guardian-resource-smoke'")
+          echo "$guardian_resource_events"
+          grep -q "1" <<< "$guardian_resource_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE guardian_resource_events SET event_type = 'archived' WHERE resource_id = 'guardian-resource-smoke'"; then
+            echo "Expected Guardian Resource events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM guardian_resource_events WHERE resource_id = 'guardian-resource-smoke'"; then
+            echo "Expected Guardian Resource events to reject deletion."
+            exit 1
+          fi
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-guardian-review.sql
+          guardian_review_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT review_status FROM guardian_resources WHERE id = 'guardian-resource-accepted-smoke'")
+          echo "$guardian_review_state"
+          grep -q "archived" <<< "$guardian_review_state"
+          guardian_review_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM guardian_resource_events WHERE resource_id = 'guardian-resource-accepted-smoke'")
+          echo "$guardian_review_events"
+          grep -q "4" <<< "$guardian_review_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE guardian_resources SET record_json = '{}' WHERE id = 'guardian-resource-accepted-smoke'"; then
+            echo "Expected Guardian Resource source content to remain immutable after review."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE guardian_resources SET review_status = 'accepted', review_note = 'Attempted bypass', reviewer_id = 'owner', updated_at = '2026-11-17T12:02:00.000Z' WHERE id = 'guardian-resource-smoke'"; then
+            echo "Expected Guardian Resource acceptance to reject unverified licence evidence."
+            exit 1
+          fi
           if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE forge_candidates SET decision = 'adapt' WHERE id = 'forge-smoke'"; then
             echo "Expected licence gate to reject reuse before owner verification."
             exit 1
@@ -153,3 +219,193 @@ jobs:
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql
+
+      - name: Verify Eval Forge immutable suite registry and append-only audit
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-eval-smoke.sql
+          suite_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM eval_suite_events WHERE suite_id = 'guardian-regression' AND version = '1.0.0'")
+          echo "$suite_events"
+          grep -q "1" <<< "$suite_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_suites SET suite_json = '{}' WHERE id = 'eval-suite-smoke'"; then
+            echo "Expected registered evaluation suite versions to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_suites WHERE id = 'eval-suite-smoke'"; then
+            echo "Expected registered evaluation suite versions to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_suite_events SET event_type = 'tampered' WHERE id = 'registered:eval-suite-smoke'"; then
+            echo "Expected evaluation suite events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_suite_events WHERE id = 'registered:eval-suite-smoke'"; then
+            echo "Expected evaluation suite events to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO eval_suites (id, owner_id, suite_id, version, suite_digest, suite_json, created_at) VALUES ('eval-suite-bypass', 'owner', 'guardian-regression', '1.0.0', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '{}', '2026-11-17T12:01:00.000Z')"; then
+            echo "Expected owner/suite/version uniqueness to reject duplicate suite versions."
+            exit 1
+          fi
+
+      - name: Verify Eval Forge immutable run history and evidence-integrity marker
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-eval-run-smoke.sql
+          run_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM eval_run_events WHERE run_id = 'run-smoke'")
+          echo "$run_events"
+          grep -q "1" <<< "$run_events"
+          run_evidence=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT evidence_verified || ':' || status FROM eval_runs WHERE run_id = 'run-smoke'")
+          echo "$run_evidence"
+          grep -q "1:passed" <<< "$run_evidence"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_runs SET score_percent = 0 WHERE run_id = 'run-smoke'"; then
+            echo "Expected persisted evaluation results to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_runs WHERE run_id = 'run-smoke'"; then
+            echo "Expected persisted evaluation results to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE eval_run_events SET event_type = 'tampered' WHERE run_id = 'run-smoke'"; then
+            echo "Expected evaluation run events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM eval_run_events WHERE run_id = 'run-smoke'"; then
+            echo "Expected evaluation run events to reject deletion."
+            exit 1
+          fi
+
+      - name: Verify Learning Forge immutable path registry and audit events
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-smoke.sql
+          learning_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_path_events WHERE path_id = 'javascript-foundations' AND version = '1.0.0'")
+          echo "$learning_events"
+          grep -q "1" <<< "$learning_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_paths SET graph_json = '{}' WHERE id = 'learning-path-smoke'"; then
+            echo "Expected registered Learning Path versions to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_paths WHERE id = 'learning-path-smoke'"; then
+            echo "Expected registered Learning Path versions to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_path_events SET event_type = 'tampered' WHERE id = 'registered:learning-path-smoke'"; then
+            echo "Expected Learning Path events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_path_events WHERE id = 'registered:learning-path-smoke'"; then
+            echo "Expected Learning Path events to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_paths (id, owner_id, path_id, version, graph_digest, graph_json, created_at) VALUES ('learning-path-bypass', 'owner', 'javascript-foundations', '1.0.0', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '{}', '2026-11-17T12:01:00.000Z')"; then
+            echo "Expected owner/path/version uniqueness to reject duplicate Learning Path versions."
+            exit 1
+          fi
+
+      - name: Verify Learning Forge progress transitions and append-only learner history
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-learning-progress-smoke.sql
+          initial_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
+          echo "$initial_events"
+          grep -q "1" <<< "$initial_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_progress (owner_id, path_id, path_version, node_id, status, created_at, updated_at) VALUES ('owner', 'javascript-foundations', '1.0.0', 'javascript-functions', 'self_reported_complete', '2026-11-17T12:01:30.000Z', '2026-11-17T12:01:30.000Z')"; then
+            echo "Expected D1 to reject completion before prerequisites are self-reported complete."
+            exit 1
+          fi
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_progress SET status = 'self_reported_complete', updated_at = '2026-11-17T12:02:00.000Z' WHERE owner_id = 'owner' AND path_id = 'javascript-foundations' AND path_version = '1.0.0' AND node_id = 'javascript-basics'"
+          completed_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status FROM learning_progress WHERE node_id = 'javascript-basics'")
+          echo "$completed_state"
+          grep -q "self_reported_complete" <<< "$completed_state"
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "INSERT INTO learning_progress (owner_id, path_id, path_version, node_id, status, created_at, updated_at) VALUES ('owner', 'javascript-foundations', '1.0.0', 'javascript-functions', 'self_reported_complete', '2026-11-17T12:03:00.000Z', '2026-11-17T12:03:00.000Z')"
+          child_state=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT status FROM learning_progress WHERE node_id = 'javascript-functions'")
+          echo "$child_state"
+          grep -q "self_reported_complete" <<< "$child_state"
+          progress_events=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_progress_events WHERE node_id = 'javascript-basics'")
+          echo "$progress_events"
+          grep -q "2" <<< "$progress_events"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_progress WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress history to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_progress_events SET to_status = 'in_progress' WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_progress_events WHERE node_id = 'javascript-basics'"; then
+            echo "Expected learner progress events to reject deletion."
+            exit 1
+          fi
+
+      - name: Verify applied-task evidence receipts, withdrawal and append-only audit
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-applied-evidence-smoke.sql
+          submitted=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' AND event_type = 'submitted'")
+          echo "$submitted"
+          grep -q "1" <<< "$submitted"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_applied_task_evidence SET artifact_digest = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' WHERE id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence receipts to reject mutation."
+            exit 1
+          fi
+          wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_applied_task_evidence WHERE id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+          event_count=$(wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "SELECT COUNT(*) AS count FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'")
+          echo "$event_count"
+          grep -q "2" <<< "$event_count"
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "UPDATE learning_applied_task_evidence_events SET event_type = 'submitted' WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence events to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --command "DELETE FROM learning_applied_task_evidence_events WHERE evidence_id = 'evidence-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"; then
+            echo "Expected applied-task evidence events to reject deletion."
+            exit 1
+          fi
+
+      - name: Apply Companion Profile migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1
+      - name: Verify Companion Profile ownership, selection and append-only history
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --file scripts/companion-d1-seed.sql
+          profile_count=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT COUNT(*) AS count FROM companion_profiles WHERE profile_id = 'custom-smoke'")
+          echo "$profile_count"
+          grep -q "1" <<< "$profile_count"
+          profile_events=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT COUNT(*) AS count FROM companion_profile_events WHERE profile_id = 'custom-smoke' AND event_type = 'created'")
+          echo "$profile_events"
+          grep -q "1" <<< "$profile_events"
+          active_profile=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT active_profile_id FROM companion_profile_preferences WHERE owner_id = 'owner'")
+          echo "$active_profile"
+          grep -q "custom-smoke" <<< "$active_profile"
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "UPDATE companion_profiles SET profile_json = '{}' WHERE profile_id = 'custom-smoke'"; then
+            echo "Expected Companion Profile revisions to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_events WHERE profile_id = 'custom-smoke'"; then
+            echo "Expected Companion Profile events to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profiles WHERE profile_id = 'custom-smoke'"; then
+            echo "Expected Companion Profile revisions to require an authorized owner purge."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_preferences (owner_id, active_profile_id, active_profile_version, updated_at) VALUES ('other-owner', 'custom-smoke', 1, '2026-11-17T12:01:00.000Z')"; then
+            echo "Expected Companion Profile selection to reject another owner's profile."
+            exit 1
+          fi
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_authorizations (owner_id, nonce, expires_at) VALUES ('owner', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2099-01-01T00:00:00.000Z')"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "INSERT INTO companion_profile_purge_events (id, owner_id, purged_profiles_count, occurred_at) SELECT 'purge-smoke', 'owner', COUNT(*), '2026-11-17T12:02:00.000Z' FROM companion_profiles WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_preferences WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_events WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profiles WHERE owner_id = 'owner'"
+          wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_purge_authorizations WHERE owner_id = 'owner'"
+          purged_count=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT COUNT(*) AS count FROM companion_profiles WHERE owner_id = 'owner'")
+          echo "$purged_count"
+          grep -Eq '"count"[[:space:]]*:[[:space:]]*0' <<< "$purged_count"
+          purge_audit=$(wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "SELECT purged_profiles_count FROM companion_profile_purge_events WHERE owner_id = 'owner'")
+          echo "$purge_audit"
+          grep -q '1' <<< "$purge_audit"
+          if wrangler d1 execute aegis-companion-test --local --config wrangler.companion-d1-test.toml --persist-to .wrangler/test-companion-d1 --command "DELETE FROM companion_profile_purge_events WHERE id = 'purge-smoke'"; then
+            echo "Expected Companion Profile purge audit to remain append-only."
+            exit 1
+          fi

@@ -8,6 +8,7 @@ import {
 } from '../functions/lib/capability-registry.mjs';
 
 const manifest = {
+  schemaVersion: '1.0',
   id: 'aegis-github-public-discovery',
   version: '0.1.0',
   name: 'Public GitHub repository discovery',
@@ -189,4 +190,50 @@ test('registers agent plan approval as a restricted, human-always execution capa
   assert.deepEqual(agent.data.writes, ['agent-run execution authorisation state']);
   assert.deepEqual(agent.network.egressHosts, []);
   assert.equal(agent.auth.mode, 'session');
+});
+
+
+test('capability manifests reject unknown top-level contract fields', () => {
+  assert.throws(() => validateCapabilityManifest({
+    ...manifest,
+    ambientShellAccess: true,
+  }), /unexpected|unknown|field|key/i);
+});
+
+test('capability manifests reject unknown fields at every nested trust boundary', () => {
+  const mutations = [
+    (value) => { value.provider.unreviewed = true; },
+    (value) => { value.interface.redirectTo = 'https://attacker.example'; },
+    (value) => { value.actions[0].ambientPermissions = ['filesystem']; },
+    (value) => { value.data.secretExport = true; },
+    (value) => { value.network.allowPrivateAddresses = true; },
+    (value) => { value.auth.credential = 'must-not-be-accepted'; },
+    (value) => { value.limits.unbounded = true; },
+    (value) => { value.provenance.reviewer = 'caller-supplied'; },
+    (value) => { value.licence.waiver = true; },
+  ];
+
+  for (const mutate of mutations) {
+    const candidate = JSON.parse(JSON.stringify(manifest));
+    mutate(candidate);
+    assert.throws(() => validateCapabilityManifest(candidate), /unexpected|unknown|field|key/i);
+  }
+});
+
+
+test('capability manifests require the supported schema version', () => {
+  assert.equal(validateCapabilityManifest(manifest), true);
+  assert.throws(() => validateCapabilityManifest({
+    ...manifest,
+    schemaVersion: '2.0',
+  }), /schema version/i);
+});
+
+test('every built-in capability manifest declares the supported schema version', () => {
+  const manifests = listCapabilityManifests();
+  assert.ok(manifests.length > 0);
+  for (const item of manifests) {
+    assert.equal(item.schemaVersion, '1.0');
+    assert.equal(validateCapabilityManifest(item), true);
+  }
 });

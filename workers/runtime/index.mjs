@@ -1,6 +1,7 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import { digestProjectBrief } from '../../functions/lib/project-context-digest.mjs';
 import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
+import { AGENT_RUN_RECORD_SCHEMA_VERSION, createAgentTaskEnvelope, validateAgentRunRecord, validateAgentTaskEnvelope } from '../../functions/lib/agent-contracts.mjs';
 import { buildAgentPlanApprovalBinding } from './agent-plan-approval.mjs';
 import {
   buildHealthCheckResult,
@@ -115,7 +116,8 @@ function parseAgentRun(row) {
   try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
   let specialists = [];
   try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
-  return {
+  const record = {
+    schemaVersion: AGENT_RUN_RECORD_SCHEMA_VERSION,
     id: row.id,
     objective: row.objective,
     specialists,
@@ -133,6 +135,8 @@ function parseAgentRun(row) {
     plan,
     errorCode: row.error_code || null,
   };
+  validateAgentRunRecord(record);
+  return record;
 }
 
 function parseAgentRunStep(row) {
@@ -140,6 +144,14 @@ function parseAgentRunStep(row) {
   const parseJson = (value, fallback) => {
     try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
   };
+  const task = row.task_json ? JSON.parse(row.task_json) : null;
+  if (task !== null) {
+    validateAgentTaskEnvelope(task);
+    if (task.runId !== row.agent_run_id || task.stepId !== row.id ||
+        task.specialist !== row.specialist) {
+      throw new TypeError('Persisted agent task envelope does not match its step.');
+    }
+  }
   return {
     id: row.id,
     stepIndex: row.step_index,
@@ -147,6 +159,7 @@ function parseAgentRunStep(row) {
     status: row.status,
     attempts: row.attempts,
     step: parseJson(row.step_json, null),
+    task,
     checkpoint: parseJson(row.checkpoint_json, {}),
     result: parseJson(row.result_json, null),
     errorCode: row.error_code || null,
@@ -539,20 +552,37 @@ async function processAgentRun(message, env) {
   await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
-    const projectContext = row.context_json ? JSON.parse(row.context_json) : undefined;
-    const expectedContextDigest = projectContext
-      ? (projectContext.knowledge === undefined
-        ? projectContext.digest
-        : await digestCanonicalInput({
-          briefDigest: projectContext.digest,
-          knowledgeDigest: projectContext.knowledgeDigest,
-        }))
-      : null;
-    if (projectContext && (row.context_digest !== expectedContextDigest ||
-        await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
-        (projectContext.knowledge !== undefined &&
-          await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
-      throw new Error('AGENT_CONTEXT_DIGEST_MISMATCH');
+    let projectContext;
+    try {
+      const hasContextJson = typeof row.context_json === 'string' && row.context_json.length > 0;
+      const hasContextDigest = typeof row.context_digest === 'string' && row.context_digest.length > 0;
+      const hasProjectBinding = typeof row.project_id === 'string' && row.project_id.length > 0;
+      if (hasContextJson !== hasContextDigest || hasContextJson !== hasProjectBinding) {
+        throw new Error('Persisted project context binding is incomplete.');
+      }
+      projectContext = hasContextJson ? JSON.parse(row.context_json) : undefined;
+      if (hasContextJson && (!projectContext ||
+          projectContext.brief?.workspace?.id !== row.project_id)) {
+        throw new Error('Persisted project context does not match its project binding.');
+      }
+      const expectedContextDigest = projectContext
+        ? (projectContext.knowledge === undefined
+          ? projectContext.digest
+          : await digestCanonicalInput({
+            briefDigest: projectContext.digest,
+            knowledgeDigest: projectContext.knowledgeDigest,
+          }))
+        : null;
+      if (projectContext && (row.context_digest !== expectedContextDigest ||
+          await digestProjectBrief(projectContext.brief) !== projectContext.digest ||
+          (projectContext.knowledge !== undefined &&
+            await digestCanonicalInput(projectContext.knowledge) !== projectContext.knowledgeDigest))) {
+        throw new Error('Context digest mismatch.');
+      }
+    } catch {
+      const integrityError = new Error('Persisted agent context failed integrity verification.');
+      integrityError.code = 'AGENT_CONTEXT_INTEGRITY_FAILED';
+      throw integrityError;
     }
     const plan = createAgentPlan({
       objective: row.objective,
@@ -566,9 +596,14 @@ async function processAgentRun(message, env) {
     ).bind(planJson, completedAt, runId, attempt)];
 
     for (const [index, step] of plan.steps.entries()) {
+      const taskEnvelope = createAgentTaskEnvelope(plan, {
+        stepId: step.id,
+        attempt: 1,
+        createdAt: completedAt,
+      });
       statements.push(env.DB.prepare(
-        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
-      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), completedAt, completedAt, runId, attempt, planJson));
+        "INSERT INTO agent_run_steps (id, agent_run_id, step_index, specialist, status, attempts, step_json, task_json, checkpoint_json, created_at, updated_at) SELECT ?, id, ?, ?, 'planned', 0, ?, ?, '{}', ?, ? FROM agent_runs WHERE id = ? AND status = 'planned' AND attempts = ? AND cancelled_at IS NULL AND plan_json = ? ON CONFLICT(id) DO NOTHING"
+      ).bind(step.id, index + 1, step.specialist, JSON.stringify(step), JSON.stringify(taskEnvelope), completedAt, completedAt, runId, attempt, planJson));
       statements.push(env.DB.prepare(
         "INSERT INTO agent_run_step_events (event_id, agent_run_step_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, agent_run_id, 'planned', ?, ? FROM agent_run_steps WHERE id = ? AND agent_run_id = ? ON CONFLICT(event_id) DO NOTHING"
       ).bind('planned:' + step.id, JSON.stringify({ stepIndex: index + 1, specialist: step.specialist }), completedAt, step.id, runId));
@@ -579,7 +614,17 @@ async function processAgentRun(message, env) {
       await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
     }
     message.ack();
-  } catch {
+  } catch (error) {
+    if (error?.code === 'AGENT_CONTEXT_INTEGRITY_FAILED') {
+      const failed = await env.DB.prepare(
+        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_CONTEXT_INTEGRITY_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"
+      ).bind(new Date().toISOString(), runId, attempt).run();
+      if (failed.meta?.changes) {
+        await auditAgentRun(env, runId, 'failed', { code: 'AGENT_CONTEXT_INTEGRITY_FAILED', attempt });
+      }
+      message.ack();
+      return;
+    }
     if (attempt >= MAX_ATTEMPTS) {
       const failed = await env.DB.prepare(
         "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ? AND cancelled_at IS NULL"

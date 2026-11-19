@@ -1,6 +1,12 @@
 const MAX_APPROVAL_TTL_MS = 15 * 60 * 1000;
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/i;
+export const CAPABILITY_PERMISSION_REQUEST_SCHEMA_VERSION = '1.0';
+const PERMISSION_REQUEST_KEYS = [
+  'schemaVersion', 'principalId', 'capabilityId', 'capabilityVersion', 'actionId',
+  'resourceId', 'operationSummary', 'connectionId', 'inputDigest', 'requestedBy', 'expiresAt',
+];
+const PERMISSION_REQUEST_INPUT_KEYS = PERMISSION_REQUEST_KEYS.filter((key) => key !== 'schemaVersion');
 
 function requiredId(value, label) {
   if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
@@ -49,6 +55,11 @@ function validateBinding(input) {
   }
 }
 
+function exactKeys(value, keys) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).length === keys.length && Object.keys(value).every((key) => keys.includes(key));
+}
+
 function isoTime(value, label) {
   const time = Date.parse(value);
   if (typeof value !== 'string' || !Number.isFinite(time)) {
@@ -57,19 +68,39 @@ function isoTime(value, label) {
   return new Date(time).toISOString();
 }
 
-export async function createApprovalRequest(db, input, now = Date.now()) {
-  if (!db || typeof db.prepare !== 'function' || !input || typeof input !== 'object') {
-    throw new TypeError('Approval database and request are required');
+/**
+ * Canonical, versioned permission request. This describes a proposed exact
+ * operation; it is not a grant, approval, or authority to execute.
+ */
+export function validatePermissionRequest(request, now = Date.now()) {
+  if (!exactKeys(request, PERMISSION_REQUEST_KEYS) ||
+      request.schemaVersion !== CAPABILITY_PERMISSION_REQUEST_SCHEMA_VERSION ||
+      !Number.isFinite(now)) {
+    throw new TypeError('Invalid permission request schema or clock.');
   }
-  validateBinding(input);
-  requiredId(input.requestedBy, 'requester');
-  if (!Number.isFinite(now)) throw new TypeError('Invalid approval clock');
-  const requestedAt = new Date(now).toISOString();
-  const expiresAt = isoTime(input.expiresAt, 'expiry');
+  validateBinding(request);
+  requiredId(request.requestedBy, 'requester');
+  const expiresAt = isoTime(request.expiresAt, 'expiry');
   const expiry = Date.parse(expiresAt);
-  if (expiry <= now || expiry > now + MAX_APPROVAL_TTL_MS) {
-    throw new TypeError('Approval expiry must be in the next 15 minutes');
+  if (expiresAt !== request.expiresAt || expiry <= now || expiry > now + MAX_APPROVAL_TTL_MS) {
+    throw new TypeError('Permission request expiry must be canonical and within the next 15 minutes.');
   }
+  return true;
+}
+
+
+export async function createApprovalRequest(db, input, now = Date.now()) {
+  if (!db || typeof db.prepare !== 'function' || !input || typeof input !== 'object' ||
+      !exactKeys(input, PERMISSION_REQUEST_INPUT_KEYS)) {
+    throw new TypeError('Approval database and exact permission request fields are required');
+  }
+  const canonicalRequest = {
+    schemaVersion: CAPABILITY_PERMISSION_REQUEST_SCHEMA_VERSION,
+    ...input,
+  };
+  validatePermissionRequest(canonicalRequest, now);
+  const requestedAt = new Date(now).toISOString();
+  const expiresAt = canonicalRequest.expiresAt;
 
   const id = crypto.randomUUID();
   await db.prepare(`
@@ -79,9 +110,9 @@ export async function createApprovalRequest(db, input, now = Date.now()) {
       requested_at, expires_at, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
-    id, input.principalId, input.capabilityId, input.capabilityVersion,
-    input.actionId, input.resourceId, input.operationSummary.trim(), input.connectionId ?? null,
-    input.inputDigest, input.requestedBy, requestedAt, expiresAt,
+    id, canonicalRequest.principalId, canonicalRequest.capabilityId, canonicalRequest.capabilityVersion,
+    canonicalRequest.actionId, canonicalRequest.resourceId, canonicalRequest.operationSummary.trim(), canonicalRequest.connectionId ?? null,
+    canonicalRequest.inputDigest, canonicalRequest.requestedBy, requestedAt, expiresAt,
   ).run();
 
   const row = await db.prepare(

@@ -1,0 +1,110 @@
+# AEGIS Companion Experience
+
+**Status:** Companion profile persistence, bounded interaction customisation, profile export, confirmed profile purge and immersive Companion Mode are implemented on draft PR #103. An AEGIS-owned procedural WebGL2 3D bust prototype is now integrated with a CSS fallback. This is an early renderer milestone, not the finished lifelike avatar; production D1, imported VRM/GLB models, full-body rigging and voice runtime remain incomplete.
+
+## Product contract
+
+- Agent AEGIS is the official, reserved companion identity.
+- User-created profiles customise presentation and conversation style over the same AEGIS intelligence, memory, Sentinel policy and tool authority. A profile is not a second security principal or an agent with independent permissions.
+- Custom profiles cannot add system prompts, tool definitions, permissions, Sentinel rules or memory scopes.
+- Voice is disabled by default. No microphone capture, audio recording, voice cloning or external voice provider is active.
+- The first 3D renderer milestone is an original procedural WebGL2 bust made from generated geometry. When WebGL2 is unavailable, the existing CSS presentation remains visible.
+- The prototype is not yet a lifelike full-body human, imported VRM/GLB model, facial rig or generated portrait.
+
+## Persistent profiles
+
+### Data model
+
+Migration: `migrations/companion/0001_companion_profiles.sql`
+
+- `companion_profiles` stores owner-scoped, immutable profile revisions with canonical JSON and SHA-256 digest.
+- `companion_profile_preferences` stores the owner's active profile/version; a null selection means the official Agent AEGIS profile.
+- `companion_profile_events` records created, updated, selected and reset events. Events and profile revisions reject UPDATE/DELETE.
+- Updating a profile creates a new revision. Optimistic concurrency rejects stale writes.
+- The active selection is checked against the exact owner/profile/version foreign key.
+
+### API
+
+- `GET /api/companion/profiles` — owner-scoped official and custom profile catalogue plus active selection.
+- `POST /api/companion/profiles` — create a bounded custom profile and select it.
+- `PATCH /api/companion/profiles/:id` — create a new revision using `expectedVersion`.
+- `POST /api/companion/profile-selection` — select an exact custom revision or reset to official AEGIS with null values.
+- `GET /api/companion/profiles/export` — export all bounded custom revisions, active selection, profile events and prior purge audit records as JSON.
+- `POST /api/companion/profiles/purge` — delete custom revisions, preferences and profile events after the exact confirmation phrase `DELETE MY COMPANION PROFILES`; a minimal purge audit remains.
+
+All writes require the signed owner session and same-origin protection. The server derives the current owner; caller-supplied owner IDs are rejected. The current authentication boundary is single-owner, not a multi-user tenancy system.
+
+### Integrity and privacy
+
+- Profile reads revalidate schema, identity and canonical SHA-256 digest.
+- Profile history and audit events are append-only outside the explicit owner-requested purge workflow.
+- Creation, active-revision updates, selection and purge use D1 batches so profile content, active selection and corresponding audit events commit or roll back together. Purge count is captured in the same batch before deletion, avoiding a stale preflight count under concurrent writes.
+- Export and purge are available in the companion home under **Privacy & saved profile data**. Export downloads a JSON archive; purge requires the exact phrase and removes custom revisions, active selection and profile events. The remaining purge audit records owner scope, count and time only, without profile identifiers, content or digests.
+- These controls are enabled only when the authenticated persistent profile store is available; session-only profiles are not sent to the export/purge endpoints.
+- Free-text profile descriptions are stored as user-authored metadata but are never inserted into model instructions.
+- Interaction settings are limited to four integer values (0–100) and one verbosity enum. The API rejects unknown fields, prompt text and authority-bearing settings.
+- A configured, verified server profile takes precedence over client-supplied interaction settings.
+- If the profile store is unavailable, the UI can use session-only profiles. The chat endpoint accepts only the bounded style fields, validates them again, and applies them without accepting arbitrary prompt text.
+- Profile settings cannot change safety requirements, truthfulness, privacy, tool permissions, memory scope, Sentinel policy or approval requirements.
+
+## Interaction preferences
+
+`functions/lib/companion-interaction.mjs` converts validated values into deterministic tone guidance:
+
+- Warmth
+- Humour
+- Directness
+- Initiative
+- Response detail
+
+The directive explicitly states that initiative means suggesting or preparing options, never performing consequential actions without explicit approval. Sensitive contexts prioritise empathy and accuracy over humour.
+
+The prompt builder loads the active profile from the verified owner-scoped store. When no profile database is configured, AG-UI can send the bounded style-only preference object. A persisted active profile always wins over client values.
+
+## Companion Mode
+
+- Full-screen responsive workspace with companion presence on one side and the existing live chat on the other.
+- Reuses the existing conversation DOM and message history; it does not create a duplicate chat session.
+- Close button, Escape-key exit, focus restoration, mobile single-column layout and scroll locking.
+- Presence feedback follows text conversation states: idle, thinking, responding, error and disconnected.
+- A restrained visual pulse indicates thinking/responding; reduced-motion preferences disable the animation.
+- The interface clearly labels text-only operation and states that voice and lifelike avatar runtime are not connected.
+
+## Verification
+
+- D1 test configuration: `wrangler.companion-d1-test.toml`.
+- D1 smoke seed: `scripts/companion-d1-seed.sql`.
+- Store/API/UI tests cover owner isolation, immutable revisions, stale writes, profile digest tampering, strict field validation, session fallback, persisted-profile precedence, live chat continuity and responsive/reduced-motion UI contracts.
+- Full workflow [44560799026](https://github.com/LAURENCE1977/Aegis-/actions/runs/44560799026) passed on code head `4e6de97117c52d8537c3f4d94e15e2ded1311728`: **1,015 tests, 1,014 passed, 0 failed, 1 skipped**, including isolated capability/runtime/Queue/Forge/Learning/Companion D1 migrations and smoke checks. Tests cover atomic profile writes, rollback after failed preference persistence, single-registration privacy listeners and purge count capture before deletion. The isolated D1 smoke test also executes the same `INSERT … SELECT COUNT(*)` audit statement used by the purge store.
+
+## Not yet complete — production gates
+
+1. Production D1 has not been provisioned or migrated. Until then, the interface correctly falls back to session-only profiles.
+2. A governed retention policy, expiry/rotation rules and scheduled cleanup are not implemented. Export and explicit user-requested purge are implemented in source; production persistence must remain gated until retention semantics are reviewed and production D1 is provisioned.
+3. A separate reviewer credential, signing secret, session cookie and standalone `/reviewer.html` portal are now implemented on the draft branch. The reviewer can read pending approvals and the owner-scoped Guardian catalogue without the owner's login, and can record review decisions; owner resource intake and final Sentinel authorisation remain separate. External identity-provider verification, MFA/passkeys, multiple named reviewers, reviewer lifecycle/recovery and household/team separation are not implemented. Genuine two-person assurance still depends on a trusted second person holding the reviewer credentials.
+4. The procedural WebGL2 bust prototype is now present in `companion/renderer.mjs`. It supports basic idle/listening/thinking/speaking presentation states and bounded expression/viseme inputs, but it does not yet load external GLB/VRM/VRMA assets; `loadModel` explicitly returns an unsupported result. Full-body rigging, production facial expressions, real audio-driven lip sync, user-owned model import, animation packs and mobile device benchmarks remain future work. The current renderer research and licence assessment is recorded in [AEGIS Companion Renderer Research](AEGIS_COMPANION_RENDERER_RESEARCH.md); no third-party renderer or sample asset has been adopted.
+5. Voice output and optional voice input require a separate consent, device-capture, retention and provider-boundary design. No capture is enabled by this slice.
+6. Accessibility preferences beyond system reduced-motion support are not yet wired to all interface components.
+
+No production deployment, D1 provisioning or PR merge was performed.
+
+
+## Procedural 3D renderer prototype
+
+- Added `companion/renderer.mjs`, an AEGIS-owned WebGL2 renderer with procedurally generated indexed sphere geometry. The current character is a stylised head-and-shoulders bust, not a finished human avatar.
+- Mounted the renderer in the existing home companion and full-screen companion surfaces. The original CSS avatar remains the fallback when WebGL2 is unavailable or renderer initialisation fails.
+- Uses a low-power WebGL2 context request, caps device-pixel ratio at 1.5, targets approximately 30 frames per second, pauses rendering when the host is not visible, and respects reduced-motion preference.
+- Maps the existing Companion Mode presence states into renderer presentation states. Renderer state, expression and viseme inputs are presentation-only; the renderer has no imports or calls into Sentinel, tools, permissions, memory or agent execution.
+- Added focused tests for geometry integrity, bounded viseme inputs, expression allowlisting, presentation-state allowlisting and graceful WebGL2-unavailable fallback.
+- No third-party model, character asset, renderer package, voice provider or audio capture was added.
+- **CI verified:** AEGIS tests workflow [44565947826](https://github.com/LAURENCE1977/Aegis-/actions/runs/44565947826) passed on renderer code head `71edd250f59cfd347a6338ec916f8acf560f20a5`: 1,024 Node tests, 1,023 passed, 0 failed, 1 skipped; the separate Cloudflare runtime integration test passed; all isolated capability, runtime/Queue, Forge, Eval Forge, Learning Forge and Companion Profile D1 migration/smoke checks passed. WebGL2 setup, cleanup and model-loader boundary regression tests are included.
+- **Still not verified in a real browser:** no live visual test or device benchmark has been run on iOS Safari, Android Chrome or desktop. The CI validates code contracts and backend integration, not GPU rendering on a physical device.
+
+
+## Renderer resilience follow-up — 19 November 2026
+
+- Added automatic WebGL2 context restoration while preserving the accessible CSS fallback if reinitialisation fails.
+- Added a second regression test for repeated context loss/restoration. It reproduced duplicate document visibility listeners and ResizeObserver instances (three registrations after two recoveries); the renderer now reuses its existing observer/listener lifecycle.
+- Renderer disposal removes the context listeners, visibility listener and observer.
+- Verified by workflow [44584048574](https://github.com/LAURENCE1977/Aegis-/actions/runs/44584048574) on code head `eb19c23785cbd82feb461d2d1b9e3a199e644448`: **1,037 Node tests, 1,036 passed, 0 failed, 1 skipped**; Cloudflare runtime integration and all isolated capability, runtime/Queue, Forge, Eval Forge, Learning and Companion Profile D1 checks passed.
+- No external renderer dependency or character asset was installed. The imported-model loader remains deliberately disabled pending the separate VRM adapter and asset-provenance gates.

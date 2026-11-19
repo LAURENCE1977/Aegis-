@@ -15,6 +15,12 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function requireExactKeys(value, allowedKeys, label) {
+  if (!isRecord(value) || Object.keys(value).some((key) => !allowedKeys.includes(key))) {
+    throw new TypeError('Unexpected field in ' + label);
+  }
+}
+
 function requireText(value, label, maxLength = 500) {
   if (typeof value !== 'string' || !value.trim() || value.length > maxLength ||
       /[\u0000-\u001f\u007f]/.test(value)) {
@@ -56,7 +62,7 @@ function validateInternalPath(path) {
 }
 
 function validateCapabilityAction(action) {
-  if (!isRecord(action)) throw new TypeError('Invalid capability action');
+  requireExactKeys(action, ['id', 'capability', 'effect', 'risk', 'approval', 'requiredScopes'], 'capability action');
   requireSlug(action.id, 'capability action identifier');
   if (typeof action.capability !== 'string' || !CAPABILITY_PATTERN.test(action.capability)) {
     throw new TypeError('Invalid capability action name');
@@ -75,7 +81,8 @@ function validateCapabilityAction(action) {
 }
 
 export function validateCapabilityManifest(manifest) {
-  if (!isRecord(manifest)) throw new TypeError('Capability manifest must be an object');
+  requireExactKeys(manifest, ['schemaVersion', 'id', 'version', 'name', 'description', 'provider', 'interface', 'actions', 'data', 'network', 'auth', 'limits', 'provenance', 'licence', 'status'], 'capability manifest');
+  if (manifest.schemaVersion !== '1.0') throw new TypeError('Unsupported capability manifest schema version');
   requireSlug(manifest.id, 'capability manifest identifier');
   if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) {
     throw new TypeError('Invalid capability manifest version');
@@ -83,13 +90,16 @@ export function validateCapabilityManifest(manifest) {
   requireText(manifest.name, 'capability name', 120);
   requireText(manifest.description, 'capability description', 1000);
 
-  if (!isRecord(manifest.provider)) throw new TypeError('Invalid capability provider');
+  requireExactKeys(manifest.provider, ['id', 'kind'], 'capability provider');
   requireSlug(manifest.provider.id, 'capability provider identifier');
   if (!['builtin', 'external'].includes(manifest.provider.kind)) throw new TypeError('Invalid capability provider kind');
 
   if (!isRecord(manifest.interface) || !INTERFACE_KINDS.has(manifest.interface.kind)) {
     throw new TypeError('Invalid capability interface');
   }
+  requireExactKeys(manifest.interface,
+    manifest.interface.kind === 'internal' ? ['kind', 'method', 'path'] : ['kind', 'method', 'endpoint'],
+    'capability interface');
   if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(manifest.interface.method)) {
     throw new TypeError('Invalid capability interface method');
   }
@@ -114,10 +124,11 @@ export function validateCapabilityManifest(manifest) {
   if (!isRecord(manifest.data) || !DATA_CLASSIFICATIONS.has(manifest.data.classification)) {
     throw new TypeError('Invalid capability data classification');
   }
+  requireExactKeys(manifest.data, ['classification', 'reads', 'writes'], 'capability data policy');
   requireArray(manifest.data.reads, 'capability data reads');
   requireArray(manifest.data.writes, 'capability data writes');
 
-  if (!isRecord(manifest.network)) throw new TypeError('Invalid capability network policy');
+  requireExactKeys(manifest.network, ['egressHosts'], 'capability network policy');
   requireArray(manifest.network.egressHosts, 'capability egress hosts', {
     max: 50,
     pattern: HOST_PATTERN,
@@ -126,6 +137,9 @@ export function validateCapabilityManifest(manifest) {
   if (!isRecord(manifest.auth) || !AUTH_MODES.has(manifest.auth.mode)) {
     throw new TypeError('Invalid capability authentication mode');
   }
+  requireExactKeys(manifest.auth,
+    manifest.auth.mode === 'secret-reference' ? ['mode', 'secretRef'] : ['mode'],
+    'capability authentication policy');
   if (manifest.auth.mode === 'secret-reference') {
     if (typeof manifest.auth.secretRef !== 'string' ||
         !/^secret:\/\/[A-Za-z0-9][A-Za-z0-9._/-]{2,120}$/.test(manifest.auth.secretRef) ||
@@ -136,7 +150,7 @@ export function validateCapabilityManifest(manifest) {
     throw new TypeError('Secret reference is not valid for this authentication mode');
   }
 
-  if (!isRecord(manifest.limits)) throw new TypeError('Invalid capability limits');
+  requireExactKeys(manifest.limits, ['requestsPerMinute', 'timeoutMs', 'maxRequestBytes'], 'capability limits');
   const { requestsPerMinute, timeoutMs, maxRequestBytes } = manifest.limits;
   if (!Number.isInteger(requestsPerMinute) || requestsPerMinute < 1 || requestsPerMinute > 10000 ||
       !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120000 ||
@@ -144,11 +158,11 @@ export function validateCapabilityManifest(manifest) {
     throw new TypeError('Invalid capability limits');
   }
 
-  if (!isRecord(manifest.provenance)) throw new TypeError('Invalid capability provenance');
+  requireExactKeys(manifest.provenance, ['sourceUrl', 'revision'], 'capability provenance');
   requireHttpsUrl(manifest.provenance.sourceUrl, 'capability provenance URL');
   requireText(manifest.provenance.revision, 'capability provenance revision', 160);
 
-  if (!isRecord(manifest.licence)) throw new TypeError('Invalid capability licence');
+  requireExactKeys(manifest.licence, ['identifier', 'review'], 'capability licence');
   requireText(manifest.licence.identifier, 'capability licence identifier', 100);
   if (!LICENCE_REVIEWS.has(manifest.licence.review)) throw new TypeError('Invalid capability licence review');
   if (manifest.status === 'approved' &&
@@ -165,6 +179,7 @@ const SOURCE_REVISION = '97df04aa96ea03f0e1efa18653071f1c95e6f7ae';
 
 const CAPABILITY_MANIFESTS = [
   {
+    schemaVersion: '1.0',
     id: 'aegis-github-public-discovery',
     version: '0.1.0',
     name: 'Public GitHub repository discovery',
@@ -188,6 +203,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-module-catalogue',
     version: '0.1.0',
     name: 'AEGIS module catalogue',
@@ -211,6 +227,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-readonly',
     version: '0.1.0',
     name: 'Composio GitHub repository metadata',
@@ -239,6 +256,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-pull-request-readonly',
     version: '0.1.0',
     name: 'Composio GitHub pull request metadata',
@@ -267,6 +285,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-workflow-readonly',
     version: '0.1.0',
     name: 'Composio GitHub workflow run metadata',
@@ -295,6 +314,7 @@ const CAPABILITY_MANIFESTS = [
   },
 
   {
+    schemaVersion: '1.0',
     id: 'aegis-composio-github-workflow-jobs-readonly',
     version: '0.1.0',
     name: 'Composio GitHub workflow job summaries',
@@ -322,6 +342,7 @@ const CAPABILITY_MANIFESTS = [
     status: 'approved',
   },
   {
+    schemaVersion: '1.0',
     id: 'aegis-agent-run',
     version: '0.1.0',
     name: 'AEGIS agent plan execution authorisation',

@@ -1,6 +1,6 @@
 # AEGIS Interactive Human Companion Architecture
 
-**Status:** Foundational architecture decision; implementation is not yet present unless explicitly identified below.
+**Status:** Foundational architecture decision; profile persistence and the first procedural WebGL2 renderer prototype are implemented on the open feature branch. Full lifelike avatar, imported model support, voice/audio runtime and device-level validation remain incomplete.
 
 ## 1. Product decision
 
@@ -211,9 +211,11 @@ The first companion foundation and a dedicated companion-led Home experience are
 - GitHub Actions run 43954785649 completed successfully after these changes, including the full Node.js/Miniflare suite and isolated capability, runtime and Forge D1 safeguards.
 - Cloudflare Pages preview for commit `4d37eed7ebbb609cff7b5e2541cfb182a651e095` deployed successfully at `https://a673ccea.aegis-6yk.pages.dev`.
 
-This is a real interface improvement, not a completed lifelike companion. The current visual avatar remains a clearly disclosed static placeholder. Profile persistence, profile switching/customisation UI, real 2D/3D rendering, speech input/output, live perception and authenticated browser verification remain unimplemented. The Preview environment still needs its own secure authentication configuration before the signed-in workspace can be tested against live authenticated services. No credentials should be shared in chat.
+This is a real interface improvement, not a completed lifelike companion. On this unmerged branch, the signed-in Home and full-screen companion surfaces mount the procedural WebGL2 renderer when supported and retain a CSS fallback. The current character is a stylised head-and-shoulders bust, not a lifelike human. Companion profile persistence, profile selection/customisation and presentation-state wiring are implemented on this branch; they are not yet part of the live `main` deployment.
 
-The next engineering task is to connect profile selection and presence events to the existing authenticated session without creating a second identity, memory store or permission system. Sentinel remains the sole authority for protected operations and capture consent.
+Still incomplete: user-supplied VRM/GLB/VRMA model loading, skeleton mapping, facial blendshape compatibility, high-quality rigged animation, true audio-synchronised lip-sync, speech input/output, live perception, cross-device profile synchronisation, production D1 provisioning and authenticated browser/device validation. No microphone or camera capture is activated by the renderer. The Preview environment still needs its own secure authentication configuration before the signed-in workspace can be tested against live authenticated services. No credentials should be shared in chat.
+
+The next engineering task is an optional, locally processed VRM/GLB renderer adapter with explicit asset provenance, strict file validation, resource disposal and mobile performance gates. Keep the procedural renderer as the zero-dependency fallback. Voice/audio remains a separate, consent-gated subsystem. Profile selection must continue to use the existing authenticated identity, governed memory and Sentinel policy; the companion must never become a second authority.
 
 
 ## 13. Implementation checkpoint — 16 November 2026
@@ -230,3 +232,16 @@ The current signed-in Home experience now includes a first, deliberately bounded
 **Verification:** GitHub Actions run 43967151754 completed successfully on implementation commit `f178c12a982092a7ae41d7df9874833ca74ed60d`. The Node.js test step and the full isolated D1, runtime/Queue and Forge migration/safeguard workflow passed.
 
 **Remaining before this becomes a complete profile feature:** authenticated owner-scoped profile APIs and storage, schema/migration and deletion/export design, profile editing (appearance, interaction and accessibility), cross-device sync, and browser QA using a configured authenticated session. The static companion presentation remains a placeholder; real 2D/3D rendering and speech are separate later milestones.
+
+
+## 12. First renderer implementation milestone
+
+The first implementation is intentionally smaller than the target architecture:
+
+- `companion/renderer.mjs` owns a dependency-free WebGL2 renderer and generated procedural geometry.
+- The initial character is a stylised head-and-shoulders bust. It is not a full human model or final visual direction.
+- Existing home and full-screen companion surfaces mount the renderer independently. CSS presentation remains the fallback when WebGL2 is unavailable or initialisation fails.
+- Presence state is a display-only contract. The renderer accepts bounded expression and viseme values but has no tool, memory, permission, Sentinel or agent-execution integration.
+- The current `loadModel` adapter explicitly reports that external model loading is not enabled. VRM/GLB/VRMA import, skeleton mapping, facial blendshapes, true audio-synchronised lip sync and asset provenance enforcement remain future work.
+- CI evidence: workflow [44565947826](https://github.com/LAURENCE1977/Aegis-/actions/runs/44565947826) passed on code head `71edd250f59cfd347a6338ec916f8acf560f20a5` with 1,024 Node tests (1,023 passed, zero failed, one skipped), one Cloudflare runtime integration test passed and all isolated D1 migration/smoke stages green. The suite includes a mock-WebGL2 initialisation, cleanup and pixel-ratio-cap test.
+- CI does not replace browser/device validation. WebGL2 availability is browser/GPU dependent; test the actual renderer on target browsers before promoting it beyond prototype status.

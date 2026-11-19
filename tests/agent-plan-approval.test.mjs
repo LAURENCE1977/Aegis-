@@ -4,6 +4,7 @@ import { buildAgentPlanApprovalBinding } from '../workers/runtime/agent-plan-app
 import { getCapabilityManifest } from '../functions/lib/capability-registry.mjs';
 
 const plan = {
+  schemaVersion: '1.0',
   runId: '00000000-0000-4000-8000-000000000001',
   objective: 'Review the AEGIS runtime',
   createdAt: '2026-11-16T12:00:00.000Z',

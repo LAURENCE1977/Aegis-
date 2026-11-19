@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const rendererSource = await readFile(new URL('../companion/renderer.mjs', import.meta.url), 'utf8');
 
 test('the signed-in home is companion-first and exposes an accessible presentation stage', () => {
   assert.match(html, /<section[^>]+id="companionStage"[^>]+aria-labelledby="companionTitle"/);
@@ -16,8 +17,9 @@ test('the signed-in home is companion-first and exposes an accessible presentati
 });
 
 test('the companion presentation is honest about the avatar runtime and does not impersonate a live human', () => {
-  assert.match(html, /companion presentation layer/i);
-  assert.match(html, /interactive avatar runtime is in development/i);
+  assert.match(html, /3D procedural companion prototype/i);
+  assert.match(html, /3D procedural prototype/i);
+  assert.match(html, /imported avatars and voice are not connected/i);
   assert.match(html, /aria-live="polite"/);
 });
 
@@ -129,4 +131,90 @@ test('official companion is presented as Agent AEGIS — Your Personal Guardian'
   assert.match(html, /YOUR PERSONAL GUARDIAN/);
   assert.match(html, /aria-label="Agent AEGIS companion presentation"/);
   assert.match(html, /Official Agent AEGIS/);
+});
+
+test('companion profiles load and persist through the authenticated owner-scoped API when storage is available', () => {
+  assert.match(html, /controlApi\('\/api\/companion\/profiles'/);
+  assert.match(html, /controlApi\('\/api\/companion\/profile-selection'/);
+  assert.match(html, /companionProfilePersistenceAvailable/);
+  assert.match(html, /session only/i);
+  assert.match(html, /persistent profile storage is unavailable/i);
+});
+
+test('companion mode provides a full-screen conversation workspace using the existing live chat controls', () => {
+  for (const id of ['openCompanionMode', 'companionModeOverlay', 'closeCompanionMode', 'companionModeChatSlot']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /moveChatToCompanionMode/);
+  assert.match(html, /restoreChatFromCompanionMode/);
+  assert.match(html, /companionModeOverlay\.hidden = panel !== 'companion'/);
+  assert.match(html, /companion-mode-active/);
+  assert.match(html, /event\.key === 'Escape'/);
+  assert.match(html, /VOICE NOT CONNECTED/);
+});
+
+test('full-screen companion mode remains responsive and honours reduced motion', () => {
+  assert.match(html, /\.companion-mode-overlay[\s\S]*?position:\s*fixed/);
+  assert.match(html, /\.companion-mode-layout[\s\S]*?grid-template-columns/);
+  assert.match(html, /@media\s*\(max-width:\s*820px\)[\s\S]*?\.companion-mode-layout/);
+  assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+});
+
+test('custom companion profiles expose user-controlled interaction preferences with versioned saves', () => {
+  for (const id of [
+    'companionWarmth', 'companionHumour', 'companionDirectness', 'companionInitiative',
+    'companionVerbosity', 'companionVisualPreset', 'saveCompanionSettings',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /controlApi\('\/api\/companion\/profiles\/' \+/);
+  assert.match(html, /expectedVersion/);
+  assert.match(html, /interaction:\s*\{/);
+  assert.match(html, /presentation preferences only/i);
+});
+
+test('companion presence responds to live text conversation states without implying voice capture', () => {
+  assert.match(html, /function setCompanionModePresence/);
+  assert.match(html, /setCompanionModePresence\('thinking'/);
+  assert.match(html, /setCompanionModePresence\('responding'/);
+  assert.match(html, /setCompanionModePresence\('idle'/);
+  assert.match(html, /data-presence="thinking"/);
+  assert.match(html, /@keyframes companion-presence-pulse/);
+  assert.match(html, /Microphone capture and spoken responses are not connected/);
+});
+
+test('chat sends only the active companion numeric and enum style settings to the server', () => {
+  assert.match(html, /function getActiveCompanionInteraction/);
+  assert.match(html, /companionInteraction:\s*getActiveCompanionInteraction\(\)/);
+});
+
+
+test('companion data controls expose authenticated export and explicitly confirmed deletion', () => {
+  for (const id of ['exportCompanionProfiles', 'purgeCompanionProfiles', 'companionDataStatus']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /\/api\/companion\/profiles\/export/);
+  assert.match(html, /\/api\/companion\/profiles\/purge/);
+  assert.match(html, /DELETE MY COMPANION PROFILES/);
+  assert.match(html, /createObjectURL/);
+  assert.match(html, /aegis-companion-profiles\.json/);
+  assert.match(html, /companionProfilePersistenceAvailable/);
+});
+
+
+test('companion privacy action listeners are registered once outside profile rendering', () => {
+  const renderStart = html.indexOf('function renderCompanionProfile');
+  const renderEnd = html.indexOf('async function loadCompanionProfiles', renderStart);
+  assert.ok(renderStart >= 0 && renderEnd > renderStart);
+  const renderBody = html.slice(renderStart, renderEnd);
+  assert.doesNotMatch(renderBody, /(?:exportCompanionProfilesButton|purgeCompanionProfilesButton|purgeCompanionConfirmation)\.addEventListener/);
+  assert.equal((html.match(/exportCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
+  assert.equal((html.match(/purgeCompanionProfilesButton\.addEventListener\('click'/g) || []).length, 1);
+});
+
+test('the companion loads the AEGIS-owned WebGL2 renderer while retaining the CSS fallback', () => {
+  assert.match(html, /<script type="module" src="\/companion\/renderer\.mjs"><\/script>/);
+  assert.match(html, /companion-render-canvas/);
+  assert.match(html, /data-renderer="webgl2"/);
+  assert.match(rendererSource, /WebGL2 is unavailable here/);
 });

@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 16 November 2026.  
+**Canonical project record.** Last refreshed: 19 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -1030,3 +1030,236 @@ This is not an upload, storage, D1 persistence, parser, extraction or UI impleme
 - Before storage work, inspect all current persistence and object-storage bindings to avoid duplicate ledgers and to establish real runtime limits.
 - Next implementation slices: parser-run contract; normalized observation contract; safe synthetic fixtures; then a bounded storage/upload design after runtime and security review.
 - Any dynamic analysis remains a separate, disposable, isolated, no-secrets, restricted-egress capability requiring explicit approval.
+
+
+## Eval Forge milestone — 17 November 2026
+
+**Status:** First deterministic evaluation-scoring contract implemented and verified on draft PR #103.
+
+- New `functions/lib/eval-forge.mjs` validates versioned evaluation suites and scores bounded weighted case results.
+- Suite and candidate versions are strict semantic versions; candidate artifacts and per-case evidence references require lowercase SHA-256 digests.
+- Required cases must pass regardless of aggregate score; skipped cases earn no weight. Results are normalised into suite order for stable comparison.
+- The scorer returns immutable, bounded metadata and digests only; it does not store raw prompts, model outputs, files or user content.
+- `tests/eval-forge.test.mjs` covers malformed suites, duplicate/missing/unknown results, candidate/evidence digest validation, required-case gates, deterministic weighting and canonical timestamps.
+- `docs/AEGIS_EVAL_FORGE.md` records the trust boundary and next sequence.
+- Verification: GitHub Actions run [44148560150](https://github.com/LAURENCE1977/Aegis-/actions/runs/44148560150) passed on commit `db3207c18bdd54d19a9c642639fe138a8e0ed95f`: **758 tests, 757 passed, 0 failed, 1 skipped**; isolated runtime D1/Queue integration and Forge D1 migrations/smoke checks also passed. The matching pull-request run [44148574242](https://github.com/LAURENCE1977/Aegis-/actions/runs/44148574242) passed.
+- This is a scoring contract, not a trusted evaluation runner. Evidence digests are not verified against bytes or runner identity. No suite/run persistence, evaluation UI, sandbox execution or promotion API is implemented.
+- Evaluation results cannot grant permissions or deploy/promote candidates. A future execution receipt must bind pinned suite revision, candidate digest, isolated runner identity and immutable audit lineage; promotion remains a separate human/Sentinel-controlled action.
+- No production deployment, D1 provisioning, model training, external evaluator connection or automatic promotion occurred.
+
+
+## Objective-relevant Knowledge Forge → Agent Workforce context — 17 November 2026
+
+**Status:** Implemented and verified on draft PR #103; plan-only agent runs remain the only supported runtime mode.
+
+- `functions/lib/agent-run-context.mjs` now uses the submitted run objective to rank accepted Forge knowledge with the existing native deterministic BM25 retriever.
+- The context builder reads at most 100 owner-scoped accepted records, filters to high/medium evidence with attributable sources, ranks them against the objective, and attaches up to five relevant records. If nothing matches, it preserves a bounded recent-record fallback.
+- Context retains source attribution, limitations, evidence level, version and update time; marks every record `untrusted-reference`; and remains inside the existing 4 KiB knowledge and 12 KiB overall context budgets.
+- Draft/reviewed/superseded, low/experimental evidence and other-owner records are excluded. A canonical digest covers the knowledge context.
+- `functions/api/agent-runs.js` now passes the submitted objective into the trusted context builder; the API contract test verifies this handoff.
+- Tests cover objective relevance, irrelevant-record ordering, owner/status/evidence filtering, UTF-8 byte budgets and digest shape.
+- Verification: GitHub Actions run [44149968192](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149968192) passed on commit `0ae3e8f45b0492750e24320532982603052783c0`: **760 tests, 759 passed, 0 failed, 1 skipped**; runtime D1/Queue integration and Forge D1 migrations/smoke checks passed. Matching PR run [44149981505](https://github.com/LAURENCE1977/Aegis-/actions/runs/44149981505) passed.
+- This does not enable specialist execution, external vector stores, model-as-judge, tool invocation or permission escalation. Retrieved content remains untrusted reference data.
+
+
+## Guardian Resource owner-facing catalogue — 17 November 2026
+
+**Status:** Implemented and verified on draft PR #103; source-level UI and API only, not deployed.
+
+- Added a Guardian Resource intake form and catalogue to the existing Forge panel.
+- Captures canonical HTTPS source, pinned source revision, category, licence state/evidence, pricing model/limits/evidence, hosting mode/requirements and limitations.
+- Submissions go through the authenticated same-origin API and start as drafts. The UI explicitly states that draft resources are not approved for installation or execution.
+- Catalogue cards display provenance, licence, pricing, hosting and limitations through text-safe DOM construction. Canonical source links open separately with noopener/noreferrer protections.
+- Owner review uses the existing optimistic-concurrency API. The UI supports draft → reviewed → accepted where verified HTTPS licence evidence is present, plus archive from every active state. Archived records are terminal.
+- An explicit archive action remains available when acceptance is blocked by missing licence evidence.
+- Accessibility: live status region, labelled controls and visible review notes. No repository content is installed, fetched or executed by this UI.
+- Verification: GitHub Actions run [44151172821](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151172821) passed on commit `d2e260f649b55014eca2ba8a1342d6cd2e1f4588`: **764 tests, 763 passed, 0 failed, 1 skipped**; isolated runtime D1/Queue and Forge D1 migration/smoke checks passed. Matching PR run [44151188778](https://github.com/LAURENCE1977/Aegis-/actions/runs/44151188778) passed.
+- Production deployment and production D1 provisioning remain separate and have not been performed.
+
+## Learning Forge evidence integrity milestone — 17 November 2026
+
+**Live checkpoint:** Draft PR #103, branch `feature/rea-open-source-security-learning-batch`. Verify the latest head and CI again before relying on this handover.
+
+- Learning Forge now includes immutable path and assessment registries, owner-scoped progress, server-scored assessment attempts, append-only attempt history, explainable next-action recommendations and local spaced-review suggestions.
+- Mastery remains deliberately non-certifying. The candidate policy requires repeated passes on separate UTC dates, applied-task evidence and an approving human review that occurs strictly after all evidence it approves.
+- Exact path lookup revalidates the immutable graph SHA-256 digest. Attempt history revalidates the registered assessment content digest and each attempt's binding to that assessment digest.
+- `functions/lib/learning-mastery-evidence-store.mjs` loads assessment evidence only from the exact owner's registered path, assessment and server-scored attempt stores. It rejects cross-owner/path/node records, malformed/future timestamps and evidence sets beyond bounded limits.
+- The store-backed candidate builder accepts no caller-supplied applied-task or reviewer claims. Those evidence kinds remain unavailable until an independently verifiable artifact store and authenticated independent-review model exist.
+- Assessment answers and answer-pattern hashes are not retained. Attempts store bounded scores/provenance only. Append-only retention requires a separate privacy and deletion policy.
+- Local spaced review uses latest-per-UTC-day attempts, resets after failure, and expands successful intervals through 1/3/7/14/30 days. It does not persist schedules, send reminders or certify mastery.
+- Full CI workflow [44198403611](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198403611) passed on code head `5f1c9fca570e53865815484efb26dbacbe8a3bc8`: **855 tests, 854 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge D1 migrations and smoke checks passing.
+- Regression proof: [44198022972](https://github.com/LAURENCE1977/Aegis-/actions/runs/44198022972) failed on the two new digest-tampering tests before the fix; the subsequent full run passed.
+- The docs-only follow-up now has a separate CI run in progress. PR #103 remains open/draft/unmerged; no production deployment or D1 provisioning was performed.
+
+### Next build gates
+
+1. Design content-addressed applied-task evidence storage with strict size/type limits, provenance, retention and user deletion/export semantics before persisting user work.
+2. Design authenticated reviewer identities, separation-of-duties and auditable approval decisions; the current signed session is a single-owner identity, not multi-user tenancy.
+3. Only after those controls exist, expose mastery candidate review in a UI. Keep certification, permissions and autonomous actions separate from learning scores.
+4. Continue the first-class Agent AEGIS companion and accessible mobile-first product experience; do not mistake the current static PWA shell for the finished companion.
+
+## Agent AEGIS Companion milestone — 17 November 2026
+
+**Live checkpoint:** Draft PR #103, branch `feature/rea-open-source-security-learning-batch`. Source and CI verified; not deployed.
+
+- Added owner-scoped immutable Companion Profile revisions, SHA-256 profile integrity, active profile selection, append-only events and authenticated same-origin profile APIs.
+- Official Agent AEGIS remains reserved. Custom profiles share one intelligence, memory, Sentinel and tool-authority system; they cannot create another security identity or grant themselves permissions.
+- Interaction settings (warmth, humour, directness, initiative and response detail) are stored as bounded values and translated into deterministic style guidance. Free-text profile descriptions are excluded from model instructions.
+- AG-UI accepts only the exact bounded style object for session-only fallback. A verified persisted profile takes precedence over client values. Style preferences never change safety, privacy, tool permissions, memory scope, Sentinel or approval requirements.
+- Full-screen Companion Mode reuses the existing live conversation and history, with responsive layout, Escape/close handling, focus restoration, reduced-motion support and live text-turn presence feedback.
+- Current visual is a stylised 2D placeholder. Voice, microphone capture and lifelike 3D human avatar are not implemented or deployed.
+- Full workflow [44202766321](https://github.com/LAURENCE1977/Aegis-/actions/runs/44202766321) passed on code head `44b15b81c9b208e07c3315aba1fa3aac6cf5aa8c`: **885 tests, 884 passed, 0 failed, 1 skipped**, including Companion Profile D1 migration and integrity smoke checks.
+- Production D1 is not provisioned. Profile export/deletion/purge/retention, multi-user tenancy, complete accessibility preference integration, voice and lifelike avatar runtime remain production gates.
+- PR #103 remains open/draft/unmerged; no production deployment or D1 provisioning.
+
+### Companion next gates
+
+1. Design and implement profile export, deletion/purge and retention semantics before production storage.
+2. Resolve multi-user identity/tenancy and owner scoping beyond the current single-owner session.
+3. Implement user-controlled accessibility preferences and verify them across every companion surface.
+4. Select a privacy-preserving, self-hostable lifelike avatar runtime; evaluate licensing, GPU requirements, mobile performance and static fallback before adoption.
+5. Design explicit voice/microphone consent, local processing options, capture indicators, retention/deletion and provider boundaries before enabling any audio path.
+
+## Companion profile privacy controls — 18 November 2026
+
+- Added authenticated JSON export for all custom Companion Profile revisions, the active selection, append-only profile events and purge audit history.
+- Added an exact-phrase owner-requested purge endpoint and companion-home controls. Purge removes custom profile revisions, active selection preferences and profile events; the retained audit record stores owner scope, count and timestamp only, without profile identifiers, profile content or digests.
+- The UI disables export and purge when authenticated persistent profile storage is unavailable; session-only profiles are not sent to these endpoints.
+- Companion Profile migration SQL now has executable line breaks and is applied in isolated local D1 CI. The D1 smoke checks verify owner-scoped selection, immutable revisions, append-only events, authorised purge and immutable purge audit.
+- Profile creation, active revision updates, selection and purge now commit through atomic D1 batches. Failure-injection tests verify that a preference-write failure rolls back both profile revisions and audit events. Purge count is inserted into its audit record inside the same batch, before profile deletion, so concurrent changes cannot make the audit count stale.
+- Verification: full workflow [44211655456](https://github.com/LAURENCE1977/Aegis-/actions/runs/44211655456) passed on code head `b8dcebe5ea506a21a84646dc626dbec8b3508d73`: **896 tests, 895 passed, 0 failed, 1 skipped**, with capability/runtime/Queue/Forge/Learning/Companion migrations and smoke checks all green. Regression tests cover privacy listener registration, write rollback and purge chronology. The isolated D1 smoke test executes the production-shaped purge audit `INSERT … SELECT COUNT(*)` statement before the authorised deletes.
+- Still gated: production D1 provisioning, governed retention/expiry policy, multi-user identity/tenancy, full accessibility wiring, voice and lifelike avatar runtime. No merge or production deployment.
+
+
+## Agent AEGIS — delivery schedule and Evolution Engine blueprint (18 November 2026)
+
+The canonical dependency-ordered delivery schedule is now maintained in
+[`docs/AEGIS_DELIVERY_BLUEPRINT_2026-11-18.md`](AEGIS_DELIVERY_BLUEPRINT_2026-11-18.md).
+It defines the target architecture, replaceable framework boundaries, 13 delivery stages,
+acceptance gates, estimated engineering effort, immediate build queue and explicit approval limits.
+
+Key architecture decision: retain Cloudflare as the initial deployment adapter, not as AEGIS's
+permanent framework. AEGIS owns identity, intelligence, memory, task state, Sentinel policy,
+Forge and capability contracts. Local, self-hosted and optional hosted runtimes remain replaceable
+adapters behind those contracts. Composio remains a service connector; OmniRoute remains optional.
+
+The Evolution Engine is prioritised after closed contracts, safe skill lifecycle and isolated
+execution. It will discover capability gaps, research candidate mechanisms, design native
+adaptations, run isolated experiments and Eval Forge suites, and prepare evidence-backed upgrade
+proposals. It cannot self-grant permissions, alter Sentinel, merge changes or deploy.
+
+### First active implementation slice — closed capability manifest contracts
+
+- Regression tests were added first for unknown top-level and nested manifest fields.
+- The test-only commit `a1645a8b2b9010c9fadc100762c38bb0a5015d70` produced the expected RED result: 903 passed, 2 failed, 1 skipped. Both failures demonstrated that unknown fields were previously accepted.
+- Implementation commit `aec0df70d864ede93acc945b6f6954d9554029e4` adds strict allowlists for manifest, provider, interface, action, data, network, authentication, limits, provenance and licence objects.
+- The change rejects undeclared fields instead of silently accepting future/foreign authority properties. Existing validation still checks required fields, values, risk and approval policy.
+- Verification: full workflow [44242937812](https://github.com/LAURENCE1977/Aegis-/actions/runs/44242937812) passed on commit `539e1a0f16486d64be6a343c87ac0d682d6c772c`: **914 tests, 913 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including isolated capability/runtime/Queue/Forge/Eval/Learning/Companion D1 migrations and smoke checks.
+
+This is the first step of Stage 1 in the delivery blueprint. The next implementation slice is the versioned task/run envelope and execution-receipt contract, followed by compatibility and replay tests.
+
+
+### Versioned capability manifest contract — 18 November 2026
+
+- Capability manifests now require explicit `schemaVersion: "1.0"`; every built-in manifest declares the same supported schema version.
+- Unsupported schema versions are rejected. The existing semantic `version` remains the capability implementation/version identity and is distinct from the manifest schema version.
+- The closed-field contract remains enforced at the manifest and every nested policy boundary.
+- RED proof: test-only commit `ff6a444a639c81d75d741e3e56de9ab242ca703e` failed as expected because the validator rejected the newly required schema version and built-in manifests had not yet declared it.
+- GREEN verification: workflow [44243395419](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243395419) passed on commit `ee52a4db0c9351e81d9ee23605e474778a9e1cf0`: **908 tests, 907 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including Node/runtime tests and isolated D1/Queue/Forge/Eval/Learning/Companion checks.
+- The next active slice is the same versioned/closed-contract treatment for agent plans and task/run envelopes, followed by execution receipts. Specialist execution remains plan-only and disabled until the isolated worker gate is passed.
+
+
+### Versioned agent-plan contract — 18 November 2026
+
+- Generated agent plans now carry `schemaVersion: "1.0"`.
+- Approval binding validates the exact supported schema version and includes it in the canonical plan digest, so a schema change cannot be silently treated as the same approved intent.
+- Missing and unsupported schema versions are rejected before an approval binding can be created.
+- API and approval fixtures were migrated to the versioned plan shape.
+- RED proof: commit `df12191c58a1c8dc44d9d60ece165831b3d286d3` exposed missing version metadata and legacy test fixtures. Follow-up test failures identified the two remaining hard-coded plan fixtures, which were updated rather than weakening validation.
+- GREEN verification: workflow [44243985512](https://github.com/LAURENCE1977/Aegis-/actions/runs/44243985512) passed on commit `b6773ab74cc08d8040dcc406e8307458c1f7df9f`: **919 tests, 918 passed, 0 failed, 1 skipped**; all 24 workflow steps passed, including local D1 migrations, runtime/Queue integration and Forge/Eval/Learning/Companion checks.
+- This remains a plan/approval contract. It does not enable specialist execution. The next build slice is a versioned task/run envelope and immutable execution-receipt schema, then wire those contracts into the worker lifecycle before any specialist runtime is enabled.
+
+
+## Master build programme (18 November 2026)
+
+The sequenced delivery schedule, architecture boundaries, stage definitions, acceptance gates and current verified baseline are maintained in [AEGIS Master Build Programme](AEGIS_MASTER_BUILD_PROGRAMME_2026-11-18.md). This programme is part of the canonical handover and must be followed in priority order. It explicitly distinguishes the currently implemented plan-only agent runtime from future Sentinel-governed specialist execution.
+
+
+### Canonical owner/session identity claims — 18 November 2026
+
+- Session tokens now carry an exact versioned `1.0` claim set: the current installation's fixed `owner` principal, a cryptographically generated UUID session ID, canonical `issuedAt` and `expiresAt` timestamps, and a 12-hour lifetime.
+- Session verification validates the claim schema and lifetime as well as the HMAC signature. Unknown fields, unsupported schema versions, principal substitution, malformed session IDs, future issue times and altered lifetimes fail closed.
+- This makes the current single-owner session identity explicit; it does **not** implement multi-user tenancy or owner-specific data isolation. Session IDs are not yet persisted, so individual session revocation is not available. Sign-out clears the browser cookie; a copied token remains valid until expiry.
+- TDD evidence: test-only commit `b596110bfb01e6dcff8a87c3c7b5678146513cce` failed on the expected missing principal claim; implementation commit `1349ad628931719d4b3dd84658b174fe557e37be` passed.
+- Cross-contract composition coverage was added in `tests/agent-contract-compatibility.test.mjs`, verifying the existing run/task, specialist, Companion, Device, Skill, permission-request and receipt contracts compose without creating authority.
+- Owner API guard coverage now proves a valid signed owner session is accepted and a correctly HMAC-signed token with a substituted principal is rejected.
+- GREEN verification on `0f6f8d42f766bd5b69e698748b12b4525a7f2dad`: push workflow [44313097341](https://github.com/LAURENCE1977/Aegis-/actions/runs/44313097341) and PR workflow [44313110573](https://github.com/LAURENCE1977/Aegis-/actions/runs/44313110573) both passed all 24 steps. Node.js: 958 tests, 957 passed, zero failed, one skipped; Cloudflare runtime integration and isolated capability/runtime/Forge/Eval/Learning/Companion D1 checks passed.
+- Additional Sentinel regression tests prove that a validly shaped but altered capability manifest, including a changed action scope definition, is denied as `MANIFEST_MISMATCH` before rate reservation or adapter execution.
+- GREEN verification on `b155e8b5b8d49113afc7da51ac81e1e9ff82b0c6`: push workflow [44323069293](https://github.com/LAURENCE1977/Aegis-/actions/runs/44323069293) and PR workflow [44323080465](https://github.com/LAURENCE1977/Aegis-/actions/runs/44323080465) both passed all 24 steps. Node.js: 960 tests, 959 passed, zero failed, one skipped; Cloudflare runtime integration and isolated capability/runtime/Forge/Eval/Learning/Companion D1 checks passed.
+- Next: finish the remaining Stage 1 context/evidence/receipt compatibility checks at their actual API/runtime boundaries. Do not infer multi-user support from the new claim schema.
+
+
+### Companion product and visual direction — 18 November 2026
+
+The companion and visual shell are first-class build requirements, not optional decoration. The existing `index.html` provides a responsive public welcome screen, a signed-in companion-first home, profile selection/custom profile creation and personality controls. The current companion visual is CSS presentation geometry, not a functioning 3D avatar; the UI correctly discloses that the interactive avatar runtime is still in development.
+
+Product direction to carry through the build:
+- The signed-in experience should feel like a personal environment centred on the companion, not a conventional administration dashboard with a chatbot bolted on.
+- The official AEGIS identity should become a consistent, recognisable, full-screen interactive human companion. Do not substitute a floating orb, generic robot icon or decorative face as the finished avatar.
+- User-created companion identities remain first-class and customisable, while all identities share the same AEGIS intelligence, memory governance, permissions and Sentinel security core.
+- The visual system should evolve from the current restrained dark surfaces and calm cyan/teal accents; preserve readability, warmth and calm. Avoid an overbearing sci-fi control-room aesthetic.
+- Explore a local-first, open-format 3D asset/runtime after checking browser/mobile performance, accessibility, licensing and long-term maintainability. Do not lock the architecture to a paid avatar provider or mandatory hosted model service.
+- The avatar should support expressive but respectful idle states, gaze and head movement, conversation-state feedback and (when voice is added) consent-controlled lip synchronisation. Provide a usable non-3D fallback and reduced-motion mode.
+- Avatar assets, voice, animation and persona settings must be user-controlled, privacy-aware and portable. Never imply that animation proves consciousness or human presence.
+- Completion requires a working 3D companion integrated with profile selection and customisation, not merely a 3D mock-up or static render. The page shell must be responsive and verified on mobile and desktop.
+
+This is a design direction, not a claim that the 3D avatar or final interface is implemented. Revisit it as the core architecture and user testing reveal better choices.
+
+
+### Persisted Agent Context Integrity — verified 18 November 2026
+
+- The agent-run queue consumer now verifies that persisted context JSON, its digest and the project ID are present together and remain mutually bound before planning.
+- It verifies that the context document's workspace ID matches the separately persisted project ID, then recomputes the brief and accepted-knowledge digests.
+- Altered context content, removed context with a surviving digest/project binding, malformed context and project-ID substitution become terminal `AGENT_CONTEXT_INTEGRITY_FAILED` outcomes. The worker records an append-only failure event, clears its lease and acknowledges the invalid message; it does not retry deterministic integrity failures or create a plan/steps.
+- Test-first evidence: the regression for altered stored context first failed against the old transient retry path; after the fix it passed. A second regression then reproduced missing-context and project-ID substitution cases; the implementation was extended and both now pass.
+- Latest verified code head: `8c2d07d648c814b12cc4a4023c08970fd78dc5d5`. Push workflow [44346845686](https://github.com/LAURENCE1977/Aegis-/actions/runs/44346845686) and matching PR workflow [44346859793](https://github.com/LAURENCE1977/Aegis-/actions/runs/44346859793) both passed all 24 steps.
+- Node.js suite: **964 tests, 963 passed, 0 failed, 1 skipped**. Runtime/Queue integration and isolated capability, runtime, Forge, Eval Forge, Learning Forge and Companion Profile D1 checks passed.
+- PR #103 remains open, draft and unmerged. No production deployment.
+- Stage 1 remains in progress: actual evidence-intake API boundary and final context/evidence-reference compatibility checks remain. The execution receipt is still unsigned structural metadata, not an emitted/persisted attestation. Specialist execution remains disabled until Stage 2 safety gates are implemented and verified.
+
+
+### Stage 1 contracts — durable task-envelope integration (18 November 2026)
+
+- Added runtime migration `0009_agent_step_task_envelopes.sql` with a bounded JSON task-envelope column on `agent_run_steps`.
+- The queue consumer now creates a canonical `aegis.agent-task-envelope/1.0` from each validated plan step and persists it with the step. It binds run ID, step ID, specialist, attempt, objective, context digest, output/time budgets, fixed plan-only mode and an empty capability-request list.
+- D1 checks JSON shape, schema version, plan-only mode, empty capability requests and exact task-to-row binding for run ID, step ID and specialist. A trigger makes a populated task envelope immutable.
+- Runtime step reads revalidate the task contract and reject a task whose run, step or specialist no longer matches the persisted row.
+- Real Miniflare/D1/Queue integration now applies migration 0009, consumes a real local Queue message, validates each persisted task envelope, rejects task mutation, rejects an unsafe execution mode and rejects a cross-run task identity.
+- Cross-contract tests compose the evidence descriptor and inert task envelope: evidence remains owner-bound metadata only, with no file bytes/storage path, and cannot be injected into a task as a permission or execution instruction.
+- The task-envelope persistence is **not** specialist execution. Queue output remains plan-only; no model call or tool invocation occurs and no receipt is emitted.
+- Stage 1 contract gate passed on code head `38f76f10ebec8804f058db1d352aa259e5944bee`. Push workflow [44350473762](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350473762) and PR workflow [44350489254](https://github.com/LAURENCE1977/Aegis-/actions/runs/44350489254) passed all 24 steps. Node.js: **966 tests, 965 passed, 0 failed, 1 skipped**; runtime/Queue integration and all isolated D1 checks passed.
+- Evidence descriptors are still metadata-only. There is no upload, object-storage or retrieval API yet; implement that as part of Stage 3's unified evidence system. The execution receipt is still an unsigned structural contract and will be emitted/persisted in Stage 2.
+- PR #103 remains open, draft and unmerged. No production deployment.
+
+
+### OsintHunter research decision — 18 November 2026
+
+- Reviewed the public MIT project `letox4/OsintHunter` at its `main` ref. Accepted its case-graph, source-adapter, provenance, alias-candidate, explainable-signal, timeline and report patterns for architectural study only.
+- Rejected wholesale adoption. Static review found a direct arbitrary-URL fetch path with redirects and no visible destination-IP/redirect revalidation, plaintext API-key persistence in local settings, sensitive third-party email-account enumeration, and optional remote AI transfer of case identities/locations/account attributes. Its local desktop bind is a useful default but is not a general network-service security boundary.
+- AEGIS will implement the useful ideas natively over canonical evidence/source contracts, owner-scoped records and Sentinel-governed adapters. Graph edges remain claims, not proof; confidence is uncertainty-aware and never an identity verdict. No upstream code, dependencies, executable or service was imported or run.
+- Full assessment and acceptance gates: [AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md](AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md).
+
+
+## 19 November 2026 — latest verified engineering handover
+
+- The latest verified implementation head before this documentation refresh is `ace28bfa11e09cb50f719d5fc61e988367cb5189` on stacked draft PR #103.
+- Push workflow [44489708170](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44489715270](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed: **1002 Node tests, 1001 passed, 0 failed, 1 skipped**, plus Cloudflare preview, runtime/Queue integration and all isolated D1/Forge/Eval/Learning/Companion checks.
+- Guardian Resource now includes owner-scoped detail and bounded on-demand audit history. Stored event metadata is schema-validated; history is rendered with text-safe DOM APIs.
+- Learning Forge now accepts bounded binary applied-task submissions, computes SHA-256 server-side and stores only digest/minimal metadata bound to the exact owner/path version/node. Raw bytes are discarded. Owner withdrawal deletes the digest while preserving content-free append-only submission/withdrawal events. The Forge UI now supports path/node selection, upload, receipt listing, withdrawal and non-certifying evidence-gap diagnostics.
+- Evidence quotas are database-enforced (25 per node, 500 per owner). Mastery evidence input is bounded to 75 assessment attempts plus 25 applied-task receipts. Human reviewer identity and a safe artifact-inspection handoff are still missing, so mastery remains non-certifying.
+- Public preview inspection confirmed responsive landing-page layout and no captured console errors; preview sign-in currently reports unavailable, so the authenticated Forge UI remains hidden in public preview. No secrets were changed and no authenticated action was attempted.
+- The detailed handover, next gates and operating constraints are in [AEGIS next implementation checkpoint — 19 November 2026](AEGIS_NEXT_IMPLEMENTATION_CHECKPOINT_2026-11-19.md).
+- Companion remains a first-class presentation layer over the shared intelligence core. PR #103 now contains an AEGIS-owned procedural WebGL2 bust prototype with a CSS fallback, reduced-motion handling, bounded presentation-only viseme/expression inputs and automatic graphics-context recovery. This is not yet a lifelike human avatar or imported VRM/GLB/VRMA model; voice capture/output and real audio-synchronised lip-sync remain disabled.
+- Renderer resilience was verified by workflow [44584048574](https://github.com/LAURENCE1977/Aegis-/actions/runs/44584048574) on code head `eb19c23785cbd82feb461d2d1b9e3a199e644448`: 1,037 Node tests, 1,036 passed, 0 failed, 1 skipped; Cloudflare runtime integration and all isolated D1 migration/smoke checks passed. A regression first reproduced duplicate visibility/resize observers after repeated WebGL context restoration; the fix reuses those resources.
+- Renderer research identifies `@pixiv/three-vrm` v3.5.5 (MIT code licence) as the preferred optional VRM loader candidate. It has not been installed; the AEGIS-owned WebGL2 renderer remains the zero-dependency fallback. Model and animation asset licences remain separate from loader-code licensing.
+- PR #103 remains open, draft and unmerged; PR #101 remains its base. No production deployment, production migration or merge has occurred.

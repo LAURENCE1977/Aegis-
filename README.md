@@ -4,17 +4,22 @@
 
 AEGIS remains the name of the underlying open-source intelligence platform and architecture. **Agent AEGIS** is the product identity; **Your Personal Guardian** describes its purpose. The companion is designed to feel as natural and human-centred as possible while remaining transparent that it is artificial intelligence, respecting user autonomy, privacy and human relationships.
 
-AEGIS is an evolving project. The current repository is an early Cloudflare Pages prototype. Its larger autonomous assistant, voice, model router, durable knowledge store, managed integrations and full AEGIS Forge workshop are still being developed.
+AEGIS is an evolving, source-verified prototype with a growing set of tested foundations across chat, Project Spaces, Guardian Intelligence, Eval Forge, Learning Forge, governed runtime and the first Companion experience. It is not yet a production deployment: Cloudflare D1/Queue resources, encrypted runtime secrets, production migrations and external provider connections remain separately gated. Voice, lifelike avatar runtime, multi-user tenancy and the full autonomous assistant remain under development.
 
 ## Product identity and experience
 
 Agent AEGIS is intended to combine capable independent reasoning with a consistent, customisable, human-like companion presence. Its design references include the curiosity and learning of Data from *Star Trek*, the embodied personality of Rommie from *Andromeda*, and the protective pattern-recognition concept of the Machine from *Person of Interest*—without copying fictional claims or behaviours. The goal is natural conversation, social understanding, user-approved memory, expressive voice and avatar interaction, ingenuity and proportionate protection. It must not claim human consciousness, infer private mental states as facts, manipulate users or replace human relationships.
 
-The companion is a first-class presentation layer over one shared AEGIS intelligence core. Users should be able to choose the official Agent AEGIS identity or create and customise their own companion identity, with continuity across supported devices. This remains a roadmap direction unless a capability is explicitly listed as implemented below.
+The companion is a first-class presentation layer over one shared AEGIS intelligence core. Users should be able to choose the official Agent AEGIS identity or create and customise their own companion identity, with continuity across supported devices. The first companion slice is now implemented: owner-scoped versioned custom profiles, bounded interaction settings, an immersive text workspace and conversation-aware presence feedback. A lifelike human avatar, 3D rig, voice and multi-user identity are still roadmap work; see the companion status below.
 
 ## Current foundation
 
 - Mobile-friendly chat interface for iPhone, iPad and Chromebook browsers
+- Full-screen Companion Mode that reuses the live chat history and controls, with responsive layout, Escape/close handling and reduced-motion support
+- Owner-scoped custom Companion Profiles with immutable revisions, SHA-256 integrity, active-profile selection and append-only events (source implementation; production D1 not provisioned)
+- Bounded warmth, humour, directness, initiative, response-detail and visual-preset settings; verified persisted profiles shape chat tone through a strict style-only prompt directive
+- Session-only companion profiles and style preferences when the optional profile store is unavailable
+- Text-turn presence feedback (thinking/responding/error); no microphone capture, voice runtime or lifelike avatar is enabled
 - Cloudflare Pages Functions API
 - Cloudflare Workers AI binding for the current chat model
 - Optional Cloudflare KV binding for simple notes
@@ -30,6 +35,16 @@ The companion is a first-class presentation layer over one shared AEGIS intellig
 - Initial authenticated, stateless MCP Bridge endpoint (`POST /mcp`) with read-only status, modules and skills tools
 - First standalone AEGIS Runtime Worker source: authenticated job API, D1 job/event schema, Queue consumer, Cron outbox/lease recovery and attempt-fenced state transitions (not yet deployed)
 - Owner-only capability approval inbox and approve/deny API under development on a feature branch (not deployed; no capability execution is enabled)
+
+## Agent AEGIS Companion — current implementation
+
+Companion profiles are presentation preferences over one shared AEGIS intelligence, memory and Sentinel authority model. The official Agent AEGIS identity is reserved. Custom profiles cannot create permissions, tools, system prompts or privileged memory access.
+
+The profile API is authenticated and same-origin. D1 stores immutable profile revisions with SHA-256 digests, an active selection and append-only events. Profile settings influence chat only through bounded numeric/enum tone preferences; free-text descriptions are never inserted into model instructions. If account storage is unavailable, the interface uses session-only profiles and sends only the validated style fields with chat turns.
+
+Companion Mode is a full-screen text workspace that reuses the existing conversation. Its current avatar is stylised 2D artwork, not a lifelike human or 3D model. Voice and microphone capture remain disabled. Authenticated JSON export and exact-phrase custom-profile purge controls are implemented; production D1 is not provisioned, and retention policy and multi-user tenancy remain open gates.
+
+See [docs/AEGIS_COMPANION.md](docs/AEGIS_COMPANION.md) for the data model, APIs, security boundaries, CI evidence and remaining production gates.
 
 ## Security setup
 
@@ -120,7 +135,7 @@ Forge can persist inspected public repositories as owner-reviewed candidates pin
 
 ## Forge Knowledge Library
 
-The Forge panel includes a searchable owner-only Knowledge Library. New records preserve source URLs and attribution, evidence level, limitations and applicable capability tags. Records start as drafts; owner review is explicit, low/experimental evidence cannot be accepted, reviewed content is immutable, and create/review/accept/supersede history is append-only. Search defaults to accepted records only. The library is not yet automatically injected into Agent Workforce plans; that integration remains gated on the next retrieval stage. See [Forge intelligence](docs/FORGE_INTELLIGENCE.md) and [AEGIS Forge](docs/AEGIS_FORGE.md).
+The Forge panel includes a searchable owner-only Knowledge Library. New records preserve source URLs and attribution, evidence level, limitations and applicable capability tags. Records start as drafts; owner review is explicit, low/experimental evidence cannot be accepted, reviewed content is immutable, and create/review/accept/supersede history is append-only. Search defaults to accepted records only. Accepted high/medium evidence records are now attached to Project Space agent-run context after objective-relevance ranking; retrieved content remains untrusted reference data and never grants permissions. See [Forge intelligence](docs/FORGE_INTELLIGENCE.md) and [AEGIS Forge](docs/AEGIS_FORGE.md).
 
 
 ## First owner-facing invocation route
@@ -147,3 +162,34 @@ See [Universal Device and 3D Companion Architecture](docs/AEGIS_UNIVERSAL_DEVICE
 ## Capability roadmap and upstream adoption
 
 See [AEGIS Capability Roadmap](docs/AEGIS_CAPABILITY_ROADMAP.md) for the build/adapt/connect/reject decisions, delivery gates, acceptance criteria, upstream selection scorecard and honest progress-tracking rules. The roadmap is a plan, not a claim that future capabilities are already implemented.
+
+
+
+
+## Guardian Intelligence — learning, resources and security research
+
+AEGIS now has pure validators for Resource Intelligence records, acyclic Learning Graphs and evidence-backed Security Findings. The first Resource Catalogue slice also has owner-scoped D1 persistence and authenticated, same-origin `GET/POST /api/guardian/resources`; records are server-identified, idempotent by source revision and created as drafts. The owner-facing Guardian Resource intake/catalogue UI now uses the authenticated review API; learning graph persistence, security finding persistence and all scanning/execution remain future work. See [Guardian Intelligence contracts](docs/AEGIS_GUARDIAN_INTELLIGENCE_CONTRACTS.md) and [the 17 November REA batch](docs/REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md). Dynamic security testing remains disabled until Sentinel-backed exact-scope authorisation and isolated-worker enforcement are implemented and tested.
+
+
+## Guardian Resource review lifecycle
+
+Guardian Resources now have an owner-scoped review transition API. Records start as drafts; review transitions use optimistic concurrency, bounded reviewer notes and server-derived reviewer identity. Source content and source identity are immutable after intake. Acceptance is blocked unless the licence is marked verified and has an HTTPS evidence reference. D1 triggers enforce the transition rules and append-only review events. This is a source-level feature on draft PR #103, not yet deployed.
+
+## UI ecosystem research
+
+AEGIS maintains a researched, framework-neutral UI direction: AEGIS-owned design tokens, semantic primitives, accessibility and motion contracts, with optional React and Vue adapters. The current research intake covers shadcn/ui, Magic UI, Aceternity UI, HyperUI, Material UI, React, Vue, Tailwind CSS and the Awesome React/Vue/Frontend/Tailwind discovery lists. These are research candidates, not blanket dependencies or blanket code-reuse approvals. See [AEGIS UI ecosystem research](docs/AEGIS_UI_ECOSYSTEM_RESEARCH_2026-11-17.md).
+
+
+## Workspace, knowledge and coding-agent research
+
+The 17 November 2026 ecosystem review covers ToolJet, Mattermost, Outline, Plausible, Continue, Roo Code, SWE-agent, Plandex, GPT Pilot, Tabby and Goose. AEGIS will own its Workbench, Knowledge Forge, collaboration/task model, privacy-preserving observability and governed coding-agent workforce; upstream projects remain research references or optional adapters. GPT Pilot is excluded from execution/adoption due to its disclosed supply-chain credential-stealing incident and discontinued maintenance. Licence and maintenance status vary by project; see [the full research and security assessment](docs/AEGIS_WORKSPACE_KNOWLEDGE_CODING_AGENTS_2026-11-17.md).
+
+
+## AEGIS Forge — 80-idea audit additions
+
+The 17 November 2026 Forge audit adds four research tracks: privacy-preserving MediaPipe camera/gesture interaction, optional FastMCP local sidecars, and native scam/phishing/document-clause risk protection. These are not yet implemented. Face landmarks are not proof of liveness, hand landmarks are not full sign-language translation, OpenPhish's free feed is non-commercial, and suspicious destinations must never be fetched during checks. Passkeys remain the preferred authentication mechanism. See [the full capability and safety assessment](docs/AEGIS_FORGE_80_IDEA_AUDIT_ADDITIONS_2026-11-17.md).
+
+
+## Eval Forge
+
+AEGIS now has a first deterministic evaluation contract: versioned suites, bounded weighted cases, candidate artifact digests, per-case evidence digests and required-case gates. This scorer does not execute tests or verify evidence provenance; persistence, isolated evaluation workers, the owner-facing UI and promotion review remain future work. Scores never grant permissions or deploy candidates. See [AEGIS Eval Forge](docs/AEGIS_EVAL_FORGE.md).

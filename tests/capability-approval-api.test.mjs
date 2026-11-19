@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createSessionToken, createReviewerSessionToken, reviewerSessionCookie } from '../functions/lib/auth.mjs';
 import { createApprovalRequest } from '../functions/lib/capability-approvals.mjs';
 import {
   onRequestGet,
@@ -11,6 +11,8 @@ const secret = 'approval-api-test-session-secret-with-enough-entropy';
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
+  AEGIS_REVIEWER_PASSWORD: 'reviewer-password-long-enough',
+  AEGIS_REVIEWER_SESSION_SECRET: 'capability-reviewer-session-secret-with-entropy',
 };
 const binding = {
   principalId: 'owner',
@@ -74,9 +76,11 @@ class MemoryD1 {
   }
 }
 
-async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example' } = {}) {
-  const token = await createSessionToken(secret);
-  const headers = { Cookie: '__Host-aegis_session=' + token };
+async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example', principal = (method === 'POST' ? 'reviewer' : 'owner') } = {}) {
+  const token = principal === 'reviewer'
+    ? reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET))
+    : '__Host-aegis_session=' + await createSessionToken(secret);
+  const headers = { Cookie: token };
   if (origin !== null) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   return new Request('https://aegis.example' + path, {
@@ -120,7 +124,7 @@ test('approval inbox returns pending exact-operation details without exposing th
   assert.equal('inputDigest' in body.approvals[0], false);
 });
 
-test('approval decisions reject missing and hostile origins before changing D1', async () => {
+test('reviewer approval decisions reject missing and hostile origins before changing D1', async () => {
   for (const origin of [null, 'https://attacker.example']) {
     const db = new MemoryD1();
     const pending = await createApprovalRequest(db, binding);
@@ -129,6 +133,7 @@ test('approval decisions reject missing and hostile origins before changing D1',
         method: 'POST',
         origin,
         body: { id: pending.id, decision: 'approved' },
+        principal: 'reviewer',
       }),
       env: { ...envBase, AEGIS_DB: db },
     });
@@ -137,22 +142,34 @@ test('approval decisions reject missing and hostile origins before changing D1',
   }
 });
 
-test('only the authenticated owner can decide a pending approval and the API supplies the actor', async () => {
+test('only the separately authenticated reviewer can decide a pending approval and the API supplies the actor', async () => {
   const db = new MemoryD1();
   const pending = await createApprovalRequest(db, binding);
+  const ownerAttempt = await onRequestPost({
+    request: await authenticatedRequest('/api/approvals', {
+      method: 'POST',
+      body: { id: pending.id, decision: 'approved' },
+      principal: 'owner',
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(ownerAttempt.status, 401);
+  assert.equal(db.rows.get(pending.id).status, 'pending');
+
   const response = await onRequestPost({
     request: await authenticatedRequest('/api/approvals', {
       method: 'POST',
       body: { id: pending.id, decision: 'approved' },
+      principal: 'reviewer',
     }),
     env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.approval.status, 'approved');
-  assert.equal(body.approval.decidedBy, 'owner');
-  assert.equal(body.approval.decidedBy, 'owner');
-  assert.equal(db.rows.get(pending.id).decided_by, 'owner');
+  assert.equal(body.approval.decidedBy, 'reviewer');
+  assert.equal(body.approval.decidedBy, 'reviewer');
+  assert.equal(db.rows.get(pending.id).decided_by, 'reviewer');
 });
 
 
@@ -168,13 +185,13 @@ test('approval decisions reject oversized bodies while streaming', async () => {
 });
 
 test('approval decisions reject non-JSON content types', async () => {
-  const token = await createSessionToken(secret);
+  const token = reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET));
   const response = await onRequestPost({
     request: new Request('https://aegis.example/api/approvals', {
       method: 'POST',
       headers: {
         Origin: 'https://aegis.example',
-        Cookie: '__Host-aegis_session=' + token,
+        Cookie: token,
         'Content-Type': 'text/plain',
       },
       body: '{"id":"approval-1","decision":"approved"}',
@@ -200,13 +217,13 @@ test('expired pending approvals cannot be approved through the API', async () =>
 });
 
 test('approval decisions reject malformed JSON and invalid decision values', async () => {
-  const token = await createSessionToken(secret);
+  const token = reviewerSessionCookie(await createReviewerSessionToken(envBase.AEGIS_REVIEWER_SESSION_SECRET));
   const malformed = await onRequestPost({
     request: new Request('https://aegis.example/api/approvals', {
       method: 'POST',
       headers: {
         Origin: 'https://aegis.example',
-        Cookie: '__Host-aegis_session=' + token,
+        Cookie: token,
         'Content-Type': 'application/json',
       },
       body: '{',

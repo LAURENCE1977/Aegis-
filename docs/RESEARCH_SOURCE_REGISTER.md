@@ -635,3 +635,15 @@ This is a read-only review of repositories visible under the AEGIS owner's GitHu
 ### Ongoing intake rule
 
 At each substantive AEGIS build stage, refresh the owner's repository inventory and open pull requests, inspect relevant new commits/branches, compare candidate file revisions against current `main`, and check licence/security/maintenance before proposing reuse. Prefer small AEGIS-native adaptations over importing whole runtimes. Keep a candidate pinned to an immutable commit/tree SHA and record the evidence and decision. Never merge a stale stacked PR just because its old CI was green; rerun against current `main` and inspect actual effect-level behaviour.
+
+
+## 17 November 2026 — open-source learning, self-hosting and security-agent batch
+
+See [REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md](REA_BATCH_2026-11-17_OPEN_SOURCE_LEARNING_SECURITY.md) for the full candidate-by-candidate assessment, trust boundaries and delivery order.
+
+- Free-for-dev: resource/free-tier discovery seed; all quotas, payment requirements and expiry conditions must be revalidated.
+- OSSU: curriculum and mastery-path reference; do not mirror course content without rights review.
+- Awesome Selfhosted: self-hosted software discovery seed; each listing needs independent licence, maintenance, security and operational-footprint review.
+- PentAGI, PentestGPT and Strix: security-agent architecture and evidence-validation research; adapt concepts behind AEGIS-owned task, Sentinel, Vault and isolated-worker contracts.
+- ARTEX, Cairn and CyberStrikeAI: hold for canonical identity, provenance, licence and security-executor review. Do not import C2, WebShell, persistence or unrestricted execution components.
+- No packages, binaries, services or external accounts were installed or connected by this intake. This is not a full source audit or an integration claim.

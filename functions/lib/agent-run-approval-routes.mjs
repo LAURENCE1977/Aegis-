@@ -1,5 +1,6 @@
 import {
   authorizeOwner,
+  authorizeReviewer,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
@@ -18,6 +19,7 @@ import { getCapabilityManifest } from './capability-registry.mjs';
 import { proxyAgentRuntime } from './agent-runtime-proxy.mjs';
 
 const OWNER_ID = 'owner';
+const REVIEWER_ID = 'reviewer';
 const MAX_BODY_BYTES = 1024;
 const RUN_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const APPROVAL_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -100,7 +102,7 @@ export function createAgentRunApprovalDecisionHandlers({
 } = {}) {
   return {
     async onRequestPatch({ request, env, params }) {
-      const denied = await authorizeOwner(request, env);
+      const denied = await authorizeReviewer(request, env);
       if (denied) return denied;
       if (!isOwnerWriteRequest(request)) return jsonResponse({ error: 'Cross-origin request rejected.' }, 403);
       if (!configured(env)) return jsonResponse({ error: 'Approval storage is not configured.' }, 503);
@@ -117,7 +119,7 @@ export function createAgentRunApprovalDecisionHandlers({
         const approval = await decideRequest(env.AEGIS_DB, {
           id: params.id,
           decision: parsed.body.decision,
-          decidedBy: OWNER_ID,
+          decidedBy: REVIEWER_ID,
           principalId: OWNER_ID,
           capabilityId: 'aegis-agent-run',
         });
@@ -165,7 +167,7 @@ export function createAgentRunApprovalAuthorizationHandlers({
         });
         if (!approval || approval.id !== approvalId ||
             !['approved', 'consumed'].includes(approval.status) ||
-            approval.decidedBy !== OWNER_ID ||
+            approval.decidedBy !== REVIEWER_ID ||
             (approval.status === 'consumed' && !approval.consumedAt)) {
           return jsonResponse({ error: 'An active owner-approved execution request is required.' }, 409);
         }

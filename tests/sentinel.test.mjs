@@ -112,6 +112,27 @@ test('records a redacted failure outcome when an adapter throws', async () => {
   assert.equal(JSON.stringify(h.events).includes('super-secret'), false);
 });
 
+
+test('surfaces an unresolved adapter failure when its outcome audit cannot be persisted', async () => {
+  const events = [];
+  const h = harness({
+    recordAudit: async (event) => {
+      if (event.type === 'invocation_failed') throw new Error('audit storage unavailable');
+      events.push(event);
+    },
+    execute: async () => { throw new Error('remote operation may have completed'); },
+  });
+  const result = await runSentinelInvocation(request, h.dependencies);
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'EXECUTION_FAILED_AUDIT_UNAVAILABLE');
+  assert.equal(result.output, undefined);
+  assert.equal(JSON.stringify(result).includes('remote operation'), false);
+  assert.deepEqual(events.map((event) => event.type), [
+    'invocation_policy_allowed',
+    'invocation_authorized',
+  ]);
+});
+
 test('requires atomic approval consumption before any human-gated action executes', async () => {
   const writeManifest = {
     ...manifest,
@@ -232,4 +253,67 @@ test('fails closed when the atomic rate-limit store is unavailable', async () =>
   assert.equal(result.reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
   assert.equal(h.calls.execute, 0);
   assert.equal(h.events[0].reasonCode, 'RATE_LIMIT_STORE_UNAVAILABLE');
+});
+
+test('rejects a validly shaped but altered manifest before rate reservation or adapter execution', async () => {
+  const h = harness();
+  const alteredManifest = { ...manifest, description: manifest.description + ' altered' };
+  const result = await runSentinelInvocation({
+    ...request,
+    manifest: alteredManifest,
+  }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'MANIFEST_MISMATCH');
+  assert.equal(h.calls.reserve, 0);
+  assert.equal(h.calls.execute, 0);
+  assert.deepEqual(h.events.map((event) => event.type), ['invocation_denied']);
+  assert.equal(h.events[0].reasonCode, 'MANIFEST_MISMATCH');
+});
+
+test('rejects a manifest whose action definition differs from the canonical registry', async () => {
+  const h = harness();
+  const alteredManifest = {
+    ...manifest,
+    actions: manifest.actions.map((action) => action.id === 'discover'
+      ? { ...action, requiredScopes: [...action.requiredScopes, 'github:repository:write'] }
+      : action),
+  };
+  const result = await runSentinelInvocation({
+    ...request,
+    manifest: alteredManifest,
+  }, h.dependencies);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, 'MANIFEST_MISMATCH');
+  assert.equal(h.calls.execute, 0);
+  assert.equal(h.calls.reserve, 0);
+});
+
+
+test('does not replay a completed adapter action when the success audit write fails', async () => {
+  let successAuditAttempts = 0;
+  const h = harness({
+    recordAudit: async (event) => {
+      if (event.type === 'invocation_succeeded') {
+        successAuditAttempts += 1;
+        throw new Error('audit store unavailable after side effect');
+      }
+      h.events.push(event);
+    },
+  });
+
+  const result = await runSentinelInvocation(request, h.dependencies);
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'SUCCESS_AUDIT_UNAVAILABLE');
+  assert.equal(result.auditRecorded, false);
+  assert.deepEqual(result.output, {
+    repository: 'LAURENCE1977/Aegis-',
+    contextId: 'invocation-001',
+  });
+  assert.equal(h.calls.execute, 1);
+  assert.equal(successAuditAttempts, 1);
+  assert.deepEqual(h.events.map((event) => event.type), [
+    'invocation_policy_allowed',
+    'invocation_authorized',
+  ]);
 });
