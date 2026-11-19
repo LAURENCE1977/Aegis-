@@ -229,6 +229,19 @@ export function createCompanionRenderer(canvas, options = {}) {
       gl.clearColor(0, 0, 0, 0);
       initialised = true;
       resize();
+      contextLostHandler = event => {
+        event.preventDefault();
+        stop();
+        initialised = false;
+        const host = canvas.parentElement;
+        if (host) {
+          host.dataset.renderer = 'fallback';
+          host.querySelector('.companion-avatar')?.removeAttribute('hidden');
+          host.setAttribute('aria-label', 'Agent AEGIS companion presentation using the accessible 2D fallback');
+        }
+        cleanupGl();
+      };
+      canvas.addEventListener('webglcontextlost', contextLostHandler);
       const onVisibility = () => { if (document.visibilityState === 'visible') schedule(); else stop(); };
       if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
       visibilityHandler = onVisibility;
@@ -250,6 +263,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     }
   }
   let visibilityHandler = null;
+  let contextLostHandler = null;
   function onResize() { resize(canvas.clientWidth, canvas.clientHeight, Math.min(window.devicePixelRatio || 1, 1.5)); schedule(); }
   function stop() {
     if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
@@ -357,6 +371,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     disposed = true;
     stop();
     if (resizeObserver) resizeObserver.disconnect();
+    if (contextLostHandler) canvas?.removeEventListener('webglcontextlost', contextLostHandler);
     if (typeof document !== 'undefined' && visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
     if (typeof window !== 'undefined') window.removeEventListener('resize', onResize);
     cleanupGl();
