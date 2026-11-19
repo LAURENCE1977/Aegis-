@@ -547,9 +547,10 @@ See [AEGIS Eval Forge](AEGIS_EVAL_FORGE.md) for the contract and next delivery s
 - AEGIS computes SHA-256 server-side and binds each receipt to the owner and exact immutable path version/node. Browser-supplied digests and filenames are rejected.
 - Only digest, byte length, client-declared media type and server timestamp are stored; media type is not content-verified and raw bytes are discarded.
 - Owner withdrawal deletes the digest receipt while preserving content-free append-only submission/withdrawal events.
+- The Forge learner workspace now supports registered path/node selection, upload, active receipt listing, withdrawal and a non-certifying evidence-gap diagnostic. Learning Path authoring/registration UI and a curated starter catalogue remain future work.
 - D1 enforces 25 active receipts per node and 500 per owner. Mastery input is bounded to 75 server-scored attempts plus 25 applied-task receipts.
 - Independently authenticated human review and a privacy-preserving artifact-inspection handoff are not implemented. Mastery remains non-certifying and no capability or credential is granted.
-- Full verification on code head `56aa8e05220d345c3f7470dac0a2f0ac8aaf1ade`: 985 Node tests, 984 passed, 0 failed, 1 skipped; Cloudflare preview, runtime/Queue and all isolated D1/Forge/Learning/Companion checks passed.
+- Full verification on code head `601a5ace460a854795206c80dfa3eab9bb75be72`: 989 Node tests, 988 passed, 0 failed, 1 skipped; Cloudflare preview, runtime/Queue and all isolated D1/Forge/Learning/Companion checks passed.
 
 ## Web Intelligence & Media Production Forge — ecosystem intake (17 November 2026)
 
