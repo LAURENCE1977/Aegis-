@@ -46,13 +46,14 @@ No T3 Code installation, account connection, MCP pairing, credential transfer or
 - Core geometry path: Python scripts using build123d and OpenCASCADE (OCCT).
 - Outputs include STEP, STL, 3MF, GLB and DXF. The skill set also covers engineering drawings, manufacturing checks, finite-element stress checks, robotics/simulation descriptions and rendering workflows.
 - It integrates with several coding-agent CLIs and skill/plugin systems. The agent writes Python model scripts; the local CAD command/server runs them and provides a viewer.
-- The documented installer targets macOS/Linux and Windows. It installs a local Python/uv-based CAD command and agent integrations; this is not a browser-only or iPad/Chromebook-native service.
+- The documented installer targets macOS/Linux and Windows. It installs a local Python/uv-based CAD command and agent integrations; this is not a browser-only or iPad/Chromebook-native service. The official install guide reports the CAD kernel environment is downloaded on first use (about 240 MB download / 620 MB disk).
 
 ### Security and platform caveats
 
 - Agent-authored Python model scripts are executed by the CAD runtime. Treat generated scripts and imported CAD files as untrusted. AEGIS must not execute them in its Cloudflare control plane or in a privileged application process.
 - A production AEGIS adapter would need a dedicated disposable worker, bounded CPU/memory/time/disk, no ambient credentials, restricted egress, per-job filesystem isolation, explicit user approval before export or external fabrication actions, and cleanup evidence.
 - CAD kernel/native dependencies and rendering requirements make this a heavier specialist worker than a lightweight browser UI. It is not a suitable mandatory dependency for every AEGIS user or session.
+- The README says usage statistics and crash reports are sent by default with a random identifier, while excluding files, paths and prompts. AEGIS must surface this disclosure and review opt-out controls before adopting the worker.
 - Fabrication services, CNC/printing providers and any model/image inputs require separate consent, provenance, licensing and data-transfer checks.
 
 ### AEGIS decision
@@ -71,11 +72,11 @@ No package, CAD kernel, agent plugin, model script or fabrication service was in
 - Licence: Apache-2.0; verified from the root LICENSE.
 - Focus: hardware enclosures and assemblies generated from product requirements, reference images, dimensions and internal component geometry.
 - Uses editable Python/build123d source and BRep geometry, with STEP/STL/3MF export. Its documented workflow includes measured wall thickness, fit/clearance, collision and manufacturing checks.
-- The README specifies Node.js 22.19+ and a build123d/OCP runtime.
+- The current README specifies Node.js 22.19+, Python 3.10–3.13, npm, a modern desktop browser and an OpenAI Responses-compatible model gateway. It describes a local Express API (default loopback port 6161), a browser workbench and a local Python environment containing build123d/OCP and related geometry libraries. This is a browser-facing local application, not a hosted cloud CAD service; it also needs a configured model API/gateway.
 
 ### AEGIS decision
 
-**Useful secondary architecture reference for a future Hardware/CAD Studio.** Its requirements-first design flow, semantic scene, geometry evidence and export readback are valuable. It is still a local engineering toolchain, not a lightweight browser widget. Do not import its runtime or execute its generated code in the AEGIS control plane.
+**Useful secondary architecture reference for a future Hardware/CAD Studio.** Its requirements-first design flow, semantic scene, geometry evidence and export readback are valuable. It has a browser workbench, but the documented setup still requires a local Node/Python server and model gateway; it is not a hosted AEGIS feature or a proven mobile workflow. Do not import its runtime or execute its generated code in the AEGIS control plane.
 
 No code or dependencies were imported or run.
 
