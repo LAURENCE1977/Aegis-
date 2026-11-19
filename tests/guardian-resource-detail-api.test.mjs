@@ -129,3 +129,18 @@ test('Guardian Resource detail bounds event history returned to the caller', asy
   assert.equal(body.events.length, 1);
   assert.equal(body.events[0].eventType, 'reviewed', 'bounded history should retain the newest event');
 });
+
+
+test('Guardian Resource detail fails closed when stored audit metadata contains unexpected fields', async () => {
+  const db = new GuardianDetailD1();
+  db.events[0].detail_json = JSON.stringify({
+    sourceRevision: 'a'.repeat(40), reviewStatus: 'draft', unexpected: 'must not be exposed',
+  });
+  const response = await onRequestGet({
+    request: await makeRequest('/api/guardian/resources/' + resourceId),
+    env: { ...envBase, AEGIS_DB: db },
+    params: { id: resourceId },
+  });
+  assert.equal(response.status, 503, 'stored audit corruption is a server integrity failure, not a client input error');
+  assert.doesNotMatch(await response.text(), /must not be exposed/);
+});
