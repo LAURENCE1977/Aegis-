@@ -537,9 +537,14 @@ export function createCompanionRenderer(canvas, options = {}) {
     schedule();
     return { timestamp: visemeTimestamp, weights: { ...visemes } };
   }
-  async function loadModel(assetManifest) {
+  async function loadModel(assetManifest, file, cryptoApi = globalThis.crypto) {
     const validation = validateCompanionAssetManifest(assetManifest);
     if (!validation.valid) return { loaded: false, reason: validation.reason };
+    if (!file || !Number.isSafeInteger(file.size) || file.size !== validation.manifest.byteLength) {
+      return { loaded: false, reason: 'asset-size-mismatch' };
+    }
+    const digest = await verifyCompanionAssetDigest(file, validation.manifest.sha256, cryptoApi);
+    if (!digest.verified) return { loaded: false, reason: digest.reason };
     return { loaded: false, reason: 'external-model-loader-not-yet-enabled' };
   }
   function playAnimation(id) { return setState(id); }
