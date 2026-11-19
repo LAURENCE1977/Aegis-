@@ -1,7 +1,7 @@
 const VISeme_KEYS = Object.freeze(['aa', 'ee', 'ih', 'oh', 'ou', 'jawOpen']);
 const EXPRESSION_IDS = new Set(['neutral', 'smile', 'focused', 'concerned']);
 export const COMPANION_STATES = Object.freeze([
-  'idle', 'listening', 'thinking', 'speaking', 'interrupted', 'paused', 'disconnected',
+  'idle', 'listening', 'thinking', 'speaking', 'responding', 'interrupted', 'paused', 'disconnected', 'error',
 ]);
 
 export function normaliseVisemes(input = {}) {
@@ -14,9 +14,9 @@ export function normaliseVisemes(input = {}) {
 }
 
 export function normaliseExpression(id, weight) {
-  const safeId = EXPRESSION_IDS.has(id) ? id : 'neutral';
   const value = Number(weight);
-  return { id: safeId, weight: Number.isFinite(value) && EXPRESSION_IDS.has(id) ? Math.max(0, Math.min(1, value)) : 0 };
+  if (!EXPRESSION_IDS.has(id) || !Number.isFinite(value)) return { id: 'neutral', weight: 0 };
+  return { id, weight: Math.max(0, Math.min(1, value)) };
 }
 
 export function createSphereGeometry(longitudeSegments = 24, latitudeSegments = 16) {
