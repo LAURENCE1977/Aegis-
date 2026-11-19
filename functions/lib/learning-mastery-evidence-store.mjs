@@ -255,3 +255,39 @@ export async function withdrawLearningAppliedTaskEvidence(
   `).bind(evidenceId, ownerId, pathId, pathVersion, nodeId).run();
   return result?.meta?.changes === 1;
 }
+
+
+export async function listLearningAppliedTaskEvidence(
+  db, ownerId, pathId, pathVersion, nodeId,
+) {
+  requireDatabase(db);
+  validateIdentity(ownerId, pathId, pathVersion, nodeId);
+  const registered = await getLearningPath(db, ownerId, pathId, pathVersion);
+  if (!registered || !registered.path.nodes.some(node => node.id === nodeId)) {
+    throw new LearningMasteryPathNotFoundError();
+  }
+  const result = await db.prepare(`
+    SELECT id, artifact_digest, byte_length, media_type, submitted_at
+    FROM learning_applied_task_evidence
+    WHERE owner_id = ? AND path_id = ? AND path_version = ? AND node_id = ?
+    ORDER BY submitted_at DESC, id DESC
+    LIMIT ?
+  `).bind(ownerId, pathId, pathVersion, nodeId, MAX_APPLIED_EVIDENCE).all();
+  return Object.freeze((result?.results ?? []).map(row => {
+    if (typeof row.id !== 'string' || !/^evidence-[a-f0-9]{32}$/.test(row.id) ||
+        typeof row.artifact_digest !== 'string' || !/^[a-f0-9]{64}$/.test(row.artifact_digest) ||
+        !Number.isInteger(row.byte_length) || row.byte_length < 1 || row.byte_length > 2 * 1024 * 1024 ||
+        !['application/octet-stream', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain'].includes(row.media_type)) {
+      throw new TypeError('Stored Learning applied-task evidence receipt is invalid');
+    }
+    validateAttemptTime({ occurredAt: row.submitted_at }, Date.now());
+    return Object.freeze({
+      id: row.id,
+      artifactDigest: row.artifact_digest,
+      byteLength: row.byte_length,
+      mediaType: row.media_type,
+      occurredAt: row.submitted_at,
+      contentRetained: false,
+    });
+  }));
+}
