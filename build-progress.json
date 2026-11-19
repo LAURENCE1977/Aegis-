@@ -3,8 +3,8 @@
   "updatedAt": "2026-11-19",
   "overallCompletion": null,
   "progressPolicy": "Overall completion is withheld until all six workstreams have an audited, evidence-backed baseline. Audit coverage is not a measure of total product completion.",
-  "latestVerifiedCheckpoint": "Dashboard PR #106 CI workflow 44591096408 passed. Companion model lifecycle PR #107 CI workflow 44591891106 passed. Earlier implementation workflow 44589027079 recorded 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. Both PRs remain draft; neither has been merged or deployed.",
-  "nextMilestone": "Review the companion lifecycle draft PR #107. After review, wire the lifecycle into the avatar renderer, then evaluate a VRM loader against mobile bundle, memory and performance budgets.",
+  "latestVerifiedCheckpoint": "Dashboard PR #106 CI workflow 44592454361 passed. Companion model lifecycle PR #107 CI workflows 44592511233 and 44592523576 passed. Renderer lifecycle integration PR #108 passed its initial CI workflow 44594102156; a follow-up async-test correction is awaiting CI. Safe model adapter PR #109 is in draft with CI running. Earlier implementation workflow 44589027079 recorded 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. No PR has been merged or deployed.",
+  "nextMilestone": "Complete CI verification for PRs #108 and #109, then implement and test a real optional VRM rendering adapter with mobile bundle, memory, context-loss and frame-rate budgets. Keep the procedural avatar as the fallback.",
   "workstreams": [
     {
       "id": "intelligence",
@@ -28,13 +28,13 @@
       "id": "companion",
       "name": "Avatar & voice",
       "auditStatus": "pending",
-      "summary": "Procedural WebGL2 renderer and uploaded-byte integrity checks exist. Transactional prepare/commit/destroy lifecycle is implemented in draft PR #107 with passing CI; external model loader, voice runtime and device validation remain incomplete."
+      "summary": "Procedural WebGL2 renderer, uploaded-byte SHA-256 verification and transactional resource lifecycle are in place. PR #108 connects the lifecycle to the renderer; PR #109 adds an opt-in trusted adapter boundary, format allowlisting, telemetry/performance-budget checks and disposal-race coverage. Final CI is pending; no VRM parser/runtime is bundled and imported models are not yet rendered."
     },
     {
       "id": "research",
       "name": "Research & integrations",
       "auditStatus": "pending",
-      "summary": "GitHub and Composio intake reviewed relevant owned and external repositories for licence, reuse fit and mobile impact; a complete capability baseline audit remains outstanding."
+      "summary": "GitHub and Composio intake reviewed nine owner repositories and new external candidates. Reuse decisions for AI Sandbox, sessionmem and OrbMotion are documented; adapt patterns only, with no third-party runtime imported."
     },
     {
       "id": "platform",
