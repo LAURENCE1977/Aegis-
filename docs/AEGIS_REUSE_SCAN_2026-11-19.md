@@ -50,13 +50,13 @@ Composio/GitHub returned nine repositories accessible to the connected owner acc
 
 - LAURENCE1977/Aegis- — MIT; current build repository.
 - LAURENCE1977/storied-gecko-09ca7c — no licence surfaced.
-- LAURENCE1977/storie-audio-lab-3 — no licence surfaced.
+- LAURENCE1977/storie-audio-lab-3 — repository currently empty; no source or licence to reuse.
 - LAURENCE1977/openclaw — fork; GitHub metadata reports NOASSERTION, so inspect the actual licence file and upstream provenance before any code reuse.
 - LAURENCE1977/auto-browser — fork; MIT; useful human-in-the-loop browser patterns already under review.
 - LAURENCE1977/storie-audio-lab-store-checker — no licence surfaced.
 - LAURENCE1977/G0DM0D3 — AGPL-3.0; architecture research only unless distribution obligations are explicitly assessed.
 - LAURENCE1977/charlieautomatesskills — no licence surfaced.
-- LAURENCE1977/3D-Website-Builder — no licence surfaced; no code copying until licence permission is established.
+- LAURENCE1977/3D-Website-Builder — fork of HVbajoria/3D-Website-Builder; neither fork nor parent surfaced a licence. Its package manifest uses React 18, React Three Fiber 8, Drei 9 and Three.js 0.158. It is a stale 2025 snapshot and adds a separate, comparatively heavy rendering stack; architecture can be studied, but no code copying until licence permission is established.
 
 ## Other candidates surfaced, not yet promoted
 
@@ -65,6 +65,13 @@ Composio/GitHub returned nine repositories accessible to the connected owner acc
 - https://github.com/nergizal/Deterministic-edge-agents — no licence surfaced in search metadata; do not copy until licence and source are reviewed.
 - https://github.com/lucca3447/OpenAmadeus — GPL-3.0; companion runtime concept only; compatibility review required before any reuse.
 - https://github.com/khoacat12345/waker-ai — MIT; agent watchdog/supervisor concept; assess against AEGIS's existing repair and health-monitoring work before adopting.
+
+
+### Additional owner-repository inspection
+
+- `LAURENCE1977/3D-Website-Builder` was traced to its upstream parent `HVbajoria/3D-Website-Builder`; both GitHub repository metadata responses report no licence. Its dependency manifest confirms a React/React Three Fiber/Drei/Three.js application. It may inform a future isolated website-authoring surface, but it is not a suitable dependency for the current lightweight WebGL2 companion and cannot be copied without a licence.
+- `LAURENCE1977/storied-gecko-09ca7c` contains a single approximately 3.9 MB `index.html` and a deeply nested `.github/workflows/.github/workflows/...` directory structure. No licence surfaced. Treat it as an opaque/legacy artifact pending a focused audit; do not import it or use it as an AEGIS baseline.
+- `LAURENCE1977/storie-audio-lab-3` currently returns an empty-repository response, so there is no implementation to reuse at this time.
 
 ## Reuse rules
 
