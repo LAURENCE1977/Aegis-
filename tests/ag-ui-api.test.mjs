@@ -98,6 +98,20 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.doesNotMatch(body,/private provider secret/);
 });
 
+test('AG-UI fails closed on an unapproved provider adapter before any outbound request', async () => {
+  let outbound = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AEGIS_MODEL_PROVIDER: 'https://attacker.example' },
+    fetchImpl: async () => { outbound = true; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 502);
+  const body = await response.text();
+  assert.equal(outbound, false);
+  assert.match(body, /AGENT_START_FAILED/);
+  assert.doesNotMatch(body, /attacker\.example/);
+});
+
 test('AG-UI endpoint rejects non-text and malformed runs rather than silently dropping content',async()=>{
   const noQuestion=await onRequestPost({
     request:await request(input({messages:[{id:'x',role:'assistant',content:'not a user turn'}]})),
