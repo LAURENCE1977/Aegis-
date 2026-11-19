@@ -5,7 +5,7 @@
 - Canonical repository: `LAURENCE1977/Aegis-`.
 - Active development PR: #103, branch `feature/rea-open-source-security-learning-batch`.
 - PR #103 is open, draft and unmerged; it remains stacked on PR #101.
-- Verified code head: `9f1d17dc1146d28c4537d6f12181f207362fc84a` (Learning Forge starter-path implementation).
+- Verified code head: `2d3442eb995861dcb8f6736d83d1ef98c3aded6e` (Learning Forge starter paths and free-only model-routing guard).
 - Push workflow [44543864661](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543864661) and matching PR workflow [44543873021](https://github.com/LAURENCE1977/Aegis-/actions/runs/44543873021) both passed on that exact head.
 - Node.js suite: **1006 tests, 1005 passed, 0 failed, 1 skipped**.
 - Cloudflare Pages preview returned HTTP 200 and its public HTML contains the new Learning Forge starter controls.
@@ -54,6 +54,24 @@
 - Source inspection confirms this is the deliberate fail-closed response when either `AEGIS_PASSWORD` is missing/shorter than 12 characters or `AEGIS_SESSION_SECRET` is missing/shorter than 32 characters.
 - The preview environment therefore needs both values configured as encrypted Cloudflare Pages Preview secrets, followed by a preview redeployment. Do not weaken authentication or expose secret values to diagnose this.
 - No authenticated UI interaction was performed, no secret was read or changed, and no production configuration or deployment was altered.
+
+## Intelligence routing — verified free-only cost guard (19 Nov 2026)
+
+- Carried the base branch's free-only pricing safeguard into the PR #103 feature branch.
+- `selectModelRoute` now accepts optional `maxInputCost` and `maxOutputCost` constraints. When either is supplied, both input and output prices must be known; unknown prices are not treated as zero.
+- A zero/zero cap selects only catalogue entries explicitly priced at zero for both input and output. Without caps, unpriced models remain eligible only as unknown-cost candidates, rank behind known-price candidates and report `estimatedCost: null`.
+- Negative/non-finite cost constraints are rejected.
+- Test-first RED workflow [44545175830](https://github.com/LAURENCE1977/Aegis-/actions/runs/44545175830) failed the three new regressions against the old implementation, as expected.
+- GREEN push workflow [44545298858](https://github.com/LAURENCE1977/Aegis-/actions/runs/44545298858) passed on code head `2d3442eb995861dcb8f6736d83d1ef98c3aded6e`: **998 tests, 997 passed, 0 failed, 1 skipped**, plus isolated runtime/D1/Forge/Companion checks.
+- This is still a deterministic planning safeguard, not live provider billing verification, a durable spend ledger or an active runtime spend cap. The planner is not yet wired into AG-UI or the live provider adapter.
+
+## PR #103 stacked-branch drift (19 Nov 2026)
+
+- Current base branch `feature/composio-audit-lineage-verified` is at `4cc0d50a761dfed4df66106c95a24efb23c9441e`; PR #103's merge base is `74d1e53e7ea70ee713ff5b3b62d8f613bd3b2f73`.
+- GitHub compare reports PR #103 as **517 commits ahead and 7 behind** its base branch. This is branch divergence, not proof of a merge conflict. No branch sync, PR merge or rebase was performed.
+- The substantive free-only routing guard from the base branch is now present in the feature branch.
+- The base branch also contains a separate `learning-graph.mjs` concepts/activities schema. PR #103's Learning Forge uses its existing node/outcome/prerequisite schema. Keep the two contracts unreconciled rather than introducing a second canonical Learning Path format by accident.
+- The base branch's newer OsintHunter assessment is documentation-only; the feature branch already has an earlier research record. Consolidate the research record deliberately during the next branch-integration review.
 
 ## Test-first evidence and corrections
 
