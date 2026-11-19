@@ -1,6 +1,6 @@
 # AEGIS Interactive Human Companion Architecture
 
-**Status:** Foundational architecture decision; implementation is not yet present unless explicitly identified below.
+**Status:** Foundational architecture decision; profile persistence and the first procedural WebGL2 renderer prototype are implemented on the open feature branch. Full lifelike avatar, imported model support, voice/audio runtime and device-level validation remain incomplete.
 
 ## 1. Product decision
 
@@ -230,3 +230,16 @@ The current signed-in Home experience now includes a first, deliberately bounded
 **Verification:** GitHub Actions run 43967151754 completed successfully on implementation commit `f178c12a982092a7ae41d7df9874833ca74ed60d`. The Node.js test step and the full isolated D1, runtime/Queue and Forge migration/safeguard workflow passed.
 
 **Remaining before this becomes a complete profile feature:** authenticated owner-scoped profile APIs and storage, schema/migration and deletion/export design, profile editing (appearance, interaction and accessibility), cross-device sync, and browser QA using a configured authenticated session. The static companion presentation remains a placeholder; real 2D/3D rendering and speech are separate later milestones.
+
+
+## 12. First renderer implementation milestone
+
+The first implementation is intentionally smaller than the target architecture:
+
+- `companion/renderer.mjs` owns a dependency-free WebGL2 renderer and generated procedural geometry.
+- The initial character is a stylised head-and-shoulders bust. It is not a full human model or final visual direction.
+- Existing home and full-screen companion surfaces mount the renderer independently. CSS presentation remains the fallback when WebGL2 is unavailable or initialisation fails.
+- Presence state is a display-only contract. The renderer accepts bounded expression and viseme values but has no tool, memory, permission, Sentinel or agent-execution integration.
+- The current `loadModel` adapter explicitly reports that external model loading is not enabled. VRM/GLB/VRMA import, skeleton mapping, facial blendshapes, true audio-synchronised lip sync and asset provenance enforcement remain future work.
+- CI evidence: workflow [44565156110](https://github.com/LAURENCE1977/Aegis-/actions/runs/44565156110) passed on code head `7227bc9f7bfee4d2d3fccc20d059dfcd1bf11787` with 1,022 Node tests passed, zero failed, one skipped, one Cloudflare runtime integration test passed and all isolated D1 migration/smoke stages green.
+- CI does not replace browser/device validation. WebGL2 availability is browser/GPU dependent; test the actual renderer on target browsers before promoting it beyond prototype status.
