@@ -177,10 +177,11 @@ export function createCompanionRenderer(canvas, options = {}) {
   let resizeObserver = null;
   const reducedMotion = options.reducedMotion ?? (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const geometry = createSphereGeometry(32, 24);
+  const defaultPixelRatio = options.pixelRatio ?? (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1);
   const modelNames = ['uProjection', 'uView', 'uModel', 'uColour', 'uCamera', 'uGlow'];
   let uniforms = {};
 
-  function resize(width, height, pixelRatio = 1) {
+  function resize(width, height, pixelRatio = defaultPixelRatio) {
     if (!canvas || disposed) return false;
     const ratio = Math.max(1, Math.min(Number(pixelRatio) || 1, 1.5));
     const w = Math.max(1, Math.floor((Number(width) || canvas.clientWidth || 1) * ratio));
