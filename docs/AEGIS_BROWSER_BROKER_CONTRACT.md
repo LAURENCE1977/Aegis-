@@ -89,3 +89,15 @@ The approval is not a general permission to use a browser. It authorises only th
 - No unattended account creation, payments, purchases, public posting or destructive account changes.
 - No autonomous approval, no model self-approval, and no fallback to an unreviewed browser provider.
 - No dependency on a paid browser SaaS to make the core AEGIS workspace usable.
+
+
+## Sentinel audit semantics and recovery
+
+The existing Sentinel invocation path has two distinct audit boundaries:
+
+- **Pre-execution authorization audit:** the `invocation_authorized` event must be durably recorded before the adapter is called. If this write fails, execution is blocked. A browser broker must preserve this fail-closed boundary and must not start or mutate a browser session without it.
+- **Post-execution outcome audit:** an adapter side effect may already have happened before the `invocation_succeeded` event is written. If this write fails, the outcome is not safely reversible and must not be reported as if execution had been denied. Sentinel currently returns `allowed: true`, `reasonCode: SUCCESS_AUDIT_UNAVAILABLE` and `auditRecorded: false` in this case.
+
+A production browser integration therefore needs a durable reconciliation path for missing outcome receipts. The broker should persist a bounded, tamper-evident execution receipt keyed by invocation ID and input digest, retry outcome-event delivery idempotently, and expose an operator-visible audit-degraded state until reconciliation succeeds. Receipt storage must not contain cookies, credentials, page bodies or raw form values. Reconciliation must never replay the browser action; it only repairs the audit record. If receipt persistence itself fails after a side effect, surface an explicit critical unresolved-outcome state and retain enough non-secret correlation metadata for manual investigation.
+
+Denied and pre-execution failures must also preserve Sentinel's audit-unavailable behaviour: inability to durably record a denial must never cause the requested browser action to run. Tests must separately cover pre-execution audit failure, post-execution audit failure, receipt retry, duplicate delivery, worker crash after side effect, and receipt-store failure. The broker must not claim that an action failed merely because its final audit write failed.
