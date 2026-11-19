@@ -35,6 +35,15 @@ function validateAttemptTime(attempt, now) {
   }
 }
 
+
+export class LearningAppliedEvidenceLimitError extends Error {
+  constructor() {
+    super('Learning applied-task evidence limit reached');
+    this.name = 'LearningAppliedEvidenceLimitError';
+    this.status = 429;
+  }
+}
+
 export class LearningMasteryPathNotFoundError extends Error {
   constructor() {
     super('Exact registered Learning Path version or node not found');
@@ -181,18 +190,41 @@ export async function recordLearningAppliedTaskEvidence(
   if (!registered || !registered.path.nodes.some(node => node.id === nodeId)) {
     throw new LearningMasteryPathNotFoundError();
   }
+  const nodeCount = await db.prepare(`
+    SELECT COUNT(*) AS total FROM learning_applied_task_evidence
+    WHERE owner_id = ? AND path_id = ? AND path_version = ? AND node_id = ?
+  `).bind(ownerId, pathId, pathVersion, nodeId).first();
+  const ownerCount = await db.prepare(`
+    SELECT COUNT(*) AS total FROM learning_applied_task_evidence
+    WHERE owner_id = ?
+  `).bind(ownerId).first();
+  if (!Number.isInteger(nodeCount?.total) || !Number.isInteger(ownerCount?.total)) {
+    throw new TypeError('Stored Learning applied-task evidence counts are invalid');
+  }
+  if (nodeCount.total >= 100 || ownerCount.total >= 500) {
+    throw new LearningAppliedEvidenceLimitError();
+  }
+
   const digest = await hashLearningArtifact(bytes);
   const id = 'evidence-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
   const submittedAt = new Date(now).toISOString();
-  await db.prepare(`
-    INSERT INTO learning_applied_task_evidence (
-      id, owner_id, path_id, path_version, node_id,
-      artifact_digest, byte_length, media_type, submitted_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    id, ownerId, pathId, pathVersion, nodeId,
-    digest, upload.byteLength, upload.mediaType, submittedAt,
-  ).run();
+  try {
+    await db.prepare(`
+      INSERT INTO learning_applied_task_evidence (
+        id, owner_id, path_id, path_version, node_id,
+        artifact_digest, byte_length, media_type, submitted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id, ownerId, pathId, pathVersion, nodeId,
+      digest, upload.byteLength, upload.mediaType, submittedAt,
+    ).run();
+  } catch (error) {
+    // The D1 triggers close the race between the preflight count and insert.
+    if (/evidence limit reached/i.test(String(error?.message))) {
+      throw new LearningAppliedEvidenceLimitError();
+    }
+    throw error;
+  }
   return Object.freeze({
     id,
     kind: 'applied_task',
