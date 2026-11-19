@@ -212,6 +212,7 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
     request:await request(input()),
     env:{
       ...envBase,
+      AEGIS_FREE_ONLY:'false',
       AEGIS_MODEL_PROVIDER:'alibaba-qwen',
       AEGIS_QWEN_API_KEY:'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID:'workspace-123',
@@ -306,6 +307,7 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
     env: {
       ...envBase,
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -379,6 +381,7 @@ test('AG-UI reports a denied tool proposal without bypassing Sentinel grant chec
     env: {
       ...envBase,
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -425,6 +428,7 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
     request: await request(input()),
     env: {
       ...envBase,
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -511,6 +515,7 @@ test('AG-UI routes the Composio workflow reader through Sentinel and refuses it 
     env: {
       ...envBase,
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -564,6 +569,7 @@ test('AG-UI routes the Composio workflow job reader through Sentinel and refuses
     env: {
       ...envBase,
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
+      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
