@@ -20,6 +20,14 @@ A learning path is a versioned graph:
 - Authenticated same-origin `POST /api/learning/paths` registers a path; authenticated `GET /api/learning/paths` lists owner-scoped paths with bounded page size.
 - Owner identity is server-derived. Caller-supplied owner fields and unknown graph/node fields are rejected.
 
+### Curated local starter paths (19 November 2026)
+
+- The owner-facing Learning Forge authoring form now offers two editable beginner templates: JavaScript Foundations and Web Safety Foundations.
+- Templates include learning outcomes, prerequisite relationships, difficulty, HTTPS links to MDN reference pages and the explicit `link-only` content-licence state. They do not copy course material.
+- Selecting and loading a starter only fills the local JSON editor. Registration still requires the owner to review the definition and explicitly submit it through the authenticated same-origin Learning Forge API.
+- A starter is not a verified course, an endorsed curriculum or evidence of mastery. It is a convenient editable graph example; the existing immutable version and graph-validation rules remain authoritative.
+- Guided node authoring and a user-friendly new-version workflow remain future work.
+
 ## Scope boundary
 
 The Learning Forge now includes owner-scoped progress, server-scored assessment attempts, explainable next actions, a non-certifying mastery-evidence candidate policy and local spaced-review suggestions (see the implementation slices below). It is still not a complete adaptive tutor or verified mastery system: authoritative evidence provenance, independent reviewer identity, learner tenancy, learner UI, persistent recommendations/schedules and a supervised tutor workflow remain outstanding.
