@@ -46,12 +46,12 @@ The graph stores links and learning metadata, not copied course content. This va
 
 ### Applied-task evidence receipts
 
-- `POST /api/learning/paths/:id/evidence?version=:version&nodeId=:node` accepts a same-origin authenticated binary upload of 1 byte–2 MiB, restricted to PDF, plain text, PNG, JPEG or generic binary media types.
+- `POST /api/learning/paths/:id/evidence?version=:version&nodeId=:node` accepts a same-origin authenticated binary upload of 1 byte–2 MiB, restricted to PDF, plain text, PNG, JPEG or generic binary media types, with a database-enforced quota of 25 active receipts per node and 500 per owner.
 - AEGIS computes SHA-256 server-side and binds the receipt to the authenticated owner, exact immutable path version and node. Browser-supplied digests and filenames are not accepted.
 - Only the digest, byte length, media type and submission timestamp are persisted. The uploaded bytes are discarded after hashing; the response explicitly tells the learner to retain the original artifact.
 - The owner can withdraw a receipt through `DELETE /api/learning/paths/:id/evidence/:evidenceId?version=:version&nodeId=:node`. The receipt row (including its digest) is deleted; an append-only withdrawal event remains without the digest.
 - Submission and withdrawal events are append-only. Receipt content/identity cannot be updated. The D1 migration is `0014_learning_applied_task_evidence.sql`.
-- `GET /api/learning/mastery` now loads owner-scoped applied-task receipts alongside server-scored assessment attempts. Human review remains unavailable; therefore evidence cannot currently reach a human-confirmation candidate or verify mastery.
+- `GET /api/learning/mastery` now loads owner-scoped applied-task receipts alongside server-scored assessment attempts. Human review remains unavailable; therefore evidence cannot currently reach a human-confirmation candidate or verify mastery. The candidate builder also bounds the combined evidence set to 100 records (up to 75 server-scored attempts and 25 applied-task receipts).
 - This is a provenance receipt, not proof that a reviewer has inspected the artifact. Because the file is not retained or retrievable, a future independent-review workflow must arrange a separate user-controlled, privacy-preserving review channel before it can approve evidence.
 
 ## 4. Security findings
