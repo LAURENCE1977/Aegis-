@@ -3,6 +3,7 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { validateCompanionInteractionSettings } from "../lib/companion-contracts.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
+import { fitMessagesToContext } from "../lib/intelligence-engine.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -23,6 +24,8 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
+// Conservative application-level input ceiling; provider tokenizers may differ.
+const MAX_INPUT_TOKENS = 8192;
 const MAX_TOOL_RESULT = 4000;
 const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
 const MAX_PROVIDER_STREAM_BYTES = 256 * 1024;
