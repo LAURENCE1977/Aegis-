@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createSessionToken } from '../functions/lib/auth.mjs';
-import { onRequestPost } from '../functions/api/learning/paths/[id]/evidence.js';
+import { onRequestGet, onRequestPost } from '../functions/api/learning/paths/[id]/evidence.js';
 import { onRequestDelete } from '../functions/api/learning/paths/[id]/evidence/[evidenceId].js';
 
 const secret = 'learning-applied-evidence-api-test-secret-long-enough';
@@ -35,6 +35,7 @@ class EvidenceD1 {
     };
     this.inserted = null;
     this.deleted = null;
+    this.receipts = [];
   }
   prepare(sql) {
     const db = this;
@@ -46,7 +47,14 @@ class EvidenceD1 {
         if (sql.includes('COUNT(*) AS total')) return { total: sql.includes('node_id = ?') ? db.nodeCount : db.ownerCount };
         return null;
       },
-      async all() { return { results: [] }; },
+      async all() {
+        if (sql.includes('FROM learning_applied_task_evidence')) {
+          const [owner, pathId, pathVersion, nodeId, limit] = this.values;
+          return { results: db.receipts.filter(row => row.owner_id === owner && row.path_id === pathId &&
+            row.path_version === pathVersion && row.node_id === nodeId).slice(0, limit) };
+        }
+        return { results: [] };
+      },
       async run() {
         if (sql.includes('INSERT INTO learning_applied_task_evidence')) db.inserted = this.values;
         if (sql.includes('DELETE FROM learning_applied_task_evidence')) db.deleted = this.values;
@@ -106,6 +114,32 @@ test('rejects unsupported media types and cross-origin submissions before persis
   });
   assert.equal(crossOrigin.status, 403);
   assert.equal(db.inserted, null);
+});
+
+test('lists only exact owner/path/node evidence receipts without exposing artifact content', async () => {
+  const db = new EvidenceD1();
+  db.receipts.push({
+    id: 'evidence-' + 'a'.repeat(32), owner_id: 'owner',
+    path_id: path.id, path_version: path.version, node_id: 'javascript-basics',
+    artifact_digest: 'b'.repeat(64), byte_length: 128,
+    media_type: 'application/pdf', submitted_at: '2026-11-19T08:00:00.000Z',
+  }, {
+    id: 'evidence-' + 'c'.repeat(32), owner_id: 'another-owner',
+    path_id: path.id, path_version: path.version, node_id: 'javascript-basics',
+    artifact_digest: 'd'.repeat(64), byte_length: 128,
+    media_type: 'application/pdf', submitted_at: '2026-11-19T08:01:00.000Z',
+  });
+  const response = await onRequestGet({
+    request: await request('https://aegis.example/api/learning/paths/javascript-foundations/evidence?version=1.0.0&nodeId=javascript-basics', { method: 'GET' }),
+    env: { ...envBase, AEGIS_DB: db }, params: routeParams,
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.evidence.length, 1);
+  assert.equal(body.evidence[0].id, 'evidence-' + 'a'.repeat(32));
+  assert.equal(body.evidence[0].artifactDigest, 'b'.repeat(64));
+  assert.equal(body.contentRetained, false);
+  assert.equal(body.masteryVerified, false);
 });
 
 test('enforces the 25-receipt per-node quota before creating a receipt', async () => {
