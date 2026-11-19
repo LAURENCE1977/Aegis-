@@ -3,6 +3,7 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { validateCompanionInteractionSettings } from "../lib/companion-contracts.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
+import { fitMessagesToContext } from "../lib/intelligence-engine.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -23,6 +24,8 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
 const MAX_OUTPUT = 12000;
+// Conservative application-level input ceiling; provider tokenizers may differ.
+const MAX_INPUT_TOKENS = 8192;
 const MAX_TOOL_RESULT = 4000;
 const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
 const MAX_PROVIDER_STREAM_BYTES = 256 * 1024;
@@ -92,6 +95,7 @@ export async function onRequestPost(context) {
       projectId,
       companionInteraction: input.companionInteraction,
     });
+    promptMessages = fitMessagesToContext(promptMessages, MAX_INPUT_TOKENS);
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
@@ -99,6 +103,11 @@ export async function onRequestPost(context) {
       return createAgUiSseResponse([
         createTextRunErrorEvent({ message: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }),
       ], 503);
+    }
+    if (error instanceof RangeError) {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The assembled context is too large for this request. Please shorten the latest message or reduce saved context.", code: "INPUT_CONTEXT_TOO_LARGE" }),
+      ], 413);
     }
     if (error instanceof TypeError) {
       return createAgUiSseResponse([

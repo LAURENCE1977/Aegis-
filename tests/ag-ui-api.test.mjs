@@ -636,3 +636,47 @@ test('AG-UI rejects free-form or authority-bearing companion preferences before 
   });
   assert.equal(response.status, 400);
 });
+
+
+test('AG-UI bounds assembled model context while preserving system instructions and the latest user turn', async () => {
+  let captured;
+  const history = Array.from({ length: 10 }, (_, index) => ({
+    id: 'history-' + index,
+    role: index % 2 === 0 ? 'user' : 'assistant',
+    content: ('history-' + index + ' ').repeat(380),
+  }));
+  const response = await onRequestPost({
+    request: await request(input({ messages: [
+      ...history,
+      { id: 'latest-user', role: 'user', content: 'Keep this latest question.' },
+    ] })),
+    env: {
+      ...envBase,
+      AI: { async run(_model, payload) {
+        captured = payload;
+        return modelSseStream(['data: {"response":"bounded"}\n\ndata: [DONE]\n\n']);
+      } },
+    },
+  });
+  assert.equal(response.status, 200);
+  await response.text();
+  assert.equal(captured.messages[0].role, 'system');
+  assert.equal(captured.messages.at(-1).content, 'Keep this latest question.');
+  assert.ok(captured.messages.length < 12);
+});
+
+
+test('AG-UI rejects oversized assembled system context before contacting a provider', async () => {
+  let providerCalled = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      MEMORY: { async get() { return JSON.stringify(['x'.repeat(40000)]); } },
+      AI: { async run() { providerCalled = true; throw new Error('must not run'); } },
+    },
+  });
+  assert.equal(response.status, 413);
+  assert.equal(providerCalled, false);
+  assert.match(await response.text(), /INPUT_CONTEXT_TOO_LARGE/);
+});
