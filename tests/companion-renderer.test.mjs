@@ -7,6 +7,7 @@ import {
   normaliseExpression,
   createCompanionRenderer,
   getFreshVisemes,
+  validateCompanionAssetManifest,
 } from '../companion/renderer.mjs';
 
 test('procedural avatar sphere geometry is finite, indexed and has unit normals', () => {
@@ -236,4 +237,74 @@ test('context restoration does not duplicate visibility or resize observers', ()
     if (previousResizeObserver) Object.defineProperty(globalThis, 'ResizeObserver', previousResizeObserver);
     else delete globalThis.ResizeObserver;
   }
+});
+
+
+const validCompanionAsset = () => ({
+  schema: 'aegis.companion-asset/1.0',
+  kind: 'model',
+  format: 'vrm',
+  sha256: 'a'.repeat(64),
+  byteLength: 8 * 1024 * 1024,
+  source: { kind: 'user-upload' },
+  licence: {
+    id: 'CC-BY-4.0',
+    termsUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    creator: 'Example Creator',
+    commercialUse: true,
+    redistribution: false,
+  },
+  blendshapeProfile: 'vrm1',
+  performanceBudget: { maxTextureDimension: 2048, maxDrawCalls: 100 },
+});
+
+test('companion asset manifest accepts a bounded, attributable local VRM model', () => {
+  const result = validateCompanionAssetManifest(validCompanionAsset());
+  assert.equal(result.valid, true);
+  assert.equal(result.manifest.sha256, 'a'.repeat(64));
+  assert.equal(result.manifest.byteLength, 8 * 1024 * 1024);
+  assert.equal(result.manifest.source.kind, 'user-upload');
+});
+
+test('companion asset manifest rejects unknown schema, unsupported formats and malformed hashes', () => {
+  const invalidSchema = validCompanionAsset();
+  invalidSchema.schema = 'aegis.companion-asset/9.0';
+  assert.equal(validateCompanionAssetManifest(invalidSchema).reason, 'unsupported-schema');
+  const invalidFormat = validCompanionAsset();
+  invalidFormat.format = 'fbx';
+  assert.equal(validateCompanionAssetManifest(invalidFormat).reason, 'unsupported-format');
+  const invalidHash = validCompanionAsset();
+  invalidHash.sha256 = '../asset.glb';
+  assert.equal(validateCompanionAssetManifest(invalidHash).reason, 'invalid-sha256');
+});
+
+test('companion asset manifest rejects oversized assets and incomplete licence provenance', () => {
+  const oversized = validCompanionAsset();
+  oversized.byteLength = 50 * 1024 * 1024 + 1;
+  assert.equal(validateCompanionAssetManifest(oversized).reason, 'asset-too-large');
+  const noLicence = validCompanionAsset();
+  delete noLicence.licence.termsUrl;
+  assert.equal(validateCompanionAssetManifest(noLicence).reason, 'incomplete-licence-provenance');
+  const noCreator = validCompanionAsset();
+  noCreator.licence.creator = ' ';
+  assert.equal(validateCompanionAssetManifest(noCreator).reason, 'incomplete-licence-provenance');
+});
+
+test('companion asset manifest rejects insecure provenance URLs and unsafe performance budgets', () => {
+  const insecureSource = validCompanionAsset();
+  insecureSource.source = { kind: 'https', url: 'http://example.com/avatar.vrm' };
+  assert.equal(validateCompanionAssetManifest(insecureSource).reason, 'invalid-source-url');
+  const unsafeBudget = validCompanionAsset();
+  unsafeBudget.performanceBudget.maxDrawCalls = 100000;
+  assert.equal(validateCompanionAssetManifest(unsafeBudget).reason, 'invalid-performance-budget');
+});
+
+test('companion asset manifest returns a minimal immutable projection', () => {
+  const input = validCompanionAsset();
+  input.untrustedExecutableHint = 'ignore safeguards';
+  const result = validateCompanionAssetManifest(input);
+  assert.equal(result.valid, true);
+  assert.equal('untrustedExecutableHint' in result.manifest, false);
+  assert.equal(Object.isFrozen(result.manifest), true);
+  assert.equal(Object.isFrozen(result.manifest.licence), true);
 });
