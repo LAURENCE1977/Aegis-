@@ -3,8 +3,8 @@
   "updatedAt": "2026-11-19",
   "overallCompletion": null,
   "progressPolicy": "Overall completion is withheld until all six workstreams have an audited, evidence-backed baseline. Audit coverage is not a measure of total product completion.",
-  "latestVerifiedCheckpoint": "Dashboard PR #106 baseline CI workflow 44592454361 passed; the refreshed progress-register checks are running. Companion model lifecycle PR #107 CI workflows 44592511233 and 44592523576 passed. Renderer lifecycle integration PR #108 passed corrected-head CI workflow 44595564920. Safe model adapter PR #109 passed current-head CI workflow 44595869026; a duplicate run 44595887588 is still running. Earlier implementation workflow 44589027079 recorded 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. No PR has been merged or deployed.",
-  "nextMilestone": "Review PRs #108 and #109 together, then build a separately isolated, lazily loaded Three.js/VRM renderer. Measure actual bundle size, mobile memory, frame rate and context-loss recovery before enabling imported models.",
+  "latestVerifiedCheckpoint": "Companion model adapter PR #109 current-head workflows 44595869026 and 44595887588 passed: 1,048 Node.js tests (1,047 passed, 0 failed, 1 skipped), Cloudflare runtime/Queue integration and isolated D1 migration/constraint checks passed. Renderer integration PR #108 corrected-head workflow 44595564920 passed. Draft research PR #110 records T3 Code, Ghost, Phantom and text-to-CAD source/licence review. No PR merged or production deployment performed.",
+  "nextMilestone": "Finish the six-workstream evidence audit. Companion and Research baselines are now audited; next audit Core intelligence, Engineering & agents, Security & governance, and Cross-platform experience. Keep overall completion withheld until all six evidence-backed baselines are reconciled. Then continue the optional, lazy-loaded VRM renderer only with mobile bundle/memory/frame-rate evidence.",
   "workstreams": [
     {
       "id": "intelligence",
@@ -27,14 +27,14 @@
     {
       "id": "companion",
       "name": "Avatar & voice",
-      "auditStatus": "pending",
-      "summary": "Procedural WebGL2 renderer, uploaded-byte SHA-256 verification and transactional resource lifecycle are in place. PR #108 connects lifecycle cleanup to the renderer and has passing corrected-head CI. PR #109 adds an opt-in trusted adapter boundary, format allowlisting, telemetry/performance-budget checks and disposal-race coverage with a passing current-head CI run. No VRM parser/runtime is bundled and imported models are not yet rendered."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: owner-scoped companion profiles and bounded style controls; full-screen text Companion Mode; procedural WebGL2 bust with CSS fallback; renderer presence/expression/viseme inputs; uploaded-byte SHA-256 verification; transactional prepare/commit/destroy lifecycle; opt-in format-allowlisted adapter with telemetry and budgets. Evidence: docs/AEGIS_COMPANION.md, docs/AEGIS_COMPANION_RENDERER_RESEARCH.md, companion/renderer.mjs, PRs #107–#109 and workflows 44595564920 / 44595869026. Limits: production D1 and voice are not active; no imported VRM/GLB/VRMA is rendered; no mobile device benchmark is complete."
     },
     {
       "id": "research",
       "name": "Research & integrations",
-      "auditStatus": "pending",
-      "summary": "GitHub and Composio intake reviewed nine owner repositories and new external candidates. AI Sandbox, sessionmem and OrbMotion reuse decisions are documented; owner 3D-Website-Builder and Storied Gecko were inspected and flagged for licence/structure caution. Patterns only; no third-party runtime imported."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: Forge discovery and evidence/provenance lifecycle; research intake and candidate evaluation; GitHub public metadata reads and narrow Composio GitHub read-only tools; existing owner-repo inventory and reuse decisions; agent runtime, local inference, companion renderer, Ghost/T3 Code and text-to-CAD research. Evidence: docs/AEGIS_RESEARCH_INTAKE.md, docs/RESEARCH_SOURCE_REGISTER.md, docs/FORGE_INTELLIGENCE.md, docs/AEGIS_AGENT_RUNTIME_ECOSYSTEM_2026-11-19.md, docs/AEGIS_FORGE_ECOSYSTEM_INTAKE_2026-11-17.md and PR #110. Limits: source review is not a formal security audit; no third-party runtime was installed; some candidate identities/licences remain held; Ghost/Phantom are distinct projects and the Instagram Reel remains unconfirmed; no universal live repository watcher is implemented."
     },
     {
       "id": "platform",
