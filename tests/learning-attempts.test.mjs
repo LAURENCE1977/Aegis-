@@ -101,6 +101,7 @@ class AttemptD1 {
           return { results: [...db.assessments.values()].filter(row => row.owner_id === owner &&
             row.path_id === pathId && row.path_version === pathVersion && row.node_id === nodeId).slice(0, limit) };
         }
+        if (sql.includes('FROM learning_applied_task_evidence')) return { results: [] };
         const [owner, assessmentId, version, limit] = this.values;
         return { results: db.attempts.filter(row => row.owner_id === owner &&
           row.assessment_id === assessmentId && row.assessment_version === version)
@@ -130,7 +131,7 @@ test('loads mastery evidence only from verified owner-scoped path, assessment an
   assert.equal(loaded.evidence[0].kind, 'assessment_pass');
   assert.equal(loaded.evidence[0].passed, true);
   assert.equal(loaded.evidence[0].masteryVerified, false);
-  assert.deepEqual(loaded.unavailableEvidenceKinds, ['applied_task', 'human_review']);
+  assert.deepEqual(loaded.unavailableEvidenceKinds, ['human_review']);
 });
 
 test('store-backed mastery candidate cannot be completed by caller-injected task or reviewer claims', async () => {
