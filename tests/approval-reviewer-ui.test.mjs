@@ -8,7 +8,7 @@ test('approval inbox exposes a separate reviewer sign-in without collecting owne
   assert.match(html, /id="reviewerLoginForm"/);
   assert.match(html, /id="reviewerPassword" type="password"/);
   assert.match(html, /fetch\('\/api\/reviewer-login'/);
-  assert.match(html, /reviewerResponse\.ok && reviewerData\.authenticated === true/);
+  assert.match(html, /response\.ok && result\.authenticated === true/);
   assert.match(html, /reviewerLoginForm\.addEventListener\('submit'/);
   assert.match(html, /reviewerLogoutBtn\.addEventListener\('click'/);
 });
