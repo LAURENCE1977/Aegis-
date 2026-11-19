@@ -70,6 +70,12 @@ test('lists only enabled models with supported task and a recent verification', 
   assert.deepEqual(result.map(model => model.id), ['model-a']);
 });
 
+test('rejects adapter identifiers that are not in the server-owned adapter allowlist', () => {
+  const input = registry();
+  input.providers[0].adapterId = 'attacker-controlled-adapter';
+  assert.throws(() => validateProviderRegistry(input), /adapter/i);
+});
+
 test('fails closed for stale verification and malformed catalogue structure', () => {
   const stale = registry();
   assert.deepEqual(listEligibleModels(stale, {
