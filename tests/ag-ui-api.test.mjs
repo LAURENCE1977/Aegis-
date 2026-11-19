@@ -604,3 +604,39 @@ test('AG-UI routes the Composio workflow job reader through Sentinel and refuses
   assert.equal(db.auditRows[0][4], 'aegis-composio-github-workflow-jobs-readonly');
   assert.equal(db.auditRows[0][7], 'github:workflow-run:LAURENCE1977/Aegis-/43864244104');
 });
+
+
+test('AG-UI returns a clear safe error when free-only policy blocks a paid provider', async () => {
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_FREE_ONLY: 'true',
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
+      AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
+    },
+    fetchImpl: async () => { throw new Error('network must not be called'); },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/).map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'PROVIDER_DISABLED');
+  assert.equal(frames[0].message, 'That AI provider is disabled by the free-only policy.');
+});
+
+test('AG-UI rejects an invalid free-only policy setting as a server configuration error', async () => {
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_FREE_ONLY: 'yes',
+      AI: { async run() { throw new Error('must not run'); } },
+    },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/).map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'POLICY_CONFIGURATION_INVALID');
+  assert.equal(frames[0].message, 'The model provider policy is not configured correctly.');
+});
