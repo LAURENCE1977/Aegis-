@@ -1,4 +1,4 @@
-import { authConfigAvailable, isAuthorized } from '../../../lib/auth.mjs';
+import { authConfigAvailable, isAuthorized, isSameOriginRequest } from '../../../lib/auth.mjs';
 import { authorizeReviewer, readJsonRequest, jsonResponse } from '../../../lib/owner-api.mjs';
 import {
   getGuardianResource,
@@ -47,22 +47,17 @@ export async function onRequestGet({ request, env, params }) {
 export async function onRequestPatch({ request, env, params }) {
   const denied = await authorizeReviewer(request, env);
   if (denied) return denied;
+  if (!isSameOriginRequest(request)) return jsonResponse({ error: 'Cross-origin request rejected.' }, 403);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Guardian Resource storage is not configured.' }, 503);
   }
   if (typeof params?.id !== 'string' || !RESOURCE_ID_PATTERN.test(params.id)) {
     return jsonResponse({ error: 'Invalid Guardian Resource identifier.' }, 400);
   }
-  if (!request.headers.get('Origin') || new URL(request.headers.get('Origin')).origin !== new URL(request.url).origin) {
-    return jsonResponse({ error: 'Cross-origin request rejected.' }, 403);
-  }
   const parsed = await readJsonRequest(request, MAX_BODY_BYTES);
   if (!parsed.ok) return jsonResponse({ error: parsed.error }, parsed.status);
   try {
-    const resource = await updateGuardianResourceReview(env.AEGIS_DB, OWNER_ID, params.id, {
-      ...parsed.body,
-      reviewerId: REVIEWER_ID,
-    });
+    const resource = await updateGuardianResourceReview(env.AEGIS_DB, OWNER_ID, params.id, parsed.body, Date.now(), REVIEWER_ID);
     return jsonResponse({ resource });
   } catch (error) {
     if (error?.status === 404) return jsonResponse({ error: 'Guardian Resource not found.' }, 404);
