@@ -3,8 +3,8 @@
   "updatedAt": "2026-11-19",
   "overallCompletion": null,
   "progressPolicy": "Overall completion is withheld until all six workstreams have an audited, evidence-backed baseline. Audit coverage is not a measure of total product completion.",
-  "latestVerifiedCheckpoint": "Implementation workflow 44589027079 passed: 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. This verifies that implementation head, not later documentation-only changes.",
-  "nextMilestone": "Complete the capability baseline audit, then implement the avatar prepare/commit/dispose lifecycle with regression tests.",
+  "latestVerifiedCheckpoint": "Dashboard PR #106 CI workflow 44591096408 passed. Companion model lifecycle PR #107 CI workflow 44591891106 passed. Earlier implementation workflow 44589027079 recorded 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. Both PRs remain draft; neither has been merged or deployed.",
+  "nextMilestone": "Review the companion lifecycle draft PR #107. After review, wire the lifecycle into the avatar renderer, then evaluate a VRM loader against mobile bundle, memory and performance budgets.",
   "workstreams": [
     {
       "id": "intelligence",
@@ -28,13 +28,13 @@
       "id": "companion",
       "name": "Avatar & voice",
       "auditStatus": "pending",
-      "summary": "Renderer and asset-integrity foundations exist; imported models, voice runtime and device validation remain incomplete."
+      "summary": "Procedural WebGL2 renderer and uploaded-byte integrity checks exist. Transactional prepare/commit/destroy lifecycle is implemented in draft PR #107 with passing CI; external model loader, voice runtime and device validation remain incomplete."
     },
     {
       "id": "research",
       "name": "Research & integrations",
       "auditStatus": "pending",
-      "summary": "GitHub, Composio and open-source intake/reuse processes awaiting capability audit."
+      "summary": "GitHub and Composio intake reviewed relevant owned and external repositories for licence, reuse fit and mobile impact; a complete capability baseline audit remains outstanding."
     },
     {
       "id": "platform",
