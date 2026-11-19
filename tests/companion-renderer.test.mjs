@@ -6,6 +6,7 @@ import {
   normaliseVisemes,
   normaliseExpression,
   createCompanionRenderer,
+  getFreshVisemes,
 } from '../companion/renderer.mjs';
 
 test('procedural avatar sphere geometry is finite, indexed and has unit normals', () => {
@@ -95,4 +96,23 @@ test('external model manifests remain explicitly unsupported until a licensed lo
   assert.deepEqual(await renderer.loadModel({ format: 'glb', source: 'local-file' }), {
     loaded: false, reason: 'external-model-loader-not-yet-enabled',
   });
+});
+
+test('fresh viseme frames remain available to the renderer', () => {
+  const result = getFreshVisemes({ aa: 0.7, jawOpen: 0.4 }, 1000, 1100);
+  assert.equal(result.aa, 0.7);
+  assert.equal(result.jawOpen, 0.4);
+  assert.equal(result.ee, 0);
+});
+
+test('stale viseme frames expire instead of leaving the avatar mouth open', () => {
+  assert.deepEqual(getFreshVisemes({ aa: 1, jawOpen: 1 }, 1000, 1300, 250), {
+    aa: 0, ee: 0, ih: 0, oh: 0, ou: 0, jawOpen: 0,
+  });
+});
+
+test('future and invalid viseme receive times fail closed to neutral weights', () => {
+  const neutral = { aa: 0, ee: 0, ih: 0, oh: 0, ou: 0, jawOpen: 0 };
+  assert.deepEqual(getFreshVisemes({ aa: 1 }, 1200, 1100), neutral);
+  assert.deepEqual(getFreshVisemes({ aa: 1 }, Number.NaN, 1100), neutral);
 });
