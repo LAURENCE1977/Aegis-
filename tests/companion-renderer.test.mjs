@@ -168,3 +168,72 @@ test('renderer recovers after WebGL context loss and restores the 3D presentatio
   assert.equal(host.attributes['aria-label'], 'Procedural three-dimensional Agent AEGIS companion prototype');
   renderer.dispose();
 });
+
+
+test('context restoration does not duplicate visibility or resize observers', () => {
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const previousResizeObserver = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
+  let visibilityAdds = 0;
+  let visibilityRemoves = 0;
+  let observerCreates = 0;
+  let observerDisconnects = 0;
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      visibilityState: 'visible',
+      addEventListener(name) { if (name === 'visibilitychange') visibilityAdds += 1; },
+      removeEventListener(name) { if (name === 'visibilitychange') visibilityRemoves += 1; },
+    },
+  });
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: class {
+      constructor() { observerCreates += 1; }
+      observe() {}
+      disconnect() { observerDisconnects += 1; }
+    },
+  });
+  try {
+    const listeners = new Map();
+    const gl = {
+      VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3, LINK_STATUS: 4,
+      ARRAY_BUFFER: 5, STATIC_DRAW: 6, ELEMENT_ARRAY_BUFFER: 7, FLOAT: 8,
+      DEPTH_TEST: 9, CULL_FACE: 10, COLOR_BUFFER_BIT: 16, DEPTH_BUFFER_BIT: 32,
+      TRIANGLES: 11, UNSIGNED_SHORT: 12,
+      createShader: () => ({}), shaderSource: () => {}, compileShader: () => {},
+      getShaderParameter: () => true, getShaderInfoLog: () => '',
+      createProgram: () => ({}), attachShader: () => {}, linkProgram: () => {},
+      getProgramParameter: () => true, getProgramInfoLog: () => '',
+      deleteShader: () => {}, createVertexArray: () => ({}), createBuffer: () => ({}),
+      bindVertexArray: () => {}, bindBuffer: () => {}, bufferData: () => {},
+      getAttribLocation: (_program, name) => name === 'aPosition' ? 0 : 1,
+      enableVertexAttribArray: () => {}, vertexAttribPointer: () => {},
+      getUniformLocation: (_program, name) => name,
+      enable: () => {}, clearColor: () => {}, viewport: () => {},
+      deleteBuffer: () => {}, deleteVertexArray: () => {}, deleteProgram: () => {},
+    };
+    const canvas = {
+      width: 0, height: 0, clientWidth: 320, clientHeight: 240,
+      getContext: type => type === 'webgl2' ? gl : null,
+      addEventListener(name, callback) { listeners.set(name, callback); },
+      removeEventListener(name) { listeners.delete(name); },
+    };
+    const renderer = createCompanionRenderer(canvas);
+    assert.equal(renderer.init().supported, true);
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      listeners.get('webglcontextlost')({ preventDefault() {} });
+      listeners.get('webglcontextrestored')();
+      assert.equal(renderer.supported, true);
+    }
+    assert.equal(visibilityAdds, 1);
+    assert.equal(observerCreates, 1);
+    renderer.dispose();
+    assert.equal(visibilityRemoves, 1);
+    assert.equal(observerDisconnects, 1);
+  } finally {
+    if (previousDocument) Object.defineProperty(globalThis, 'document', previousDocument);
+    else delete globalThis.document;
+    if (previousResizeObserver) Object.defineProperty(globalThis, 'ResizeObserver', previousResizeObserver);
+    else delete globalThis.ResizeObserver;
+  }
+});
