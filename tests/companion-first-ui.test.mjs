@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createSphereGeometry } from '../companion/renderer.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -28,4 +29,11 @@ test('companion surface discloses prototype status and does not imply microphone
   assert.match(html, /Procedural 3D companion prototype/);
   assert.match(html, /No microphone or camera access is active/);
   assert.doesNotMatch(html, /getUserMedia\s*\(/);
+});
+
+test('the browser renderer module imports and exposes bounded procedural geometry', () => {
+  const geometry = createSphereGeometry(8, 6);
+  assert.equal(geometry.positions.length, 9 * 7 * 3);
+  assert.equal(geometry.normals.length, geometry.positions.length);
+  assert.equal(geometry.indices.length, 8 * 6 * 6);
 });
