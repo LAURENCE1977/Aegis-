@@ -10,6 +10,8 @@ test('Learning applied-task evidence stores digest-only receipts and append-only
   assert.match(sql, /FOREIGN KEY \(owner_id, path_id, path_version\)\s*REFERENCES learning_paths/i);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS learning_applied_task_evidence_events/);
   assert.match(sql, /trg_learning_applied_evidence_created/);
+  assert.match(sql, /trg_learning_applied_evidence_node_limit/);
+  assert.match(sql, /trg_learning_applied_evidence_owner_limit/);
   assert.match(sql, /trg_learning_applied_evidence_no_update/);
   assert.match(sql, /trg_learning_applied_evidence_withdrawn/);
   assert.match(sql, /trg_learning_applied_evidence_events_no_update/);
