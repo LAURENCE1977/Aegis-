@@ -1,5 +1,6 @@
 import {
   authorizeOwner,
+  authorizeReviewer,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
@@ -8,6 +9,8 @@ import {
   decideApprovalRequest,
   listPendingApprovals,
 } from "../lib/capability-approvals.mjs";
+
+const REVIEWER_ID = "reviewer";
 
 function publicApproval(approval, now = Date.now()) {
   return {
@@ -47,7 +50,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const denied = await authorizeOwner(request, env);
+  const denied = await authorizeReviewer(request, env);
   if (denied) return denied;
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: "Invalid request origin." }, 403);
@@ -67,12 +70,10 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    // The authenticated session is the single deployment owner. Never accept
-    // the decision actor or operation binding from the browser.
     const approval = await decideApprovalRequest(env.AEGIS_DB, {
       id: body.id,
       decision: body.decision,
-      decidedBy: "owner",
+      decidedBy: REVIEWER_ID,
     });
     if (!approval) {
       return jsonResponse({ error: "Approval is no longer pending or has expired." }, 409);
