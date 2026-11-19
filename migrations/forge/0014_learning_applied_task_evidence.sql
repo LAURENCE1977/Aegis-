@@ -1,5 +1,8 @@
 CREATE TABLE IF NOT EXISTS learning_applied_task_evidence (
-  id TEXT PRIMARY KEY CHECK (id GLOB 'evidence-[0-9a-f]*'),
+  id TEXT PRIMARY KEY CHECK (
+    length(id) = 41 AND substr(id, 1, 9) = 'evidence-' AND
+    substr(id, 10) NOT GLOB '*[^0-9a-f]*'
+  ),
   owner_id TEXT NOT NULL,
   path_id TEXT NOT NULL,
   path_version TEXT NOT NULL,
