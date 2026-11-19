@@ -992,6 +992,29 @@
         <textarea id="forgeKnowledgeReviewNote" rows="2" maxlength="1000" placeholder="Explain what you checked, evidence quality and remaining limitations."></textarea>
         <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
         <div id="forgeKnowledgeList" aria-live="polite"></div>
+        <h3>Learning Forge</h3>
+        <p class="memory-help">Submit a small applied-work artifact as a SHA-256 receipt bound to an exact registered learning path and node. AEGIS stores the digest and minimal metadata only — never the uploaded file. Keep your original artifact; an independent reviewer workflow is not available yet and this does not certify mastery.</p>
+        <div class="memory-form">
+          <label for="learningPathSelect">Registered Learning Path</label>
+          <select id="learningPathSelect" required>
+            <option value="">Load a registered path…</option>
+          </select>
+          <label for="learningNodeSelect">Learning node</label>
+          <select id="learningNodeSelect" required disabled>
+            <option value="">Choose a path first…</option>
+          </select>
+          <button id="learningEvidenceRefreshBtn" class="secondary" type="button">Refresh learning paths and receipts</button>
+        </div>
+        <form class="memory-form" id="learningEvidenceForm">
+          <label for="learningEvidenceFile">Applied-work artifact (PDF, text, PNG, JPEG or other binary up to 2 MiB)</label>
+          <input id="learningEvidenceFile" type="file" accept=".pdf,.txt,.png,.jpg,.jpeg,application/pdf,text/plain,image/png,image/jpeg,application/octet-stream" required />
+          <button id="learningEvidenceUploadBtn" type="submit" disabled>Submit SHA-256 receipt</button>
+        </form>
+        <div class="memory-actions">
+          <button id="learningMasteryCheckBtn" class="secondary" type="button" disabled>Check evidence gaps</button>
+        </div>
+        <p class="status" id="learningEvidenceStatus" role="status" aria-live="polite">Learning evidence not loaded.</p>
+        <div id="learningEvidenceList" aria-live="polite"></div>
         <h3>Guardian Resource Intelligence</h3>
         <p class="memory-help">Catalogue tools, models, datasets and learning resources with pinned source revisions, licence evidence, pricing limits and hosting requirements. New records are drafts. Acceptance requires an explicit review and verified HTTPS licence evidence.</p>
         <form class="memory-form" id="guardianResourceForm">
