@@ -179,6 +179,7 @@ test('renderer recovers after WebGL context loss and restores the 3D presentatio
   assert.equal(host.dataset.renderer, 'webgl2');
   assert.equal(host.attributes['aria-label'], 'Procedural three-dimensional Agent AEGIS companion prototype');
   renderer.dispose();
+  await renderer.modelCleanupPromise;
 });
 
 
@@ -360,7 +361,7 @@ test('renderer prepares and commits injected model resources transactionally', a
   assert.deepEqual(disposed, ['first']);
 
   renderer.dispose();
-  await Promise.resolve();
+  await renderer.modelCleanupPromise;
   assert.deepEqual(disposed, ['first', 'second']);
 });
 
