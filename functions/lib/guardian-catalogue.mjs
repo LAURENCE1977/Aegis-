@@ -1,6 +1,7 @@
 import { validateResourceRecord } from './guardian-intelligence.mjs';
 
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const RESOURCE_ID_PATTERN = /^resource-[a-f0-9]{32}$/;
 
 function requireDatabase(db) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Guardian Resource database is required');
@@ -9,6 +10,12 @@ function requireDatabase(db) {
 function requireOwner(ownerId) {
   if (typeof ownerId !== 'string' || !ID_PATTERN.test(ownerId)) {
     throw new TypeError('Invalid Guardian Resource owner identifier');
+  }
+}
+
+function requireResourceId(resourceId) {
+  if (typeof resourceId !== 'string' || !RESOURCE_ID_PATTERN.test(resourceId)) {
+    throw new TypeError('Invalid Guardian Resource identifier');
   }
 }
 
@@ -35,6 +42,28 @@ function mapResourceRow(row) {
     updatedAt: row.updated_at,
     reviewNote: row.review_note ?? '',
     reviewerId: row.reviewer_id ?? null,
+  };
+}
+
+function mapEventRow(row) {
+  if (!row || typeof row.id !== 'string' || typeof row.resource_id !== 'string' ||
+      typeof row.owner_id !== 'string' || !['created', 'reviewed', 'accepted', 'archived'].includes(row.event_type) ||
+      typeof row.occurred_at !== 'string') {
+    throw new TypeError('Stored Guardian Resource event metadata is invalid');
+  }
+  let detail;
+  try { detail = JSON.parse(row.detail_json); }
+  catch { throw new TypeError('Stored Guardian Resource event detail is corrupt'); }
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) {
+    throw new TypeError('Stored Guardian Resource event detail is invalid');
+  }
+  return {
+    id: row.id,
+    resourceId: row.resource_id,
+    eventType: row.event_type,
+    detail,
+    reviewerId: typeof detail.reviewerId === 'string' ? detail.reviewerId : null,
+    occurredAt: row.occurred_at,
   };
 }
 
@@ -92,6 +121,35 @@ export async function listGuardianResources(db, ownerId, limit = 50) {
   return (result?.results ?? []).map(mapResourceRow);
 }
 
+export async function getGuardianResource(db, ownerId, resourceId) {
+  requireDatabase(db);
+  requireOwner(ownerId);
+  requireResourceId(resourceId);
+  const row = await db.prepare(`
+    SELECT * FROM guardian_resources
+    WHERE owner_id = ? AND id = ?
+    LIMIT 1
+  `).bind(ownerId, resourceId).first();
+  return mapResourceRow(row);
+}
+
+export async function listGuardianResourceEvents(db, ownerId, resourceId, limit = 50) {
+  requireDatabase(db);
+  requireOwner(ownerId);
+  requireResourceId(resourceId);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Guardian Resource event limit must be between 1 and 100');
+  }
+  const result = await db.prepare(`
+    SELECT id, resource_id, owner_id, event_type, detail_json, occurred_at
+    FROM guardian_resource_events
+    WHERE owner_id = ? AND resource_id = ?
+    ORDER BY occurred_at ASC, id ASC
+    LIMIT ?
+  `).bind(ownerId, resourceId, limit).all();
+  return (result?.results ?? []).map(mapEventRow);
+}
+
 
 export class GuardianResourceConflictError extends Error {
   constructor(message = 'Guardian Resource review conflict') {
@@ -104,9 +162,7 @@ export class GuardianResourceConflictError extends Error {
 export async function updateGuardianResourceReview(db, ownerId, resourceId, input, now = Date.now()) {
   requireDatabase(db);
   requireOwner(ownerId);
-  if (typeof resourceId !== 'string' || !/^resource-[a-f0-9]{32}$/.test(resourceId)) {
-    throw new TypeError('Invalid Guardian Resource identifier');
-  }
+  requireResourceId(resourceId);
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).some((key) => !['status', 'note', 'expectedUpdatedAt'].includes(key))) {
     throw new TypeError('Guardian Resource review contains unexpected fields');
