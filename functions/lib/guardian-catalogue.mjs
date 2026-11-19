@@ -144,10 +144,11 @@ export async function listGuardianResourceEvents(db, ownerId, resourceId, limit 
     SELECT id, resource_id, owner_id, event_type, detail_json, occurred_at
     FROM guardian_resource_events
     WHERE owner_id = ? AND resource_id = ?
-    ORDER BY occurred_at ASC, id ASC
+    ORDER BY occurred_at DESC, id DESC
     LIMIT ?
   `).bind(ownerId, resourceId, limit).all();
-  return (result?.results ?? []).map(mapEventRow);
+  // Select the newest bounded window, then present it in chronological order.
+  return (result?.results ?? []).map(mapEventRow).reverse();
 }
 
 
