@@ -53,3 +53,46 @@ test('renderer maps the existing responding state to speaking presentation', () 
   assert.equal(renderer.setState('execute'), false);
   assert.equal(renderer.state, 'speaking');
 });
+
+test('renderer initialises WebGL2 resources and caps the drawing buffer pixel ratio', () => {
+  const deleted = { buffers: 0, arrays: 0, programs: 0 };
+  const gl = {
+    VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3, LINK_STATUS: 4,
+    ARRAY_BUFFER: 5, STATIC_DRAW: 6, ELEMENT_ARRAY_BUFFER: 7, FLOAT: 8,
+    DEPTH_TEST: 9, CULL_FACE: 10, COLOR_BUFFER_BIT: 16, DEPTH_BUFFER_BIT: 32,
+    TRIANGLES: 11, UNSIGNED_SHORT: 12,
+    createShader: () => ({}), shaderSource: () => {}, compileShader: () => {},
+    getShaderParameter: () => true, getShaderInfoLog: () => '',
+    createProgram: () => ({}), attachShader: () => {}, linkProgram: () => {},
+    getProgramParameter: () => true, getProgramInfoLog: () => '',
+    deleteShader: () => {}, createVertexArray: () => ({}), createBuffer: () => ({}),
+    bindVertexArray: () => {}, bindBuffer: () => {}, bufferData: () => {},
+    getAttribLocation: (_program, name) => name === 'aPosition' ? 0 : 1,
+    enableVertexAttribArray: () => {}, vertexAttribPointer: () => {},
+    getUniformLocation: (_program, name) => name,
+    enable: () => {}, clearColor: () => {}, viewport: () => {},
+    deleteBuffer: () => { deleted.buffers += 1; },
+    deleteVertexArray: () => { deleted.arrays += 1; },
+    deleteProgram: () => { deleted.programs += 1; },
+  };
+  const canvas = {
+    width: 0, height: 0, clientWidth: 320, clientHeight: 240,
+    getContext: type => type === 'webgl2' ? gl : null,
+    addEventListener: () => {}, removeEventListener: () => {},
+  };
+  const renderer = createCompanionRenderer(canvas);
+  assert.deepEqual(renderer.init(), { supported: true, renderer: 'webgl2' });
+  assert.equal(renderer.supported, true);
+  renderer.resize(100, 50, 2);
+  assert.equal(canvas.width, 150);
+  assert.equal(canvas.height, 75);
+  assert.equal(renderer.dispose(), true);
+  assert.deepEqual(deleted, { buffers: 2, arrays: 1, programs: 1 });
+});
+
+test('external model manifests remain explicitly unsupported until a licensed loader is added', async () => {
+  const renderer = createCompanionRenderer({ getContext: () => null });
+  assert.deepEqual(await renderer.loadModel({ format: 'glb', source: 'local-file' }), {
+    loaded: false, reason: 'external-model-loader-not-yet-enabled',
+  });
+});
