@@ -112,6 +112,27 @@ test('records a redacted failure outcome when an adapter throws', async () => {
   assert.equal(JSON.stringify(h.events).includes('super-secret'), false);
 });
 
+
+test('surfaces an unresolved adapter failure when its outcome audit cannot be persisted', async () => {
+  const events = [];
+  const h = harness({
+    recordAudit: async (event) => {
+      if (event.type === 'invocation_failed') throw new Error('audit storage unavailable');
+      events.push(event);
+    },
+    execute: async () => { throw new Error('remote operation may have completed'); },
+  });
+  const result = await runSentinelInvocation(request, h.dependencies);
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'EXECUTION_FAILED_AUDIT_UNAVAILABLE');
+  assert.equal(result.output, undefined);
+  assert.equal(JSON.stringify(result).includes('remote operation'), false);
+  assert.deepEqual(events.map((event) => event.type), [
+    'invocation_policy_allowed',
+    'invocation_authorized',
+  ]);
+});
+
 test('requires atomic approval consumption before any human-gated action executes', async () => {
   const writeManifest = {
     ...manifest,
