@@ -1266,7 +1266,16 @@
       </section>
       <section class="memory-panel" id="approvalSection" hidden>
         <h2>Approval inbox</h2>
-        <p class="memory-help">Review exact operations proposed by AEGIS. Approving here records your decision only; it does not itself execute an operation.</p>
+        <p class="memory-help">Review exact operations proposed by AEGIS. Decisions require a separate reviewer sign-in. Approving here records a decision only; it does not itself execute an operation.</p>
+        <div class="approval-card" id="reviewerAuthPanel">
+          <p class="memory-help" id="reviewerAuthStatus" role="status" aria-live="polite">Checking independent reviewer session…</p>
+          <form class="memory-form" id="reviewerLoginForm">
+            <label for="reviewerPassword">Independent reviewer password</label>
+            <input id="reviewerPassword" type="password" autocomplete="current-password" maxlength="1024" required>
+            <button type="submit">Sign in as reviewer</button>
+          </form>
+          <button class="secondary" id="reviewerLogoutBtn" type="button" hidden>Sign out reviewer</button>
+        </div>
         <p class="status" id="approvalStatus" role="status" aria-live="polite">Loading approvals…</p>
         <div id="approvalList" aria-live="polite"></div>
       </section>
@@ -1440,6 +1449,11 @@
     const workspaceList = document.getElementById('workspaceList');
     const approvalStatus = document.getElementById('approvalStatus');
     const approvalList = document.getElementById('approvalList');
+    const reviewerAuthStatus = document.getElementById('reviewerAuthStatus');
+    const reviewerLoginForm = document.getElementById('reviewerLoginForm');
+    const reviewerPassword = document.getElementById('reviewerPassword');
+    const reviewerLogoutBtn = document.getElementById('reviewerLogoutBtn');
+    let reviewerAuthenticated = false;
     const chatSection = document.getElementById('chatSection');
     const chatProjectSelect = document.getElementById('chatProjectSelect');
     const memorySection = document.getElementById('memorySection');
@@ -2200,6 +2214,34 @@
       if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
       return data;
     }
+
+    reviewerLoginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      reviewerAuthStatus.textContent = 'Signing in…';
+      const response = await fetch('/api/reviewer-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ password: reviewerPassword.value }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        reviewerAuthStatus.textContent = result.error || 'Reviewer sign-in failed.';
+        return;
+      }
+      reviewerPassword.value = '';
+      reviewerAuthStatus.textContent = 'Reviewer sign-in successful.';
+      await loadApprovals();
+    });
+
+    reviewerLogoutBtn.addEventListener('click', async () => {
+      const response = await fetch('/api/reviewer-login', { method: 'DELETE', cache: 'no-store' });
+      if (!response.ok) {
+        reviewerAuthStatus.textContent = 'Reviewer sign-out could not be confirmed.';
+        return;
+      }
+      await loadApprovals();
+    });
 
     async function loadChatProjects() {
       const selectedChat = chatProjectSelect.value;
@@ -4169,6 +4211,17 @@
       approvalStatus.textContent = 'Loading approval inbox…';
       approvalList.replaceChildren();
       try {
+        const reviewerResponse = await fetch('/api/reviewer-login', { cache: 'no-store' });
+        const reviewerData = await reviewerResponse.json().catch(() => ({}));
+        reviewerAuthenticated = reviewerResponse.ok && reviewerData.authenticated === true;
+        reviewerAuthStatus.textContent = reviewerResponse.status === 503
+          ? 'Independent reviewer credentials are not configured in this environment.'
+          : reviewerAuthenticated
+            ? 'Separate reviewer session active. Decisions will be recorded as reviewer.'
+            : 'Sign in with the separate reviewer credentials to record decisions.';
+        reviewerLoginForm.hidden = reviewerAuthenticated || reviewerResponse.status === 503;
+        reviewerLogoutBtn.hidden = !reviewerAuthenticated;
+
         const data = await controlApi('/api/approvals');
         if (!Array.isArray(data.approvals) || !data.approvals.length) {
           approvalList.textContent = 'No pending approvals.';
@@ -4185,7 +4238,7 @@
             const expiry = document.createElement('p');
             expiry.textContent = (approval.expired ? 'Expired' : 'Expires') + ' · ' + new Date(approval.expiresAt).toLocaleString();
             card.append(title, detail, expiry);
-            if (!approval.expired) {
+            if (!approval.expired && reviewerAuthenticated) {
               const actions = document.createElement('div');
               actions.className = 'approval-actions';
               for (const decision of ['approved', 'denied']) {
@@ -4222,11 +4275,17 @@
                 actions.append(button);
               }
               card.append(actions);
+            } else if (!approval.expired) {
+              const reviewerNotice = document.createElement('p');
+              reviewerNotice.textContent = 'Independent reviewer sign-in is required before this decision can be recorded.';
+              card.append(reviewerNotice);
             }
             approvalList.append(card);
           });
         }
-        approvalStatus.textContent = data.total + ' pending request(s) · approved plans can be authorised; specialist execution remains disabled';
+        approvalStatus.textContent = data.total + ' pending request(s) · ' +
+          (reviewerAuthenticated ? 'reviewer session active' : 'reviewer sign-in required for decisions') +
+          ' · specialist execution remains disabled';
       } catch (error) {
         approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
