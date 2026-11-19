@@ -240,19 +240,32 @@ export function createCompanionRenderer(canvas, options = {}) {
       gl.clearColor(0, 0, 0, 0);
       initialised = true;
       resize();
-      contextLostHandler = event => {
-        event.preventDefault();
-        stop();
-        initialised = false;
-        const host = canvas.parentElement;
-        if (host) {
-          host.dataset.renderer = 'fallback';
-          host.querySelector('.companion-avatar')?.removeAttribute('hidden');
-          host.setAttribute('aria-label', 'Agent AEGIS companion presentation using the accessible 2D fallback');
-        }
-        cleanupGl();
-      };
-      canvas.addEventListener('webglcontextlost', contextLostHandler);
+      if (!contextLostHandler) {
+        contextLostHandler = event => {
+          event.preventDefault();
+          stop();
+          initialised = false;
+          const host = canvas.parentElement;
+          if (host) {
+            host.dataset.renderer = 'fallback';
+            host.querySelector('.companion-avatar')?.removeAttribute('hidden');
+            host.setAttribute('aria-label', 'Agent AEGIS companion presentation using the accessible 2D fallback');
+          }
+          cleanupGl();
+        };
+        contextRestoredHandler = () => {
+          if (disposed) return;
+          const result = init();
+          const host = canvas.parentElement;
+          if (host && result.supported) {
+            host.dataset.renderer = 'webgl2';
+            host.querySelector('.companion-avatar')?.setAttribute('hidden', '');
+            host.setAttribute('aria-label', 'Procedural three-dimensional Agent AEGIS companion prototype');
+          }
+        };
+        canvas.addEventListener('webglcontextlost', contextLostHandler);
+        canvas.addEventListener('webglcontextrestored', contextRestoredHandler);
+      }
       const onVisibility = () => { if (document.visibilityState === 'visible') schedule(); else stop(); };
       if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
       visibilityHandler = onVisibility;
@@ -275,6 +288,7 @@ export function createCompanionRenderer(canvas, options = {}) {
   }
   let visibilityHandler = null;
   let contextLostHandler = null;
+  let contextRestoredHandler = null;
   function onResize() { resize(canvas.clientWidth, canvas.clientHeight, Math.min(window.devicePixelRatio || 1, 1.5)); schedule(); }
   function stop() {
     if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
@@ -386,6 +400,7 @@ export function createCompanionRenderer(canvas, options = {}) {
     stop();
     if (resizeObserver) resizeObserver.disconnect();
     if (contextLostHandler) canvas?.removeEventListener('webglcontextlost', contextLostHandler);
+    if (contextRestoredHandler) canvas?.removeEventListener('webglcontextrestored', contextRestoredHandler);
     if (typeof document !== 'undefined' && visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
     if (typeof window !== 'undefined') window.removeEventListener('resize', onResize);
     cleanupGl();
