@@ -107,3 +107,9 @@ test('intelligence audit separates reusable foundations from an unintegrated rou
   assert.match(intelligence.summary, /no durable token ledger or automatic failover/i);
   assert.match(intelligence.summary, /legacy KV notes endpoint/i);
 });
+
+
+test('progress UI never presents audit coverage as overall product completion', () => {
+  assert.match(html, /Overall product completion is intentionally withheld/i);
+  assert.match(html, /audit coverage is not product completion/i);
+});
