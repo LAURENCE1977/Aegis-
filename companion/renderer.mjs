@@ -111,12 +111,15 @@ export async function verifyCompanionAssetDigest(file, expectedSha256, cryptoApi
   if (typeof expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(expectedSha256)) {
     return { verified: false, reason: 'invalid-sha256' };
   }
-  if (!file || typeof file.arrayBuffer !== 'function' ||
+  if (!file || typeof file !== 'object' ||
       !Number.isSafeInteger(file.size) || file.size < 1) {
     return { verified: false, reason: 'invalid-asset-file' };
   }
   if (file.size > COMPANION_ASSET_MAX_BYTES) {
     return { verified: false, reason: 'asset-too-large' };
+  }
+  if (typeof file.arrayBuffer !== 'function') {
+    return { verified: false, reason: 'invalid-asset-file' };
   }
   if (!cryptoApi?.subtle || typeof cryptoApi.subtle.digest !== 'function') {
     return { verified: false, reason: 'crypto-unavailable' };
