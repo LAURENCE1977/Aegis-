@@ -105,8 +105,9 @@ test('Learning Mastery diagnostic returns evidence gaps without claiming verifie
   assert.equal(body.candidate.status, 'insufficient_evidence');
   assert.equal(body.candidate.masteryVerified, false);
   assert.ok(body.candidate.missing.includes('two_distinct_passed_attempts'));
-  assert.ok(body.unavailableEvidenceKinds.includes('applied_task'));
+  assert.equal(body.unavailableEvidenceKinds.includes('applied_task'), false, 'applied-task receipt intake is now available');
   assert.ok(body.unavailableEvidenceKinds.includes('human_review'));
+  assert.equal(body.sourceCounts.appliedTaskReceipts, 0);
 });
 
 
