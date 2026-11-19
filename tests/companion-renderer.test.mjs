@@ -337,3 +337,44 @@ test('companion asset digest rejects mismatched bytes, oversized files and unava
   assert.equal((await verifyCompanionAssetDigest({ size: 50 * 1024 * 1024 + 1 }, 'a'.repeat(64), webcrypto)).reason, 'asset-too-large');
   assert.equal((await verifyCompanionAssetDigest(file, 'a'.repeat(64), null)).reason, 'crypto-unavailable');
 });
+
+
+test('renderer prepares and commits injected model resources transactionally', async () => {
+  const renderer = createCompanionRenderer({ getContext: () => null });
+  const disposed = [];
+  const first = { id: 'first', dispose() { disposed.push('first'); } };
+  const second = { id: 'second', dispose() { disposed.push('second'); } };
+
+  const preparedFirst = await renderer.prepareModelResource(async () => first);
+  assert.equal(preparedFirst.prepared, true);
+  assert.equal(renderer.activeModelResource, null);
+  assert.equal(renderer.commitModelResource(preparedFirst.ticket).committed, true);
+  assert.equal(renderer.activeModelResource, first);
+
+  const preparedSecond = await renderer.prepareModelResource(async () => second);
+  assert.equal(preparedSecond.prepared, true);
+  assert.equal(renderer.activeModelResource, first);
+  assert.equal(disposed.includes('first'), false);
+  assert.equal(renderer.commitModelResource(preparedSecond.ticket).committed, true);
+  assert.equal(renderer.activeModelResource, second);
+  assert.deepEqual(disposed, ['first']);
+
+  renderer.dispose();
+  await Promise.resolve();
+  assert.deepEqual(disposed, ['first', 'second']);
+});
+
+test('renderer rejects invalid injected resources and preserves its active resource', async () => {
+  const renderer = createCompanionRenderer({ getContext: () => null });
+  const active = { dispose() {} };
+  const prepared = await renderer.prepareModelResource(async () => active);
+  assert.equal(prepared.prepared, true);
+  assert.equal(renderer.commitModelResource(prepared.ticket).committed, true);
+
+  assert.deepEqual(await renderer.prepareModelResource(async () => ({ id: 'not-disposable' })), {
+    prepared: false, reason: 'invalid-model',
+  });
+  assert.equal(renderer.activeModelResource, active);
+  assert.equal(renderer.commitModelResource({ id: 999 }).reason, 'unknown-ticket');
+  renderer.dispose();
+});
