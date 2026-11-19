@@ -1,0 +1,46 @@
+{
+  "schema": "aegis.build-progress/1.0",
+  "updatedAt": "2026-11-19",
+  "overallCompletion": null,
+  "progressPolicy": "Overall completion is withheld until all six workstreams have an audited, evidence-backed baseline. Audit coverage is not a measure of total product completion.",
+  "latestVerifiedCheckpoint": "Implementation workflow 44589027079 passed: 1,036 Node.js tests (1,035 passed, 0 failed, 1 skipped), Cloudflare runtime integration and isolated D1/Queue capability checks. This verifies that implementation head, not later documentation-only changes.",
+  "nextMilestone": "Complete the capability baseline audit, then implement the avatar prepare/commit/dispose lifecycle with regression tests.",
+  "workstreams": [
+    {
+      "id": "intelligence",
+      "name": "Core intelligence",
+      "auditStatus": "pending",
+      "summary": "Provider routing, memory, reasoning and fallback capabilities awaiting evidence-based inventory."
+    },
+    {
+      "id": "engineering",
+      "name": "Engineering & agents",
+      "auditStatus": "pending",
+      "summary": "Workspace, coding workflows, orchestration and autonomous execution awaiting audit."
+    },
+    {
+      "id": "security",
+      "name": "Security & governance",
+      "auditStatus": "pending",
+      "summary": "Sentinel, approvals, sandboxing, provenance and audit controls awaiting audit."
+    },
+    {
+      "id": "companion",
+      "name": "Avatar & voice",
+      "auditStatus": "pending",
+      "summary": "Renderer and asset-integrity foundations exist; imported models, voice runtime and device validation remain incomplete."
+    },
+    {
+      "id": "research",
+      "name": "Research & integrations",
+      "auditStatus": "pending",
+      "summary": "GitHub, Composio and open-source intake/reuse processes awaiting capability audit."
+    },
+    {
+      "id": "platform",
+      "name": "Cross-platform experience",
+      "auditStatus": "pending",
+      "summary": "Mobile, desktop, synchronisation, accessibility and deployment validation awaiting audit."
+    }
+  ]
+}
