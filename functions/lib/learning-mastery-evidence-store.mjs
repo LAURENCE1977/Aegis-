@@ -129,3 +129,62 @@ export async function buildLearningMasteryCandidateFromStore(
   const loaded = await loadLearningMasteryEvidence(db, ownerId, pathId, pathVersion, nodeId, now);
   return buildLearningMasteryCandidate(loaded.path, nodeId, loaded.evidence, now);
 }
+
+
+/**
+ * Stores only a server-computed digest receipt. Artifact bytes are never written
+ * to D1; the learner retains the original file and can withdraw its receipt.
+ */
+export async function recordLearningAppliedTaskEvidence(
+  db, ownerId, pathId, pathVersion, nodeId, bytes, mediaType, now = Date.now(),
+) {
+  const { validateLearningArtifactUpload, hashLearningArtifact } =
+    await import('./learning-applied-evidence.mjs');
+  requireDatabase(db);
+  validateIdentity(ownerId, pathId, pathVersion, nodeId);
+  if (!Number.isFinite(now)) throw new TypeError('Invalid Learning applied-task evidence clock');
+  const upload = validateLearningArtifactUpload(bytes, mediaType);
+  const registered = await getLearningPath(db, ownerId, pathId, pathVersion);
+  if (!registered || !registered.path.nodes.some(node => node.id === nodeId)) {
+    throw new LearningMasteryPathNotFoundError();
+  }
+  const digest = await hashLearningArtifact(bytes);
+  const id = 'evidence-' + crypto.randomUUID().toLowerCase().replaceAll('-', '');
+  const submittedAt = new Date(now).toISOString();
+  await db.prepare(`
+    INSERT INTO learning_applied_task_evidence (
+      id, owner_id, path_id, path_version, node_id,
+      artifact_digest, byte_length, media_type, submitted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id, ownerId, pathId, pathVersion, nodeId,
+    digest, upload.byteLength, upload.mediaType, submittedAt,
+  ).run();
+  return Object.freeze({
+    id,
+    kind: 'applied_task',
+    pathId,
+    pathVersion,
+    nodeId,
+    artifactDigest: digest,
+    byteLength: upload.byteLength,
+    mediaType: upload.mediaType,
+    occurredAt: submittedAt,
+    contentRetained: false,
+  });
+}
+
+export async function withdrawLearningAppliedTaskEvidence(
+  db, ownerId, pathId, pathVersion, nodeId, evidenceId,
+) {
+  requireDatabase(db);
+  validateIdentity(ownerId, pathId, pathVersion, nodeId);
+  if (typeof evidenceId !== 'string' || !/^evidence-[a-f0-9]{32}$/.test(evidenceId)) {
+    throw new TypeError('Invalid Learning applied-task evidence identifier');
+  }
+  const result = await db.prepare(`
+    DELETE FROM learning_applied_task_evidence
+    WHERE id = ? AND owner_id = ? AND path_id = ? AND path_version = ? AND node_id = ?
+  `).bind(evidenceId, ownerId, pathId, pathVersion, nodeId).run();
+  return result?.meta?.changes === 1;
+}
