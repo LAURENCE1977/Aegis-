@@ -45,3 +45,11 @@ test('renderer fails closed to the CSS fallback when WebGL2 is unavailable', () 
   assert.equal(renderer.dispose(), true);
   assert.equal(renderer.dispose(), true);
 });
+
+test('renderer maps the existing responding state to speaking presentation', () => {
+  const renderer = createCompanionRenderer({ getContext: () => null });
+  assert.equal(renderer.setState('responding'), true);
+  assert.equal(renderer.state, 'speaking');
+  assert.equal(renderer.setState('execute'), false);
+  assert.equal(renderer.state, 'speaking');
+});
