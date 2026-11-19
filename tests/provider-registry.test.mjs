@@ -77,3 +77,27 @@ test('fails closed for stale verification and malformed catalogue structure', ()
   }), []);
   assert.throws(() => validateProviderRegistry({ version: 1, providers: [] }), /providers/i);
 });
+
+
+test('preserves unknown provider pricing as null rather than reporting it as free', () => {
+  const input = registry();
+  delete input.providers[0].models[0].inputCost;
+  delete input.providers[0].models[0].outputCost;
+  const [model] = listEligibleModels(input, {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    maxAgeMs: 86400000,
+  });
+  assert.equal(model.inputCost, null);
+  assert.equal(model.outputCost, null);
+});
+
+test('preserves explicitly verified zero pricing as zero', () => {
+  const [model] = listEligibleModels(registry(), {
+    task: 'chat',
+    now: '2026-11-15T19:00:00.000Z',
+    maxAgeMs: 86400000,
+  });
+  assert.equal(model.inputCost, 0);
+  assert.equal(model.outputCost, 0);
+});
