@@ -7,7 +7,7 @@ Scope: read-only GitHub review through the connected GitHub account. Repository 
 
 Do not adopt an entire avatar application or ship third-party sample characters. Build an AEGIS-owned, provider-neutral renderer adapter and treat renderers, lip-sync extractors, VRM/GLB models and animation packs as separate replaceable components.
 
-The current Companion Profile and interaction-preference system is not a 3D renderer. The 3D companion remains a separate implementation milestone.
+The Companion Profile and interaction-preference system remains architecturally separate from the renderer. A first dependency-free procedural WebGL2 prototype is now integrated on this branch; imported VRM/GLB/VRMA assets, rigged human fidelity and voice-synchronised animation remain separate future milestones.
 
 ## Candidate review
 
