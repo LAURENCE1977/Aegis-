@@ -1,6 +1,10 @@
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
 const TASKS = new Set(['simple', 'chat', 'coding', 'research', 'reasoning']);
 const ADAPTERS = new Set(['workers-ai', 'anthropic', 'alibaba-qwen']);
+
+export function isSupportedProviderAdapter(adapterId) {
+  return typeof adapterId === 'string' && ADAPTERS.has(adapterId);
+}
 const PROVIDER_KEYS = new Set(['id', 'adapterId', 'displayName', 'status', 'termsUrl', 'verifiedAt', 'models']);
 const MODEL_KEYS = new Set(['id', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
 

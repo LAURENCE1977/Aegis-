@@ -1,3 +1,5 @@
+import { isSupportedProviderAdapter } from './provider-registry.mjs';
+
 const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct';
 const QWEN_REGIONS = new Set([
   'ap-southeast-1',
@@ -176,6 +178,9 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   validateMessages(messages);
   const safeTools = validateTools(tools);
   const provider = env.AEGIS_MODEL_PROVIDER || 'workers-ai';
+  if (!isSupportedProviderAdapter(provider)) {
+    throw new Error('Unsupported AEGIS model provider.');
+  }
 
   if (provider === 'workers-ai') {
     if (safeTools.length) throw new Error('Tool calling is not enabled for this Workers AI model.');

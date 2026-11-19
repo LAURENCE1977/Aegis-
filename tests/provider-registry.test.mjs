@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateProviderRegistry, listEligibleModels } from '../functions/lib/provider-registry.mjs';
+import { validateProviderRegistry, listEligibleModels, isSupportedProviderAdapter } from '../functions/lib/provider-registry.mjs';
 
 const registry = () => ({
   version: 1,
@@ -20,6 +20,14 @@ const registry = () => ({
       outputCost: 0,
     }],
   }],
+});
+
+test('exposes one canonical server-owned adapter allowlist for runtime routing', () => {
+  assert.equal(isSupportedProviderAdapter('workers-ai'), true);
+  assert.equal(isSupportedProviderAdapter('anthropic'), true);
+  assert.equal(isSupportedProviderAdapter('alibaba-qwen'), true);
+  assert.equal(isSupportedProviderAdapter('attacker-controlled-adapter'), false);
+  assert.equal(isSupportedProviderAdapter('https://attacker.example'), false);
 });
 
 test('accepts a verified provider catalogue with fixed adapter identifiers', () => {
