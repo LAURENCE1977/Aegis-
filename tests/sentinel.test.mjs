@@ -287,3 +287,33 @@ test('rejects a manifest whose action definition differs from the canonical regi
   assert.equal(h.calls.execute, 0);
   assert.equal(h.calls.reserve, 0);
 });
+
+
+test('does not replay a completed adapter action when the success audit write fails', async () => {
+  let successAuditAttempts = 0;
+  const h = harness({
+    recordAudit: async (event) => {
+      if (event.type === 'invocation_succeeded') {
+        successAuditAttempts += 1;
+        throw new Error('audit store unavailable after side effect');
+      }
+      h.events.push(event);
+    },
+  });
+
+  const result = await runSentinelInvocation(request, h.dependencies);
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, 'SUCCESS_AUDIT_UNAVAILABLE');
+  assert.equal(result.auditRecorded, false);
+  assert.deepEqual(result.output, {
+    repository: 'LAURENCE1977/Aegis-',
+    contextId: 'invocation-001',
+  });
+  assert.equal(h.calls.execute, 1);
+  assert.equal(successAuditAttempts, 1);
+  assert.deepEqual(h.events.map((event) => event.type), [
+    'invocation_policy_allowed',
+    'invocation_authorized',
+  ]);
+});
