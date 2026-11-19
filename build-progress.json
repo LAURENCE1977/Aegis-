@@ -15,8 +15,8 @@
     {
       "id": "engineering",
       "name": "Engineering & agents",
-      "auditStatus": "pending",
-      "summary": "Workspace, coding workflows, orchestration and autonomous execution awaiting audit."
+      "auditStatus": "audited",
+      "summary": "Audited baseline: durable agent-run API with bounded plan submission, idempotency, D1 outbox, Queue dispatch, lease/retry/dead-letter handling, cancellation and immutable plan/task-envelope records; specialist roles are labels, not running agents or permissions. The default runtime is execution: plan-only and makes no LLM, tool, filesystem, browser, shell or external API calls. A server-side capability bridge exists but is not called by the plan-only queue. Optional Qwen tooling is separately gated and exposes four fixed read-only tools with one tool round, exact Sentinel grants and active Composio connection; default Workers AI remains text-only. Workers AI, Anthropic text-only and Qwen adapters exist; OpenAI-compatible endpoint and local Ollama/LM Studio adapters remain planned. Evidence: docs/AEGIS_AGENT_ORCHESTRATION.md, docs/AEGIS_AGENT_TOOLS.md, docs/AEGIS_MODEL_PROVIDERS.md, docs/AEGIS_FORGE.md, docs/AEGIS_MCP_FORGE.md, functions/lib/agent-tools.mjs, functions/lib/model-provider.mjs, workers/runtime/index.mjs, workers/runtime/agent-capability-bridge.mjs and associated runtime/provider/Sentinel tests. Limits: AGENT_RUNS_ENABLED and provider tooling flags are not configured in production; no autonomous coding, shell, browser, file-write, generic MCP or external-action worker is enabled; no production D1/Queue deployment is verified; provider-neutral registry does not yet provide a universal adapter implementation."
     },
     {
       "id": "security",
