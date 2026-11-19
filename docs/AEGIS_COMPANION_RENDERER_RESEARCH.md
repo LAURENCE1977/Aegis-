@@ -103,6 +103,28 @@ GitHub licence metadata: Other / NOASSERTION.
 
 Assessment: no code reuse until the actual licence terms are clarified and approved.
 
+### 7. pixiv/three-vrm — preferred VRM loader candidate
+
+Repository: https://github.com/pixiv/three-vrm  
+Package: `@pixiv/three-vrm`  
+Reviewed release: `v3.5.5` (MIT; stable npm `latest` at review time). The upstream release page also exposes `v3.6.0-beta.0`; do not use the beta for the first AEGIS integration.
+
+Verified from the tagged package manifest and upstream README:
+- ESM package with built-in TypeScript declarations and a `VRMLoaderPlugin` for Three.js `GLTFLoader`.
+- Three.js is a peer dependency (`>=0.137`); the package is split into modular VRM core, MToon materials, spring-bone, node-constraint and compatibility packages.
+- The documented browser flow loads VRM through GLTFLoader and reads the resulting VRM object from `gltf.userData.vrm`.
+- The core package is MIT-licensed. This does not license a user's imported model, textures, animation clips or bundled sample assets.
+
+Assessment: this is the strongest directly maintained VRM loader candidate for AEGIS's browser-first avatar milestone. Keep it optional and lazy-loaded behind an AEGIS adapter; retain the current AEGIS-owned WebGL2 prototype as the no-dependency fallback. Pin the stable release and its full dependency graph, test bundle size and mobile memory/thermal behaviour, and confirm Three.js compatibility before enabling it. Do not adopt sample models or animation assets as product defaults.
+
+VRMA is a separate package/feature surface and must receive its own version, licence, dependency and asset review. A VRM loader alone does not provide a complete AEGIS avatar: facial-expression mapping, viseme translation, animation state, resource ownership/disposal and audio synchronisation remain AEGIS adapter responsibilities.
+
+Evidence:
+- Tagged upstream package manifest: https://github.com/pixiv/three-vrm/blob/v3.5.5/packages/three-vrm/package.json
+- Tagged upstream licence: https://github.com/pixiv/three-vrm/blob/v3.5.5/LICENSE
+- Upstream browser integration guide: https://github.com/pixiv/three-vrm/blob/v3.5.5/README.md
+- Stable package metadata and current npm tag: https://www.npmjs.com/package/@pixiv/three-vrm
+
 ## AEGIS implementation direction
 
 The AEGIS-owned renderer boundary should:
