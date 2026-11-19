@@ -30,7 +30,7 @@ const assessment = {
 };
 
 class AttemptD1 {
-  constructor() { this.paths = new Map(); this.assessments = new Map(); this.attempts = []; }
+  constructor() { this.paths = new Map(); this.assessments = new Map(); this.attempts = []; this.appliedEvidence = []; }
   prepare(sql) {
     const db = this;
     return {
@@ -101,7 +101,11 @@ class AttemptD1 {
           return { results: [...db.assessments.values()].filter(row => row.owner_id === owner &&
             row.path_id === pathId && row.path_version === pathVersion && row.node_id === nodeId).slice(0, limit) };
         }
-        if (sql.includes('FROM learning_applied_task_evidence')) return { results: [] };
+        if (sql.includes('FROM learning_applied_task_evidence')) {
+          const [owner, pathId, pathVersion, nodeId, limit] = this.values;
+          return { results: db.appliedEvidence.filter(row => row.owner_id === owner &&
+            row.path_id === pathId && row.path_version === pathVersion && row.node_id === nodeId).slice(0, limit) };
+        }
         const [owner, assessmentId, version, limit] = this.values;
         return { results: db.attempts.filter(row => row.owner_id === owner &&
           row.assessment_id === assessmentId && row.assessment_version === version)
@@ -132,6 +136,41 @@ test('loads mastery evidence only from verified owner-scoped path, assessment an
   assert.equal(loaded.evidence[0].passed, true);
   assert.equal(loaded.evidence[0].masteryVerified, false);
   assert.deepEqual(loaded.unavailableEvidenceKinds, ['human_review']);
+});
+
+test('loads only owner-scoped applied-task digest receipts into the exact path-node evidence set', async () => {
+  const db = await setup();
+  db.appliedEvidence.push({
+    id: 'evidence-' + 'a'.repeat(32),
+    owner_id: 'owner',
+    path_id: pathDefinition.id,
+    path_version: pathDefinition.version,
+    node_id: 'javascript-basics',
+    artifact_digest: 'b'.repeat(64),
+    byte_length: 128,
+    media_type: 'application/pdf',
+    submitted_at: '2026-11-17T11:00:00.000Z',
+  }, {
+    id: 'evidence-' + 'c'.repeat(32),
+    owner_id: 'another-owner',
+    path_id: pathDefinition.id,
+    path_version: pathDefinition.version,
+    node_id: 'javascript-basics',
+    artifact_digest: 'd'.repeat(64),
+    byte_length: 128,
+    media_type: 'application/pdf',
+    submitted_at: '2026-11-17T11:01:00.000Z',
+  });
+  const loaded = await loadLearningMasteryEvidence(
+    db, 'owner', pathDefinition.id, pathDefinition.version, 'javascript-basics',
+    Date.parse('2026-11-18T00:00:00.000Z'),
+  );
+  const applied = loaded.evidence.filter(item => item.kind === 'applied_task');
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0].id, 'applied-task-evidence-' + 'a'.repeat(32));
+  assert.equal(applied[0].artifactDigest, 'b'.repeat(64));
+  assert.deepEqual(loaded.unavailableEvidenceKinds, ['human_review']);
+  assert.equal(loaded.sourceCounts.appliedTaskReceipts, 1);
 });
 
 test('store-backed mastery candidate cannot be completed by caller-injected task or reviewer claims', async () => {
