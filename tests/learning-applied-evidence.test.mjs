@@ -27,6 +27,10 @@ test('rejects empty, oversized, non-byte and unsupported artifact uploads', () =
   assert.throws(() => validateLearningArtifactUpload(new Uint8Array([1]), 'text/html'), /media type/i);
 });
 
-test('rejects caller-controlled media-type parameters and normalises no hidden content', () => {
+test('normalises case and surrounding whitespace in a supported media type', () => {
+  assert.equal(validateLearningArtifactUpload(new Uint8Array([1]), ' Application/PDF ').mediaType, 'application/pdf');
+});
+
+test('rejects caller-controlled media-type parameters', () => {
   assert.throws(() => validateLearningArtifactUpload(new Uint8Array([1]), 'text/plain; charset=utf-8'), /media type/i);
 });
