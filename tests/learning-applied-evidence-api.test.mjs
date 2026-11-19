@@ -107,8 +107,8 @@ test('rejects unsupported media types and cross-origin submissions before persis
   assert.equal(db.inserted, null);
 });
 
-test('enforces per-node evidence quota before creating a receipt', async () => {
-  const db = new EvidenceD1({ nodeCount: 100 });
+test('enforces the 25-receipt per-node quota before creating a receipt', async () => {
+  const db = new EvidenceD1({ nodeCount: 25 });
   const response = await onRequestPost({
     request: await request('https://aegis.example/api/learning/paths/javascript-foundations/evidence?version=1.0.0&nodeId=javascript-basics'),
     env: { ...envBase, AEGIS_DB: db }, params: routeParams,
