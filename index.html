@@ -993,7 +993,30 @@
         <p class="status" id="forgeKnowledgeStatus" role="status" aria-live="polite">Knowledge Library not loaded.</p>
         <div id="forgeKnowledgeList" aria-live="polite"></div>
         <h3>Learning Forge</h3>
-        <p class="memory-help">Submit a small applied-work artifact as a SHA-256 receipt bound to an exact registered learning path and node. AEGIS stores the digest and minimal metadata only — never the uploaded file. Keep your original artifact; an independent reviewer workflow is not available yet and this does not certify mastery.</p>
+        <p class="memory-help">Register immutable learning-path versions, then attach digest-only applied-work receipts to exact nodes. Paths store learning metadata and source links, not copied course content.</p>
+        <form class="memory-form" id="learningPathForm">
+          <label for="learningPathGraphJson">Learning Path definition (JSON)</label>
+          <textarea id="learningPathGraphJson" rows="9" maxlength="128000" spellcheck="false">{
+  "id": "javascript-foundations",
+  "version": "1.0.0",
+  "title": "JavaScript Foundations",
+  "description": "A practical introduction to JavaScript fundamentals.",
+  "nodes": [
+    {
+      "id": "javascript-basics",
+      "title": "JavaScript basics",
+      "outcomes": ["Explain variables, values and basic expressions"],
+      "prerequisites": [],
+      "difficulty": "beginner",
+      "sourceRefs": ["https://developer.mozilla.org/en-US/docs/Web/JavaScript"],
+      "contentLicenseStatus": "link-only"
+    }
+  ]
+}</textarea>
+          <button id="learningPathRegisterBtn" type="submit">Register immutable path version</button>
+        </form>
+        <p class="status" id="learningPathAuthorStatus" role="status" aria-live="polite">Path definition is an editable local draft; it is not registered until submitted.</p>
+        <p class="memory-help">Applied-work receipts are bound to a registered path and node. AEGIS stores the SHA-256 digest and minimal metadata only — never the uploaded file. Keep your original artifact; independent reviewer workflow is not available yet and this does not certify mastery.</p>
         <div class="memory-form">
           <label for="learningPathSelect">Registered Learning Path</label>
           <select id="learningPathSelect" required>
