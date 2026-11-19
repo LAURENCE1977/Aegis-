@@ -994,6 +994,16 @@
         <div id="forgeKnowledgeList" aria-live="polite"></div>
         <h3>Learning Forge</h3>
         <p class="memory-help">Register immutable learning-path versions, then attach digest-only applied-work receipts to exact nodes. Paths store learning metadata and source links, not copied course content.</p>
+        <div class="memory-form" aria-labelledby="learningPathStarterLabel">
+          <label id="learningPathStarterLabel" for="learningPathStarterSelect">Start with a curated learning path</label>
+          <select id="learningPathStarterSelect">
+            <option value="">Choose a starter path…</option>
+            <option value="javascript-foundations">JavaScript Foundations · beginner</option>
+            <option value="web-safety-foundations">Web Safety Foundations · beginner</option>
+          </select>
+          <button id="learningPathLoadStarterBtn" class="secondary" type="button">Load starter into editor</button>
+          <p class="memory-help">Loading a starter only fills the local editor; it is not registered until you submit the form. Examples contain learning metadata and source links only, not copied course content.</p>
+        </div>
         <form class="memory-form" id="learningPathForm">
           <label for="learningPathGraphJson">Learning Path definition (JSON)</label>
           <textarea id="learningPathGraphJson" rows="9" maxlength="128000" spellcheck="false">{
@@ -1369,6 +1379,8 @@
     const guardianResourceStatus = document.getElementById('guardianResourceStatus');
     const guardianResourceList = document.getElementById('guardianResourceList');
     const learningPathForm = document.getElementById('learningPathForm');
+    const learningPathStarterSelect = document.getElementById('learningPathStarterSelect');
+    const learningPathLoadStarterBtn = document.getElementById('learningPathLoadStarterBtn');
     const learningPathGraphJson = document.getElementById('learningPathGraphJson');
     const learningPathRegisterBtn = document.getElementById('learningPathRegisterBtn');
     const learningPathAuthorStatus = document.getElementById('learningPathAuthorStatus');
@@ -3499,6 +3511,71 @@
       }
     });
 
+
+    const LEARNING_PATH_STARTER_TEMPLATES = Object.freeze({
+      'javascript-foundations': {
+        id: 'javascript-foundations',
+        version: '1.0.0',
+        title: 'JavaScript Foundations',
+        description: 'A beginner-friendly route through core JavaScript concepts.',
+        nodes: [
+          {
+            id: 'javascript-basics',
+            title: 'JavaScript basics',
+            outcomes: ['Explain variables, values and basic expressions'],
+            prerequisites: [],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide'],
+            contentLicenseStatus: 'link-only',
+          },
+          {
+            id: 'javascript-functions',
+            title: 'Functions and scope',
+            outcomes: ['Describe how functions receive inputs and return values', 'Explain the purpose of local scope'],
+            prerequisites: ['javascript-basics'],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions'],
+            contentLicenseStatus: 'link-only',
+          },
+        ],
+      },
+      'web-safety-foundations': {
+        id: 'web-safety-foundations',
+        version: '1.0.0',
+        title: 'Web Safety Foundations',
+        description: 'A beginner-friendly route through browser security and secure connections.',
+        nodes: [
+          {
+            id: 'web-security-basics',
+            title: 'Web security basics',
+            outcomes: ['Identify common browser and web application security boundaries'],
+            prerequisites: [],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/Security'],
+            contentLicenseStatus: 'link-only',
+          },
+          {
+            id: 'secure-transport',
+            title: 'Secure transport and origins',
+            outcomes: ['Explain what HTTPS protects', 'Describe why browser origins matter'],
+            prerequisites: ['web-security-basics'],
+            difficulty: 'beginner',
+            sourceRefs: ['https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security'],
+            contentLicenseStatus: 'link-only',
+          },
+        ],
+      },
+    });
+
+    learningPathLoadStarterBtn.addEventListener('click', () => {
+      const template = LEARNING_PATH_STARTER_TEMPLATES[learningPathStarterSelect.value];
+      if (!template) {
+        learningPathAuthorStatus.textContent = 'Choose a starter path first.';
+        return;
+      }
+      learningPathGraphJson.value = JSON.stringify(template, null, 2);
+      learningPathAuthorStatus.textContent = 'Starter loaded into the local editor. Review the path, source links and version before submitting; nothing has been registered yet.';
+    });
 
     learningPathForm.addEventListener('submit', async event => {
       event.preventDefault();
