@@ -222,6 +222,17 @@
       margin: 12px 0; padding: 18px; border: 1px solid var(--border);
       border-radius: 15px; background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
     }
+    #buildProgressAuditBar {
+      display: block; width: 100%; height: 12px; margin: 12px 0;
+      overflow: hidden; border: 0; border-radius: 999px;
+      accent-color: var(--accent-strong);
+    }
+    #buildProgressDepartments { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #buildProgressDepartments .workspace-card { margin: 0; }
+    #buildProgressRefresh { margin-top: 8px; }
+    @media (max-width: 520px) {
+      #buildProgressDepartments { grid-template-columns: minmax(0, 1fr); }
+    }
     .workspace-card h3, .approval-card h3 { margin: 0 0 7px; font-size: 1rem; overflow-wrap: anywhere; }
     .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
     .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
@@ -768,6 +779,7 @@
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
+        <button class="secondary" id="buildProgressTab" type="button">Build progress</button>
       </div>
       <section class="home-dashboard" id="homeSection" aria-labelledby="homeWelcomeTitle">
         <div class="home-hero">
@@ -921,6 +933,25 @@
         <button id="sendBtn" type="button">Send</button>
       </div>
       <p class="status" id="status">Ready</p>
+      </section>
+      <section class="memory-panel" id="buildProgressSection" hidden aria-labelledby="buildProgressTitle">
+        <h2 id="buildProgressTitle">AEGIS build progress</h2>
+        <p class="memory-help">A transparent view of verified delivery. Progress is calculated from the capability audit register, not from tasks merely started or estimates.</p>
+        <div class="workspace-card" aria-live="polite">
+          <h3>Capability audit coverage</h3>
+          <p id="buildProgressAuditSummary">Loading the canonical progress register…</p>
+          <progress id="buildProgressAuditBar" max="100" value="0" aria-label="Capability audit coverage">0%</progress>
+          <p class="status" id="buildProgressOverall">Overall build percentage will be published after the six workstreams have an audited baseline.</p>
+        </div>
+        <div id="buildProgressDepartments" class="home-launch-grid" aria-live="polite"></div>
+        <div class="workspace-card">
+          <h3>Latest verified checkpoint</h3>
+          <p id="buildProgressCheckpoint">Loading checkpoint…</p>
+          <h3>Next engineering milestone</h3>
+          <p id="buildProgressNext">Loading next milestone…</p>
+          <p class="status" id="buildProgressUpdated">Progress data has not yet been refreshed.</p>
+          <button class="secondary" id="buildProgressRefresh" type="button">Refresh progress</button>
+        </div>
       </section>
       <section class="memory-panel" id="forgeSection" hidden>
         <h2>AEGIS Forge</h2>
@@ -1319,6 +1350,8 @@
     const approvalTab = document.getElementById('approvalTab');
     const forgeTab = document.getElementById('forgeTab');
     const securityTab = document.getElementById('securityTab');
+    const buildProgressTab = document.getElementById('buildProgressTab');
+    const buildProgressSection = document.getElementById('buildProgressSection');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
     const composioConnectBtn = document.getElementById('composioConnectBtn');
@@ -2147,13 +2180,61 @@
       }
     }
 
+
+    async function loadBuildProgress() {
+      const summary = document.getElementById('buildProgressAuditSummary');
+      const bar = document.getElementById('buildProgressAuditBar');
+      const overall = document.getElementById('buildProgressOverall');
+      const departments = document.getElementById('buildProgressDepartments');
+      const checkpoint = document.getElementById('buildProgressCheckpoint');
+      const next = document.getElementById('buildProgressNext');
+      const updated = document.getElementById('buildProgressUpdated');
+      summary.textContent = 'Refreshing the canonical progress register…';
+      try {
+        const response = await fetch('/build-progress.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Progress register unavailable (' + response.status + ').');
+        const data = await response.json();
+        if (!data || data.schema !== 'aegis.build-progress/1.0' || !Array.isArray(data.workstreams) || data.workstreams.length !== 6) {
+          throw new Error('Progress register has an unsupported format.');
+        }
+        const audited = data.workstreams.filter(item => item.auditStatus === 'audited').length;
+        const coverage = Math.round((audited / data.workstreams.length) * 100);
+        bar.value = coverage;
+        bar.textContent = coverage + '%';
+        summary.textContent = audited + ' of ' + data.workstreams.length + ' workstreams audited (' + coverage + '%).';
+        overall.textContent = data.overallCompletion === null
+          ? 'Overall build percentage is intentionally withheld until every workstream has a verified baseline.'
+          : 'Verified overall completion: ' + data.overallCompletion + '%.';
+        departments.replaceChildren();
+        data.workstreams.forEach(item => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const title = document.createElement('h3');
+          title.textContent = item.name;
+          const state = document.createElement('p');
+          state.textContent = item.auditStatus === 'audited' ? 'Audit complete' : 'Baseline audit pending';
+          const detail = document.createElement('p');
+          detail.textContent = item.summary;
+          card.append(title, state, detail);
+          departments.append(card);
+        });
+        checkpoint.textContent = data.latestVerifiedCheckpoint;
+        next.textContent = data.nextMilestone;
+        updated.textContent = 'Register updated: ' + data.updatedAt + '. Source: version-controlled AEGIS progress register.';
+      } catch (error) {
+        summary.textContent = 'Unable to load verified progress.';
+        overall.textContent = error instanceof Error ? error.message : 'Unknown progress error.';
+        updated.textContent = 'Try refreshing after the progress register is available.';
+      }
+    }
+
     function showPanel(panel) {
       if (panel !== 'companion') restoreChatFromCompanionMode();
       appPanel.classList.toggle('companion-mode-active', panel === 'companion');
       document.body.classList.toggle('companion-mode-open', panel === 'companion');
       const panelTabs = {
         home: homeTab, chat: chatTab, projects: workspaceTab, memory: memoryTab,
-        approvals: approvalTab, forge: forgeTab, security: securityTab,
+        approvals: approvalTab, forge: forgeTab, security: securityTab, buildProgress: buildProgressTab,
       };
       Object.entries(panelTabs).forEach(([key, tab]) => {
         const active = key === panel;
@@ -2168,8 +2249,10 @@
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
+      buildProgressSection.hidden = panel !== 'buildProgress';
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); loadForgeKnowledge(); loadLearningPaths(); loadGuardianResources(); }
       if (panel === 'security') loadSecurityCentre();
+      if (panel === 'buildProgress') loadBuildProgress();
       if (panel === 'home') loadCompanionProfiles();
       if (panel === 'chat') userInput.focus();
       if (panel === 'projects') loadWorkspaces();
@@ -2202,6 +2285,8 @@
     approvalTab.addEventListener('click', () => showPanel('approvals'));
     forgeTab.addEventListener('click', () => showPanel('forge'));
     securityTab.addEventListener('click', () => showPanel('security'));
+    buildProgressTab.addEventListener('click', () => showPanel('buildProgress'));
+    document.getElementById('buildProgressRefresh').addEventListener('click', loadBuildProgress);
 
     async function controlApi(path, options = {}) {
       const res = await fetch(path, {
