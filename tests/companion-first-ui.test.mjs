@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const rendererSource = await readFile(new URL('../companion/renderer.mjs', import.meta.url), 'utf8');
 
 test('the signed-in home is companion-first and exposes an accessible presentation stage', () => {
   assert.match(html, /<section[^>]+id="companionStage"[^>]+aria-labelledby="companionTitle"/);
@@ -16,7 +17,7 @@ test('the signed-in home is companion-first and exposes an accessible presentati
 });
 
 test('the companion presentation is honest about the avatar runtime and does not impersonate a live human', () => {
-  assert.match(html, /companion presentation layer/i);
+  assert.match(html, /3D procedural companion prototype/i);
   assert.match(html, /3D procedural prototype/i);
   assert.match(html, /imported avatars and voice are not connected/i);
   assert.match(html, /aria-live="polite"/);
@@ -215,5 +216,5 @@ test('the companion loads the AEGIS-owned WebGL2 renderer while retaining the CS
   assert.match(html, /<script type="module" src="\/companion\/renderer\.mjs"><\/script>/);
   assert.match(html, /companion-render-canvas/);
   assert.match(html, /data-renderer="webgl2"/);
-  assert.match(html, /WebGL2 is unavailable here/);
+  assert.match(rendererSource, /WebGL2 is unavailable here/);
 });
