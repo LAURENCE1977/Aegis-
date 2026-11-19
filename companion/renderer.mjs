@@ -345,7 +345,8 @@ export function createCompanionRenderer(canvas, options = {}) {
   }
   function setState(next) {
     if (!COMPANION_STATES.includes(next)) return false;
-    state = next; schedule(); return true;
+    state = next === 'responding' ? 'speaking' : next === 'error' ? 'disconnected' : next;
+    schedule(); return true;
   }
   function setExpression(id, weight) {
     expression = normaliseExpression(id, weight); schedule(); return expression;
