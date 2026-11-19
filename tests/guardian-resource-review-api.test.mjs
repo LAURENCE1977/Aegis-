@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createReviewerSessionToken, reviewerSessionCookie } from '../functions/lib/auth.mjs';
 import { onRequestPatch } from '../functions/api/guardian/resources/[id].js';
 
 const secret = 'guardian-resource-review-api-test-session-secret-long-enough';
@@ -22,7 +22,7 @@ class ReviewApiD1 {
 
 async function request(body, { authenticated = true, origin = 'https://aegis.example' } = {}) {
   const headers = { Origin: origin, 'Content-Type': 'application/json' };
-  if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
+  if (authenticated) headers.Cookie = reviewerSessionCookie(await createReviewerSessionToken(env.AEGIS_REVIEWER_SESSION_SECRET));
   return new Request('https://aegis.example/api/guardian/resources/resource-1234567890abcdef1234567890abcdef', { method: 'PATCH', headers, body: JSON.stringify(body) });
 }
 
