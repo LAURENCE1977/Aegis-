@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 17 November 2026.  
+**Canonical project record.** Last refreshed: 19 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -1248,3 +1248,15 @@ This is a design direction, not a claim that the 3D avatar or final interface is
 - Rejected wholesale adoption. Static review found a direct arbitrary-URL fetch path with redirects and no visible destination-IP/redirect revalidation, plaintext API-key persistence in local settings, sensitive third-party email-account enumeration, and optional remote AI transfer of case identities/locations/account attributes. Its local desktop bind is a useful default but is not a general network-service security boundary.
 - AEGIS will implement the useful ideas natively over canonical evidence/source contracts, owner-scoped records and Sentinel-governed adapters. Graph edges remain claims, not proof; confidence is uncertainty-aware and never an identity verdict. No upstream code, dependencies, executable or service was imported or run.
 - Full assessment and acceptance gates: [AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md](AEGIS_OSINTHUNTER_RESEARCH_2026-11-18.md).
+
+
+## 19 November 2026 — latest verified engineering handover
+
+- The latest verified implementation head before this documentation refresh is `56aa8e05220d345c3f7470dac0a2f0ac8aaf1ade` on stacked draft PR #103.
+- Push workflow [44487709361](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487709361) and matching PR workflow [44487721559](https://github.com/LAURENCE1977/Aegis-/actions/runs/44487721559) passed: **985 Node tests, 984 passed, 0 failed, 1 skipped**, plus Cloudflare preview, runtime/Queue integration and all isolated D1/Forge/Eval/Learning/Companion checks.
+- Guardian Resource now includes owner-scoped detail and bounded on-demand audit history. Stored event metadata is schema-validated; history is rendered with text-safe DOM APIs.
+- Learning Forge now accepts bounded binary applied-task submissions, computes SHA-256 server-side and stores only digest/minimal metadata bound to the exact owner/path version/node. Raw bytes are discarded. Owner withdrawal deletes the digest while preserving content-free append-only submission/withdrawal events.
+- Evidence quotas are database-enforced (25 per node, 500 per owner). Mastery evidence input is bounded to 75 assessment attempts plus 25 applied-task receipts. Human reviewer identity and a safe artifact-inspection handoff are still missing, so mastery remains non-certifying.
+- The detailed handover, next gates and operating constraints are in [AEGIS next implementation checkpoint — 19 November 2026](AEGIS_NEXT_IMPLEMENTATION_CHECKPOINT_2026-11-19.md).
+- Companion remains a first-class presentation layer over the shared intelligence core. Its current avatar is still a CSS placeholder; a distinctive, expressive 3D human renderer is future work. No mandatory paid avatar or voice provider is accepted.
+- PR #103 remains open, draft and unmerged; PR #101 remains its base. No production deployment, production migration or merge has occurred.
