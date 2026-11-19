@@ -234,14 +234,12 @@ test('free-only mode blocks paid external providers before any network request',
   for (const env of [
     {
       AEGIS_FREE_ONLY: 'true',
-      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
       AEGIS_ANTHROPIC_MODEL: 'claude-opus-5-5',
     },
     {
       AEGIS_FREE_ONLY: 'true',
-      AEGIS_FREE_ONLY: 'false',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
