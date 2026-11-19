@@ -1,6 +1,6 @@
 # AEGIS Companion Experience
 
-**Status:** Companion profile persistence, bounded interaction customisation, profile export, confirmed profile purge and immersive text Companion Mode are implemented on draft PR #103. Source and isolated D1/CI are verified; production D1 provisioning, lifelike avatar runtime and voice runtime are not deployed.
+**Status:** Companion profile persistence, bounded interaction customisation, profile export, confirmed profile purge and immersive Companion Mode are implemented on draft PR #103. An AEGIS-owned procedural WebGL2 3D bust prototype is now integrated with a CSS fallback. This is an early renderer milestone, not the finished lifelike avatar; production D1, imported VRM/GLB models, full-body rigging and voice runtime remain incomplete.
 
 ## Product contract
 
@@ -8,7 +8,8 @@
 - User-created profiles customise presentation and conversation style over the same AEGIS intelligence, memory, Sentinel policy and tool authority. A profile is not a second security principal or an agent with independent permissions.
 - Custom profiles cannot add system prompts, tool definitions, permissions, Sentinel rules or memory scopes.
 - Voice is disabled by default. No microphone capture, audio recording, voice cloning or external voice provider is active.
-- The current avatar is a stylised 2D CSS presentation. It is not a lifelike human model, 3D rig or generated portrait.
+- The first 3D renderer milestone is an original procedural WebGL2 bust made from generated geometry. When WebGL2 is unavailable, the existing CSS presentation remains visible.
+- The prototype is not yet a lifelike full-body human, imported VRM/GLB model, facial rig or generated portrait.
 
 ## Persistent profiles
 
@@ -81,8 +82,19 @@ The prompt builder loads the active profile from the verified owner-scoped store
 1. Production D1 has not been provisioned or migrated. Until then, the interface correctly falls back to session-only profiles.
 2. A governed retention policy, expiry/rotation rules and scheduled cleanup are not implemented. Export and explicit user-requested purge are implemented in source; production persistence must remain gated until retention semantics are reviewed and production D1 is provisioned.
 3. A separate reviewer credential, signing secret, session cookie and standalone `/reviewer.html` portal are now implemented on the draft branch. The reviewer can read pending approvals and the owner-scoped Guardian catalogue without the owner's login, and can record review decisions; owner resource intake and final Sentinel authorisation remain separate. External identity-provider verification, MFA/passkeys, multiple named reviewers, reviewer lifecycle/recovery and household/team separation are not implemented. Genuine two-person assurance still depends on a trusted second person holding the reviewer credentials.
-4. Lifelike human avatar, 3D rigging, lip sync, animation assets and accessible fallback asset packs remain future work. The current renderer research and licence assessment is recorded in [AEGIS Companion Renderer Research](AEGIS_COMPANION_RENDERER_RESEARCH.md); no third-party renderer or sample asset has been adopted.
+4. The procedural WebGL2 bust prototype is now present in `companion/renderer.mjs`. It supports basic idle/listening/thinking/speaking presentation states and bounded expression/viseme inputs, but it does not yet load external GLB/VRM/VRMA assets; `loadModel` explicitly returns an unsupported result. Full-body rigging, production facial expressions, real audio-driven lip sync, user-owned model import, animation packs and mobile device benchmarks remain future work. The current renderer research and licence assessment is recorded in [AEGIS Companion Renderer Research](AEGIS_COMPANION_RENDERER_RESEARCH.md); no third-party renderer or sample asset has been adopted.
 5. Voice output and optional voice input require a separate consent, device-capture, retention and provider-boundary design. No capture is enabled by this slice.
 6. Accessibility preferences beyond system reduced-motion support are not yet wired to all interface components.
 
 No production deployment, D1 provisioning or PR merge was performed.
+
+
+## Procedural 3D renderer prototype
+
+- Added `companion/renderer.mjs`, an AEGIS-owned WebGL2 renderer with procedurally generated indexed sphere geometry. The current character is a stylised head-and-shoulders bust, not a finished human avatar.
+- Mounted the renderer in the existing home companion and full-screen companion surfaces. The original CSS avatar remains the fallback when WebGL2 is unavailable or renderer initialisation fails.
+- Uses a low-power WebGL2 context request, caps device-pixel ratio at 1.5, targets approximately 30 frames per second, pauses rendering when the host is not visible, and respects reduced-motion preference.
+- Maps the existing Companion Mode presence states into renderer presentation states. Renderer state, expression and viseme inputs are presentation-only; the renderer has no imports or calls into Sentinel, tools, permissions, memory or agent execution.
+- Added focused tests for geometry integrity, bounded viseme inputs, expression allowlisting, presentation-state allowlisting and graceful WebGL2-unavailable fallback.
+- No third-party model, character asset, renderer package, voice provider or audio capture was added.
+- **Not yet verified:** the latest renderer commits do not yet have a returned green GitHub Actions run or real-browser visual test. No iOS Safari, Android Chrome or desktop performance claim is made.
