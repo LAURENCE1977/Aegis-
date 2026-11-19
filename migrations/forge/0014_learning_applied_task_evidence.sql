@@ -74,3 +74,24 @@ BEFORE DELETE ON learning_applied_task_evidence_events
 BEGIN
   SELECT RAISE(ABORT, 'Learning applied-task evidence events are append-only');
 END;
+
+CREATE TRIGGER IF NOT EXISTS trg_learning_applied_evidence_node_limit
+BEFORE INSERT ON learning_applied_task_evidence
+WHEN (
+  SELECT COUNT(*) FROM learning_applied_task_evidence
+  WHERE owner_id = NEW.owner_id AND path_id = NEW.path_id
+    AND path_version = NEW.path_version AND node_id = NEW.node_id
+) >= 100
+BEGIN
+  SELECT RAISE(ABORT, 'Learning applied-task evidence limit reached for this node');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_learning_applied_evidence_owner_limit
+BEFORE INSERT ON learning_applied_task_evidence
+WHEN (
+  SELECT COUNT(*) FROM learning_applied_task_evidence
+  WHERE owner_id = NEW.owner_id
+) >= 500
+BEGIN
+  SELECT RAISE(ABORT, 'Learning applied-task evidence limit reached for this owner');
+END;
