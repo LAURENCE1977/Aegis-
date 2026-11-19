@@ -182,8 +182,10 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
     error.publicMessage = 'The model provider policy is not configured correctly.';
     throw error;
   }
-  if (env.AEGIS_FREE_ONLY === 'true' && provider !== 'workers-ai') {
-    const error = new Error('The selected external model provider is disabled in free-only mode.');
+  const freeOnly = env.AEGIS_FREE_ONLY === 'true' ||
+    (env.AEGIS_FREE_ONLY === undefined && provider !== 'workers-ai');
+  if (freeOnly && provider !== 'workers-ai') {
+    const error = new Error('The selected external model provider is disabled in free-only mode unless explicitly opted in.');
     error.code = 'PROVIDER_DISABLED';
     error.publicMessage = 'That AI provider is disabled by the free-only policy.';
     throw error;
