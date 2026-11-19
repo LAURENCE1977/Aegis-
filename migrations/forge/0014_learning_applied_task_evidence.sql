@@ -81,7 +81,7 @@ WHEN (
   SELECT COUNT(*) FROM learning_applied_task_evidence
   WHERE owner_id = NEW.owner_id AND path_id = NEW.path_id
     AND path_version = NEW.path_version AND node_id = NEW.node_id
-) >= 100
+) >= 25
 BEGIN
   SELECT RAISE(ABORT, 'Learning applied-task evidence limit reached for this node');
 END;
