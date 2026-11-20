@@ -107,3 +107,30 @@ test('/api/ask keeps the Workers AI default adapter and JSON response contract',
   assert.equal(model, '@cf/meta/llama-3.3-70b-instruct');
   assert.equal(payload.stream, true);
 });
+
+test('/api/ask cancels an oversized provider stream after enforcing the output cap', async () => {
+  let cancelled = false;
+  const response = await onRequestPost({
+    request: await request({ question: 'Hello AEGIS' }),
+    env: {
+      ...envBase,
+      AI: {
+        async run() {
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(
+                'data: ' + JSON.stringify({ response: 'x'.repeat(12001) }) + '\n\n',
+              ));
+            },
+            cancel() { cancelled = true; },
+          });
+        },
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.response.length, 12000);
+  assert.equal(cancelled, true);
+});
