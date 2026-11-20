@@ -106,3 +106,18 @@ The normalized result retains provider/account/transaction identity, exact integ
 Verification: GitHub Actions run [44808072640](https://github.com/LAURENCE1977/Aegis-/actions/runs/44808072640) completed successfully on commit [4342d5b](https://github.com/LAURENCE1977/Aegis-/commit/4342d5b92c75ad8f6f29c7d311a03317a8eda755), including the full Node.js test suite and all isolated local D1/Forge checks.
 
 This remains a pure normalization utility, not a connected provider adapter or ingestion service. It does not establish account ownership or tenant scope, fetch provider records, persist transactions, deduplicate against a database, reconcile payouts, calculate FX, create forecasts or expose financial data in the UI. A trusted provider adapter must establish owner/tenant scope and supply the provider's authoritative decimal precision before calling it. No financial account has been connected or accessed.
+## Read-only ledger storage foundation — initial migration
+
+`migrations/finance/0001_read_only_ledger.sql` introduces a separate, isolated D1 schema for owner-scoped financial account references, normalized transactions, transaction observation history and sync-run completeness.
+
+Design constraints:
+- Account identity is unique within owner + provider + external account reference. Transaction identity is unique within account + provider-issued transaction reference; the composite account/owner foreign key prevents cross-owner attachment.
+- Amounts remain exact integer minor-unit strings; no floating-point monetary columns are used. Currency is explicit and uppercase. The ingestion boundary must call `normalizeFinancialTransaction` before persistence.
+- Source identity fields cannot be rewritten. Initial observations and subsequent changes are recorded by database triggers in append-only transaction events.
+- Sync runs distinguish `running`, `complete`, `partial` and `failed`; a failed run requires a bounded failure code, and incomplete runs cannot be represented as complete.
+- The schema deliberately omits raw provider payloads, credentials, payment instruments, free-text descriptions and pagination cursors. It is not an accounting ledger of record and does not calculate balances or profit.
+- Account status is restricted to `read_only`, `disabled` or `revoked`. No write-capable financial action is represented by this schema.
+
+Verification is wired into `.github/workflows/tests.yml` using a separate local-only Wrangler D1 database configuration, seed, constraint checks and assertions. The checks exercise duplicate transaction rejection, cross-owner foreign-key rejection, immutable transaction identity, append-only event protection, valid status transitions and update-event capture.
+
+Important boundary: this is a schema foundation only. It is not yet attached to the production/runtime D1 binding, no live migration has been applied, no provider adapter or sync API exists, and no financial account has been connected or accessed. Before any deployment, confirm the intended D1 database topology, add an authenticated owner-scoped ingestion/read API, define retention/deletion handling and review the migration against the real runtime database. A revoked provider connection must never be revived merely by replaying cached records.
