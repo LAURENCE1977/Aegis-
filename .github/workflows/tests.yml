@@ -85,3 +85,11 @@ jobs:
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql
+
+      - name: Apply read-only financial ledger migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-finance-test --local --config wrangler.finance-d1-test.toml --persist-to .wrangler/test-finance-d1
+      - name: Verify owner-scoped financial ledger, exact amounts and append-only observations
+        shell: bash
+        run: |
+          wrangler d1 execute aegis-finance-test --local --config wrangler.finance-d1-test.toml --persist-to .wrangler/test-finance-d1 --file scripts/finance-d1-seed.sql
+          bash scripts/finance-d1-checks.sh
