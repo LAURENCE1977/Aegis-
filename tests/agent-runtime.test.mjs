@@ -246,3 +246,47 @@ test('agent dead-letter cannot overwrite a completed plan', async () => {
   assert.equal(DB.runs.get(run.id).status, 'planned');
   assert.equal(DB.events.filter(event => event.event_type === 'delivery_exhausted').length, 0);
 });
+
+
+test('persists explicit assumptions and constraints in the plan without granting execution authority', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({
+    objective: 'Choose a safe implementation path',
+    assumptions: ['The existing runtime remains the source of truth'],
+    constraints: ['No production side effects', 'No new provider dependency'],
+    acceptanceCriteria: ['The recommendation is evidence-backed'],
+    priority: 'balanced',
+  }), env);
+  assert.equal(response.status, 201);
+  const { run } = await response.json();
+  let acked = false;
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{
+    body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); },
+  }] }, env);
+  const plan = JSON.parse(DB.runs.get(run.id).plan_json);
+  assert.deepEqual(plan.assumptions, ['The existing runtime remains the source of truth']);
+  assert.deepEqual(plan.constraints, ['No production side effects', 'No new provider dependency']);
+  assert.equal(plan.decision.recommendedApproach, 'staged');
+  assert.ok(plan.decision.rationale.length > 0);
+  assert.ok(plan.decision.alternativesConsidered.every(item => item.reasonNotSelected.length > 0));
+  assert.ok(plan.criticalReview.challengeQuestions.length > 0);
+  assert.ok(plan.criticalReview.strongestAlternative);
+  assert.equal(plan.execution, 'plan-only');
+  assert.equal(plan.safety.toolsInvoked, false);
+  assert.equal(plan.safety.sentinelRequiredForExecution, true);
+  assert.equal(acked, true);
+});
+
+test('rejects malformed assumptions and constraints before persisting a run', async () => {
+  const { env, DB } = makeEnv();
+  for (const body of [
+    { objective: 'Plan', assumptions: [''] },
+    { objective: 'Plan', constraints: ['x'.repeat(241)] },
+    { objective: 'Plan', assumptions: Array.from({ length: 9 }, (_, i) => 'assumption ' + i) },
+    { objective: 'Plan', unexpectedAssumptionField: ['not allowed'] },
+  ]) {
+    const response = await handleRuntimeFetch(postRun(body), env);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(DB.runs.size, 0);
+});
