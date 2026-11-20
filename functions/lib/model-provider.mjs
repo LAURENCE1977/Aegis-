@@ -1,4 +1,4 @@
-import { isSupportedProviderAdapter } from './provider-registry.mjs';
+import { isSupportedProviderAdapter, listEligibleModels } from './provider-registry.mjs';
 
 const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct';
 const QWEN_REGIONS = new Set([
@@ -12,6 +12,59 @@ const QWEN_REGIONS = new Set([
 const MAX_MESSAGES = 14;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 1024;
+const MAX_PROVIDER_REGISTRY_BYTES = 16 * 1024;
+
+function configuredModelId(provider, env) {
+  if (provider === 'workers-ai') return WORKERS_AI_MODEL;
+  if (provider === 'anthropic') return env.AEGIS_ANTHROPIC_MODEL;
+  if (provider === 'alibaba-qwen') return env.AEGIS_QWEN_MODEL || 'qwen3.8-flash';
+  return null;
+}
+
+function resolveRegistryModel(env, provider, modelId) {
+  const source = env.AEGIS_PROVIDER_REGISTRY_JSON;
+  if (source === undefined) return null;
+  if (typeof source !== 'string' || !source.trim() ||
+      new TextEncoder().encode(source).byteLength > MAX_PROVIDER_REGISTRY_BYTES) {
+    throw new Error('Provider registry configuration is invalid.');
+  }
+  let registry;
+  try {
+    registry = JSON.parse(source);
+  } catch {
+    throw new Error('Provider registry configuration is invalid.');
+  }
+  let eligible;
+  try {
+    eligible = listEligibleModels(registry, {
+      task: 'chat',
+      now: new Date().toISOString(),
+      maxAgeMs: 24 * 60 * 60 * 1000,
+    });
+  } catch {
+    throw new Error('Provider registry configuration is invalid.');
+  }
+  const match = eligible.find(model =>
+    model.adapterId === provider &&
+    typeof model.providerModelId === 'string' &&
+    model.providerModelId === modelId
+  );
+  if (!match) throw new Error('Configured provider model is not eligible in the AEGIS registry.');
+  return match;
+}
+
+function enforceRegistryLimits(messages, model) {
+  if (!model) return MAX_OUTPUT_TOKENS;
+  const maxOutputTokens = Math.min(MAX_OUTPUT_TOKENS, model.maxOutputTokens);
+  // UTF-8 bytes are a conservative upper bound for text tokens; add per-message
+  // framing headroom rather than relying on an unavailable provider tokenizer.
+  const inputUpperBound = new TextEncoder().encode(JSON.stringify(messages)).byteLength +
+    (messages.length * 16);
+  if (inputUpperBound + maxOutputTokens > model.contextTokens) {
+    throw new Error('Model input exceeds the verified provider context limit.');
+  }
+  return maxOutputTokens;
+}
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > MAX_MESSAGES) {
@@ -136,7 +189,7 @@ function toAnthropicMessages(messages) {
   return { ...(system ? { system } : {}), messages: conversation };
 }
 
-async function createAnthropicStream({ env, messages, tools, fetchImpl }) {
+async function createAnthropicStream({ env, messages, tools, fetchImpl, maxOutputTokens }) {
   if (tools.length) throw new Error('Anthropic tool calling is not enabled.');
   const { key, model } = resolveAnthropicConfig(env);
   const input = toAnthropicMessages(messages);
@@ -153,7 +206,7 @@ async function createAnthropicStream({ env, messages, tools, fetchImpl }) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_tokens: maxOutputTokens,
         stream: true,
         ...input,
       }),
@@ -181,6 +234,9 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   if (!isSupportedProviderAdapter(provider)) {
     throw new Error('Unsupported AEGIS model provider.');
   }
+  const modelId = configuredModelId(provider, env);
+  const registryModel = resolveRegistryModel(env, provider, modelId);
+  const maxOutputTokens = enforceRegistryLimits(messages, registryModel);
 
   if (provider === 'workers-ai') {
     if (safeTools.length) throw new Error('Tool calling is not enabled for this Workers AI model.');
@@ -189,7 +245,7 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
     }
     const stream = await env.AI.run(WORKERS_AI_MODEL, {
       messages,
-      max_tokens: MAX_OUTPUT_TOKENS,
+      max_tokens: maxOutputTokens,
       stream: true,
     });
     if (!stream || typeof stream.getReader !== 'function') {
@@ -199,7 +255,7 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   }
 
   if (provider === 'anthropic') {
-    return createAnthropicStream({ env, messages, tools: safeTools, fetchImpl });
+    return createAnthropicStream({ env, messages, tools: safeTools, fetchImpl, maxOutputTokens });
   }
 
   if (provider !== 'alibaba-qwen') {
@@ -223,7 +279,7 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_tokens: maxOutputTokens,
         stream: true,
         ...(safeTools.length ? { tools: safeTools, tool_choice: 'auto' } : {}),
       }),
