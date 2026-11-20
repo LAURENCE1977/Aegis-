@@ -271,3 +271,17 @@ test('repeated inventory sync is idempotent and resets old health to unknown', a
   assert.equal(refreshed.healthState, 'unknown');
   assert.equal(refreshed.healthCheckedAt, null);
 });
+
+
+test('rejects future evidence timestamps and hides malformed persisted allowlists', async () => {
+  const db = new MemoryD1();
+  await assert.rejects(() => createIntegrationProvider(db, provider({
+    verifiedAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+  })), /future/i);
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  const created = await upsertIntegrationConnection(db, connection(), Date.now());
+  const stored = db.connections.get(created.id);
+  stored.allowed_tool_slugs_json = '["*"]';
+  assert.equal((await listIntegrationConnections(db, 'owner-1')).length, 0);
+});
