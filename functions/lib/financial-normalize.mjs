@@ -40,3 +40,87 @@ export function parseMoneyToMinorUnits({ amount, currency, minorUnitDigits } = {
     currency: currency.toUpperCase(),
   };
 }
+
+
+const PROVIDER_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
+const TRANSACTION_STATUSES = new Set(['pending', 'booked', 'reversed', 'deleted']);
+const ISO_TIMESTAMP_PATTERN = /^\\d{4}-\\d{2}-\\d{2}T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,3})?(?:Z|[+-](?:(?:0\\d|1[0-3]):[0-5]\\d|14:00))$/;
+
+function requireOpaqueIdentifier(value, label) {
+  if (
+    typeof value !== 'string'
+    || value.length < 1
+    || value.length > 256
+    || value.trim() !== value
+    || /[\\u0000-\\u001f\\u007f]/.test(value)
+  ) {
+    throw new TypeError(label + ' must be a bounded, non-empty identifier.');
+  }
+  return value;
+}
+
+function normalizeSourceTimestamp(value, label) {
+  if (typeof value !== 'string' || !ISO_TIMESTAMP_PATTERN.test(value)) {
+    throw new TypeError(label + ' must be an ISO timestamp with an explicit timezone.');
+  }
+
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    calendarDate.getUTCFullYear() !== year
+    || calendarDate.getUTCMonth() !== month - 1
+    || calendarDate.getUTCDate() !== day
+  ) {
+    throw new TypeError(label + ' must contain a valid calendar date.');
+  }
+
+  const milliseconds = Date.parse(value);
+  if (!Number.isFinite(milliseconds)) {
+    throw new TypeError(label + ' must be a valid ISO timestamp.');
+  }
+  return new Date(milliseconds).toISOString();
+}
+
+/**
+ * Normalize one provider transaction without losing its source identity.
+ * The external account reference must already be scoped to the owner/tenant
+ * by the trusted adapter; this pure function does not establish ownership.
+ */
+export function normalizeFinancialTransaction({
+  provider,
+  accountRef,
+  externalId,
+  amount,
+  currency,
+  minorUnitDigits,
+  occurredAt,
+  status,
+  sourceUpdatedAt = null,
+} = {}) {
+  if (typeof provider !== 'string' || !PROVIDER_PATTERN.test(provider)) {
+    throw new TypeError('Provider must be a lowercase provider slug.');
+  }
+  requireOpaqueIdentifier(accountRef, 'Account reference');
+  requireOpaqueIdentifier(externalId, 'External transaction ID');
+
+  if (!TRANSACTION_STATUSES.has(status)) {
+    throw new TypeError('Transaction status is not supported.');
+  }
+
+  const money = parseMoneyToMinorUnits({ amount, currency, minorUnitDigits });
+  const normalizedOccurredAt = normalizeSourceTimestamp(occurredAt, 'Transaction timestamp');
+  const normalizedSourceUpdatedAt = sourceUpdatedAt === null
+    ? null
+    : normalizeSourceTimestamp(sourceUpdatedAt, 'Source update timestamp');
+
+  return {
+    provider,
+    accountRef,
+    externalId,
+    amountMinor: money.amountMinor,
+    currency: money.currency,
+    occurredAt: normalizedOccurredAt,
+    status,
+    sourceUpdatedAt: normalizedSourceUpdatedAt,
+  };
+}
