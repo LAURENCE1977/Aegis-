@@ -18,7 +18,7 @@ function validateAcceptanceCriteria(value = []) {
     if (typeof item !== 'string') throw new TypeError('Acceptance criteria must be text.');
     const normalized = item.trim();
     if (!normalized || normalized.length > MAX_CRITERION_LENGTH ||
-        /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(normalized)) {
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(normalized)) {
       throw new TypeError('Each acceptance criterion must contain 1–240 safe characters.');
     }
     return normalized;
@@ -39,7 +39,7 @@ export function validateAgentRunSubmission(input) {
   }
   if (typeof input.objective !== 'string') throw new TypeError('Objective must be text.');
   const objective = input.objective.trim();
-  if (!objective || objective.length > MAX_OBJECTIVE_LENGTH || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(objective)) {
+  if (!objective || objective.length > MAX_OBJECTIVE_LENGTH || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(objective)) {
     throw new TypeError('Objective must contain 1–2000 safe characters.');
   }
   const specialists = input.specialists === undefined ? [...DEFAULT_SPECIALISTS] : input.specialists;
