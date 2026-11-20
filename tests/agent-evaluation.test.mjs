@@ -124,4 +124,7 @@ test('rejects candidates measured under different conditions or without safety e
   const missingSafetyEvidence = candidate('no-safety-evidence');
   delete missingSafetyEvidence.safetyEvidenceRef;
   assert.throws(() => experiment('balanced', [missingSafetyEvidence, candidate('other')]));
+  const unsafeSafetyEvidence = candidate('control-character-evidence');
+  unsafeSafetyEvidence.safetyEvidenceRef = 'bad\\u0000value';
+  assert.throws(() => experiment('balanced', [unsafeSafetyEvidence, candidate('other')]));
 });
