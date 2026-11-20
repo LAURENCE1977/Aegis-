@@ -87,7 +87,7 @@ The existing durable Outcome Planner now accepts bounded, unique assumptions and
 Generated plan records now expose:
 - the selected approach and a deterministic explanation tied to the declared priority;
 - the other approaches considered and a reason each was not selected;
-- explicit challenge questions, the strongest alternative and evidence that could change the recommendation;
+- explicit challenge questions, a clearly labelled unranked alternative to reassess, and evidence that could change the recommendation;
 - acceptance criteria and an evidence-required verification declaration.
 
-This is a deterministic planning scaffold, not a claim that an LLM has independently researched or validated the rationale. It does not yet infer assumptions, measure costs or performance, run parallel agents, or execute proposed work. The plan remains plan-only, has empty tool lists, invokes no external services and requires human approval plus Sentinel before any protected execution. The new metadata is persisted and returned without adding a database column or changing the legacy-row read path.
+This is a deterministic planning scaffold. Rejection reasons are now specific to the selected priority; the first non-recommended option is labelled for reassessment, not misrepresented as an independently ranked strongest alternative. This is not a claim that an LLM has independently researched or validated the rationale. It does not yet infer assumptions, measure costs or performance, run parallel agents, or execute proposed work. The plan remains plan-only, has empty tool lists, invokes no external services and requires human approval plus Sentinel before any protected execution. The new metadata is persisted and returned without adding a database column or changing the legacy-row read path.
