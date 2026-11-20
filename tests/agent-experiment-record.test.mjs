@@ -190,7 +190,7 @@ test('rejects a complete evaluation that contains unknown results or inconsisten
     ...incomplete.evaluation,
     candidates: incomplete.evaluation.candidates.map((item, index) =>
       index === 0
-        ? { ...item, criterionResults: item.criterionResults.map((result, resultIndex) =>
+        ? { ...item, passedCriteria: 1, unknownCriteria: 1, criterionResults: item.criterionResults.map((result, resultIndex) =>
             resultIndex === 0 ? { ...result, outcome: 'unknown', evidenceRef: null } : result
           ) }
         : item
