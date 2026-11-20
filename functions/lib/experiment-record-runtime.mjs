@@ -1,5 +1,3 @@
-const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
-
 function runtimeConfig(env) {
   if (typeof env?.AEGIS_RUNTIME_URL !== 'string' ||
       typeof env?.AEGIS_JOB_TOKEN !== 'string' ||
@@ -23,7 +21,7 @@ export async function callExperimentRuntime(env, principalId, path, {
   method = 'GET',
   body,
 } = {}) {
-  if (typeof principalId !== 'string' || !PRINCIPAL_PATTERN.test(principalId)) {
+  if (principalId !== 'owner') {
     return { ok: false, status: 500, payload: null };
   }
   const config = runtimeConfig(env);
