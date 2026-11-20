@@ -54,3 +54,23 @@ The supplied safety result is evidence metadata, not an AEGIS permission grant. 
 This is an initial comparison primitive, not an autonomous learning system. It creates a deterministic way to compare measured candidate outcomes and to abstain when evidence is insufficient. It does not yet establish that AEGIS improves over time, because no experiments are run and no outcomes are retained or fed back into future recommendations.
 
 The next engineering stages are: define reproducible benchmark scenarios; run only safe, isolated experiments; verify evidence provenance; record immutable experiment outcomes; evaluate recommendation quality over time; and propose any resulting policy or model changes for human review. No self-modification of Sentinel or production authority is permitted.
+
+
+## Immutable experiment record contract — initial source slice (20 November 2026)
+
+`workers/runtime/agent-experiment-record.mjs` now exports `createAgentExperimentRecord`, an asynchronous, side-effect-free record builder. It creates a versioned `aegis.experiment-record.v1` value containing the owner and source-run references, benchmark identity, a bounded measurement-context record, the deterministic evaluation and an evidence manifest.
+
+The measurement context records the benchmark/workload digest, runtime and version, region, concurrency, warm-up count, measured-run count and timeout. Every safety and pass/fail criterion reference, each candidate's cost and elapsed-time measurement, and the benchmark workload must resolve to a manifest entry with the matching evidence kind, a SHA-256 digest and a canonical UTC capture timestamp. The benchmark workload evidence digest must equal the workload digest recorded in the measurement context. Candidate metrics, criterion counts, safety exclusions, evaluation status and currency are validated; the deterministic evaluator is rerun from the normalized candidate inputs and any inconsistent recommendation or ranking is rejected before a record is produced. The record contains only an explicit field allowlist; arbitrary caller payload fields are not copied. Evidence and candidate ordering are canonicalised before the record digest is calculated, and the returned object is deeply frozen.
+
+**Evidence boundary:** the builder records digests and references; it does not fetch evidence, prove that a digest matches an external artifact, or independently establish that the declared measurement environment is truthful. A measurement-context ID is not a security credential or proof of reproducibility.
+
+This remains a pure record-contract slice. It does not run experiments, persist records, expose an API, update memory, change policy, invoke tools or authorise execution. Persistent append-only storage, evidence verification and an isolated experiment runner remain separate future stages.
+
+### Evidence manifest completeness hardening
+
+The record builder now rejects manifest entries that are not referenced by the benchmark context or evaluation. This keeps the evidence set minimal and auditable: every included artifact reference must support a specific recorded workload, cost, elapsed-time, safety or criterion measurement. It still records references and digests only; it does not independently retrieve or authenticate external artifacts.
+
+
+### Record digest verification
+
+`verifyAgentExperimentRecordDigest(record)` recomputes the canonical SHA-256 digest for a versioned record and returns false when the record is malformed, has an unexpected top-level field, or its contents no longer match the stored digest. This is an integrity/checksum check, not a digital signature or proof of origin: anyone able to replace both the record and its digest can recompute an unkeyed SHA-256 value. A future persistence boundary must protect stored records with authenticated ownership, append-only controls and an independently protected audit trail.
