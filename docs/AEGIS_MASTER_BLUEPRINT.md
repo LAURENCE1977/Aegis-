@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 20 November 2026.  
+**Canonical project record.** Last refreshed: 20 November 2026.
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
