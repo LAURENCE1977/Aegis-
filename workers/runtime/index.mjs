@@ -399,7 +399,7 @@ async function handleExperimentRecordRequest(request, env, url) {
   }
 
   if (url.pathname === collectionPath && request.method === 'POST') {
-    if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
       return json({ error: 'Content-Type must be application/json.' }, 415);
     }
     const declaredLength = Number(request.headers.get('Content-Length') || 0);
@@ -428,7 +428,7 @@ async function handleExperimentRecordRequest(request, env, url) {
     }
   }
 
-  const match = /^\\/v1\\/experiment-records\\/([^/]+)$/.exec(url.pathname);
+  const match = /^\/v1\/experiment-records\/([^/]+)$/.exec(url.pathname);
   if (!match) return json({ error: 'Not found.' }, 404);
   let recordId;
   try { recordId = decodeURIComponent(match[1]); } catch { return json({ error: 'Invalid experiment record identifier.' }, 400); }
