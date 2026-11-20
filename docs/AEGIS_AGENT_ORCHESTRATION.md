@@ -91,3 +91,12 @@ Generated plan records now expose:
 - acceptance criteria and an evidence-required verification declaration.
 
 This is a deterministic planning scaffold. Rejection reasons are now specific to the selected priority; the first non-recommended option is labelled for reassessment, not misrepresented as an independently ranked strongest alternative. This is not a claim that an LLM has independently researched or validated the rationale. It does not yet infer assumptions, measure costs or performance, run parallel agents, or execute proposed work. The plan remains plan-only, has empty tool lists, invokes no external services and requires human approval plus Sentinel before any protected execution. The new metadata is persisted and returned without adding a database column or changing the legacy-row read path.
+
+
+## Evidence-based experiment evaluation — initial runtime slice (20 November 2026)
+
+Added a pure deterministic evaluator in `workers/runtime/agent-evaluation.mjs`, with regression coverage in `tests/agent-evaluation.test.mjs`. It compares two to eight candidate outcomes against the same bounded acceptance criteria, requires one shared currency and measurement-context identifier, records evidence references for criterion and safety outcomes, and excludes candidates whose safety checks failed.
+
+Priority comparisons are explicit and lexicographic; balanced comparisons use a Pareto frontier. The evaluator abstains when safe candidate results are incomplete, when there is no safe candidate, or when trade-offs/ties do not support a unique winner. Evidence references and the caller-supplied measurement-context identifier are recorded, not independently verified.
+
+This is not yet an experiment runner or learning loop. It makes no model/tool/provider calls, executes no experiments, persists no results, changes no memory or policy and grants no permissions. Sentinel and human approval remain mandatory for protected operations. Full contract and limitations: [AEGIS Experiment Evaluation](AEGIS_EXPERIMENT_EVALUATION.md).
