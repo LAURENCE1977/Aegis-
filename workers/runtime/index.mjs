@@ -364,12 +364,12 @@ async function getJob(request, env, id) {
   return json({ job: parseJob(row) });
 }
 
-const EXPERIMENT_PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
 const MAX_EXPERIMENT_RECORD_BODY_BYTES = 300 * 1024;
 
 function trustedExperimentPrincipal(request) {
-  const value = request.headers.get('X-Aegis-Principal');
-  return typeof value === 'string' && EXPERIMENT_PRINCIPAL_PATTERN.test(value) ? value : null;
+  // The current application is single-owner. Do not accept arbitrary tenant
+  // identifiers until a signed multi-user principal assertion is implemented.
+  return request.headers.get('X-Aegis-Principal') === 'owner' ? 'owner' : null;
 }
 
 async function handleExperimentRecordRequest(request, env, url) {
