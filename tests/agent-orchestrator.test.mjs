@@ -166,7 +166,7 @@ test('rejects unsafe, duplicate, excessive or oversized assumptions and constrai
     { assumptions: ['duplicate', 'duplicate'] },
     { assumptions: ['x'.repeat(241)] },
     { assumptions: Array.from({ length: 9 }, (_, i) => 'assumption ' + i) },
-    { constraints: ['bad\\u0000value'] },
+    { constraints: ['bad\u0000value'] },
     { constraints: ['same', 'same'] },
     { constraints: Array.from({ length: 9 }, (_, i) => 'constraint ' + i) },
   ]) {
