@@ -44,9 +44,9 @@ test('/api/ask uses the configured Anthropic adapter without requiring a Workers
     fetchImpl: async (url, options) => {
       captured = { url, options };
       return new Response(sseStream([
-        'event: content_block_delta\\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello from "}}\\n\\n',
-        'event: content_block_delta\\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Anthropic"}}\\n\\n',
-        'event: message_stop\\ndata: {"type":"message_stop"}\\n\\n',
+        'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello from "}}\n\n',
+        'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Anthropic"}}\n\n',
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
@@ -73,8 +73,8 @@ test('/api/ask uses the configured Qwen adapter rather than calling Workers AI d
     fetchImpl: async (url, options) => {
       captured = { url, options };
       return new Response(sseStream([
-        'data: {"choices":[{"delta":{"content":"Hello from Qwen"}}]}\\n\\n',
-        'data: [DONE]\\n\\n',
+        'data: {"choices":[{"delta":{"content":"Hello from Qwen"}}]}\n\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
@@ -96,7 +96,7 @@ test('/api/ask keeps the Workers AI default adapter and JSON response contract',
         async run(selectedModel, input) {
           model = selectedModel;
           payload = input;
-          return sseStream(['data: {"response":"Hello from Workers AI"}\\n\\n', 'data: [DONE]\\n\\n']);
+          return sseStream(['data: {"response":"Hello from Workers AI"}\n\n', 'data: [DONE]\n\n']);
         },
       },
     },
