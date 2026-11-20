@@ -363,6 +363,10 @@ function validateEvidence(value, requiredEvidence) {
     }
     if (entry.kind !== kind) throw new TypeError('Evidence kind does not match the referenced evaluation result.');
   }
+  const unreferenced = evidence.filter((item) => !requiredEvidence.has(item.ref));
+  if (unreferenced.length > 0) {
+    throw new TypeError('Evidence manifest cannot contain unreferenced evidence entries.');
+  }
   return evidence;
 }
 
