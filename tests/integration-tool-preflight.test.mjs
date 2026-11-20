@@ -83,3 +83,10 @@ test('rejects revoked, disabled and expired health evidence', () => {
   assert.equal(evaluate({ connection: { ...connection, status: 'disabled' } }).reason, 'connection_not_connected');
   assert.equal(evaluate({ connection: { ...connection, healthCheckedAt: '2026-11-19T10:00:00.000Z' } }).reason, 'health_evidence_stale');
 });
+
+test('rejects auth modes that do not match the connection type', () => {
+  assert.equal(evaluate({ connection: { ...connection, connectionType: 'public_no_auth', authMode: 'api_key' } }).reason, 'connection_auth_mismatch');
+  assert.equal(evaluate({ connection: { ...connection, connectionType: 'instant_platform_managed', authMode: 'api_key' } }).reason, 'connection_auth_mismatch');
+  assert.equal(evaluate({ connection: { ...connection, connectionType: 'workspace_shared', authMode: 'oauth2_client_credentials', platformConnectionId: null } }).reason, 'connection_credential_missing');
+  assert.equal(evaluate({ connection: { ...connection, connectionType: 'public_no_auth', authMode: 'none_public', platformConnectionId: 'unexpected-link' } }).reason, 'connection_auth_mismatch');
+});
