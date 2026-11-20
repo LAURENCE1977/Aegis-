@@ -21,8 +21,8 @@ const request = {
   },
 };
 
-const provider = { id: 'composio', status: 'reviewed' };
-const integration = { id: 'composio-github', providerId: 'composio', status: 'reviewed' };
+const provider = { id: 'composio', status: 'reviewed', verifiedAt: '2026-11-20T11:00:00.000Z' };
+const integration = { id: 'composio-github', providerId: 'composio', status: 'reviewed', schemaVersion: 'v1', schemaHash: 'sha256:' + 'a'.repeat(64) };
 const connection = {
   id: 'integration-connection-1',
   principalId: 'owner',
