@@ -65,3 +65,7 @@ The measurement context records the benchmark/workload digest, runtime and versi
 **Evidence boundary:** the builder records digests and references; it does not fetch evidence, prove that a digest matches an external artifact, or independently establish that the declared measurement environment is truthful. A measurement-context ID is not a security credential or proof of reproducibility.
 
 This remains a pure record-contract slice. It does not run experiments, persist records, expose an API, update memory, change policy, invoke tools or authorise execution. Persistent append-only storage, evidence verification and an isolated experiment runner remain separate future stages.
+
+### Evidence manifest completeness hardening
+
+The record builder now rejects manifest entries that are not referenced by the benchmark context or evaluation. This keeps the evidence set minimal and auditable: every included artifact reference must support a specific recorded workload, cost, elapsed-time, safety or criterion measurement. It still records references and digests only; it does not independently retrieve or authenticate external artifacts.
