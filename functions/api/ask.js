@@ -23,6 +23,10 @@ export async function onRequestPost(context) {
   try { body = await request.json(); } catch (e) { return json({ error: "Invalid request" }, 400); }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (!question) return json({ error: "Prompt required" }, 400);
+  const provider = env.AEGIS_MODEL_PROVIDER || "workers-ai";
+  if (provider === "workers-ai" && (!env.AI || typeof env.AI.run !== "function")) {
+    return json({ error: "No AI provider configured" }, 503);
+  }
   const messages = await buildAskMessages(env, question, body.history);
 
   try {
