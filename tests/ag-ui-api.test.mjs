@@ -424,3 +424,30 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
+
+
+test('AG-UI rejects unsupported work-focus values before model access', async () => {
+  const response = await onRequestPost({
+    request: await request(input({ workFocus: 'unrestricted-admin' })),
+    env: { ...envBase, AI: { async run() { throw new Error('must not run'); } } },
+  });
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /work focus/i);
+});
+
+test('AG-UI applies the selected work focus as bounded reasoning guidance, never as permission', async () => {
+  let captured;
+  const response = await onRequestPost({
+    request: await request(input({ workFocus: 'research' })),
+    env: {
+      ...envBase,
+      AI: { async run(model, payload) {
+        captured = payload;
+        return modelSseStream(['data: {"response":"Research ready."}\\n\\n', 'data: [DONE]\\n\\n']);
+      } },
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.match(captured.messages[0].content, /research and intelligence/i);
+  assert.match(captured.messages[0].content, /does not grant tools, access, permissions, or approval/i);
+});
