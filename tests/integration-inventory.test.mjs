@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   createIntegrationProvider,
   createIntegrationDefinition,
+  listIntegrationProviders,
+  listIntegrationDefinitions,
   upsertIntegrationConnection,
   loadIntegrationConnection,
   listIntegrationConnections,
@@ -90,6 +92,14 @@ class MemoryD1 {
         return null;
       },
       async all() {
+        if (sql.includes('FROM integration_providers')) {
+          const [limit] = this.values;
+          return { results: [...db.providers.values()].sort((a, b) => a.display_name.localeCompare(b.display_name)).slice(0, limit).map(row => ({ ...row })) };
+        }
+        if (sql.includes('FROM integration_definitions')) {
+          const [limit] = this.values;
+          return { results: [...db.integrations.values()].sort((a, b) => a.display_name.localeCompare(b.display_name)).slice(0, limit).map(row => ({ ...row })) };
+        }
         const [principalId, limit] = this.values;
         return { results: [...db.connections.values()]
           .filter(row => row.principal_id === principalId)
@@ -350,4 +360,34 @@ test('inventory sync cannot directly claim connected before a timestamped health
   await assert.rejects(() => upsertIntegrationConnection(db, connection({
     status: 'connected',
   }), Date.now()), /status/i);
+});
+
+
+test('provider and integration catalogue reads are bounded and return separate definitions', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  const providers = await listIntegrationProviders(db);
+  const integrations = await listIntegrationDefinitions(db);
+  assert.equal(providers.length, 1);
+  assert.equal(providers[0].id, 'composio');
+  assert.equal(integrations.length, 1);
+  assert.equal(integrations[0].providerId, 'composio');
+  await assert.rejects(() => listIntegrationProviders(db, 101), /limit/i);
+  await assert.rejects(() => listIntegrationDefinitions(db, 201), /limit/i);
+});
+
+test('stale health observations downgrade connected status to unverified', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  const created = await upsertIntegrationConnection(db, connection(), Date.now());
+  const checkedAt = new Date().toISOString();
+  assert.equal(await recordIntegrationHealth(db, {
+    id: created.id, principalId: 'owner-1', healthState: 'healthy', checkedAt,
+  }), true);
+  const stale = await listIntegrationConnections(db, 'owner-1', 100, Date.now() + 25 * 60 * 60 * 1000);
+  assert.equal(stale[0].status, 'connected_unverified');
+  assert.equal(stale[0].healthState, 'unknown');
+  assert.equal(stale[0].healthCheckedAt, null);
 });
