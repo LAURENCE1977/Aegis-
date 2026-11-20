@@ -41,10 +41,23 @@ export function evaluateIntegrationToolPreflight({
     return deny('preflight_identity_invalid');
   }
   if (provider.status !== 'reviewed') return deny('provider_not_reviewed');
+  if (typeof provider.verifiedAt !== 'string') return deny('provider_verification_missing');
+  const providerVerifiedAt = Date.parse(provider.verifiedAt);
+  if (!Number.isFinite(providerVerifiedAt) ||
+      new Date(providerVerifiedAt).toISOString() !== provider.verifiedAt ||
+      providerVerifiedAt > now + FUTURE_CLOCK_SKEW_MS) {
+    return deny('provider_verification_invalid');
+  }
   if (integration.status !== 'reviewed') return deny('integration_not_reviewed');
+  if (typeof integration.schemaVersion !== 'string' || !integration.schemaVersion.trim() ||
+      typeof integration.schemaHash !== 'string' ||
+      !/^sha256:[a-f0-9]{64}$/.test(integration.schemaHash)) {
+    return deny('integration_schema_unverified');
+  }
   if (provider.id !== integration.providerId) return deny('provider_integration_mismatch');
   if (connection.principalId !== principalId) return deny('connection_principal_mismatch');
   if (connection.integrationId !== integration.id) return deny('connection_integration_mismatch');
+  if (connection.revokedAt !== undefined && connection.revokedAt !== null) return deny('connection_revoked');
   if (connection.status !== 'connected') return deny('connection_not_connected');
   if (!['owner_private', 'workspace_shared', 'instant_platform_managed', 'public_no_auth'].includes(connection.connectionType)) {
     return deny('connection_type_unsupported');

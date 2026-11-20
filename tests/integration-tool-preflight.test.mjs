@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { evaluateIntegrationToolPreflight } from '../functions/lib/integration-tool-preflight.mjs';
 
 const now = Date.parse('2026-11-20T12:00:00.000Z');
-const provider = { id: 'composio', status: 'reviewed' };
-const integration = { id: 'composio-github', providerId: 'composio', status: 'reviewed' };
+const provider = { id: 'composio', status: 'reviewed', verifiedAt: '2026-11-20T10:00:00.000Z' };
+const integration = { id: 'composio-github', providerId: 'composio', status: 'reviewed', schemaVersion: 'v1', schemaHash: 'sha256:' + 'a'.repeat(64) };
 const connection = {
   id: 'connection-github-personal',
   principalId: 'owner',
@@ -89,4 +89,19 @@ test('rejects auth modes that do not match the connection type', () => {
   assert.equal(evaluate({ connection: { ...connection, connectionType: 'instant_platform_managed', authMode: 'api_key' } }).reason, 'connection_auth_mismatch');
   assert.equal(evaluate({ connection: { ...connection, connectionType: 'workspace_shared', authMode: 'oauth2_client_credentials', platformConnectionId: null } }).reason, 'connection_credential_missing');
   assert.equal(evaluate({ connection: { ...connection, connectionType: 'public_no_auth', authMode: 'none_public', platformConnectionId: 'unexpected-link' } }).reason, 'connection_auth_mismatch');
+});
+
+test('rejects a connected record that also carries a revocation timestamp', () => {
+  assert.equal(evaluate({ connection: { ...connection, revokedAt: '2026-11-20T11:45:00.000Z' } }).reason, 'connection_revoked');
+});
+
+test('requires timestamped provider verification evidence for reviewed providers', () => {
+  assert.equal(evaluate({ provider: { id: 'composio', status: 'reviewed' } }).reason, 'provider_verification_missing');
+  assert.equal(evaluate({ provider: { ...provider, verifiedAt: '2026-11-20T12:02:00.000Z' } }).reason, 'provider_verification_invalid');
+  assert.equal(evaluate({ provider: { ...provider, verifiedAt: 'not-a-date' } }).reason, 'provider_verification_invalid');
+});
+
+test('requires a versioned, SHA-256-pinned integration schema before Sentinel review', () => {
+  assert.equal(evaluate({ integration: { ...integration, schemaVersion: null } }).reason, 'integration_schema_unverified');
+  assert.equal(evaluate({ integration: { ...integration, schemaHash: 'sha256:bad' } }).reason, 'integration_schema_unverified');
 });
