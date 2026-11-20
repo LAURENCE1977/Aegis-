@@ -588,3 +588,8 @@ Use baseline comparisons and representative test tasks. Do not claim superiority
 
 This doctrine extends the existing AEGIS mission and architecture. It does not authorise a replacement project, a second permission system, an automatic integration import, a production deployment or a change to existing credentials. Existing verified implementation and limitations remain authoritative until changed and tested.
 
+
+
+## 10. Adaptive workspace design contract (20 November 2026)
+
+The task-adaptive interface is specified in [AEGIS Adaptive Workspace](AEGIS_ADAPTIVE_WORKSPACE.md). It defines stable orientation and control layers with task-specific work surfaces, a safe versioned surface-selection contract, mobile-first interaction principles, visible task state, evidence/provenance presentation and Sentinel-enforced action boundaries. This is a design contract and roadmap, not a claim that the proposed surfaces are implemented. The existing compact `index.html` shell and companion renderer remain in place; implementation must begin with an inventory and preserve existing routes and behaviour.
