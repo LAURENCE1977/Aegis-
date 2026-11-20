@@ -39,6 +39,8 @@ jobs:
         run: wrangler d1 execute aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1 --file scripts/capability-d1-smoke.sql
       - name: Verify integration inventory constraints
         run: bash scripts/capability-d1-integration-inventory-checks.sh
+      - name: Verify append-only integration connection audit
+        run: bash scripts/capability-d1-integration-audit-checks.sh
 
       - name: Verify atomic per-action rate-limit reservation
         run: wrangler d1 execute aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1 --file scripts/capability-d1-rate-limit.sql
