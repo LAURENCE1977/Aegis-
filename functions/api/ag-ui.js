@@ -19,6 +19,7 @@ import {
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGES = 11;
 const MAX_TEXT = 4000;
+const WORK_FOCI = new Set(["general", "research", "build", "creative", "strategy", "operations"]);
 const MAX_OUTPUT = 12000;
 const MAX_TOOL_RESULT = 4000;
 const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
@@ -85,7 +86,7 @@ export async function onRequestPost(context) {
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
-    promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
+    promptMessages = await buildAskMessages(env, latest.content, history, { projectId, workFocus: input.workFocus || "general" });
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
@@ -396,7 +397,7 @@ function boundedToolResult(result) {
 
 function validateRunInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return "Invalid AG-UI request.";
-  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId"].includes(key))) return "Unsupported AG-UI request fields.";
+  if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId", "workFocus"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
