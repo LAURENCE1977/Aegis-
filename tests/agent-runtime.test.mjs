@@ -270,7 +270,8 @@ test('persists explicit assumptions and constraints in the plan without granting
   assert.ok(plan.decision.rationale.length > 0);
   assert.ok(plan.decision.alternativesConsidered.every(item => item.reasonNotSelected.length > 0));
   assert.ok(plan.criticalReview.challengeQuestions.length > 0);
-  assert.ok(plan.criticalReview.strongestAlternative);
+  assert.ok(plan.criticalReview.alternativeToReassess.name);
+  assert.match(plan.criticalReview.alternativeToReassess.selectionNote, /not independently ranked/);
   assert.equal(plan.execution, 'plan-only');
   assert.equal(plan.safety.toolsInvoked, false);
   assert.equal(plan.safety.sentinelRequiredForExecution, true);
