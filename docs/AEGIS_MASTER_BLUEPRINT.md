@@ -609,3 +609,10 @@ The runtime persists the new values in a version-tolerant JSON envelope inside t
 The implementation and research provenance are recorded in [AEGIS durable agent orchestration](AEGIS_AGENT_ORCHESTRATION.md). The OpnForm, Morphic and Open-Morphic repositories were evaluated as architectural references only; no source code or dependencies were imported. Their licence obligations and adapter-first adoption decisions are documented there.
 
 This is a first structured outcome-planning slice, not a completed autonomous planner. Next work should connect plans to the owner-visible workspace, add explicit checkpoint/result evidence, and only then use verified capability metadata to improve strategy selection. Sentinel remains the sole authority for protected execution.
+
+
+## 9.11 Financial intelligence capability proposal (20 November 2026)
+
+The financial capability is an AEGIS feature, not a separate product. Its first phase is owner-authorised, read-only financial awareness for cash-flow, accounting, payment reconciliation and evidence-based opportunity evaluation. The provider-neutral data contract, source/freshness/reconciliation rules, UK-oriented Composio discovery results, Sentinel action tiers and initial acceptance criteria are recorded in [AEGIS Financial Intelligence](AEGIS_FINANCIAL_INTELLIGENCE.md).
+
+Composio discovery surfaced Xero and FreeAgent as strong initial UK accounting candidates, with Wise for multi-currency visibility, GoCardless for direct-debit settlements and Stripe for AEGIS subscription/payment reporting. QuickBooks and Plaid are alternatives subject to actual owner needs and UK coverage verification. No finance toolkit was active in the discovery response; no account data was accessed and no new connection was created. The next integration choice remains with the owner. Read-only access comes first; all consequential writes remain Sentinel-gated and human-approved.
