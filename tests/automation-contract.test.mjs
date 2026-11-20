@@ -215,9 +215,10 @@ test('rejects unsafe JSON input, oversized payloads and prototype-pollution keys
     ...base,
     steps: [{ ...step, input: JSON.parse('{"__proto__":{"admin":true}}') }],
   }));
+  const tooDeep = { nested: { a: { b: { c: { d: { e: 'too deep' } } } } } };
   assert.throws(() => validateAutomationDefinition({
     ...base,
-    steps: [{ ...step, input: { nested: { a: { b: { c: { d: { e: 'too deep' } } } } } }],
+    steps: [{ ...step, input: tooDeep }],
   }));
   assert.throws(() => validateAutomationDefinition({
     ...base,
