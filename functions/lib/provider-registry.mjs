@@ -38,12 +38,21 @@ function validHttpsUrl(value, label) {
   return value;
 }
 
-function validateProviderModelId(value) {\n  if (typeof value !== 'string' || value.length > 180 ||\n      !/^[A-Za-z0-9@][A-Za-z0-9@._/-]*$/.test(value) ||\n      value.includes('//') || value.split('/').some(part => !part || part === '.' || part === '..')) {\n    throw new TypeError('Invalid provider model identifier');\n  }\n}\n\nfunction validateModel(model, ids) {
+function validateProviderModelId(value) {
+  if (typeof value !== 'string' || value.length > 180 ||
+      !/^[A-Za-z0-9@][A-Za-z0-9@._/-]*$/.test(value) ||
+      value.includes('//') || value.split('/').some(part => !part || part === '.' || part === '..')) {
+    throw new TypeError('Invalid provider model identifier');
+  }
+}
+
+function validateModel(model, ids) {
   exactKeys(model, MODEL_KEYS, 'model');
   if (typeof model.id !== 'string' || !ID.test(model.id) || ids.has(model.id)) {
     throw new TypeError('Invalid or duplicate model identifier');
   }
   ids.add(model.id);
+  if (model.providerModelId !== undefined) validateProviderModelId(model.providerModelId);
   validHttpsUrl(model.sourceUrl, 'Model source');
   validTimestamp(model.verifiedAt, 'model verification');
   positiveInteger(model.contextTokens, 'model context window');
@@ -111,6 +120,7 @@ export function listEligibleModels(registry, { task, now, maxAgeMs = 86400000 } 
           nowMs - modelVerifiedMs > maxAgeMs) continue;
       result.push(Object.freeze({
         id: model.id,
+        providerModelId: model.providerModelId ?? null,
         providerId: provider.id,
         adapterId: provider.adapterId,
         sourceUrl: model.sourceUrl,
