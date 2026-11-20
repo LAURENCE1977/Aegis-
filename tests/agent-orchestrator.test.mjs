@@ -152,7 +152,8 @@ test('validates bounded assumptions and constraints and exposes a contrarian rev
   assert.equal(plan.decision.alternativesConsidered.length, 2);
   assert.ok(plan.decision.alternativesConsidered.every((item) => item.reasonNotSelected.length > 0));
   assert.ok(plan.criticalReview.challengeQuestions.length >= 3);
-  assert.ok(plan.criticalReview.strongestAlternative);
+  assert.ok(plan.criticalReview.alternativeToReassess.name);
+  assert.match(plan.criticalReview.alternativeToReassess.selectionNote, /not independently ranked/);
   assert.ok(plan.criticalReview.evidenceNeededToChangeRecommendation.length > 0);
   assert.deepEqual(plan.verification.criteria, []);
   assert.equal(plan.verification.completionRequiresEvidence, true);
