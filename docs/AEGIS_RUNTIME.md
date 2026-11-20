@@ -175,3 +175,5 @@ The Pages bridge requires HTTPS `AEGIS_RUNTIME_URL` and the same `AEGIS_JOB_TOKE
 Logical deletion remains a tombstone, not physical erasure. Retention duration, backup expiry and authorised purge/erasure remain separate gates. No production runtime Worker or live D1 database was provisioned or deployed by this source change.
 
 The runtime bridge currently accepts only the fixed `owner` principal header. It rejects arbitrary tenant identifiers; multi-user principal assertions are not implemented.
+
+Once tombstoned, a record cannot be restored by repeating the original append. Reusing the same principal/record ID remains blocked; a new experiment must receive a new record ID.
