@@ -124,3 +124,117 @@ export function normalizeFinancialTransaction({
     sourceUpdatedAt: normalizedSourceUpdatedAt,
   };
 }
+
+
+const ACCOUNT_STATUSES = new Set(['read_only', 'disabled', 'revoked']);
+const SYNC_STATUSES = new Set(['running', 'complete', 'partial', 'failed']);
+const FAILURE_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,79}$/;
+
+/**
+ * Normalize an owner-scoped financial account reference.
+ * connectionRef is an opaque AEGIS inventory identifier, never a credential
+ * and never proof that the integration is currently authorised.
+ */
+export function normalizeFinancialAccount({
+  ownerId,
+  provider,
+  connectionRef,
+  externalAccountRef,
+  currency = null,
+  status = 'read_only',
+  createdAt,
+  updatedAt,
+} = {}) {
+  requireOpaqueIdentifier(ownerId, 'Owner ID');
+  if (typeof provider !== 'string' || !PROVIDER_PATTERN.test(provider)) {
+    throw new TypeError('Provider must be a lowercase provider slug.');
+  }
+  requireOpaqueIdentifier(connectionRef, 'AEGIS connection reference');
+  requireOpaqueIdentifier(externalAccountRef, 'External account reference');
+
+  const normalizedCurrency = currency === null
+    ? null
+    : typeof currency === 'string' && CURRENCY_PATTERN.test(currency.toUpperCase())
+      ? currency.toUpperCase()
+      : (() => { throw new TypeError('Account currency must be a three-letter code or null.'); })();
+
+  if (!ACCOUNT_STATUSES.has(status)) {
+    throw new TypeError('Financial account status is not supported.');
+  }
+
+  return {
+    ownerId,
+    provider,
+    connectionRef,
+    externalAccountRef,
+    currency: normalizedCurrency,
+    status,
+    createdAt: normalizeSourceTimestamp(createdAt, 'Account creation timestamp'),
+    updatedAt: normalizeSourceTimestamp(updatedAt, 'Account update timestamp'),
+  };
+}
+
+/**
+ * Normalize sync completeness metadata. A run cannot be called complete
+ * without an explicit completion timestamp; failed runs require a bounded
+ * machine-readable code. Partial reads remain explicitly partial.
+ */
+export function normalizeFinancialSyncRun({
+  ownerId,
+  accountId,
+  status,
+  pagesRead = 0,
+  recordsRead = 0,
+  startedAt,
+  completedAt = null,
+  failureCode = null,
+} = {}) {
+  requireOpaqueIdentifier(ownerId, 'Owner ID');
+  requireOpaqueIdentifier(accountId, 'Financial account ID');
+
+  if (!SYNC_STATUSES.has(status)) {
+    throw new TypeError('Financial sync status is not supported.');
+  }
+  if (!Number.isSafeInteger(pagesRead) || pagesRead < 0 ||
+      !Number.isSafeInteger(recordsRead) || recordsRead < 0) {
+    throw new TypeError('Financial sync counters must be non-negative safe integers.');
+  }
+
+  const normalizedStartedAt = normalizeSourceTimestamp(startedAt, 'Sync start timestamp');
+  const normalizedCompletedAt = completedAt === null
+    ? null
+    : normalizeSourceTimestamp(completedAt, 'Sync completion timestamp');
+
+  if (status === 'running' && normalizedCompletedAt !== null) {
+    throw new TypeError('A running sync cannot have a completion timestamp.');
+  }
+  if (status !== 'running' && normalizedCompletedAt === null) {
+    throw new TypeError('A terminal sync requires a completion timestamp.');
+  }
+  if (normalizedCompletedAt !== null &&
+      Date.parse(normalizedCompletedAt) < Date.parse(normalizedStartedAt)) {
+    throw new TypeError('Sync completion cannot precede its start.');
+  }
+
+  if (failureCode !== null &&
+      (typeof failureCode !== 'string' || !FAILURE_CODE_PATTERN.test(failureCode))) {
+    throw new TypeError('Financial sync failure code must be a bounded machine-readable code.');
+  }
+  if (status === 'failed' && failureCode === null) {
+    throw new TypeError('A failed sync requires a failure code.');
+  }
+  if (status === 'complete' && failureCode !== null) {
+    throw new TypeError('A complete sync cannot carry a failure code.');
+  }
+
+  return {
+    ownerId,
+    accountId,
+    status,
+    pagesRead,
+    recordsRead,
+    startedAt: normalizedStartedAt,
+    completedAt: normalizedCompletedAt,
+    failureCode,
+  };
+}
