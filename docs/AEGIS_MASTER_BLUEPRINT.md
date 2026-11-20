@@ -478,3 +478,113 @@ A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION
 - Latest verified head before this documentation follow-up: `088da9d0edbdd667145ea60e9f97f1654494da0e`. GitHub Actions run [44773913803](https://github.com/LAURENCE1977/Aegis-/actions/runs/44773913803) passed **485 Node.js tests, 0 failures**, plus all isolated D1 migration, integration-inventory, audit, rate-limit, grant and Forge checks.
 - Next gates: reconcile the full Composio inventory; verify `platformAccountId` maps to Composio's exact `connected_account_id`; implement vault-backed project-key resolution only after Sentinel authorization; verify Composio user identity/2FA requirements; pin tool schemas/versions; then complete one exact read-only invocation through the existing Sentinel route with grant, approval, audit, output redaction and replay protections.
 - No production D1 migration, secret configuration, merge, production deployment or external action has been performed. See `docs/AEGIS_INTEGRATION_CONTROL_PLANE.md` for the detailed adapter boundary and remaining acceptance criteria.
+
+## 9. AEGIS Adaptive Intelligence Doctrine — foundational design direction (20 November 2026)
+
+### 9.1 Identity: capability without a fixed category
+
+AEGIS must not be designed as merely a chatbot, copilot, agent framework, automation dashboard or collection of integrations. Those are possible interaction patterns and capabilities, not its identity.
+
+**Foundational principle:** AEGIS is an adaptive intelligence environment that selects, combines and develops appropriate ways of working around the user's intended outcome. Its identity is defined by its ability to understand, adapt and accomplish—not by one fixed product category, model, interface or workflow.
+
+This is a design doctrine and target direction, not a claim that all capabilities already exist.
+
+### 9.2 Adaptive problem-solving
+
+For each meaningful task, the orchestration layer should be able to select from multiple complementary approaches, as appropriate:
+
+- analytical decomposition and explicit reasoning steps;
+- creative exploration and unconventional alternatives;
+- strategic planning, dependencies and long-term consequences;
+- critical challenge, counterarguments and assumption testing;
+- experimental prototyping and evidence gathering;
+- synthesis across disciplines, models, tools and knowledge sources.
+
+These are selectable problem-solving strategies, not six mandatory agents for every request. AEGIS should use the smallest effective combination, avoid redundant model calls and explain material uncertainty. It must distinguish sourced facts, inference, hypotheses and proposals.
+
+### 9.3 Outcome-first orchestration
+
+The system should interpret the user's intended outcome, constraints and success criteria before selecting a workflow. It should then:
+
+1. Clarify only essential ambiguity.
+2. Decompose the outcome into bounded work units.
+3. Inspect existing workspace knowledge, approved capabilities and available resources.
+4. Compare viable approaches, including non-obvious combinations.
+5. Select a proportionate plan based on quality, time, privacy, reliability, cost and risk.
+6. Execute permitted steps, checkpoint progress and preserve provenance.
+7. Verify results against explicit acceptance criteria.
+8. Explain what succeeded, what remains uncertain and what needs human approval.
+9. Capture reusable workflow learning without silently changing permissions or trusted policy.
+
+AEGIS may change strategy when evidence, constraints or results change. It should not loop, repeatedly retry an unchanged failure or claim success without verification.
+
+### 9.4 Capability discovery and composition
+
+The expanding Composio ecosystem and other providers are potential capability sources, not the product itself and not authorities over AEGIS permissions.
+
+AEGIS should progressively support a capability lifecycle:
+
+Discover → classify → inspect schema → verify source and version → assess licence, privacy, cost and risk → test in isolation → map to a stable AEGIS capability contract → review → grant exact permission → invoke through Sentinel → observe → revoke or retire.
+
+The system should be able to compose several approved capabilities into a new workflow without creating a new hard-coded integration for every combination. Provider-specific details belong behind replaceable adapters. A discovered tool is not automatically trusted, connected, healthy, granted or executable.
+
+### 9.5 Creative adaptation without authority escalation
+
+When a direct route is unavailable, AEGIS should investigate legitimate alternatives: different approved tools, a different sequence, local processing, a smaller task decomposition or a new proposal for a capability.
+
+It may freely propose new methods, prototypes and improvements within its sandbox. It must never:
+- bypass Sentinel, grants, approvals, budgets, audit or revocation;
+- self-approve, self-issue credentials or expand its own permissions;
+- disguise a write action as a read action;
+- silently switch providers where data handling, privacy or cost materially changes;
+- execute untrusted code in the control plane;
+- claim that an unavailable capability was used or that an unverified result is complete.
+
+**Design boundary:** be expansive in ideas and adaptive in method; remain least-privileged and human-governed in action.
+
+### 9.6 A living, task-adaptive workspace
+
+The interface should be a coherent environment rather than a conventional chat-first dashboard. The workspace remains the source of truth; chat and voice are interaction channels.
+
+The interface should adapt its working surface to the task while retaining consistent navigation, identity and control:
+- research: sources, evidence, comparisons and findings;
+- software/build work: project files, plans, diffs, tests and checkpoints;
+- operations: jobs, status, dependencies, approvals and audit;
+- creative work: briefs, drafts, assets and iterations;
+- knowledge work: connected concepts, provenance, decisions and reusable outputs.
+
+Avoid decorative complexity and novelty that harms usability. Prefer progressive disclosure, accessible mobile-first layouts, keyboard/voice alternatives, clear system status and controls that actually work. The user should be able to see what AEGIS is doing, why it chose an approach, what data/tools it is using and where it needs permission.
+
+### 9.7 Controlled evolution and learning
+
+AEGIS should identify recurring friction, failed workflows, capability gaps and promising new methods. It may prepare improvement proposals, compare alternatives and run isolated experiments. Durable changes require evidence, regression tests, provenance, rollback and the relevant owner approval.
+
+Learning should primarily improve explicit workspace knowledge, reusable plans, capability metadata and tested workflow templates—not pretend to modify foundation-model weights. Preserve source, version, confidence, applicability and expiry/freshness for learned records. Allow correction and removal through governed data lifecycle controls.
+
+### 9.8 Evaluation: prove that adaptive behaviour is better
+
+Evaluate the doctrine using measurable task outcomes, not claims of being unique. Candidate measures include:
+- task success against user-defined acceptance criteria;
+- factual accuracy and evidence coverage;
+- unnecessary tool/model calls and total cost;
+- latency and completion reliability;
+- recovery from unavailable tools or failed approaches;
+- privacy and permission-policy compliance;
+- repeatability and regression rate;
+- user effort and clarity of progress;
+- quality of alternatives considered when the first approach fails.
+
+Use baseline comparisons and representative test tasks. Do not claim superiority without reproducible evidence.
+
+### 9.9 Delivery sequence
+
+1. **Doctrine and contracts:** preserve this direction in the master blueprint; translate it into explicit orchestration, capability and UI contracts.
+2. **Capability intelligence:** improve the registry so discovery, schema evidence, connection state, health, grants and execution eligibility remain distinct.
+3. **Outcome planner:** introduce task decomposition, strategy selection, checkpoints and explicit success criteria without changing existing permission paths.
+4. **Composition engine:** combine already-approved capabilities into bounded workflows through the existing Sentinel composition root.
+5. **Adaptive workspace:** design task-specific working surfaces over the existing workspace and navigation.
+6. **Evaluation and evolution:** add workflow benchmarks, isolated experiments, proposal/review lifecycle and rollback.
+7. **Broader autonomy:** increase delegated execution only after independent security, reliability, cost and usability evidence.
+
+This doctrine extends the existing AEGIS mission and architecture. It does not authorise a replacement project, a second permission system, an automatic integration import, a production deployment or a change to existing credentials. Existing verified implementation and limitations remain authoritative until changed and tested.
+
