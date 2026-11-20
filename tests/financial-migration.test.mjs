@@ -37,3 +37,12 @@ test('sync runs distinguish complete, partial, failed and in-progress reads', ()
 test('schema deliberately excludes raw provider payloads, credentials and payment instruments', () => {
   assert.doesNotMatch(migration, /raw_payload|access_token|refresh_token|api_key|card_number|pan\b/i);
 });
+
+test('sync lifecycle transitions are captured in immutable owner-scoped events', () => {
+  assert.match(migration, /financial_sync_run_events/);
+  assert.match(migration, /financial_sync_run_created_event/);
+  assert.match(migration, /financial_sync_run_updated_event/);
+  assert.match(migration, /financial_sync_run_terminal_immutable/);
+  assert.match(migration, /financial_sync_run_events_no_update/);
+  assert.match(migration, /financial_sync_run_events_no_delete/);
+});
