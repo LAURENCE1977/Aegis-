@@ -246,3 +246,17 @@ test('rejects reuse of one evidence reference for different evidence kinds', asy
 
   await assert.rejects(() => createAgentExperimentRecord(input), /different evidence kinds/i);
 });
+
+
+test('rejects a safe but non-optimal recommendation that contradicts the deterministic evaluator', async () => {
+  const input = validInput();
+  input.evaluation = {
+    ...input.evaluation,
+    recommendation: {
+      candidateId: 'candidate-b',
+      basis: 'declared_priority_lexicographic_comparison',
+    },
+  };
+
+  await assert.rejects(() => createAgentExperimentRecord(input), /deterministic evaluator/i);
+});
