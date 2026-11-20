@@ -590,6 +590,16 @@ This doctrine extends the existing AEGIS mission and architecture. It does not a
 
 
 
+
+
+## 9.14 Universal environment and AEGIS Multiverse direction (20 November 2026)
+
+AEGIS is being designed for three user-selectable operating modes within one ecosystem: **AEGIS Exclusive** (standalone primary environment), **AEGIS Integrated** (optional companion alongside the user's existing OS and applications), and **AEGIS Hybrid** (standalone on some devices and companion on others). The governing principle is: **independent when wanted, complementary when preferred, and connected when authorised**.
+
+The companion is passive by default and uses explicit Dormant, Ambient and Active states. It must respect host OS background restrictions, expose visible pause/disable and permission controls, and never perform covert monitoring or access sensors/screens without explicit permission. Compatibility Intelligence should transparently report supported capabilities, limitations, overlaps and gaps, and should complement existing security products rather than silently replace or disable them. AEGIS Multiverse aims for one user-controlled identity and workspace across desktop, mobile, browser, local and future environments, with selective encrypted synchronisation, offline/degraded operation and device-specific permissions. A grant on one device never automatically authorises another.
+
+The full product contract, guardrails, delivery sequence and acceptance criteria are recorded in [AEGIS Universal Environment & Multiverse](AEGIS_UNIVERSAL_ENVIRONMENT.md). This is an architectural direction, not an implementation claim. It does not authorise a second AEGIS project, production deployment, OS replacement or broader system permissions. Sentinel remains the sole authority for protected operations.
+
 ## 10. Adaptive workspace design contract (20 November 2026)
 
 The task-adaptive interface is specified in [AEGIS Adaptive Workspace](AEGIS_ADAPTIVE_WORKSPACE.md). It defines stable orientation and control layers with task-specific work surfaces, a safe versioned surface-selection contract, mobile-first interaction principles, visible task state, evidence/provenance presentation and Sentinel-enforced action boundaries. This is a design contract and roadmap, not a claim that the proposed surfaces are implemented. The existing compact `index.html` shell and companion renderer remain in place; implementation must begin with an inventory and preserve existing routes and behaviour.
