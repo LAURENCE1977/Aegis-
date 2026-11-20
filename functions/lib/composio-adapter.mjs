@@ -69,14 +69,18 @@ export function createComposioToolAdapter({
     if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey !== apiKey.trim() || apiKey.length > 4096 || [...apiKey].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
       throw new Error('Composio project credentials are unavailable');
     }
-    if (!context || context.integrationConnectionType !== 'owner_private' ||
-        typeof context.integrationToolSlug !== 'string' ||
+    if (!context || context.integrationConnectionType !== 'owner_private') {
+      throw new Error('Composio execution requires a private owner connection');
+    }
+    if (typeof context.integrationToolSlug !== 'string' ||
         !TOOL_SLUG_PATTERN.test(context.integrationToolSlug) ||
         !Array.isArray(context.integrationAllowedToolSlugs) ||
-        !context.integrationAllowedToolSlugs.includes(context.integrationToolSlug) ||
-        typeof context.integrationPlatformAccountId !== 'string' ||
+        !context.integrationAllowedToolSlugs.includes(context.integrationToolSlug)) {
+      throw new Error('Composio tool is not allowlisted');
+    }
+    if (typeof context.integrationPlatformAccountId !== 'string' ||
         !ACCOUNT_ID_PATTERN.test(context.integrationPlatformAccountId)) {
-      throw new Error('Composio execution requires an allowlisted tool and a private owner connection');
+      throw new Error('Composio connected account identifier is unavailable');
     }
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
         Object.keys(input).some(key => !['arguments', 'version'].includes(key)) ||
