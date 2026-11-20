@@ -52,6 +52,7 @@ async function readProviderResponseText(stream) {
   let output = "";
   let receivedBytes = 0;
   let finished = false;
+  let cancelStream = false;
 
   const processFrame = (frame) => {
     if (frame.length > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
@@ -78,8 +79,15 @@ async function readProviderResponseText(stream) {
         : typeof payload.choices?.[0]?.delta?.content === "string"
           ? payload.choices[0].delta.content
           : "";
-    if (delta) output += delta.slice(0, MAX_PROVIDER_OUTPUT_CHARS - output.length);
-    if (output.length >= MAX_PROVIDER_OUTPUT_CHARS) finished = true;
+    if (delta) {
+      const remaining = MAX_PROVIDER_OUTPUT_CHARS - output.length;
+      if (delta.length > remaining) cancelStream = true;
+      output += delta.slice(0, remaining);
+    }
+    if (output.length >= MAX_PROVIDER_OUTPUT_CHARS) {
+      finished = true;
+      cancelStream = true;
+    }
   };
 
   const drainFrames = (flush = false) => {
@@ -110,7 +118,13 @@ async function readProviderResponseText(stream) {
     }
     buffer += decoder.decode();
     drainFrames(true);
+    if (cancelStream) {
+      try { await reader.cancel("AEGIS provider output limit reached"); } catch {}
+    }
     return output;
+  } catch (error) {
+    try { await reader.cancel("AEGIS provider response failed"); } catch {}
+    throw error;
   } finally {
     try { reader.releaseLock(); } catch {}
   }
