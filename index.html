@@ -94,6 +94,13 @@
     .toolbar button { min-width: 5rem; }
     .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
     .project-context select { min-width: 0; flex: 1; padding: .65rem; border-radius: .65rem; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; }
+    .adaptive-focus { margin: 0 0 1rem; border-color: rgba(6,182,212,.25); background: linear-gradient(145deg, rgba(6,182,212,.07), var(--card) 52%); }
+    .adaptive-focus-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.85rem; }
+    .adaptive-focus-heading h2 { font-size:1rem; letter-spacing:.01em; }
+    .eyebrow { color:var(--accent); font-size:.65rem; font-weight:700; letter-spacing:.18em; margin-bottom:.25rem; }
+    .focus-indicator { color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:.3rem .55rem; font: .65rem ui-monospace,monospace; white-space:nowrap; }
+    .focus-status { color:var(--muted); font-size:.72rem; line-height:1.4; border-top:1px solid var(--border); padding-top:.65rem; margin-top:.5rem; }
+    .adaptive-focus .project-context { margin-bottom:.5rem; }
     @media (max-width: 420px) {
       .logout { position: static; margin-top: .75rem; }
       .input-area button { padding-inline: 1rem; }
@@ -128,6 +135,27 @@
         <button class="secondary" id="securityTab" type="button">Security</button>
       </div>
       <section id="chatSection">
+      <section class="memory-panel adaptive-focus" aria-labelledby="workFocusHeading">
+        <div class="adaptive-focus-heading">
+          <div>
+            <p class="eyebrow">ADAPTIVE WORKSPACE</p>
+            <h2 id="workFocusHeading">Choose your working focus</h2>
+          </div>
+          <span class="focus-indicator" aria-hidden="true">AEGIS / FLEX</span>
+        </div>
+        <label class="project-context" for="workFocus">Working focus
+          <select id="workFocus" aria-describedby="workFocusDescription">
+            <option value="general">General assistance</option>
+            <option value="research">Research and intelligence</option>
+            <option value="build">Build and engineering</option>
+            <option value="creative">Creative studio</option>
+            <option value="strategy">Business and strategy</option>
+            <option value="operations">Operations and planning</option>
+          </select>
+        </label>
+        <p class="memory-help" id="workFocusDescription">A flexible starting point for open-ended tasks. AEGIS can help clarify the outcome and explore different approaches.</p>
+        <p class="focus-status" id="workFocusStatus" role="status" aria-live="polite">Focus preset selected · this changes the workspace guidance, not permissions or agent execution.</p>
+      </section>
       <label class="project-context" for="chatProjectSelect">Chat context
         <select id="chatProjectSelect" aria-label="Project Space context"><option value="">Personal memory only</option></select>
       </label>
@@ -276,6 +304,22 @@
     const approvalList = document.getElementById('approvalList');
     const chatSection = document.getElementById('chatSection');
     const chatProjectSelect = document.getElementById('chatProjectSelect');
+    const workFocus = document.getElementById('workFocus');
+    const workFocusDescription = document.getElementById('workFocusDescription');
+    const workFocusStatus = document.getElementById('workFocusStatus');
+    const workFocusGuidance = {
+      general: 'A flexible starting point for open-ended tasks. AEGIS can help clarify the outcome and explore different approaches.',
+      research: 'Explore questions, compare sources, separate evidence from assumptions and keep findings traceable.',
+      build: 'Shape a brief, break work into checkpoints, inspect changes and verify outcomes before accepting them.',
+      creative: 'Explore concepts, generate alternatives, compare directions and refine the strongest idea.',
+      strategy: 'Clarify goals, test assumptions, compare options and make trade-offs visible before choosing a direction.',
+      operations: 'Organise tasks, dependencies, owners, risks and checkpoints. Keep consequential actions subject to approval.'
+    };
+    workFocus.addEventListener('change', () => {
+      const description = workFocusGuidance[workFocus.value] || workFocusGuidance.general;
+      workFocusDescription.textContent = description;
+      workFocusStatus.textContent = 'Focus preset selected · workspace guidance only; no permissions or agent execution are changed.';
+    });
     const memorySection = document.getElementById('memorySection');
     const memoryForm = document.getElementById('memoryForm');
     const memoryKind = document.getElementById('memoryKind');
