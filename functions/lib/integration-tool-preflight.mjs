@@ -53,19 +53,26 @@ export function evaluateIntegrationToolPreflight({
     'shared_platform_account', 'session_delegation', 'none_public'].includes(connection.authMode)) {
     return deny('connection_auth_unknown');
   }
-  if (connection.connectionType === 'public_no_auth' && connection.authMode !== 'none_public') {
+  const authModeByConnectionType = {
+    owner_private: ['api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials'],
+    workspace_shared: ['shared_platform_account', 'session_delegation', 'oauth2_client_credentials'],
+    instant_platform_managed: ['shared_platform_account', 'session_delegation'],
+    public_no_auth: ['none_public'],
+  };
+  if (!authModeByConnectionType[connection.connectionType]?.includes(connection.authMode)) {
     return deny('connection_auth_mismatch');
   }
-  if (connection.connectionType === 'owner_private' &&
-      !['api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials'].includes(connection.authMode)) {
-    return deny('connection_auth_mismatch');
-  }
-  if (connection.connectionType === 'owner_private' && !connection.platformConnectionId) {
-    return deny('connection_credential_missing');
-  }
-  if (connection.connectionType === 'workspace_shared' &&
+  if (['owner_private', 'workspace_shared'].includes(connection.connectionType) &&
       connection.authMode === 'oauth2_client_credentials' && !connection.platformConnectionId) {
     return deny('connection_credential_missing');
+  }
+  if (connection.connectionType === 'owner_private' &&
+      ['api_key', 'oauth2_authorization_code_pkce'].includes(connection.authMode) &&
+      !connection.platformConnectionId) {
+    return deny('connection_credential_missing');
+  }
+  if (connection.connectionType === 'public_no_auth' && connection.platformConnectionId) {
+    return deny('connection_auth_mismatch');
   }
   if (connection.healthState !== 'healthy') return deny('connection_not_healthy');
   if (typeof connection.healthCheckedAt !== 'string') return deny('health_evidence_invalid');
