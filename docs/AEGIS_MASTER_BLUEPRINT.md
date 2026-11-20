@@ -446,3 +446,7 @@ The prototype adds `functions/lib/code-mode-contract.mjs` and `tests/code-mode-c
 5. Keep the feature flag off and all changes in draft PRs until owner review. No merge, production activation, secrets or paid service configuration without explicit owner approval.
 
 Code Mode remains an optional orchestration layer above MCP and Composio. It does not replace the existing Bridge, AG-UI tool path, Sentinel, provider gateway, or specialist-agent runtime. Hedwig remains an optional future MCP workspace provider, not a dependency.
+
+### Code Mode compatibility finding
+
+Cloudflare's documented durable Code Mode runtime is built around an Agents SDK Durable Object application and Worker Loader. The documented `codeMcpServer()` route currently wraps an MCP SDK v1 server, while AEGIS's existing Bridge speaks the newer 2026-07-28 protocol shape. The MCP SDK v1 line does not plan support for that protocol revision. Do not replace or wrap AEGIS `/mcp` with that legacy route. The current best next step is a separate, synthetic-only Worker compatibility spike with `globalOutbound: null`, while evaluating the durable-runtime option separately. Cloudflare Code Mode remains experimental; latest package version observed during research is 0.5.6 (2026-10-29). The prototype remains disabled and unconnected.
