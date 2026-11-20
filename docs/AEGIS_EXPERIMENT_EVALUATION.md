@@ -89,3 +89,5 @@ The record builder now rejects manifest entries that are not referenced by the b
 This stage does not create an API endpoint, authenticate users, run experiments, execute tools, change Sentinel policy, or deploy production. The D1 migration and store tests still require CI/integration execution against the repository's actual test environment.
 
 The history listing uses keyset pagination ordered by creation timestamp and record ID, with a bounded page size, so callers can continue through a principal's records without offset-based page drift.
+
+The existing Pages login uses a signed single-password session, but its HMAC payload currently carries an expiry only; it has no stable user or subject identifier. That session proves access to the single-owner app, but it does not yet supply a distinct principal claim suitable for a multi-user data boundary. The runtime's separate bearer token remains service authentication. A future adapter must explicitly establish the intended account/principal on the server before storage calls.
