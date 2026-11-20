@@ -458,3 +458,5 @@ A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION
 - Inventory import cannot claim a connection is healthy, and the inventory layer does not create grants/approvals or invoke tools.
 - Test-first RED run [44731200085](https://github.com/LAURENCE1977/Aegis-/actions/runs/44731200085) failed on the new assertions before implementation; GREEN run [44731555916](https://github.com/LAURENCE1977/Aegis-/actions/runs/44731555916) passed **441 tests, 0 failures**, plus isolated capability D1 and Forge verification.
 - No user Composio inventory has been imported, no production D1 migration has been applied, and no provider credentials, grants, deployment or live execution were changed.
+
+- Latest inventory implementation head `ce6b78ef0ac45f40e6f493042b1ee8b87657111c` passed GitHub Actions run [44732452090](https://github.com/LAURENCE1977/Aegis-/actions/runs/44732452090): **446 Node.js tests passed, 0 failed**; local D1 migration, multi-account/platform-credential inventory smoke, invalid-inventory constraint checks, existing capability/audit checks and Forge checks all passed.
