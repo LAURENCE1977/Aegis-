@@ -391,3 +391,14 @@ test('stale health observations downgrade connected status to unverified', async
   assert.equal(stale[0].healthState, 'unknown');
   assert.equal(stale[0].healthCheckedAt, null);
 });
+
+
+test('source-reported auth-required status is not erased by an absent health probe', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  await upsertIntegrationConnection(db, connection({ status: 'auth_required' }), Date.now());
+  const listed = await listIntegrationConnections(db, 'owner-1');
+  assert.equal(listed[0].status, 'auth_required');
+  assert.equal(listed[0].healthState, 'unknown');
+});
