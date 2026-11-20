@@ -17,6 +17,6 @@ INSERT INTO financial_transactions (
 INSERT INTO financial_sync_runs (
   id, account_id, owner_id, status, pages_read, records_read, started_at, completed_at
 ) VALUES (
-  'finance-sync-smoke', 'finance-account-smoke', 'owner', 'complete', 1, 1,
-  '2026-11-20T20:00:00.000Z', '2026-11-20T20:00:01.000Z'
+  'finance-sync-smoke', 'finance-account-smoke', 'owner', 'running', 0, 0,
+  '2026-11-20T20:00:00.000Z', NULL
 );
