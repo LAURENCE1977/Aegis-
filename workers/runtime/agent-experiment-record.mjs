@@ -168,9 +168,17 @@ function validateEvaluation(value, contextId) {
       throw new TypeError('Candidate criterion counts do not match the recorded outcomes.');
     }
     candidates.push({
-      ...candidate,
       id,
+      currency: candidate.currency,
+      costMinorUnits: candidate.costMinorUnits,
+      elapsedMs: candidate.elapsedMs,
+      safetyChecksPassed: candidate.safetyChecksPassed,
+      safetyEvidenceRef: safetyRef,
+      measurementContextId: candidate.measurementContextId,
       criterionResults,
+      passedCriteria: counts.pass,
+      failedCriteria: counts.fail,
+      unknownCriteria: counts.unknown,
     });
   }
   if (value.currency !== currency) {
@@ -184,7 +192,7 @@ function validateEvaluation(value, contextId) {
   if (new Set(excluded).size !== excluded.length ||
       excluded.some((id) => !candidateIds.has(id)) ||
       JSON.stringify([...excluded].sort()) !== JSON.stringify(expectedExcluded)) {
-    throw new TypeError('Safety exclusion list must exactly match candidates that failed safety checks.');
+    throw new TypeError('Excluded candidate safety exclusion list must exactly match candidates that failed safety checks.');
   }
   const safeCandidates = candidates.filter((candidate) => candidate.safetyChecksPassed);
   const hasUnknownSafeResult = safeCandidates.some((candidate) => candidate.unknownCriteria > 0);
@@ -235,8 +243,25 @@ function validateEvaluation(value, contextId) {
       throw new TypeError('Ranked candidates must contain every safe candidate exactly once.');
     }
   }
+  const normalizedEvaluation = {
+    priority: value.priority,
+    currency,
+    measurementContextId: contextId,
+    criteria,
+    candidates,
+    excludedCandidateIds: expectedExcluded,
+    evidenceState: value.evidenceState,
+    recommendation: value.recommendation === null
+      ? null
+      : { candidateId: value.recommendation.candidateId, basis: value.recommendation.basis },
+    paretoFront: Array.isArray(value.paretoFront) ? [...value.paretoFront] : [],
+    status: value.status,
+    ...(Array.isArray(value.rankedCandidateIds)
+      ? { rankedCandidateIds: [...value.rankedCandidateIds] }
+      : {}),
+  };
   return {
-    evaluation: JSON.parse(JSON.stringify({ ...value, criteria, candidates })),
+    evaluation: normalizedEvaluation,
     requiredEvidence,
   };
 }
