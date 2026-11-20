@@ -162,10 +162,23 @@ export function createAgentPlan(submission, metadata = {}) {
           id: approach.id,
           name: approach.name,
           reasonNotSelected: ({
-            lean: 'Not selected because the stated priority places more weight on assurance than minimum initial scope.',
-            parallel_discovery: 'Not selected because coordination and additional usage are not justified by the selected priority.',
-            staged: 'Not selected because its additional checkpoints are not the best match for the selected priority.',
-          })[approach.id],
+            balanced: {
+              lean: 'The lean approach reduces initial scope, but offers less explicit assurance and review than the balanced recommendation.',
+              parallel_discovery: 'Parallel discovery may reduce elapsed time, but coordination and additional usage are not needed for the balanced objective.',
+            },
+            lowest_cost: {
+              parallel_discovery: 'Parallel discovery can increase model or tool usage and coordination effort, which conflicts with the lowest-cost priority.',
+              staged: 'Staged assurance adds checkpoints and review effort beyond the smallest useful first pass.',
+            },
+            fastest: {
+              lean: 'The lean approach is economical in scope, but its sequential first pass does not prioritise elapsed time.',
+              staged: 'Staged checkpoints improve assurance, but add sequence and review time compared with parallel discovery.',
+            },
+            highest_reliability: {
+              lean: 'The lean approach limits initial scope, but provides fewer explicit evidence and review checkpoints.',
+              parallel_discovery: 'Parallel discovery prioritises elapsed time; coordination and reconciliation add complexity without stronger assurance by themselves.',
+            },
+          })[validated.priority][approach.id],
         })),
     },
     criticalReview: {
@@ -174,7 +187,14 @@ export function createAgentPlan(submission, metadata = {}) {
         'What is the strongest credible alternative and what evidence would make it better?',
         'What important cost, dependency or failure mode has not yet been verified?',
       ],
-      strongestAlternative: buildApproaches().find((approach) => approach.id !== RECOMMENDED_APPROACH[validated.priority]).name,
+      alternativeToReassess: (() => {
+        const alternative = buildApproaches().find((approach) => approach.id !== RECOMMENDED_APPROACH[validated.priority]);
+        return {
+          id: alternative.id,
+          name: alternative.name,
+          selectionNote: 'First listed non-recommended option; not independently ranked as strongest.',
+        };
+      })(),
       evidenceNeededToChangeRecommendation: 'Compare alternatives against the same acceptance criteria, constraints, measured effort, cost and reliability evidence before changing the recommendation.',
     },
     verification: {
