@@ -431,3 +431,19 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Integration Control Plane — architecture contract (20 November 2026)
+
+A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION_CONTROL_PLANE.md), defines how provider inventories, shared/instant/private account connections, credential references, capability manifests, grants, approvals, adapters, health observations and invocations remain distinct. It composes the existing capability/Sentinel foundation rather than creating a parallel permission system. It explicitly distinguishes discovered tool schemas from platform-allowed tool slugs, active connection records from successful health probes, and unknown pricing from zero. It defines a read-only discovery-first rollout, bounded fixed adapters, vault-only credentials, exact-resource grants, digest-bound approvals, audit and a staged acceptance test suite. This is an architecture/documentation slice only: no general outbound connector manager, Composio runtime, OAuth flow, new permissions, provider connection, production resource or deployment is implemented or enabled by this document. The user's forthcoming Composio inventory remains a required reconciliation input; current inventories must disclose whether private, shared and instant accounts were actually included.
+
+
+## 20 November 2026 — integration schema compatibility review
+
+- PR #122's integration architecture was checked against the actual capability migrations on `main`.
+- The current `capability_connections` schema requires a non-null vault secret reference, allows only one active connection per principal/provider, and only tracks active/revoked. It does not yet represent multiple toolkit/account connections, public/no-auth or platform-managed connection types, exact platform tool allowlists, or independent health observations.
+- The existing encrypted vault binds secret resolution to principal/provider identity. Any future schema expansion must preserve this cryptographic binding and must not invent fake secret references for Composio shared/instant or public connections.
+- PR #122's architecture document now records the required migration and compatibility tests. No schema, runtime code, permissions, credentials, D1 database or deployment was changed.
+- The full Composio inventory is still needed before choosing stable integration/connection keys or importing any account metadata.
+
+- Latest PR #122 documentation head `4950fc49b7c2ab1db728ae737464e5436625e870` passed GitHub Actions run [44730805287](https://github.com/LAURENCE1977/Aegis-/actions/runs/44730805287): Node.js tests, isolated capability D1 migrations/constraints, rate-limit/grant/audit checks and Forge migration/licence/source/audit checks all passed.
