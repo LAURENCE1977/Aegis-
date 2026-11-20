@@ -87,3 +87,5 @@ The record builder now rejects manifest entries that are not referenced by the b
 **Deletion and retention boundary:** tombstoning hides a record from normal get/list operations and appends an audit event; it does not erase the payload. Physical purge, retention duration, backup expiry and any legal erasure workflow are deliberately not implemented until an authorised retention policy is defined. The event ledger itself is append-only.
 
 This stage does not create an API endpoint, authenticate users, run experiments, execute tools, change Sentinel policy, or deploy production. The D1 migration and store tests still require CI/integration execution against the repository's actual test environment.
+
+The history listing uses keyset pagination ordered by creation timestamp and record ID, with a bounded page size, so callers can continue through a principal's records without offset-based page drift.
