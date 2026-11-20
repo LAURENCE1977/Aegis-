@@ -173,3 +173,5 @@ The Pages bridge requires HTTPS `AEGIS_RUNTIME_URL` and the same `AEGIS_JOB_TOKE
 **Trust boundary:** any service holding `AEGIS_JOB_TOKEN` can call the internal runtime API and assert a principal header. Keep this secret only in server-side Cloudflare secrets/settings; never expose it to browser code. The intended caller is the authenticated Pages bridge. A compromised service token can impersonate the owner and must be rotated.
 
 Logical deletion remains a tombstone, not physical erasure. Retention duration, backup expiry and authorised purge/erasure remain separate gates. No production runtime Worker or live D1 database was provisioned or deployed by this source change.
+
+The runtime bridge currently accepts only the fixed `owner` principal header. It rejects arbitrary tenant identifiers; multi-user principal assertions are not implemented.
