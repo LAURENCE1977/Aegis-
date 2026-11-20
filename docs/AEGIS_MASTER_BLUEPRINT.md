@@ -438,7 +438,7 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 - Branch: `feature/ask-route-provider-adapter-2026-11-20`, stacked on `feature/provider-model-provenance-2026-11-19`.
 - The legacy JSON `POST /api/ask` route previously called `env.AI.run` directly, bypassing the server-side provider adapter used by AG-UI.
 - PR #121 routes `/api/ask` through `createModelStream`, preserving the JSON `{ response: text }` contract and supporting the configured Workers AI, Anthropic and Qwen adapter paths.
-- A bounded SSE reader handles the three existing provider event formats and caps frame size (16 KiB), total stream size (256 KiB) and output length (12,000 characters). Provider error events return the existing generic user-safe error response.
+- A bounded SSE reader handles the three existing provider event formats and caps frame size (16 KiB), total stream size (256 KiB) and output length (12,000 characters). It cancels the provider stream at the output cap or on parsing failure. Provider error events return the existing generic user-safe error response. The legacy 503 response is preserved when the default Workers AI binding is missing; configured Anthropic/Qwen routes do not require that binding.
 - Added `tests/ask-provider-routing.test.mjs` for Anthropic, Qwen and default Workers AI routing. Tests were committed before implementation.
 - Updated `docs/AEGIS_MODEL_PROVIDERS.md` to record the route unification and its draft dependency.
 - **Verification limitation:** GitHub workflow-run and commit-status queries returned no runs/statuses for the PR head during this session. The code has not been claimed test-passed. CI must be confirmed before merge.
