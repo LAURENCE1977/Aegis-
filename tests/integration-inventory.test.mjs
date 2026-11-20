@@ -36,13 +36,13 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO integration_connections')) {
-          const [id, principalId, integrationId, connectionKey, connectionType, authMode, accountAlias, platformAccountId, platformConnectionId, toolSlugs, scopes, status, lastObservedAt, healthState, healthCheckedAt, createdBy, createdAt, updatedAt] = v;
+          const [id, principalId, integrationId, connectionKey, connectionType, authMode, accountAlias, platformAccountId, platformConnectionId, toolSlugs, scopes, status, lastObservedAt, createdBy, createdAt, updatedAt] = v;
           const existing = [...db.connections.values()].find(x => x.principal_id === principalId && x.integration_id === integrationId && x.connection_key === connectionKey);
-          const row = { id: existing?.id || id, principal_id: principalId, integration_id: integrationId, connection_key: connectionKey, connection_type: connectionType, auth_mode: authMode, account_alias: accountAlias, platform_account_id: platformAccountId, platform_connection_id: platformConnectionId, allowed_tool_slugs_json: toolSlugs, scopes_json: scopes, status, last_observed_at: lastObservedAt, health_state: existing?.health_state || healthState, health_checked_at: existing?.health_checked_at || healthCheckedAt, created_by: createdBy, created_at: existing?.created_at || createdAt, updated_at: updatedAt, revoked_at: null };
+          const row = { id: existing?.id || id, principal_id: principalId, integration_id: integrationId, connection_key: connectionKey, connection_type: connectionType, auth_mode: authMode, account_alias: accountAlias, platform_account_id: platformAccountId, platform_connection_id: platformConnectionId, allowed_tool_slugs_json: toolSlugs, scopes_json: scopes, status, last_observed_at: lastObservedAt, health_state: 'unknown', health_checked_at: null, created_by: createdBy, created_at: existing?.created_at || createdAt, updated_at: updatedAt, revoked_at: null };
           db.connections.set(row.id, row);
           return { meta: { changes: 1 } };
         }
-        if (sql.includes('UPDATE integration_connections') && sql.includes('health_state')) {
+        if (sql.includes('UPDATE integration_connections') && sql.includes('SET health_state = ?')) {
           const [healthState, checkedAt, updatedAt, id, principalId] = v;
           const row = db.connections.get(id);
           if (!row || row.principal_id !== principalId || ['revoked', 'disabled'].includes(row.status)) return { meta: { changes: 0 } };
@@ -51,7 +51,7 @@ class MemoryD1 {
           row.updated_at = updatedAt;
           return { meta: { changes: 1 } };
         }
-        if (sql.includes('UPDATE integration_connections') && sql.includes("status = 'revoked'")) {
+        if (sql.includes('UPDATE integration_connections') && sql.includes("SET status = 'revoked'")) {
           const [revokedAt, updatedAt, id, principalId] = v;
           const row = db.connections.get(id);
           if (!row || row.principal_id !== principalId || row.status === 'revoked') return { meta: { changes: 0 } };
