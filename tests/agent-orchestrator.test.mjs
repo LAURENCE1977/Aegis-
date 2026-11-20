@@ -117,6 +117,26 @@ test('maps explicit planning priorities to the matching approach without removin
   }
 });
 
+test('explains each rejected alternative against the actual priority', () => {
+  const metadata = { runId: 'run-alternative-reasons', createdAt: '2026-11-20T20:00:00.000Z' };
+  const plans = ['balanced', 'lowest_cost', 'fastest', 'highest_reliability'].map((priority) =>
+    createAgentPlan(validateAgentRunSubmission({
+      objective: 'Compare implementation approaches',
+      priority,
+    }), metadata)
+  );
+  for (const plan of plans) {
+    assert.equal(plan.decision.alternativesConsidered.length, 2);
+    assert.ok(plan.decision.alternativesConsidered.every((item) =>
+      item.reasonNotSelected && !item.reasonNotSelected.includes('stated priority')
+    ));
+    assert.ok(plan.criticalReview.alternativeToReassess.selectionNote.includes('not independently ranked'));
+  }
+  const balancedLean = plans[0].decision.alternativesConsidered.find((item) => item.id === 'lean');
+  const fastestLean = plans[2].decision.alternativesConsidered.find((item) => item.id === 'lean');
+  assert.notEqual(balancedLean.reasonNotSelected, fastestLean.reasonNotSelected);
+});
+
 test('rejects invalid plan metadata', () => {
   const input = validateAgentRunSubmission({ objective: 'Review code' });
   assert.throws(() => createAgentPlan(input, { runId: '', createdAt: 'not-a-date' }));
