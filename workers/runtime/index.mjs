@@ -76,11 +76,23 @@ function parseAgentRun(row) {
   let plan = null;
   try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
   let specialists = [];
-  try { specialists = JSON.parse(row.specialists_json); } catch { specialists = []; }
+  let acceptanceCriteria = [];
+  let priority = 'balanced';
+  try {
+    const stored = JSON.parse(row.specialists_json);
+    if (Array.isArray(stored)) specialists = stored;
+    else if (stored && typeof stored === 'object') {
+      specialists = Array.isArray(stored.specialists) ? stored.specialists : [];
+      acceptanceCriteria = Array.isArray(stored.acceptanceCriteria) ? stored.acceptanceCriteria : [];
+      priority = typeof stored.priority === 'string' ? stored.priority : 'balanced';
+    }
+  } catch { specialists = []; }
   return {
     id: row.id,
     objective: row.objective,
     specialists,
+    acceptanceCriteria,
+    priority,
     status: row.status,
     attempts: row.attempts,
     createdAt: row.created_at,
@@ -154,7 +166,11 @@ async function submitAgentRun(request, env) {
   const now = new Date().toISOString();
   await env.DB.prepare(
     "INSERT INTO agent_runs (id, objective, specialists_json, status, attempts, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, 'pending_dispatch', 0, ?, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING"
-  ).bind(id, submission.objective, JSON.stringify(submission.specialists), idempotencyKey || null, now, now).run();
+  ).bind(id, submission.objective, JSON.stringify({
+    specialists: submission.specialists,
+    acceptanceCriteria: submission.acceptanceCriteria,
+    priority: submission.priority,
+  }), idempotencyKey || null, now, now).run();
   const row = idempotencyKey
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
     : await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(id).first();
@@ -195,8 +211,11 @@ async function processAgentRun(message, env) {
   const attempt = Number(claim.attempts);
   await auditAgentRun(env, runId, 'running', { attempt });
   try {
-    const specialists = JSON.parse(row.specialists_json);
-    const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
+    const storedSubmission = JSON.parse(row.specialists_json);
+    const submission = Array.isArray(storedSubmission)
+      ? { objective: row.objective, specialists: storedSubmission }
+      : { ...storedSubmission, objective: row.objective };
+    const plan = createAgentPlan(submission, { runId, createdAt: row.created_at });
     const saved = await env.DB.prepare(
       "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
     ).bind(JSON.stringify(plan), new Date().toISOString(), runId, attempt).run();
