@@ -57,6 +57,15 @@ function validateCandidate(candidate, criterionIds, expectedCurrency) {
   if (typeof candidate.safetyChecksPassed !== 'boolean') {
     throw new TypeError('Safety-check outcome must be explicit.');
   }
+  if (typeof candidate.safetyEvidenceRef !== 'string' || !candidate.safetyEvidenceRef.trim() ||
+      candidate.safetyEvidenceRef.length > MAX_EVIDENCE_REF_LENGTH ||
+      /[\\u0000-\\u001f\\u007f]/.test(candidate.safetyEvidenceRef)) {
+    throw new TypeError('Safety-check outcomes require a bounded evidence reference.');
+  }
+  if (typeof candidate.measurementContextId !== 'string' ||
+      !ID_PATTERN.test(candidate.measurementContextId)) {
+    throw new TypeError('A shared measurement context identifier is required.');
+  }
   if (!Array.isArray(candidate.criterionResults) || candidate.criterionResults.length !== criterionIds.length) {
     throw new TypeError('Every candidate must report exactly one result for every criterion.');
   }
@@ -100,6 +109,8 @@ function validateCandidate(candidate, criterionIds, expectedCurrency) {
     costMinorUnits: candidate.costMinorUnits,
     elapsedMs: candidate.elapsedMs,
     safetyChecksPassed: candidate.safetyChecksPassed,
+    safetyEvidenceRef: candidate.safetyEvidenceRef.trim(),
+    measurementContextId: candidate.measurementContextId,
     criterionResults,
     passedCriteria,
     failedCriteria,
@@ -147,11 +158,16 @@ export function evaluateAgentExperiment(input) {
   const candidates = [];
   const ids = new Set();
   let currency = null;
+  let measurementContextId = null;
   for (const candidate of input.candidates) {
     const validated = validateCandidate(candidate, criterionIds, currency);
     if (ids.has(validated.id)) throw new TypeError('Candidate IDs must be unique.');
+    if (measurementContextId && validated.measurementContextId !== measurementContextId) {
+      throw new TypeError('All candidates must share the same measurement context.');
+    }
     ids.add(validated.id);
     currency = validated.currency;
+    measurementContextId = validated.measurementContextId;
     candidates.push(validated);
   }
 
@@ -165,6 +181,7 @@ export function evaluateAgentExperiment(input) {
   const base = {
     priority: input.priority,
     currency,
+    measurementContextId,
     criteria: criteria.map(({ id, description }) => ({ id, description })),
     candidates,
     excludedCandidateIds,
