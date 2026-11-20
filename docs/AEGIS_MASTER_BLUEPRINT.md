@@ -447,3 +447,14 @@ A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION
 - The full Composio inventory is still needed before choosing stable integration/connection keys or importing any account metadata.
 
 - Latest PR #122 documentation head `4950fc49b7c2ab1db728ae737464e5436625e870` passed GitHub Actions run [44730805287](https://github.com/LAURENCE1977/Aegis-/actions/runs/44730805287): Node.js tests, isolated capability D1 migrations/constraints, rate-limit/grant/audit checks and Forge migration/licence/source/audit checks all passed.
+
+
+## 20 November 2026 — metadata-only integration inventory checkpoint
+
+- Draft PR #124: https://github.com/LAURENCE1977/Aegis-/pull/124
+- Adds migration `0006_integration_inventory.sql` and the server-side `functions/lib/integration-inventory.mjs` repository.
+- Separates provider, integration definition and per-account connection records; supports multiple account connections per integration and owner/private, shared, instant/platform-managed, public/no-auth and unknown classifications.
+- Records exact allowed tool slugs, scopes, opaque account identifiers and health observations separately from AEGIS vault credentials.
+- Inventory import cannot claim a connection is healthy, and the inventory layer does not create grants/approvals or invoke tools.
+- Test-first RED run [44731200085](https://github.com/LAURENCE1977/Aegis-/actions/runs/44731200085) failed on the new assertions before implementation; GREEN run [44731555916](https://github.com/LAURENCE1977/Aegis-/actions/runs/44731555916) passed **441 tests, 0 failures**, plus isolated capability D1 and Forge verification.
+- No user Composio inventory has been imported, no production D1 migration has been applied, and no provider credentials, grants, deployment or live execution were changed.
