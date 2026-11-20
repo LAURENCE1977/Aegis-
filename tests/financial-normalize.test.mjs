@@ -67,7 +67,7 @@ test('rejects excessively long decimal input before BigInt conversion', () => {
 });
 
 
-import { normalizeFinancialTransaction } from '../functions/lib/financial-normalize.mjs';
+import { normalizeFinancialAccount, normalizeFinancialSyncRun, normalizeFinancialTransaction } from '../functions/lib/financial-normalize.mjs';
 
 test('normalizes a transaction while retaining exact amount and provider provenance', () => {
   assert.deepEqual(
@@ -192,4 +192,110 @@ test('rejects an invalid optional source update timestamp', () => {
     status: 'booked',
     sourceUpdatedAt: 'yesterday',
   }), TypeError);
+});
+
+test('normalizes owner-scoped read-only account references without treating them as credentials', () => {
+  assert.deepEqual(
+    normalizeFinancialAccount({
+      ownerId: 'owner',
+      provider: 'xero',
+      connectionRef: 'connection_123',
+      externalAccountRef: 'tenant_account_456',
+      currency: 'gbp',
+      status: 'read_only',
+      createdAt: '2026-11-20T10:00:00Z',
+      updatedAt: '2026-11-20T10:05:00+00:00',
+    }),
+    {
+      ownerId: 'owner',
+      provider: 'xero',
+      connectionRef: 'connection_123',
+      externalAccountRef: 'tenant_account_456',
+      currency: 'GBP',
+      status: 'read_only',
+      createdAt: '2026-11-20T10:00:00.000Z',
+      updatedAt: '2026-11-20T10:05:00.000Z',
+    },
+  );
+});
+
+test('rejects account references without an owner, connection, provider or safe read-only state', () => {
+  const valid = {
+    ownerId: 'owner',
+    provider: 'xero',
+    connectionRef: 'connection_123',
+    externalAccountRef: 'tenant_account_456',
+    currency: 'GBP',
+    status: 'read_only',
+    createdAt: '2026-11-20T10:00:00Z',
+    updatedAt: '2026-11-20T10:05:00Z',
+  };
+  for (const patch of [
+    { ownerId: '' },
+    { connectionRef: '' },
+    { provider: 'Xero API' },
+    { externalAccountRef: ' tenant_account_456' },
+    { currency: 'US' },
+    { status: 'writable' },
+    { updatedAt: 'not-a-date' },
+  ]) {
+    assert.throws(() => normalizeFinancialAccount({ ...valid, ...patch }), TypeError);
+  }
+});
+
+test('normalizes running and complete sync metadata with explicit completeness', () => {
+  assert.deepEqual(
+    normalizeFinancialSyncRun({
+      ownerId: 'owner',
+      accountId: 'account_123',
+      status: 'running',
+      pagesRead: 1,
+      recordsRead: 20,
+      startedAt: '2026-11-20T10:00:00Z',
+    }),
+    {
+      ownerId: 'owner',
+      accountId: 'account_123',
+      status: 'running',
+      pagesRead: 1,
+      recordsRead: 20,
+      startedAt: '2026-11-20T10:00:00.000Z',
+      completedAt: null,
+      failureCode: null,
+    },
+  );
+
+  const complete = normalizeFinancialSyncRun({
+    ownerId: 'owner',
+    accountId: 'account_123',
+    status: 'complete',
+    pagesRead: 3,
+    recordsRead: 42,
+    startedAt: '2026-11-20T10:00:00Z',
+    completedAt: '2026-11-20T10:01:00Z',
+  });
+  assert.equal(complete.status, 'complete');
+  assert.equal(complete.completedAt, '2026-11-20T10:01:00.000Z');
+});
+
+test('rejects sync runs that could misrepresent incomplete or failed reads as complete', () => {
+  const valid = {
+    ownerId: 'owner',
+    accountId: 'account_123',
+    status: 'running',
+    pagesRead: 0,
+    recordsRead: 0,
+    startedAt: '2026-11-20T10:00:00Z',
+  };
+  for (const patch of [
+    { pagesRead: -1 },
+    { recordsRead: 1.5 },
+    { status: 'unknown' },
+    { status: 'complete' },
+    { status: 'failed', completedAt: '2026-11-20T10:01:00Z' },
+    { status: 'running', completedAt: '2026-11-20T10:01:00Z' },
+    { failureCode: 'provider auth failed' },
+  ]) {
+    assert.throws(() => normalizeFinancialSyncRun({ ...valid, ...patch }), TypeError);
+  }
 });
