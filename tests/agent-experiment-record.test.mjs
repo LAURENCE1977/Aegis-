@@ -207,3 +207,13 @@ test('rejects a complete evaluation that contains unknown results or inconsisten
   };
   await assert.rejects(() => createAgentExperimentRecord(mixedCurrency), /same currency/i);
 });
+
+
+test('stores only the versioned evaluation fields and does not copy arbitrary caller payloads', async () => {
+  const input = validInput();
+  input.evaluation = { ...input.evaluation, rawPayload: 'must-not-be-stored' };
+  const record = await createAgentExperimentRecord(input);
+
+  assert.equal('rawPayload' in record.evaluation, false);
+  assert.equal(record.evaluation.candidates[0].rawPayload, undefined);
+});
