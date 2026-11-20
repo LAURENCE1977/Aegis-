@@ -215,3 +215,19 @@ test('Security Centre exposes read-only capability and module inventory without 
   assert.match(html, /moduleNode\.textContent\s*=\s*module\.name/);
   assert.match(html, /No grants are created by this inventory/);
 });
+
+
+test('adaptive workspace exposes an accessible task-focus selector without changing server permissions', () => {
+  for (const id of ['workFocus','workFocusDescription','workFocusStatus']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing adaptive workspace element: ' + id);
+  }
+  for (const value of ['general','research','build','creative','strategy','operations']) {
+    assert.match(html, new RegExp('<option value="' + value + '"'));
+  }
+  assert.match(html, /workFocus\.addEventListener\('change'/);
+  assert.match(html, /workFocusDescription\.textContent\s*=/);
+  assert.match(html, /workFocusStatus\.textContent\s*=/);
+  assert.match(html, /workFocus:\s*workFocus\.value/);
+  assert.match(html, /aria-live="polite"/);
+  assert.doesNotMatch(html, /workFocus\.value[\s\S]{0,500}sentinel\/invoke/);
+});

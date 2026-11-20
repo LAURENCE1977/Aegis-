@@ -125,6 +125,27 @@ test('Sentinel invocation exposes only the fixed read-only module action and emp
   }
 });
 
+test('Sentinel public invoke route refuses integration metadata until a dedicated execution route is approved', async () => {
+  const db = new MemoryD1(activeGrant());
+  const response = await onRequestPost({
+    request: await request({
+      capabilityId: 'aegis-module-catalogue',
+      actionId: 'list',
+      resourceId: 'aegis:modules',
+      input: {},
+      integrationTool: {
+        integrationId: 'composio-github',
+        connectionKey: 'personal',
+        toolSlug: 'GITHUB_GET_REPO',
+      },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(response.status, 400);
+  assert.equal(db.prepareCalls, 0);
+  assert.equal(db.auditRows.length, 0);
+});
+
 test('Sentinel invocation denies missing grants and records a redacted denial audit', async () => {
   const db = new MemoryD1();
   const response = await onRequestPost({

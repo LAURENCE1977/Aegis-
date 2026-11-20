@@ -466,3 +466,204 @@ A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION
 - Draft PR #124 now exposes the metadata-only inventory through owner-authenticated read-only `GET /api/integrations`. It returns bounded provider/integration records and owner-scoped account metadata, omitting opaque platform account IDs, credential-link IDs and all secrets. Stale health is downgraded after 24 hours. Latest code head `ae9cf6a4d5d2099c8218a6d1bde16ebff35b8c2e` passed [run 44733656491](https://github.com/LAURENCE1977/Aegis-/actions/runs/44733656491): **455 tests passed, 0 failed**, with D1 and Forge verification green.
 
 - Latest PR #124 documentation head `14f4a6f7c4e9703748d9007b86a8c87abe88c97b` passed GitHub Actions run [44733885288](https://github.com/LAURENCE1977/Aegis-/actions/runs/44733885288): **455 Node.js tests passed, 0 failed**, with D1 integration inventory constraints and all existing capability/Forge checks green.
+
+
+## 20 November 2026 — Sentinel integration bridge and Composio adapter foundation
+
+- Draft PR #130: https://github.com/LAURENCE1977/Aegis-/pull/130 — open, draft and unmerged. It composes the owner-scoped integration inventory and exact-tool preflight with the existing Sentinel policy path.
+- Sentinel preflight checks provider review/verification, integration schema evidence, exact principal/integration/connection binding, connection revocation/status, fresh health, auth compatibility, exact tool allowlist and required scopes. Preflight is not a grant or approval.
+- The trusted adapter context now carries only integration identity, opaque platform account ID, connection type, exact tool slug and a frozen allowlist. Credential values and vault references are excluded.
+- Added an isolated Composio v3.1 adapter factory with fixed API origin, exact allowlist enforcement, pinned dated tool version, structured arguments, private-owner connection restriction, timeout, redirect rejection, bounded streamed JSON response and fail-closed errors.
+- The adapter is **not registered or exposed** by a public invocation route. No Composio project key is configured/resolved and no external connector call has been made. The existing `/api/sentinel/invoke` remains limited to the read-only module catalogue and rejects integration metadata.
+- Latest verified head before this documentation follow-up: `088da9d0edbdd667145ea60e9f97f1654494da0e`. GitHub Actions run [44773913803](https://github.com/LAURENCE1977/Aegis-/actions/runs/44773913803) passed **485 Node.js tests, 0 failures**, plus all isolated D1 migration, integration-inventory, audit, rate-limit, grant and Forge checks.
+- Next gates: reconcile the full Composio inventory; verify `platformAccountId` maps to Composio's exact `connected_account_id`; implement vault-backed project-key resolution only after Sentinel authorization; verify Composio user identity/2FA requirements; pin tool schemas/versions; then complete one exact read-only invocation through the existing Sentinel route with grant, approval, audit, output redaction and replay protections.
+- No production D1 migration, secret configuration, merge, production deployment or external action has been performed. See `docs/AEGIS_INTEGRATION_CONTROL_PLANE.md` for the detailed adapter boundary and remaining acceptance criteria.
+
+## 9. AEGIS Adaptive Intelligence Doctrine — foundational design direction (20 November 2026)
+
+### 9.1 Identity: capability without a fixed category
+
+AEGIS must not be designed as merely a chatbot, copilot, agent framework, automation dashboard or collection of integrations. Those are possible interaction patterns and capabilities, not its identity.
+
+**Foundational principle:** AEGIS is an adaptive intelligence environment that selects, combines and develops appropriate ways of working around the user's intended outcome. Its identity is defined by its ability to understand, adapt and accomplish—not by one fixed product category, model, interface or workflow.
+
+This is a design doctrine and target direction, not a claim that all capabilities already exist.
+
+### 9.2 Adaptive problem-solving
+
+For each meaningful task, the orchestration layer should be able to select from multiple complementary approaches, as appropriate:
+
+- analytical decomposition and explicit reasoning steps;
+- creative exploration and unconventional alternatives;
+- strategic planning, dependencies and long-term consequences;
+- critical challenge, counterarguments and assumption testing;
+- experimental prototyping and evidence gathering;
+- synthesis across disciplines, models, tools and knowledge sources.
+
+These are selectable problem-solving strategies, not six mandatory agents for every request. AEGIS should use the smallest effective combination, avoid redundant model calls and explain material uncertainty. It must distinguish sourced facts, inference, hypotheses and proposals.
+
+### 9.3 Outcome-first orchestration
+
+The system should interpret the user's intended outcome, constraints and success criteria before selecting a workflow. It should then:
+
+1. Clarify only essential ambiguity.
+2. Decompose the outcome into bounded work units.
+3. Inspect existing workspace knowledge, approved capabilities and available resources.
+4. Compare viable approaches, including non-obvious combinations.
+5. Select a proportionate plan based on quality, time, privacy, reliability, cost and risk.
+6. Execute permitted steps, checkpoint progress and preserve provenance.
+7. Verify results against explicit acceptance criteria.
+8. Explain what succeeded, what remains uncertain and what needs human approval.
+9. Capture reusable workflow learning without silently changing permissions or trusted policy.
+
+AEGIS may change strategy when evidence, constraints or results change. It should not loop, repeatedly retry an unchanged failure or claim success without verification.
+
+### 9.4 Capability discovery and composition
+
+The expanding Composio ecosystem and other providers are potential capability sources, not the product itself and not authorities over AEGIS permissions.
+
+AEGIS should progressively support a capability lifecycle:
+
+Discover → classify → inspect schema → verify source and version → assess licence, privacy, cost and risk → test in isolation → map to a stable AEGIS capability contract → review → grant exact permission → invoke through Sentinel → observe → revoke or retire.
+
+The system should be able to compose several approved capabilities into a new workflow without creating a new hard-coded integration for every combination. Provider-specific details belong behind replaceable adapters. A discovered tool is not automatically trusted, connected, healthy, granted or executable.
+
+### 9.5 Creative adaptation without authority escalation
+
+When a direct route is unavailable, AEGIS should investigate legitimate alternatives: different approved tools, a different sequence, local processing, a smaller task decomposition or a new proposal for a capability.
+
+It may freely propose new methods, prototypes and improvements within its sandbox. It must never:
+- bypass Sentinel, grants, approvals, budgets, audit or revocation;
+- self-approve, self-issue credentials or expand its own permissions;
+- disguise a write action as a read action;
+- silently switch providers where data handling, privacy or cost materially changes;
+- execute untrusted code in the control plane;
+- claim that an unavailable capability was used or that an unverified result is complete.
+
+**Design boundary:** be expansive in ideas and adaptive in method; remain least-privileged and human-governed in action.
+
+### 9.6 A living, task-adaptive workspace
+
+The interface should be a coherent environment rather than a conventional chat-first dashboard. The workspace remains the source of truth; chat and voice are interaction channels.
+
+The interface should adapt its working surface to the task while retaining consistent navigation, identity and control:
+- research: sources, evidence, comparisons and findings;
+- software/build work: project files, plans, diffs, tests and checkpoints;
+- operations: jobs, status, dependencies, approvals and audit;
+- creative work: briefs, drafts, assets and iterations;
+- knowledge work: connected concepts, provenance, decisions and reusable outputs.
+
+Avoid decorative complexity and novelty that harms usability. Prefer progressive disclosure, accessible mobile-first layouts, keyboard/voice alternatives, clear system status and controls that actually work. The user should be able to see what AEGIS is doing, why it chose an approach, what data/tools it is using and where it needs permission.
+
+### 9.7 Controlled evolution and learning
+
+AEGIS should identify recurring friction, failed workflows, capability gaps and promising new methods. It may prepare improvement proposals, compare alternatives and run isolated experiments. Durable changes require evidence, regression tests, provenance, rollback and the relevant owner approval.
+
+Learning should primarily improve explicit workspace knowledge, reusable plans, capability metadata and tested workflow templates—not pretend to modify foundation-model weights. Preserve source, version, confidence, applicability and expiry/freshness for learned records. Allow correction and removal through governed data lifecycle controls.
+
+### 9.8 Evaluation: prove that adaptive behaviour is better
+
+Evaluate the doctrine using measurable task outcomes, not claims of being unique. Candidate measures include:
+- task success against user-defined acceptance criteria;
+- factual accuracy and evidence coverage;
+- unnecessary tool/model calls and total cost;
+- latency and completion reliability;
+- recovery from unavailable tools or failed approaches;
+- privacy and permission-policy compliance;
+- repeatability and regression rate;
+- user effort and clarity of progress;
+- quality of alternatives considered when the first approach fails.
+
+Use baseline comparisons and representative test tasks. Do not claim superiority without reproducible evidence.
+
+### 9.9 Delivery sequence
+
+1. **Doctrine and contracts:** preserve this direction in the master blueprint; translate it into explicit orchestration, capability and UI contracts.
+2. **Capability intelligence:** improve the registry so discovery, schema evidence, connection state, health, grants and execution eligibility remain distinct.
+3. **Outcome planner:** introduce task decomposition, strategy selection, checkpoints and explicit success criteria without changing existing permission paths.
+4. **Composition engine:** combine already-approved capabilities into bounded workflows through the existing Sentinel composition root.
+5. **Adaptive workspace:** design task-specific working surfaces over the existing workspace and navigation.
+6. **Evaluation and evolution:** add workflow benchmarks, isolated experiments, proposal/review lifecycle and rollback.
+7. **Broader autonomy:** increase delegated execution only after independent security, reliability, cost and usability evidence.
+
+This doctrine extends the existing AEGIS mission and architecture. It does not authorise a replacement project, a second permission system, an automatic integration import, a production deployment or a change to existing credentials. Existing verified implementation and limitations remain authoritative until changed and tested.
+
+
+
+
+
+## 9.14 Universal environment and AEGIS Multiverse direction (20 November 2026)
+
+AEGIS is being designed for three user-selectable operating modes within one ecosystem: **AEGIS Exclusive** (standalone primary environment), **AEGIS Integrated** (optional companion alongside the user's existing OS and applications), and **AEGIS Hybrid** (standalone on some devices and companion on others). The governing principle is: **independent when wanted, complementary when preferred, and connected when authorised**.
+
+The companion is passive by default and uses explicit Dormant, Ambient and Active states. It must respect host OS background restrictions, expose visible pause/disable and permission controls, and never perform covert monitoring or access sensors/screens without explicit permission. Compatibility Intelligence should transparently report supported capabilities, limitations, overlaps and gaps, and should complement existing security products rather than silently replace or disable them. AEGIS Multiverse aims for one user-controlled identity and workspace across desktop, mobile, browser, local and future environments, with selective encrypted synchronisation, offline/degraded operation and device-specific permissions. A grant on one device never automatically authorises another.
+
+The full product contract, guardrails, delivery sequence and acceptance criteria are recorded in [AEGIS Universal Environment & Multiverse](AEGIS_UNIVERSAL_ENVIRONMENT.md). This is an architectural direction, not an implementation claim. It does not authorise a second AEGIS project, production deployment, OS replacement or broader system permissions. Sentinel remains the sole authority for protected operations.
+
+## 10. Adaptive workspace design contract (20 November 2026)
+
+The task-adaptive interface is specified in [AEGIS Adaptive Workspace](AEGIS_ADAPTIVE_WORKSPACE.md). It defines stable orientation and control layers with task-specific work surfaces, a safe versioned surface-selection contract, mobile-first interaction principles, visible task state, evidence/provenance presentation and Sentinel-enforced action boundaries. This is a design contract and roadmap, not a claim that the proposed surfaces are implemented. The existing compact `index.html` shell and companion renderer remain in place; implementation must begin with an inventory and preserve existing routes and behaviour.
+
+
+## 9.10 Outcome Planner implementation update (20 November 2026)
+
+The existing durable plan-only agent workflow has been extended with an initial outcome contract:
+- optional, bounded acceptance criteria (up to eight, each 1–240 characters);
+- explicit planning priorities: balanced, lowest cost, fastest or highest reliability;
+- three comparable proposal templates (lean first pass, parallel discovery and staged assurance);
+- a priority-based recommendation while retaining all alternatives;
+- evidence-required verification metadata carried into the durable plan.
+
+The runtime persists the new values in a version-tolerant JSON envelope inside the existing specialist metadata column and continues to read legacy rows containing a plain specialist array. No new migration, public execution route, model call, external API call or tool permission was introduced. The plan queue remains deterministic and plan-only; the templates do not claim that specialist agents are running in parallel or that live cost/time estimates have been measured.
+
+The implementation and research provenance are recorded in [AEGIS durable agent orchestration](AEGIS_AGENT_ORCHESTRATION.md). The OpnForm, Morphic and Open-Morphic repositories were evaluated as architectural references only; no source code or dependencies were imported. Their licence obligations and adapter-first adoption decisions are documented there.
+
+This is a first structured outcome-planning slice, not a completed autonomous planner. Next work should connect plans to the owner-visible workspace, add explicit checkpoint/result evidence, and only then use verified capability metadata to improve strategy selection. Sentinel remains the sole authority for protected execution.
+
+
+## 9.11 Financial intelligence capability proposal (20 November 2026)
+
+The financial capability is an AEGIS feature, not a separate product. Its first phase is owner-authorised, read-only financial awareness for cash-flow, accounting, payment reconciliation and evidence-based opportunity evaluation. The provider-neutral data contract, source/freshness/reconciliation rules, UK-oriented Composio discovery results, Sentinel action tiers and initial acceptance criteria are recorded in [AEGIS Financial Intelligence](AEGIS_FINANCIAL_INTELLIGENCE.md).
+
+Composio discovery surfaced Xero and FreeAgent as strong initial UK accounting candidates, with Wise for multi-currency visibility, GoCardless for direct-debit settlements and Stripe for AEGIS subscription/payment reporting. QuickBooks and Plaid are alternatives subject to actual owner needs and UK coverage verification. No finance toolkit was active in the discovery response; no account data was accessed and no new connection was created. The next integration choice remains with the owner. Read-only access comes first; all consequential writes remain Sentinel-gated and human-approved.
+
+## 9.12 Financial normalization and expanded repository evaluation (20 November 2026)
+
+The first provider-neutral transaction normalization utility is implemented in `functions/lib/financial-normalize.mjs`. It preserves provider/account/transaction identity, exact integer minor units, currency and timezone-normalized timestamps, while rejecting unknown lifecycle states and malformed or timezone-less dates. Full Node.js tests and isolated D1/Forge checks passed in [run 44808072640](https://github.com/LAURENCE1977/Aegis-/actions/runs/44808072640) on commit `4342d5b92c75ad8f6f29c7d311a03317a8eda755`. This is not a provider adapter, financial ingestion pipeline, persistence layer, reconciliation service or live financial connection. See [AEGIS Financial Intelligence](AEGIS_FINANCIAL_INTELLIGENCE.md).
+
+The Forge/repository scan was widened to include [LangGraph](https://github.com/langchain-ai/langgraph), [Mastra](https://github.com/mastra-ai/mastra) and [Agent Zero](https://github.com/agent0ai/agent-zero). LangGraph is a useful reference for durable stateful orchestration and human interrupts; Mastra is the strongest TypeScript-stack candidate for a contained compatibility spike; Agent Zero is a reference for rich sandboxed computer work, not a direct core-runtime dependency. No source code or dependencies were imported. Licence, package-level compatibility, runtime footprint and security boundaries must be independently verified before any adoption. See [AEGIS durable agent orchestration](AEGIS_AGENT_ORCHESTRATION.md).
+
+Repository strategy remains open: reuse, adapt, combine, rebuild or reject based on measurable value. Do not let a popular framework redefine AEGIS or displace its provider-neutral interfaces, owner-controlled workspace, existing runtime and Sentinel authority.
+## 9.13 Read-only financial ledger foundation (20 November 2026)
+
+Added a separate finance D1 migration for owner-scoped financial account references, normalized transactions, append-only transaction observations and explicit sync completeness states. It uses exact minor-unit strings, owner/account composite foreign keys, provider-issued transaction identity uniqueness and immutable source identity. The isolated migration test is wired into CI; it is not attached to the runtime/production D1 binding and no live migration or financial connection has occurred. No raw provider payloads, credentials, payment instruments or pagination cursors are stored. See [AEGIS Financial Intelligence](AEGIS_FINANCIAL_INTELLIGENCE.md).
+
+Next gates: verify CI on the latest PR head; decide runtime D1 topology; implement an authenticated owner-scoped read-only ingestion path using verified provider schemas; test duplicate/replay handling and partial pagination; define retention and owner deletion; only then consider a live read-only connection. No financial writes or transfers are in scope.
+Financial ledger refinement: accounts now retain an opaque AEGIS `connection_ref` (never a credential), and every future read must re-resolve it against the current owner-scoped integration inventory and pass Sentinel at time of use. Sync runs emit append-only lifecycle events and become immutable after `complete`, `partial` or `failed`. The complete Node.js + isolated capability/Forge/finance D1 suite passed on code commit `7c781e5f9a8e587fc615df06ccf51ee7c8da3ffa` ([run 44810142934](https://github.com/LAURENCE1977/Aegis-/actions/runs/44810142934)).
+
+## 9.15 First-principles engineering and symbiotic evolution (20 November 2026)
+
+AEGIS adopts a first-principles engineering mindset: question inherited assumptions, reason from fundamental requirements, explore materially different approaches, simplify where possible, experiment safely and judge improvements by evidence. This borrows useful engineering disciplines rather than imitating any individual.
+
+The doctrine introduces bounded thinking disciplines (first-principles engineering, radical innovation, systems architecture, commercial strategy, adversarial challenge, reliability/security review and long-horizon evolution). They may be performed by one model, multiple models, deterministic tools or human reviewers; they are not required to be separate always-running agents. The system should preserve meaningful disagreement and test recommendations against strong alternatives.
+
+The proposed invention/evolution lifecycle is gap identification, research, specification, risk and provenance review, isolated prototype, testing, independent review, owner decision, controlled release and rollback readiness. AEGIS may inspect its own documented architecture and propose or test improvements, but cannot self-grant authority, alter Sentinel, access production secrets, approve itself or deploy its own changes. Novelty alone is not evidence of value.
+
+This doctrine is an overlay on the existing Outcome Planner, Adaptive Intelligence, Capability Registry, Forge, evaluation/observability, Evolution Engine direction, Adaptive Workspace and Universal Environment. Sentinel remains the sole authority for protected actions. Delivery begins with inspectable decision records, bounded planner improvements and an evaluation baseline before any sandboxed invention or broader delegation.
+
+The full doctrine, safeguards, measures and delivery sequence are in [AEGIS First-Principles Evolution Doctrine](AEGIS_FIRST_PRINCIPLES_EVOLUTION.md). This is architecture direction, not a claim that the reasoning disciplines or evolution engine are implemented.
+
+
+
+## 9.16 First-principles Outcome Planner — initial implementation (20 November 2026)
+
+The existing durable planner has been extended with bounded assumptions and constraints, explicit decision rationale, priority-specific alternative rejection reasons, adversarial challenge questions, an unranked alternative-to-reassess marker and evidence required to revisit a recommendation. These fields are stored in the existing version-tolerant metadata envelope; legacy specialist-array rows remain readable and no database migration is introduced.
+
+This first runtime slice is deterministic and inspectable. It does not yet independently discover assumptions, perform live multi-agent debate, calculate measured cost or reliability, or execute work. The plan remains plan-only, with no tool invocation or external effects; Sentinel and human approval remain mandatory before protected execution. Implementation and regression coverage are in the existing agent runtime and orchestration tests. The design and limitations are documented in AEGIS_AGENT_ORCHESTRATION.md.
+
+
+## 9.17 Evidence-based experiment evaluation — initial implementation (20 November 2026)
+
+A pure deterministic evaluation primitive now compares bounded candidate outcomes against shared acceptance criteria, currency and measurement context. It requires explicit safety outcomes and evidence references, excludes unsafe candidates, uses declared-priority comparison rules or a balanced Pareto frontier, and abstains when evidence is incomplete or no unique winner is supported.
+
+This is an evaluation primitive only: no experiments are executed, evidence is not independently verified, results are not persisted, and no learning loop or autonomous self-modification exists. Sentinel remains authoritative. See [AEGIS Experiment Evaluation](AEGIS_EXPERIMENT_EVALUATION.md) and the regression suite in `tests/agent-evaluation.test.mjs`.

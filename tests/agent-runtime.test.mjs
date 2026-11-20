@@ -99,11 +99,17 @@ function postRun(body, headers = {}) {
 
 test('persists a bounded agent run before queue dispatch and returns its durable ID', async () => {
   const { env, DB, sent } = makeEnv();
-  const response = await handleRuntimeFetch(postRun({ objective: 'Review the runtime' }), env);
+  const response = await handleRuntimeFetch(postRun({
+    objective: 'Review the runtime',
+    acceptanceCriteria: ['All findings include evidence', 'No production side effects'],
+    priority: 'highest_reliability',
+  }), env);
   assert.equal(response.status, 201);
   const { run } = await response.json();
   assert.equal(run.status, 'queued');
   assert.deepEqual(run.specialists, ['researcher', 'engineer', 'reviewer']);
+  assert.deepEqual(run.acceptanceCriteria, ['All findings include evidence', 'No production side effects']);
+  assert.equal(run.priority, 'highest_reliability');
   assert.ok(DB.runs.has(run.id));
   assert.deepEqual(sent, [{ agentRunId: run.id }]);
   assert.ok(DB.events.some((event) => event.event_type === 'queued'));
@@ -128,11 +134,28 @@ test('rejects unknown fields and unsafe specialist roles before persistence', as
   assert.equal(second.status, 400);
 });
 
+
+test('rejects invalid outcome criteria before creating a durable run', async () => {
+  const { env, DB } = makeEnv();
+  for (const body of [
+    { objective: 'Plan a task', acceptanceCriteria: [''] },
+    { objective: 'Plan a task', acceptanceCriteria: ['x'.repeat(241)] },
+    { objective: 'Plan a task', acceptanceCriteria: Array.from({ length: 9 }, (_, i) => 'criterion ' + i) },
+    { objective: 'Plan a task', priority: 'bypass-sentinel' },
+  ]) {
+    const response = await handleRuntimeFetch(postRun(body), env);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(DB.runs.size, 0);
+});
+
 test('queue consumer creates a plan-only result and never invokes tools', async () => {
   const { env, DB } = makeEnv();
   const response = await handleRuntimeFetch(postRun({
     objective: 'Improve the AEGIS runtime',
     specialists: ['reviewer', 'engineer', 'researcher'],
+    acceptanceCriteria: ['Regression tests pass', 'Sentinel remains authoritative'],
+    priority: 'fastest',
   }), env);
   const { run } = await response.json();
   let acked = false;
@@ -141,6 +164,11 @@ test('queue consumer creates a plan-only result and never invokes tools', async 
   const plan = JSON.parse(saved.plan_json);
   assert.equal(saved.status, 'planned');
   assert.equal(plan.execution, 'plan-only');
+  assert.deepEqual(plan.acceptanceCriteria, ['Regression tests pass', 'Sentinel remains authoritative']);
+  assert.equal(plan.priority, 'fastest');
+  assert.equal(plan.recommendedApproach, 'parallel_discovery');
+  assert.equal(plan.approaches.length, 3);
+  assert.equal(plan.verification.completionRequiresEvidence, true);
   assert.equal(plan.safety.toolsInvoked, false);
   assert.deepEqual(plan.steps.map((step) => step.specialist), ['researcher', 'engineer', 'reviewer']);
   assert.ok(plan.steps.every((step) => step.tools.length === 0));
@@ -217,4 +245,49 @@ test('agent dead-letter cannot overwrite a completed plan', async () => {
   }] }, env);
   assert.equal(DB.runs.get(run.id).status, 'planned');
   assert.equal(DB.events.filter(event => event.event_type === 'delivery_exhausted').length, 0);
+});
+
+
+test('persists explicit assumptions and constraints in the plan without granting execution authority', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({
+    objective: 'Choose a safe implementation path',
+    assumptions: ['The existing runtime remains the source of truth'],
+    constraints: ['No production side effects', 'No new provider dependency'],
+    acceptanceCriteria: ['The recommendation is evidence-backed'],
+    priority: 'balanced',
+  }), env);
+  assert.equal(response.status, 201);
+  const { run } = await response.json();
+  let acked = false;
+  await runtime.queue({ queue: 'aegis-jobs', messages: [{
+    body: { agentRunId: run.id }, ack() { acked = true; }, retry() { assert.fail('unexpected retry'); },
+  }] }, env);
+  const plan = JSON.parse(DB.runs.get(run.id).plan_json);
+  assert.deepEqual(plan.assumptions, ['The existing runtime remains the source of truth']);
+  assert.deepEqual(plan.constraints, ['No production side effects', 'No new provider dependency']);
+  assert.equal(plan.decision.recommendedApproach, 'staged');
+  assert.ok(plan.decision.rationale.length > 0);
+  assert.ok(plan.decision.alternativesConsidered.every(item => item.reasonNotSelected.length > 0));
+  assert.ok(plan.criticalReview.challengeQuestions.length > 0);
+  assert.ok(plan.criticalReview.alternativeToReassess.name);
+  assert.match(plan.criticalReview.alternativeToReassess.selectionNote, /not independently ranked/);
+  assert.equal(plan.execution, 'plan-only');
+  assert.equal(plan.safety.toolsInvoked, false);
+  assert.equal(plan.safety.sentinelRequiredForExecution, true);
+  assert.equal(acked, true);
+});
+
+test('rejects malformed assumptions and constraints before persisting a run', async () => {
+  const { env, DB } = makeEnv();
+  for (const body of [
+    { objective: 'Plan', assumptions: [''] },
+    { objective: 'Plan', constraints: ['x'.repeat(241)] },
+    { objective: 'Plan', assumptions: Array.from({ length: 9 }, (_, i) => 'assumption ' + i) },
+    { objective: 'Plan', unexpectedAssumptionField: ['not allowed'] },
+  ]) {
+    const response = await handleRuntimeFetch(postRun(body), env);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(DB.runs.size, 0);
 });
