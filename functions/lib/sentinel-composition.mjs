@@ -83,6 +83,9 @@ export function createSentinelDependencies({ db, adapters, clock = Date.now } = 
         integrationId: context.integrationId ?? null,
         integrationConnectionId: context.integrationConnectionId ?? null,
         integrationToolSlug: context.integrationToolSlug ?? null,
+        integrationPlatformAccountId: context.integrationPlatformAccountId ?? null,
+        integrationAllowedToolSlugs: Object.freeze([...(context.integrationAllowedToolSlugs || [])]),
+        integrationConnectionType: context.integrationConnectionType ?? null,
         inputDigest: context.inputDigest,
       });
       return handler(input, safeContext);
