@@ -660,3 +660,10 @@ The full doctrine, safeguards, measures and delivery sequence are in [AEGIS Firs
 The existing durable planner has been extended with bounded assumptions and constraints, explicit decision rationale, priority-specific alternative rejection reasons, adversarial challenge questions, an unranked alternative-to-reassess marker and evidence required to revisit a recommendation. These fields are stored in the existing version-tolerant metadata envelope; legacy specialist-array rows remain readable and no database migration is introduced.
 
 This first runtime slice is deterministic and inspectable. It does not yet independently discover assumptions, perform live multi-agent debate, calculate measured cost or reliability, or execute work. The plan remains plan-only, with no tool invocation or external effects; Sentinel and human approval remain mandatory before protected execution. Implementation and regression coverage are in the existing agent runtime and orchestration tests. The design and limitations are documented in AEGIS_AGENT_ORCHESTRATION.md.
+
+
+## 9.17 Evidence-based experiment evaluation — initial implementation (20 November 2026)
+
+A pure deterministic evaluation primitive now compares bounded candidate outcomes against shared acceptance criteria, currency and measurement context. It requires explicit safety outcomes and evidence references, excludes unsafe candidates, uses declared-priority comparison rules or a balanced Pareto frontier, and abstains when evidence is incomplete or no unique winner is supported.
+
+This is an evaluation primitive only: no experiments are executed, evidence is not independently verified, results are not persisted, and no learning loop or autonomous self-modification exists. Sentinel remains authoritative. See [AEGIS Experiment Evaluation](AEGIS_EXPERIMENT_EVALUATION.md) and the regression suite in `tests/agent-evaluation.test.mjs`.
