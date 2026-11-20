@@ -61,6 +61,42 @@ jobs:
             exit 1
           fi
 
+      - name: Apply runtime migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1
+      - name: Verify runtime experiment record isolation and immutable audit constraints
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --file scripts/runtime-d1-smoke.sql
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE experiment_records SET record_json = '{}' WHERE principal_id = 'principal-a' AND record_id = 'record-smoke'"; then
+            echo "Expected experiment record immutability trigger to reject updates."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM experiment_records WHERE principal_id = 'principal-a' AND record_id = 'record-smoke'"; then
+            echo "Expected experiment record immutability trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE experiment_record_events SET event_type = 'created' WHERE event_id = 'tombstoned:principal-a:record-smoke'"; then
+            echo "Expected experiment event append-only trigger to reject updates."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM experiment_record_events WHERE event_id = 'tombstoned:principal-a:record-smoke'"; then
+            echo "Expected experiment event append-only trigger to reject deletion."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "INSERT INTO experiment_record_events (event_id, principal_id, record_id, actor_principal_id, event_type, record_digest, created_at) VALUES ('duplicate-tombstone', 'principal-a', 'record-smoke', 'principal-a', 'tombstoned', 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-20T23:02:00.000Z')"; then
+            echo "Expected the unique tombstone index to reject a second deletion event."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "INSERT INTO experiment_records (principal_id, record_id, schema_version, record_digest, record_json, created_at) VALUES ('principal-c', 'bad-digest', 'aegis.experiment-record.v1', 'not-a-digest', '{}', '2026-11-20T23:00:00.000Z')"; then
+            echo "Expected the record digest constraint to reject malformed digests."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "INSERT INTO experiment_record_events (event_id, principal_id, record_id, actor_principal_id, event_type, record_digest, created_at) VALUES ('orphan-event', 'principal-missing', 'missing-record', 'principal-missing', 'created', 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-20T23:02:00.000Z')"; then
+            echo "Expected the experiment event foreign key to reject orphan events."
+            exit 1
+          fi
+
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
       - name: Verify Forge licence gates, immutable source identity and append-only review events
