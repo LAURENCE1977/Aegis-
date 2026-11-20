@@ -118,3 +118,12 @@ The adaptive workspace is not ready to claim complete until:
 ## 11. Current implementation reality
 
 The repository currently contains a compact single-page chat/workspace shell in `index.html`, an interactive companion renderer and several authenticated APIs. Existing project-space documentation notes that a full browser workspace UI is not yet implemented. This design is a target contract; it does not claim those future surfaces exist today.
+
+
+## 12. First implementation slice — adaptive working focus
+
+The existing chat surface now includes a working-focus selector for general assistance, research, build/engineering, creative work, strategy and operations. The selection updates concise workspace guidance and is passed to the authenticated AG-UI endpoint as `workFocus`.
+
+The server accepts only the fixed enumerated values and applies a corresponding bounded reasoning preference in the system prompt. The preference explicitly grants no tools, access, permissions or approval; existing authentication, project ownership, tool registry and Sentinel boundaries remain authoritative. Missing focus defaults to `general`.
+
+This is the first end-to-end adaptive reasoning slice, not a full adaptive workspace. The current surface remains chat-centred; no autonomous planner, new execution route, dynamic tool discovery, or separate task-specific canvas has been implemented. The next slices should add task outcome/acceptance criteria and visible checkpoints, then evolve the task surfaces while preserving the same security model.
