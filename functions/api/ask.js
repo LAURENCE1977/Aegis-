@@ -2,6 +2,7 @@ import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/a
 import { buildSkillContext } from "../lib/skills.mjs";
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { listWorkspaceEvents } from "../lib/project-spaces.mjs";
+import { createModelStream } from "../lib/model-provider.mjs";
 
 const MAX_HISTORY = 10;
 const MAX_TEXT = 4000;
@@ -22,18 +23,114 @@ export async function onRequestPost(context) {
   try { body = await request.json(); } catch (e) { return json({ error: "Invalid request" }, 400); }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (!question) return json({ error: "Prompt required" }, 400);
-  if (!env.AI) return json({ error: "No AI provider configured" }, 503);
-
+  const provider = env.AEGIS_MODEL_PROVIDER || "workers-ai";
+  if (provider === "workers-ai" && (!env.AI || typeof env.AI.run !== "function")) {
+    return json({ error: "No AI provider configured" }, 503);
+  }
   const messages = await buildAskMessages(env, question, body.history);
 
   try {
-    const result = await env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+    const modelStream = await createModelStream({
+      env,
       messages,
-      max_tokens: 1024
+      fetchImpl: context.fetchImpl || fetch,
     });
-    return json(result);
-  } catch (e) {
+    const responseText = await readProviderResponseText(modelStream);
+    return json({ response: responseText });
+  } catch {
     return json({ error: "The AI could not answer right now. Please try again." }, 502);
+  }
+}
+
+const MAX_PROVIDER_FRAME_BYTES = 16 * 1024;
+const MAX_PROVIDER_STREAM_BYTES = 256 * 1024;
+const MAX_PROVIDER_OUTPUT_CHARS = 12000;
+
+async function readProviderResponseText(stream) {
+  if (!stream || typeof stream.getReader !== "function") {
+    throw new Error("Invalid provider stream");
+  }
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let output = "";
+  let receivedBytes = 0;
+  let finished = false;
+  let cancelStream = false;
+
+  const processFrame = (frame) => {
+    if (frame.length > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
+    const data = frame.split(/\r?\n/)
+      .filter(line => line.startsWith("data:"))
+      .map(line => line.slice(5).trimStart())
+      .join("\n");
+    if (!data || data.trim() === "[DONE]") {
+      if (data.trim() === "[DONE]") finished = true;
+      return;
+    }
+    let payload;
+    try { payload = JSON.parse(data); } catch { return; }
+    if (payload.type === "error") throw new Error("Provider stream error");
+    if (payload.type === "message_stop") {
+      finished = true;
+      return;
+    }
+    const delta = payload.type === "content_block_delta" &&
+        payload.delta?.type === "text_delta" && typeof payload.delta.text === "string"
+      ? payload.delta.text
+      : typeof payload.response === "string"
+        ? payload.response
+        : typeof payload.choices?.[0]?.delta?.content === "string"
+          ? payload.choices[0].delta.content
+          : "";
+    if (delta) {
+      const remaining = MAX_PROVIDER_OUTPUT_CHARS - output.length;
+      if (delta.length > remaining) cancelStream = true;
+      output += delta.slice(0, remaining);
+    }
+    if (output.length >= MAX_PROVIDER_OUTPUT_CHARS) {
+      finished = true;
+      cancelStream = true;
+    }
+  };
+
+  const drainFrames = (flush = false) => {
+    while (true) {
+      const match = /\r?\n\r?\n/.exec(buffer);
+      if (!match) break;
+      const index = match.index;
+      if (index > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
+      processFrame(buffer.slice(0, index));
+      buffer = buffer.slice(index + match[0].length);
+      if (finished) break;
+    }
+    if (flush && buffer.trim()) {
+      processFrame(buffer);
+      buffer = "";
+    }
+    if (buffer.length > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
+  };
+
+  try {
+    while (!finished) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_PROVIDER_STREAM_BYTES) throw new Error("Provider stream too large");
+      buffer += decoder.decode(value, { stream: true });
+      drainFrames();
+    }
+    buffer += decoder.decode();
+    drainFrames(true);
+    if (cancelStream) {
+      try { await reader.cancel("AEGIS provider output limit reached"); } catch {}
+    }
+    return output;
+  } catch (error) {
+    try { await reader.cancel("AEGIS provider response failed"); } catch {}
+    throw error;
+  } finally {
+    try { reader.releaseLock(); } catch {}
   }
 }
 

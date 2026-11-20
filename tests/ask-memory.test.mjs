@@ -53,6 +53,16 @@ const row = (overrides={}) => ({
   ...overrides,
 });
 
+function workersAiStream(responseText) {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode('data: ' + JSON.stringify({ response: responseText }) + '\\n\\n'));
+      controller.close();
+    },
+  });
+}
+
 async function makeRequest() {
   const token=await createSessionToken(secret);
   return new Request('https://aegis.example/api/ask',{
@@ -74,7 +84,7 @@ test('chat retrieves only approved owner-scoped memories and labels them as untr
     env:{
       ...ownerEnv,
       AEGIS_DB:db,
-      AI:{async run(model,input){captured={model,input};return {response:'Here is a safe answer.'};}},
+      AI:{async run(model,input){captured={model,input};return workersAiStream('Here is a safe answer.');}},
     },
   });
   assert.equal(response.status,200);
@@ -106,7 +116,7 @@ test('chat remains available without the optional D1 memory binding', async()=>{
     request:await makeRequest(),
     env:{
       ...ownerEnv,
-      AI:{async run(model,input){captured=input;return {response:'Fallback answer.'};}},
+      AI:{async run(model,input){captured=input;return workersAiStream('Fallback answer.');}},
     },
   });
   assert.equal(response.status,200);
