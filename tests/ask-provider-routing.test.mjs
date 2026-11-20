@@ -134,3 +134,13 @@ test('/api/ask cancels an oversized provider stream after enforcing the output c
   assert.equal(body.response.length, 12000);
   assert.equal(cancelled, true);
 });
+
+test('/api/ask preserves the existing 503 response when the default Workers AI binding is absent', async () => {
+  const response = await onRequestPost({
+    request: await request({ question: 'Hello AEGIS' }),
+    env: envBase,
+  });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'No AI provider configured' });
+});
