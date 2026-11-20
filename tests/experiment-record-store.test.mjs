@@ -66,7 +66,11 @@ class FakeD1 {
             return row;
           },
           async all() {
-            const [principalId, limit] = values;
+            const isCursorQuery = sql.includes('r.created_at < ?');
+            const principalId = values[0];
+            const cursorCreatedAt = isCursorQuery ? values[1] : null;
+            const cursorRecordId = isCursorQuery ? values[3] : null;
+            const limit = values[values.length - 1];
             const rows = [...db.records.values()]
               .filter((row) => row.principal_id === principalId)
               .filter((row) => ![...db.events.values()].some((event) =>
@@ -74,6 +78,9 @@ class FakeD1 {
                 event.record_id === row.record_id &&
                 event.event_type === 'tombstoned'
               ))
+              .filter((row) => !isCursorQuery ||
+                row.created_at < cursorCreatedAt ||
+                (row.created_at === cursorCreatedAt && row.record_id < cursorRecordId))
               .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.record_id.localeCompare(a.record_id))
               .slice(0, limit);
             return { results: rows };
@@ -154,8 +161,8 @@ test('appends idempotently and reads only inside the authenticated principal nam
   assert.equal((await appendExperimentRecord(db, 'principal-a', record)).created, false);
   assert.equal((await getExperimentRecord(db, 'principal-a', record.id)).recordDigest, record.recordDigest);
   assert.equal(await getExperimentRecord(db, 'principal-b', record.id), null);
-  assert.equal((await listExperimentRecords(db, 'principal-a')).length, 1);
-  assert.equal((await listExperimentRecords(db, 'principal-b')).length, 0);
+  assert.equal((await listExperimentRecords(db, 'principal-a')).records.length, 1);
+  assert.equal((await listExperimentRecords(db, 'principal-b')).records.length, 0);
 });
 
 test('rejects caller-selected ownership that differs from the authenticated principal', async () => {
@@ -176,7 +183,7 @@ test('tombstones hide a record without mutating its immutable payload', async ()
 
   assert.equal(await tombstoneExperimentRecord(db, 'principal-a', record.id), true);
   assert.equal(await getExperimentRecord(db, 'principal-a', record.id), null);
-  assert.equal((await listExperimentRecords(db, 'principal-a')).length, 0);
+  assert.equal((await listExperimentRecords(db, 'principal-a')).records.length, 0);
   assert.equal(db.records.size, 1);
   assert.equal([...db.events.values()].filter((event) => event.event_type === 'tombstoned').length, 1);
 });
@@ -200,7 +207,7 @@ test('detects tampering in a stored record before returning it', async () => {
 test('bounds principal identifiers and list page sizes', async () => {
   const db = new FakeD1();
   await assert.rejects(() => listExperimentRecords(db, '../other-user'), /principal identifier/i);
-  await assert.rejects(() => listExperimentRecords(db, 'principal-a', 101), /page size/i);
+  await assert.rejects(() => listExperimentRecords(db, 'principal-a', { limit: 101 }), /page size/i);
 });
 
 
@@ -216,4 +223,27 @@ test('rejects a different immutable payload reusing an existing principal record
     () => appendExperimentRecord(db, 'principal-a', changed),
     /different immutable content/i,
   );
+});
+
+
+test('paginates a principal history with a stable created-at and record-ID cursor', async () => {
+  const db = new FakeD1();
+  const records = await Promise.all([
+    makeRecord('page-a', 'principal-a', '2026-11-20T20:01:00.000Z'),
+    makeRecord('page-b', 'principal-a', '2026-11-20T20:02:00.000Z'),
+    makeRecord('page-c', 'principal-a', '2026-11-20T20:03:00.000Z'),
+  ]);
+  for (const record of records) await appendExperimentRecord(db, 'principal-a', record);
+
+  const firstPage = await listExperimentRecords(db, 'principal-a', { limit: 2 });
+  assert.equal(firstPage.records.length, 2);
+  assert.ok(firstPage.nextCursor);
+
+  const secondPage = await listExperimentRecords(db, 'principal-a', {
+    limit: 2,
+    cursor: firstPage.nextCursor,
+  });
+  assert.equal(secondPage.records.length, 1);
+  assert.equal(secondPage.nextCursor, null);
+  assert.equal(new Set([...firstPage.records, ...secondPage.records].map((record) => record.id)).size, 3);
 });
