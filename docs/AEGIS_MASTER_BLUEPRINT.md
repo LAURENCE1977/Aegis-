@@ -684,3 +684,12 @@ Added `migrations/runtime/0003_experiment_records.sql` and `workers/runtime/expe
 Logical deletion is not physical erasure. Retention duration, backup expiry and a separately authorised physical purge/erasure workflow remain open policy and security gates. No runtime route, user-authentication adapter, experiment runner, Sentinel permission change or production deployment is included. Seven store-focused regression tests are authored, including stable keyset pagination by timestamp and record ID; migration and full-suite execution remain pending CI.
 
 The existing Pages HMAC session is single-password and its signed payload currently contains expiry only, not a stable user/subject claim. It therefore cannot be treated as a multi-user principal source. The separate runtime bearer credential is service authentication. An authenticated principal adapter must be designed before any store operation is exposed through a route.
+
+
+## 9.20 Owner-authenticated experiment record API bridge — staged integration (20 November 2026)
+
+Added internal runtime routes for experiment-record append/list/get/tombstone and Pages API routes for the authenticated owner. The Pages bridge reuses the existing `authorizeOwner` session guard and server-side `OWNER_ID = "owner"`; it constructs the record with that principal and forwards it to the runtime using the server-only `AEGIS_JOB_TOKEN` plus `X-Aegis-Principal`. Request bodies cannot set or override the owner. The runtime store independently checks principal/record owner equality and re-verifies record digests.
+
+The current app is a single-owner prototype. The HMAC session payload has no user subject, so the Pages server maps any valid app session to the one fixed owner namespace. Do not present this as multi-user identity. Multi-user support requires stable subject IDs and explicit principal mapping.
+
+The bridge requires HTTPS `AEGIS_RUNTIME_URL` and a server-side `AEGIS_JOB_TOKEN` shared with the runtime Worker. If missing, it fails closed. The Worker remains a separately provisioned service; a successful Pages preview does not mean the Worker or its D1 database is deployed. Logical deletion remains a tombstone, not physical erasure. No Sentinel permissions or production resources are changed.
