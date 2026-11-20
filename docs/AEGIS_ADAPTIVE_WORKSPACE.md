@@ -127,3 +127,10 @@ The existing chat surface now includes a working-focus selector for general assi
 The server accepts only the fixed enumerated values and applies a corresponding bounded reasoning preference in the system prompt. The preference explicitly grants no tools, access, permissions or approval; existing authentication, project ownership, tool registry and Sentinel boundaries remain authoritative. Missing focus defaults to `general`.
 
 This is the first end-to-end adaptive reasoning slice, not a full adaptive workspace. The current surface remains chat-centred; no autonomous planner, new execution route, dynamic tool discovery, or separate task-specific canvas has been implemented. The next slices should add task outcome/acceptance criteria and visible checkpoints, then evolve the task surfaces while preserving the same security model.
+
+
+## 13. Universal environment and Multiverse relationship
+
+The adaptive workspace is one experience layer within the broader AEGIS Multiverse. Users may choose standalone AEGIS, a companion alongside an existing operating system, or a hybrid arrangement across devices. The product principle is: **independent when wanted, complementary when preferred, and connected when authorised**.
+
+The companion is passive by default, with explicit Dormant, Ambient and Active states, visible controls and platform-specific limitations. Compatibility assessment must be transparent and read-only initially; existing security products should be complemented rather than silently disabled or replaced. Cross-device continuity must never widen permissions. The full product and architecture contract is in [AEGIS Universal Environment & Multiverse](AEGIS_UNIVERSAL_ENVIRONMENT.md). This is a direction and acceptance contract, not a claim that these capabilities are implemented.
