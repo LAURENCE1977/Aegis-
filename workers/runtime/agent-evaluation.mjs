@@ -59,7 +59,7 @@ function validateCandidate(candidate, criterionIds, expectedCurrency) {
   }
   if (typeof candidate.safetyEvidenceRef !== 'string' || !candidate.safetyEvidenceRef.trim() ||
       candidate.safetyEvidenceRef.length > MAX_EVIDENCE_REF_LENGTH ||
-      /[\\u0000-\\u001f\\u007f]/.test(candidate.safetyEvidenceRef)) {
+      /[\u0000-\u001f\u007f]/.test(candidate.safetyEvidenceRef)) {
     throw new TypeError('Safety-check outcomes require a bounded evidence reference.');
   }
   if (typeof candidate.measurementContextId !== 'string' ||
