@@ -65,3 +65,131 @@ test('rejects excessively long decimal input before BigInt conversion', () => {
     TypeError,
   );
 });
+
+
+import { normalizeFinancialTransaction } from '../functions/lib/financial-normalize.mjs';
+
+test('normalizes a transaction while retaining exact amount and provider provenance', () => {
+  assert.deepEqual(
+    normalizeFinancialTransaction({
+      provider: 'xero',
+      accountRef: 'acct_opaque_01',
+      externalId: 'txn_123',
+      amount: '-12.34',
+      currency: 'gbp',
+      minorUnitDigits: 2,
+      occurredAt: '2026-11-20T10:30:00+00:00',
+      status: 'booked',
+      sourceUpdatedAt: '2026-11-20T10:31:00Z',
+    }),
+    {
+      provider: 'xero',
+      accountRef: 'acct_opaque_01',
+      externalId: 'txn_123',
+      amountMinor: '-1234',
+      currency: 'GBP',
+      occurredAt: '2026-11-20T10:30:00.000Z',
+      status: 'booked',
+      sourceUpdatedAt: '2026-11-20T10:31:00.000Z',
+    },
+  );
+});
+
+test('normalizes an offset timestamp to UTC and permits an absent source update time', () => {
+  const result = normalizeFinancialTransaction({
+    provider: 'freeagent',
+    accountRef: 'bank_opaque_02',
+    externalId: 'txn_456',
+    amount: '8.00',
+    currency: 'GBP',
+    minorUnitDigits: 2,
+    occurredAt: '2026-11-20T11:30:00+01:00',
+    status: 'pending',
+  });
+
+  assert.equal(result.occurredAt, '2026-11-20T10:30:00.000Z');
+  assert.equal(result.sourceUpdatedAt, null);
+});
+
+test('accepts only explicit provider transaction lifecycle states', () => {
+  for (const status of ['pending', 'booked', 'reversed', 'deleted']) {
+    assert.equal(normalizeFinancialTransaction({
+      provider: 'xero',
+      accountRef: 'acct_01',
+      externalId: 'txn_' + status,
+      amount: '1.00',
+      currency: 'GBP',
+      minorUnitDigits: 2,
+      occurredAt: '2026-11-20T10:30:00Z',
+      status,
+    }).status, status);
+  }
+  assert.throws(() => normalizeFinancialTransaction({
+    provider: 'xero',
+    accountRef: 'acct_01',
+    externalId: 'txn_unknown',
+    amount: '1.00',
+    currency: 'GBP',
+    minorUnitDigits: 2,
+    occurredAt: '2026-11-20T10:30:00Z',
+    status: 'settled',
+  }), TypeError);
+});
+
+test('rejects missing, malformed or oversized transaction identity fields', () => {
+  const valid = {
+    provider: 'xero',
+    accountRef: 'acct_01',
+    externalId: 'txn_01',
+    amount: '1.00',
+    currency: 'GBP',
+    minorUnitDigits: 2,
+    occurredAt: '2026-11-20T10:30:00Z',
+    status: 'booked',
+  };
+
+  for (const patch of [
+    { provider: '' },
+    { provider: 'Xero API' },
+    { accountRef: ' acct_01' },
+    { externalId: '' },
+    { externalId: 'x'.repeat(257) },
+  ]) {
+    assert.throws(() => normalizeFinancialTransaction({ ...valid, ...patch }), TypeError);
+  }
+});
+
+test('rejects timestamps without an explicit timezone or with invalid calendar dates', () => {
+  const valid = {
+    provider: 'xero',
+    accountRef: 'acct_01',
+    externalId: 'txn_01',
+    amount: '1.00',
+    currency: 'GBP',
+    minorUnitDigits: 2,
+    occurredAt: '2026-11-20T10:30:00Z',
+    status: 'booked',
+  };
+
+  for (const occurredAt of [
+    '2026-11-20T10:30:00',
+    '2026-02-30T10:30:00Z',
+    'not-a-date',
+  ]) {
+    assert.throws(() => normalizeFinancialTransaction({ ...valid, occurredAt }), TypeError);
+  }
+});
+
+test('rejects an invalid optional source update timestamp', () => {
+  assert.throws(() => normalizeFinancialTransaction({
+    provider: 'xero',
+    accountRef: 'acct_01',
+    externalId: 'txn_01',
+    amount: '1.00',
+    currency: 'GBP',
+    minorUnitDigits: 2,
+    occurredAt: '2026-11-20T10:30:00Z',
+    status: 'booked',
+    sourceUpdatedAt: 'yesterday',
+  }), TypeError);
+});
