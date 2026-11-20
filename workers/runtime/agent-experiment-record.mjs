@@ -87,53 +87,158 @@ function validateEvaluation(value, contextId) {
   if (value.evidenceState !== 'references_recorded_not_independently_verified') {
     throw new TypeError('Evaluation evidence state is not supported.');
   }
+  if (!Array.isArray(value.criteria) || value.criteria.length < 1 || value.criteria.length > 8) {
+    throw new TypeError('Evaluation criteria must contain between one and eight items.');
+  }
+  const criteria = value.criteria.map((criterion) => {
+    if (!isRecord(criterion)) throw new TypeError('Evaluation criterion must be an object.');
+    return {
+      id: validateId(criterion.id, 'Evaluation criterion ID'),
+      description: validateSafeText(criterion.description, 'Evaluation criterion description', 240),
+    };
+  });
+  const criterionIds = criteria.map((criterion) => criterion.id);
+  if (new Set(criterionIds).size !== criterionIds.length) {
+    throw new TypeError('Evaluation criterion IDs must be unique.');
+  }
   if (!Array.isArray(value.candidates) || value.candidates.length < 2 || value.candidates.length > 8) {
     throw new TypeError('Evaluation must contain between two and eight candidates.');
   }
   const candidateIds = new Set();
   const requiredEvidence = new Map();
+  const candidates = [];
+  let currency = null;
   for (const candidate of value.candidates) {
     if (!isRecord(candidate)) throw new TypeError('Evaluation candidate must be an object.');
     const id = validateId(candidate.id, 'Candidate ID');
     if (candidateIds.has(id)) throw new TypeError('Evaluation candidate IDs must be unique.');
     candidateIds.add(id);
+    if (candidate.measurementContextId !== contextId) {
+      throw new TypeError('Every candidate must use the recorded measurement context identifier.');
+    }
+    if (typeof candidate.currency !== 'string' || !/^[A-Z]{3}$/.test(candidate.currency)) {
+      throw new TypeError('Candidate currency must be an uppercase three-letter code.');
+    }
+    if (currency && currency !== candidate.currency) {
+      throw new TypeError('All evaluation candidates must use the same currency.');
+    }
+    currency = candidate.currency;
+    if (typeof candidate.costMinorUnits !== 'string' || !/^(0|[1-9][0-9]{0,17})$/.test(candidate.costMinorUnits)) {
+      throw new TypeError('Candidate cost must be a non-negative integer string.');
+    }
+    if (!Number.isSafeInteger(candidate.elapsedMs) || candidate.elapsedMs < 1) {
+      throw new TypeError('Candidate elapsed time must be a positive safe integer.');
+    }
     const safetyRef = validateSafeText(candidate.safetyEvidenceRef, 'Safety evidence reference', 500);
     requiredEvidence.set(safetyRef, 'safety');
     if (typeof candidate.safetyChecksPassed !== 'boolean') {
       throw new TypeError('Candidate safety outcome must be explicit.');
     }
-    if (!Array.isArray(candidate.criterionResults) || candidate.criterionResults.length < 1 ||
-        candidate.criterionResults.length > 8) {
-      throw new TypeError('Candidate criterion results must be bounded.');
+    if (!Array.isArray(candidate.criterionResults) || candidate.criterionResults.length !== criterionIds.length) {
+      throw new TypeError('Candidate criterion results must match the evaluation criteria exactly.');
     }
-    for (const result of candidate.criterionResults) {
+    const seenCriteria = new Set();
+    const counts = { pass: 0, fail: 0, unknown: 0 };
+    const criterionResults = candidate.criterionResults.map((result) => {
       if (!isRecord(result) || !['pass', 'fail', 'unknown'].includes(result.outcome)) {
         throw new TypeError('Candidate criterion outcome is invalid.');
       }
-      if (result.outcome === 'unknown') {
-        if (result.evidenceRef !== null) throw new TypeError('Unknown criterion outcomes cannot cite evidence.');
-      } else {
-        const ref = validateSafeText(result.evidenceRef, 'Criterion evidence reference', 500);
-        requiredEvidence.set(ref, 'criterion');
+      const criterionId = validateId(result.criterionId, 'Result criterion ID');
+      if (!criterionIds.includes(criterionId) || seenCriteria.has(criterionId)) {
+        throw new TypeError('Candidate criterion results must match the evaluation criteria exactly once.');
       }
+      seenCriteria.add(criterionId);
+      counts[result.outcome] += 1;
+      if (result.outcome === 'unknown') {
+        if (result.evidenceRef !== null) {
+          throw new TypeError('Unknown criterion outcomes cannot cite evidence.');
+        }
+        return { criterionId, outcome: 'unknown', evidenceRef: null };
+      }
+      const ref = validateSafeText(result.evidenceRef, 'Criterion evidence reference', 500);
+      requiredEvidence.set(ref, 'criterion');
+      return { criterionId, outcome: result.outcome, evidenceRef: ref };
+    });
+    if (seenCriteria.size !== criterionIds.length) {
+      throw new TypeError('Candidate criterion results must match the evaluation criteria exactly once.');
     }
+    if (candidate.passedCriteria !== counts.pass ||
+        candidate.failedCriteria !== counts.fail ||
+        candidate.unknownCriteria !== counts.unknown) {
+      throw new TypeError('Candidate criterion counts do not match the recorded outcomes.');
+    }
+    candidates.push({
+      ...candidate,
+      id,
+      criterionResults,
+    });
   }
+  if (value.currency !== currency) {
+    throw new TypeError('Evaluation currency must match all candidate currencies.');
+  }
+  const expectedExcluded = candidates
+    .filter((candidate) => !candidate.safetyChecksPassed)
+    .map((candidate) => candidate.id)
+    .sort();
   const excluded = Array.isArray(value.excludedCandidateIds) ? value.excludedCandidateIds : [];
-  const excludedIds = new Set(excluded);
-  if (excludedIds.size !== excluded.length ||
-      excluded.some((id) => !candidateIds.has(id))) {
-    throw new TypeError('Excluded candidate identities must be unique and known.');
+  if (new Set(excluded).size !== excluded.length ||
+      excluded.some((id) => !candidateIds.has(id)) ||
+      JSON.stringify([...excluded].sort()) !== JSON.stringify(expectedExcluded)) {
+    throw new TypeError('Safety exclusion list must exactly match candidates that failed safety checks.');
+  }
+  const safeCandidates = candidates.filter((candidate) => candidate.safetyChecksPassed);
+  const hasUnknownSafeResult = safeCandidates.some((candidate) => candidate.unknownCriteria > 0);
+  const expectedStatus = safeCandidates.length === 0
+    ? 'no_safe_candidate'
+    : hasUnknownSafeResult ? 'incomplete' : 'complete';
+  if (value.status !== expectedStatus) {
+    throw new TypeError('Evaluation status does not match safety and evidence completeness.');
   }
   if (value.recommendation !== null) {
-    if (!isRecord(value.recommendation) || !candidateIds.has(value.recommendation.candidateId) ||
-        excludedIds.has(value.recommendation.candidateId)) {
+    if (!isRecord(value.recommendation) ||
+        !candidateIds.has(value.recommendation.candidateId) ||
+        expectedExcluded.includes(value.recommendation.candidateId)) {
       throw new TypeError('Recommendation cannot select an excluded candidate.');
+    }
+    const allowedBasis = value.priority === 'balanced'
+      ? 'unique_pareto_dominant_candidate'
+      : 'declared_priority_lexicographic_comparison';
+    if (value.recommendation.basis !== allowedBasis) {
+      throw new TypeError('Recommendation basis does not match the declared priority.');
     }
   }
   if (value.status !== 'complete' && value.recommendation !== null) {
     throw new TypeError('Incomplete or unsafe evaluations cannot recommend a candidate.');
   }
-  return { evaluation: JSON.parse(JSON.stringify(value)), requiredEvidence };
+  if (value.priority === 'balanced') {
+    if (!Array.isArray(value.paretoFront)) throw new TypeError('Balanced evaluation must include its Pareto frontier.');
+    const front = new Set(value.paretoFront);
+    if (front.size !== value.paretoFront.length ||
+        value.paretoFront.some((id) => !safeCandidates.some((candidate) => candidate.id === id))) {
+      throw new TypeError('Balanced Pareto frontier must contain unique safe candidates.');
+    }
+    if (value.recommendation &&
+        (front.size !== 1 || !front.has(value.recommendation.candidateId))) {
+      throw new TypeError('Balanced recommendation must be the unique Pareto candidate.');
+    }
+    if (value.status === 'complete' && front.size === 1 && value.recommendation === null) {
+      throw new TypeError('A unique balanced Pareto candidate must be recommended.');
+    }
+  } else if (value.status === 'complete') {
+    if (!Array.isArray(value.rankedCandidateIds)) {
+      throw new TypeError('Priority evaluation must include its ranked candidates.');
+    }
+    const ranked = new Set(value.rankedCandidateIds);
+    if (ranked.size !== safeCandidates.length ||
+        ranked.size !== value.rankedCandidateIds.length ||
+        safeCandidates.some((candidate) => !ranked.has(candidate.id))) {
+      throw new TypeError('Ranked candidates must contain every safe candidate exactly once.');
+    }
+  }
+  return {
+    evaluation: JSON.parse(JSON.stringify({ ...value, criteria, candidates })),
+    requiredEvidence,
+  };
 }
 
 function validateEvidence(value, requiredEvidence) {
