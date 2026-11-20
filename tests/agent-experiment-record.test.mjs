@@ -313,3 +313,23 @@ test('rejects unrelated evidence manifest entries that are not referenced by the
     /unreferenced evidence/i,
   );
 });
+
+
+test('verifies an unchanged experiment record digest and detects nested tampering', async () => {
+  const record = await createAgentExperimentRecord(validInput());
+  const { verifyAgentExperimentRecordDigest } = await import('../workers/runtime/agent-experiment-record.mjs');
+
+  assert.equal(await verifyAgentExperimentRecordDigest(record), true);
+
+  const tampered = structuredClone(record);
+  tampered.evaluation.candidates[0].costMinorUnits = '999999';
+  assert.equal(await verifyAgentExperimentRecordDigest(tampered), false);
+});
+
+test('rejects experiment records with unknown top-level fields during digest verification', async () => {
+  const record = await createAgentExperimentRecord(validInput());
+  const { verifyAgentExperimentRecordDigest } = await import('../workers/runtime/agent-experiment-record.mjs');
+  const extended = { ...record, trusted: true };
+
+  assert.equal(await verifyAgentExperimentRecordDigest(extended), false);
+});
