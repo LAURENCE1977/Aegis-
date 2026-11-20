@@ -6,7 +6,7 @@ const PROVIDER_STATUSES = new Set(['discovered', 'reviewed', 'disabled']);
 const INTEGRATION_STATUSES = new Set(['discovered', 'reviewed', 'disabled']);
 const CONNECTION_TYPES = new Set(['owner_private', 'workspace_shared', 'instant_platform_managed', 'public_no_auth', 'unknown']);
 const AUTH_MODES = new Set(['api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials', 'shared_platform_account', 'session_delegation', 'none_public', 'unknown']);
-const CONNECTION_STATUSES = new Set(['discovered', 'connected_unverified', 'connected', 'auth_required', 'restricted', 'rate_limited', 'disabled']);
+const CONNECTION_STATUSES = new Set(['discovered', 'connected_unverified', 'auth_required', 'restricted', 'rate_limited', 'disabled']);
 const HEALTH_STATES = new Set(['healthy', 'degraded', 'auth_required', 'restricted', 'rate_limited']);
 
 function record(value, label) {
@@ -224,8 +224,9 @@ export async function recordIntegrationHealth(db, { id: connectionId, principalI
   if (!HEALTH_STATES.has(healthState)) throw new TypeError('Invalid integration health state');
   const timestamp = isoTime(checkedAt, 'health check');
   if (Date.parse(timestamp) > now + 60_000) throw new TypeError('Integration health timestamp is in the future');
-  const result = await db.prepare(`UPDATE integration_connections SET health_state = ?, health_checked_at = ?, updated_at = ? WHERE id = ? AND principal_id = ? AND status NOT IN ('revoked', 'disabled')`)
-    .bind(healthState, timestamp, new Date(now).toISOString(), connectionId, principalId).run();
+  const connectionStatus = ['healthy', 'degraded'].includes(healthState) ? 'connected' : healthState;
+  const result = await db.prepare(`UPDATE integration_connections SET health_state = ?, health_checked_at = ?, status = ?, updated_at = ? WHERE id = ? AND principal_id = ? AND status NOT IN ('revoked', 'disabled')`)
+    .bind(healthState, timestamp, connectionStatus, new Date(now).toISOString(), connectionId, principalId).run();
   return Number(result?.meta?.changes || 0) === 1;
 }
 
