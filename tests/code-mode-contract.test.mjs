@@ -129,7 +129,6 @@ test('bounds generated source and validates the run identifier', () => {
 
 test('does not accept caller-supplied execution budgets or capability metadata', () => {
   const result = prepareCodeModeRun(request({
-    limits: { maxCalls: 999999 },
     methods: [{
       capabilityId: 'synthetic-read',
       actionId: 'read',
@@ -139,4 +138,7 @@ test('does not accept caller-supplied execution budgets or capability metadata',
   }));
   assert.equal(result.ok, false);
   assert.equal(result.reasonCode, 'INVALID_METHOD_SELECTION');
+  assert.deepEqual(prepareCodeModeRun(request({
+    limits: { maxCalls: 999999 },
+  })), { ok: false, reasonCode: 'INVALID_REQUEST' });
 });
