@@ -69,3 +69,8 @@ This remains a pure record-contract slice. It does not run experiments, persist 
 ### Evidence manifest completeness hardening
 
 The record builder now rejects manifest entries that are not referenced by the benchmark context or evaluation. This keeps the evidence set minimal and auditable: every included artifact reference must support a specific recorded workload, cost, elapsed-time, safety or criterion measurement. It still records references and digests only; it does not independently retrieve or authenticate external artifacts.
+
+
+### Record digest verification
+
+`verifyAgentExperimentRecordDigest(record)` recomputes the canonical SHA-256 digest for a versioned record and returns false when the record is malformed, has an unexpected top-level field, or its contents no longer match the stored digest. This is an integrity/checksum check, not a digital signature or proof of origin: anyone able to replace both the record and its digest can recompute an unkeyed SHA-256 value. A future persistence boundary must protect stored records with authenticated ownership, append-only controls and an independently protected audit trail.
