@@ -302,3 +302,14 @@ test('requires benchmark workload evidence to match the recorded workload digest
   );
   await assert.rejects(() => createAgentExperimentRecord(mismatched), /workload digest/i);
 });
+
+
+test('rejects unrelated evidence manifest entries that are not referenced by the evaluation', async () => {
+  const input = validInput();
+  input.evidence.push(evidenceFor('unrelated:artifact'));
+
+  await assert.rejects(
+    () => createAgentExperimentRecord(input),
+    /unreferenced evidence/i,
+  );
+});
