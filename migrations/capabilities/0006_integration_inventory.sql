@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS integration_definitions (
   status TEXT NOT NULL CHECK (status IN ('discovered', 'reviewed', 'disabled')),
   created_by TEXT NOT NULL CHECK (created_by = 'owner'),
   created_at TEXT NOT NULL,
-  UNIQUE (provider_id, slug)
+  UNIQUE (provider_id, slug),
+  CHECK (status != 'reviewed' OR (schema_version IS NOT NULL AND schema_hash IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS integration_connections (
@@ -59,8 +60,8 @@ CREATE TABLE IF NOT EXISTS integration_connections (
   account_alias TEXT CHECK (account_alias IS NULL OR length(account_alias) BETWEEN 1 AND 120),
   platform_account_id TEXT CHECK (platform_account_id IS NULL OR length(platform_account_id) BETWEEN 1 AND 200),
   platform_connection_id TEXT REFERENCES capability_connections(id),
-  allowed_tool_slugs_json TEXT NOT NULL CHECK (json_valid(allowed_tool_slugs_json) AND json_type(allowed_tool_slugs_json) = 'array'),
-  scopes_json TEXT NOT NULL CHECK (json_valid(scopes_json) AND json_type(scopes_json) = 'array'),
+  allowed_tool_slugs_json TEXT NOT NULL CHECK (json_valid(allowed_tool_slugs_json) AND json_type(allowed_tool_slugs_json) = 'array' AND json_array_length(allowed_tool_slugs_json) <= 200),
+  scopes_json TEXT NOT NULL CHECK (json_valid(scopes_json) AND json_type(scopes_json) = 'array' AND json_array_length(scopes_json) <= 100),
   status TEXT NOT NULL CHECK (status IN (
     'discovered',
     'connected_unverified',
@@ -112,3 +113,34 @@ CREATE INDEX IF NOT EXISTS idx_integration_connections_integration_status
 CREATE INDEX IF NOT EXISTS idx_integration_connections_platform_connection
   ON integration_connections (platform_connection_id)
   WHERE platform_connection_id IS NOT NULL;
+
+
+CREATE TRIGGER IF NOT EXISTS integration_connections_exact_allowlist_insert
+BEFORE INSERT ON integration_connections
+WHEN
+  EXISTS (
+    SELECT 1 FROM json_each(NEW.allowed_tool_slugs_json)
+    WHERE type != 'text' OR value = '*' OR instr(value, '*') > 0
+  )
+  OR EXISTS (
+    SELECT 1 FROM json_each(NEW.scopes_json)
+    WHERE type != 'text' OR value = '*' OR instr(value, '*') > 0
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'integration connection allowlists must contain exact text values');
+END;
+
+CREATE TRIGGER IF NOT EXISTS integration_connections_exact_allowlist_update
+BEFORE UPDATE OF allowed_tool_slugs_json, scopes_json ON integration_connections
+WHEN
+  EXISTS (
+    SELECT 1 FROM json_each(NEW.allowed_tool_slugs_json)
+    WHERE type != 'text' OR value = '*' OR instr(value, '*') > 0
+  )
+  OR EXISTS (
+    SELECT 1 FROM json_each(NEW.scopes_json)
+    WHERE type != 'text' OR value = '*' OR instr(value, '*') > 0
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'integration connection allowlists must contain exact text values');
+END;
