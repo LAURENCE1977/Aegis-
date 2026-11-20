@@ -194,6 +194,8 @@ function validateEvaluation(value, contextId) {
       elapsedMs: candidate.elapsedMs,
       safetyChecksPassed: candidate.safetyChecksPassed,
       safetyEvidenceRef: safetyRef,
+      costEvidenceRef: validateSafeText(candidate.costEvidenceRef, 'Cost evidence reference', 500),
+      elapsedEvidenceRef: validateSafeText(candidate.elapsedEvidenceRef, 'Elapsed-time evidence reference', 500),
       measurementContextId: candidate.measurementContextId,
       criterionResults,
       passedCriteria: counts.pass,
