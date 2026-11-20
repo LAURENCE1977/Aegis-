@@ -164,7 +164,8 @@ CREATE TABLE IF NOT EXISTS financial_sync_runs (
     OR (status IN ('complete', 'partial', 'failed') AND completed_at IS NOT NULL)
   ),
   CHECK (status != 'complete' OR failure_code IS NULL),
-  CHECK (status != 'failed' OR failure_code IS NOT NULL)
+  CHECK (status != 'failed' OR failure_code IS NOT NULL),
+  UNIQUE (id, owner_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_financial_sync_runs_owner_time
@@ -180,8 +181,6 @@ BEGIN
   SELECT RAISE(ABORT, 'financial sync run identity is immutable');
 END;
 
-
-ALTER TABLE financial_sync_runs ADD UNIQUE (id, owner_id);
 
 CREATE TABLE IF NOT EXISTS financial_sync_run_events (
   id TEXT PRIMARY KEY NOT NULL DEFAULT (lower(hex(randomblob(16)))),
