@@ -44,7 +44,7 @@ export function parseMoneyToMinorUnits({ amount, currency, minorUnitDigits } = {
 
 const PROVIDER_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 const TRANSACTION_STATUSES = new Set(['pending', 'booked', 'reversed', 'deleted']);
-const ISO_TIMESTAMP_PATTERN = /^\\d{4}-\\d{2}-\\d{2}T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,3})?(?:Z|[+-](?:(?:0\\d|1[0-3]):[0-5]\\d|14:00))$/;
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
 
 function requireOpaqueIdentifier(value, label) {
   if (
@@ -52,7 +52,7 @@ function requireOpaqueIdentifier(value, label) {
     || value.length < 1
     || value.length > 256
     || value.trim() !== value
-    || /[\\u0000-\\u001f\\u007f]/.test(value)
+    || /[\u0000-\u001f\u007f]/.test(value)
   ) {
     throw new TypeError(label + ' must be a bounded, non-empty identifier.');
   }
