@@ -57,7 +57,13 @@ class FakeD1 {
           },
           async first() {
             const [principalId, recordId] = values;
-            return db.records.get(principalId + ':' + recordId) || null;
+            const row = db.records.get(principalId + ':' + recordId) || null;
+            if (row && sql.includes('NOT EXISTS') && [...db.events.values()].some((event) =>
+              event.principal_id === principalId &&
+              event.record_id === recordId &&
+              event.event_type === 'tombstoned'
+            )) return null;
+            return row;
           },
           async all() {
             const [principalId, limit] = values;
