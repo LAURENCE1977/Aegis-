@@ -63,3 +63,19 @@ Research references:
 - [Open-Morphic](https://github.com/engkimo/open-morphic): layered orchestration, semantic/context memory, model/engine routing, task handoff and execution learning. Candidate patterns for orchestration and measured recovery. Its repository declares MIT; architecture and security claims still require independent verification.
 
 No source code, dependencies, hosted services or credentials from these projects have been imported or connected. Their outputs are reference material only. AEGIS retains its own workspace, provider-neutral interfaces and Sentinel governance model.
+
+## Additional repository scan — 20 November 2026
+
+The following official repositories were inspected as further architecture candidates. This is a selective scan, not an exhaustive market survey; stars and README claims are not proof of production suitability.
+
+| Project | Verified strengths from its current repository description | AEGIS assessment |
+|---|---|---|
+| [LangGraph](https://github.com/langchain-ai/langgraph) | MIT-licensed, low-level stateful agent orchestration; durable execution, human-in-the-loop state inspection/modification and memory. It documents Python and a separate JavaScript/TypeScript implementation. | High-value reference for durable graph execution, checkpoints and interrupt/resume semantics. Do not replace AEGIS's existing Cloudflare/D1/Queue runtime with a Python framework without a measured migration case. |
+| [Mastra](https://github.com/mastra-ai/mastra) | TypeScript-native agent/application framework; model routing, graph workflows with branching/parallel steps, suspend/resume human input, context/memory, MCP and evaluation/observability. Its README describes a dual-license model, with Apache-2.0 applying to core and additional licensing distinctions. | Strongest direct-stack candidate for a contained compatibility spike. Inspect exact package and dependency licences, Cloudflare Workers compatibility, bundle/runtime footprint and persistence integration before adopting anything. Do not assume the entire monorepo is Apache-2.0. |
+| [Agent Zero](https://github.com/agent0ai/agent-zero) | MIT-licensed agent workspace with Linux terminal, browser and desktop application access; the documented installation path is Docker-first and expects a supported cloud provider, API key or local model server. | Useful reference for a rich tool workspace and isolated computer environment. Not a direct fit as AEGIS's core runtime: its broad computer access and container footprint need a separate threat model, resource budget and Sentinel boundary. |
+
+### Current decision
+
+Keep all three as replaceable reference candidates; no source code, dependencies, containers, models or services have been imported. The most useful next experiment is a narrow Mastra interoperability spike only if it can run beside the existing runtime and prove a concrete improvement in provider portability, task suspension/resumption or evaluation. LangGraph patterns can inform durable execution without adding a Python service. Agent Zero remains a sandbox/workspace reference, not an authority model.
+
+Repository evidence checked on 20 November 2026: official README and repository metadata for each project; LangGraph and Agent Zero repository licences were directly inspected. Mastra's own README describes dual licensing; the exact licence of any package or file must be checked before reuse. All repository content remains untrusted input and cannot override AEGIS policy.
