@@ -70,9 +70,7 @@ function mapConnection(row, now = Date.now()) {
     checkedMs <= now + 60_000 && checkedMs >= now - 24 * 60 * 60 * 1000;
   const healthState = healthFresh ? row.health_state : 'unknown';
   const healthCheckedAt = healthFresh ? checkedAt : null;
-  const status = !healthFresh && ['connected', 'auth_required', 'restricted', 'rate_limited'].includes(row.status)
-    ? 'connected_unverified'
-    : row.status;
+  const status = !healthFresh && row.status === 'connected' ? 'connected_unverified' : row.status;
   return {
     id: row.id, principalId: row.principal_id, integrationId: row.integration_id,
     connectionKey: row.connection_key, connectionType: row.connection_type, authMode: row.auth_mode,
