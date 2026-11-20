@@ -44,7 +44,7 @@ function parseStoredRecord(row, principalId) {
   return record;
 }
 
-function awaitableDigestShape(value) {
+function isDigest(value) {
   return typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
