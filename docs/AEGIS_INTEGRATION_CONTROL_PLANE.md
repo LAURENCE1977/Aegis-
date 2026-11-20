@@ -252,3 +252,18 @@ The integration layer is ready for initial controlled use only when:
 - read-only probes work without enabling write capabilities;
 - owner revocation blocks future invocations;
 - the system degrades safely when any provider or platform is unavailable.
+
+
+## Phase 1 implementation checkpoint — metadata-only inventory substrate
+
+Draft PR #124 adds the first storage/repository slice:
+
+- `integration_providers` stores provider identity, source URL, verification timestamp and review state.
+- `integration_definitions` stores a distinct integration/toolkit identity, provider link, auth mode, source URL, schema version/hash and review state.
+- `integration_connections` stores owner-scoped account/tenant records with stable per-integration connection keys, connection/auth classification, safe account alias and opaque platform account ID, optional link to an AEGIS platform credential connection, exact allowed tool slugs, scopes, connection status and separate health observations.
+- Multiple account connections can exist for the same integration; an upsert refresh resets health to `unknown` until a fresh observation is recorded.
+- Public/no-auth records require `none_public` and no platform credential connection. Inventory import cannot assert `healthy`; health requires a separate timestamped observation.
+- The repository exposes metadata only. It does not resolve vault secrets, create grants/approvals, register executable adapters or invoke external tools.
+
+Migration `0006_integration_inventory.sql` is source only and has passed isolated local D1 migration and schema validation in GitHub Actions. It has not been applied to any Cloudflare database. No Composio records have been imported; the user's screenshots and later authorised inventory retrieval remain the source for actual account names, aliases, statuses and tool slugs.
+
