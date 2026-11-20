@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS experiment_records (
   record_id TEXT NOT NULL CHECK (length(record_id) BETWEEN 1 AND 80),
   schema_version TEXT NOT NULL CHECK (schema_version = 'aegis.experiment-record.v1'),
   record_digest TEXT NOT NULL CHECK (
-    length(record_digest) = 71 AND substr(record_digest, 1, 7) = 'sha256:'
+    length(record_digest) = 71 AND substr(record_digest, 1, 7) = 'sha256:' AND substr(record_digest, 8) NOT GLOB '*[^0-9a-f]*'
   ),
   record_json TEXT NOT NULL CHECK (length(record_json) BETWEEN 2 AND 262144),
   created_at TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS experiment_record_events (
   actor_principal_id TEXT NOT NULL,
   event_type TEXT NOT NULL CHECK (event_type IN ('created', 'tombstoned')),
   record_digest TEXT NOT NULL CHECK (
-    length(record_digest) = 71 AND substr(record_digest, 1, 7) = 'sha256:'
+    length(record_digest) = 71 AND substr(record_digest, 1, 7) = 'sha256:' AND substr(record_digest, 8) NOT GLOB '*[^0-9a-f]*'
   ),
   created_at TEXT NOT NULL,
   FOREIGN KEY (principal_id, record_id)
