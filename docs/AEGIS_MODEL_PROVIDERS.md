@@ -21,12 +21,15 @@ The registry rollout is deliberately staged and is not yet complete:
 - PR #116 changes missing input/output pricing from numeric zero to `null`. A confirmed zero remains zero. Do not use unknown prices in cost ranking or describe them as free.
 - PR #117 adds a server-owned adapter allowlist: `workers-ai`, `anthropic` and `alibaba-qwen`.
 - PR #118 makes the runtime provider adapter selection consult the same canonical allowlist before dispatch. This prevents the registry and runtime from drifting into separate adapter allowlists.
-- The live request path still selects the configured provider through `AEGIS_MODEL_PROVIDER`. It does **not yet** select a model through `listEligibleModels`; catalogue eligibility, model ID enforcement, metadata freshness, context/output limits and task compatibility are not yet enforced by live AG-UI routing.
+- PR #119 adds mandatory per-model evidence provenance (`sourceUrl` and canonical `verifiedAt`) and independently rejects stale/future model evidence in `listEligibleModels`, even when the provider record itself is fresh. It still does not invent model catalogue entries or wire model selection into the live request path.
+- The live request path still selects the configured provider through `AEGIS_MODEL_PROVIDER`. It does **not yet** select a model through `listEligibleModels`; model ID enforcement, context/output limits and task compatibility are not yet enforced by live AG-UI routing.
+- A route audit found a second chat path: `functions/api/ask.js` still calls `env.AI.run` directly with the Workers AI default model. It bypasses `createModelStream`, so it does not honour the configured Anthropic/Qwen adapter. Do not treat provider support as cross-route until this legacy JSON endpoint is migrated with a compatibility-preserving response contract and route-level regression tests.
+- `providerModelId` is now an optional, separately validated native identifier on registry model records. It is returned by `listEligibleModels` without replacing the internal catalogue `id`. It remains optional until verified catalogue records are available; no live adapter consumes it yet.
 - No model pricing, context limit or tool capability should be inferred from an unverified model ID. Missing or stale facts remain unknown and must block decisions that depend on them.
 
 ### Evidence sources and refresh policy
 
-Use provider-owned documentation as the evidence source, record the exact URL and verification timestamp, and recheck before a catalogue record is eligible. Documentation is not a live account entitlement check: a provider's model being documented does not prove that a particular AEGIS account has access.
+Use provider-owned documentation as the evidence source for each individual model, record the exact HTTPS source URL and canonical UTC verification timestamp on that model, and recheck before it is eligible. Provider-level terms evidence is recorded separately. Eligibility requires both provider-level and model-level verification to be within the configured freshness window. Documentation is not a live account entitlement check: a provider's model being documented does not prove that a particular AEGIS account has access.
 
 - [Cloudflare Workers AI model catalogue](https://developers.cloudflare.com/workers-ai/models/)
 - [Cloudflare Workers AI model details and limits](https://developers.cloudflare.com/workers-ai/models/llama-3.3-70b-instruct-fp8-fast/)

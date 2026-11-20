@@ -6,7 +6,7 @@ export function isSupportedProviderAdapter(adapterId) {
   return typeof adapterId === 'string' && ADAPTERS.has(adapterId);
 }
 const PROVIDER_KEYS = new Set(['id', 'adapterId', 'displayName', 'status', 'termsUrl', 'verifiedAt', 'models']);
-const MODEL_KEYS = new Set(['id', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
+const MODEL_KEYS = new Set(['id', 'providerModelId', 'sourceUrl', 'verifiedAt', 'contextTokens', 'maxOutputTokens', 'tasks', 'inputCost', 'outputCost']);
 
 function exactKeys(value, allowed, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -28,12 +28,33 @@ function validTimestamp(value, label) {
   return time;
 }
 
+function validHttpsUrl(value, label) {
+  if (typeof value !== 'string') throw new TypeError(label + ' URL is required');
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new TypeError('Invalid ' + label + ' URL'); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+    throw new TypeError(label + ' URL must use HTTPS');
+  }
+  return value;
+}
+
+function validateProviderModelId(value) {
+  if (typeof value !== 'string' || value.length > 180 ||
+      !/^[A-Za-z0-9@][A-Za-z0-9@._/-]*$/.test(value) ||
+      value.includes('//') || value.split('/').some(part => !part || part === '.' || part === '..')) {
+    throw new TypeError('Invalid provider model identifier');
+  }
+}
+
 function validateModel(model, ids) {
   exactKeys(model, MODEL_KEYS, 'model');
   if (typeof model.id !== 'string' || !ID.test(model.id) || ids.has(model.id)) {
     throw new TypeError('Invalid or duplicate model identifier');
   }
   ids.add(model.id);
+  if (model.providerModelId !== undefined) validateProviderModelId(model.providerModelId);
+  validHttpsUrl(model.sourceUrl, 'Model source');
+  validTimestamp(model.verifiedAt, 'model verification');
   positiveInteger(model.contextTokens, 'model context window');
   positiveInteger(model.maxOutputTokens, 'model output limit');
   if (!Array.isArray(model.tasks) || model.tasks.length < 1 ||
@@ -73,12 +94,7 @@ export function validateProviderRegistry(registry) {
     if (!['enabled', 'disabled', 'review'].includes(provider.status)) {
       throw new TypeError('Invalid provider status');
     }
-    if (typeof provider.termsUrl !== 'string') throw new TypeError('Provider terms URL is required');
-    let terms;
-    try { terms = new URL(provider.termsUrl); } catch { throw new TypeError('Invalid provider terms URL'); }
-    if (terms.protocol !== 'https:' || terms.username || terms.password) {
-      throw new TypeError('Provider terms URL must use HTTPS');
-    }
+    validHttpsUrl(provider.termsUrl, 'Provider terms');
     validTimestamp(provider.verifiedAt, 'provider verification');
     if (!Array.isArray(provider.models) || provider.models.length < 1 || provider.models.length > 500) {
       throw new TypeError('Invalid provider models');
@@ -96,20 +112,24 @@ export function listEligibleModels(registry, { task, now, maxAgeMs = 86400000 } 
   const result = [];
   for (const provider of registry.providers) {
     if (provider.status !== 'enabled') continue;
-    const verifiedMs = Date.parse(provider.verifiedAt);
-    if (verifiedMs > nowMs || nowMs - verifiedMs > maxAgeMs) continue;
+    const providerVerifiedMs = Date.parse(provider.verifiedAt);
+    if (providerVerifiedMs > nowMs || nowMs - providerVerifiedMs > maxAgeMs) continue;
     for (const model of provider.models) {
-      if (!model.tasks.includes(task)) continue;
+      const modelVerifiedMs = Date.parse(model.verifiedAt);
+      if (!model.tasks.includes(task) || modelVerifiedMs > nowMs ||
+          nowMs - modelVerifiedMs > maxAgeMs) continue;
       result.push(Object.freeze({
         id: model.id,
+        providerModelId: model.providerModelId ?? null,
         providerId: provider.id,
         adapterId: provider.adapterId,
+        sourceUrl: model.sourceUrl,
         contextTokens: model.contextTokens,
         maxOutputTokens: model.maxOutputTokens,
         tasks: [...model.tasks],
         inputCost: model.inputCost ?? null,
         outputCost: model.outputCost ?? null,
-        verifiedAt: provider.verifiedAt,
+        verifiedAt: model.verifiedAt,
       }));
     }
   }
