@@ -13,7 +13,7 @@ const measurementContext = {
   id: 'benchmark-context-v1',
   benchmarkId: 'routing-baseline',
   benchmarkVersion: '1.0.0',
-  workloadDigest: 'sha256:' + 'a'.repeat(64),
+  workloadDigest: 'sha256:' + 'b'.repeat(64),
   workloadEvidenceRef: 'benchmark:workload-v1',
   runtime: 'cloudflare-workers',
   runtimeVersion: '2026-11-20',
