@@ -217,3 +217,32 @@ test('stores only the versioned evaluation fields and does not copy arbitrary ca
   assert.equal('rawPayload' in record.evaluation, false);
   assert.equal(record.evaluation.candidates[0].rawPayload, undefined);
 });
+
+
+test('produces the same digest when candidate and criterion order changes', async () => {
+  const input = validInput();
+  const reordered = {
+    ...input,
+    evaluation: {
+      ...input.evaluation,
+      candidates: [...input.evaluation.candidates].reverse().map((item) => ({
+        ...item,
+        criterionResults: [...item.criterionResults].reverse(),
+      })),
+      criteria: [...input.evaluation.criteria].reverse(),
+    },
+  };
+
+  const first = await createAgentExperimentRecord(input);
+  const second = await createAgentExperimentRecord(reordered);
+
+  assert.equal(first.recordDigest, second.recordDigest);
+});
+
+test('rejects reuse of one evidence reference for different evidence kinds', async () => {
+  const input = validInput();
+  const first = input.evaluation.candidates[0];
+  first.safetyEvidenceRef = first.criterionResults[0].evidenceRef;
+
+  await assert.rejects(() => createAgentExperimentRecord(input), /different evidence kinds/i);
+});
