@@ -1,7 +1,7 @@
 INSERT INTO financial_accounts (
-  id, owner_id, provider_slug, external_account_ref, currency, status, created_at, updated_at
+  id, owner_id, provider_slug, connection_ref, external_account_ref, currency, status, created_at, updated_at
 ) VALUES (
-  'finance-account-smoke', 'owner', 'xero', 'tenant-account-001', 'GBP', 'read_only',
+  'finance-account-smoke', 'owner', 'xero', 'connection-smoke', 'tenant-account-001', 'GBP', 'read_only',
   '2026-11-20T20:00:00.000Z', '2026-11-20T20:00:00.000Z'
 );
 
