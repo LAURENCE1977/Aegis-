@@ -640,3 +640,16 @@ Added a separate finance D1 migration for owner-scoped financial account referen
 
 Next gates: verify CI on the latest PR head; decide runtime D1 topology; implement an authenticated owner-scoped read-only ingestion path using verified provider schemas; test duplicate/replay handling and partial pagination; define retention and owner deletion; only then consider a live read-only connection. No financial writes or transfers are in scope.
 Financial ledger refinement: accounts now retain an opaque AEGIS `connection_ref` (never a credential), and every future read must re-resolve it against the current owner-scoped integration inventory and pass Sentinel at time of use. Sync runs emit append-only lifecycle events and become immutable after `complete`, `partial` or `failed`. The complete Node.js + isolated capability/Forge/finance D1 suite passed on code commit `7c781e5f9a8e587fc615df06ccf51ee7c8da3ffa` ([run 44810142934](https://github.com/LAURENCE1977/Aegis-/actions/runs/44810142934)).
+
+## 9.15 First-principles engineering and symbiotic evolution (20 November 2026)
+
+AEGIS adopts a first-principles engineering mindset: question inherited assumptions, reason from fundamental requirements, explore materially different approaches, simplify where possible, experiment safely and judge improvements by evidence. This borrows useful engineering disciplines rather than imitating any individual.
+
+The doctrine introduces bounded thinking disciplines (first-principles engineering, radical innovation, systems architecture, commercial strategy, adversarial challenge, reliability/security review and long-horizon evolution). They may be performed by one model, multiple models, deterministic tools or human reviewers; they are not required to be separate always-running agents. The system should preserve meaningful disagreement and test recommendations against strong alternatives.
+
+The proposed invention/evolution lifecycle is gap identification, research, specification, risk and provenance review, isolated prototype, testing, independent review, owner decision, controlled release and rollback readiness. AEGIS may inspect its own documented architecture and propose or test improvements, but cannot self-grant authority, alter Sentinel, access production secrets, approve itself or deploy its own changes. Novelty alone is not evidence of value.
+
+This doctrine is an overlay on the existing Outcome Planner, Adaptive Intelligence, Capability Registry, Forge, evaluation/observability, Evolution Engine direction, Adaptive Workspace and Universal Environment. Sentinel remains the sole authority for protected actions. Delivery begins with inspectable decision records, bounded planner improvements and an evaluation baseline before any sandboxed invention or broader delegation.
+
+The full doctrine, safeguards, measures and delivery sequence are in [AEGIS First-Principles Evolution Doctrine](AEGIS_FIRST_PRINCIPLES_EVOLUTION.md). This is architecture direction, not a claim that the reasoning disciplines or evolution engine are implemented.
+
