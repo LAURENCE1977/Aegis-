@@ -29,6 +29,27 @@ The integration control plane must compose those existing primitives. It must no
 - No assumption that one shared API key provides every endpoint or action offered by the provider.
 - No production resource provisioning or deployment as part of this architecture document.
 
+## Existing connection-schema gap discovered during implementation review
+
+The current `migrations/capabilities/0003_connections.sql` schema is narrower than the target integration model:
+
+- `capability_connections.secret_ref` is `NOT NULL`, so public/no-auth and platform-managed connections without an AEGIS-owned vault secret cannot be represented honestly.
+- The active uniqueness key is `(principal_id, provider_id)`, allowing only one active connection per principal/provider. That cannot represent multiple accounts or multiple integration/toolkit connections under one platform.
+- The table has no distinct `integration_id`, stable per-account `connection_key`, connection-type enum, auth-mode enum, platform account identity, allowed-tool-slug list, or timestamped health state.
+- The current status enum only records `active` and `revoked`; it cannot represent discovery, authentication, restriction, degradation or health independently.
+- `capability_secrets` and the existing vault resolver bind ciphertext to `principal_id` and `provider_id`. Any schema expansion must preserve that binding and must not silently change the meaning of existing provider IDs.
+
+Therefore Phase 1 requires a deliberate, backwards-compatible connection-schema migration before importing the user's Composio inventory. Do not insert fake secret references for public, shared or instant connections. The migration design should:
+
+1. Preserve all legacy rows and map them explicitly to a legacy connection key and owner-private/API-key auth classification only where existing evidence supports that classification.
+2. Introduce a stable integration identity and per-connection key so multiple toolkit/account records can coexist without weakening exact-resource grants.
+3. Allow a nullable vault reference only for auth modes that do not require an AEGIS-owned secret; enforce the auth-mode/secret-reference relationship in validation and tests.
+4. Store platform-managed account identity and exact allowed tool slugs as metadata, never as credentials or proof of execution entitlement beyond the platform's current allowlist.
+5. Separate connection lifecycle status from timestamped health observations; a metadata listing must never imply `healthy`.
+6. Keep Sentinel, grant, approval, vault and audit enforcement as the only invocation path. A schema migration must not itself enable any adapter.
+
+Before implementation, inspect every query/resolver that reads or writes `capability_connections`, the vault's authenticated additional-data binding, and all migration tests. Test legacy-row preservation, duplicate account handling, no-secret auth modes, revocation, secret lookup isolation and append-only audit integrity against an isolated local D1 database.
+
 ## Core data model
 
 Keep these entities separate and link them by stable IDs:
