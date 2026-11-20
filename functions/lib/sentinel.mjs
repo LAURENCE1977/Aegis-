@@ -192,6 +192,9 @@ export async function runSentinelInvocation(request, dependencies = {}) {
       integrationId: integrationContext?.integration?.id ?? null,
       integrationConnectionId: integrationContext?.connection?.id ?? null,
       integrationToolSlug: request.integrationTool?.toolSlug ?? null,
+      integrationPlatformAccountId: integrationContext?.connection?.platformAccountId ?? null,
+      integrationAllowedToolSlugs: integrationContext?.connection?.allowedToolSlugs ?? [],
+      integrationConnectionType: integrationContext?.connection?.connectionType ?? null,
       inputDigest: request.inputDigest,
     });
   } catch {
