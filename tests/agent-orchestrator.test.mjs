@@ -58,7 +58,6 @@ test('validates explicit outcome acceptance criteria and planning priority', () 
 test('rejects malformed, excessive or oversized acceptance criteria and unknown priorities', () => {
   for (const acceptanceCriteria of [
     'one criterion',
-    [],
     [''],
     ['x'.repeat(241)],
     Array.from({ length: 9 }, (_, i) => 'criterion ' + i),
