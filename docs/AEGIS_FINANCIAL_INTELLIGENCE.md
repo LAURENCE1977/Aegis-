@@ -96,3 +96,13 @@ AEGIS agents and Challenge Mode may analyse, compare and prepare financial plans
 ## Current decision
 
 Build the financial data contract and read-only evaluation path first. Defer connection creation, secret resolution, financial writes, automated investing and payment execution until the owner has selected the relevant Composio integration and Sentinel's full execution path is independently verified.
+
+## Initial transaction normalizer — source-level implementation (20 November 2026)
+
+`functions/lib/financial-normalize.mjs` now exports `normalizeFinancialTransaction`, built on the exact minor-unit parser above. It accepts a bounded provider slug, opaque account and external transaction references, an exact decimal amount with an explicitly supplied currency exponent, an ISO timestamp with an explicit timezone, a known lifecycle status (`pending`, `booked`, `reversed` or `deleted`), and an optional source-update timestamp.
+
+The normalized result retains provider/account/transaction identity, exact integer minor units as a JSON-safe string, uppercase currency, UTC-normalized timestamps and the original lifecycle classification. Invalid identifiers, unknown statuses, invalid calendar dates, timezone-less timestamps and implicit monetary rounding are rejected.
+
+Verification: GitHub Actions run [44808072640](https://github.com/LAURENCE1977/Aegis-/actions/runs/44808072640) completed successfully on commit [4342d5b](https://github.com/LAURENCE1977/Aegis-/commit/4342d5b92c75ad8f6f29c7d311a03317a8eda755), including the full Node.js test suite and all isolated local D1/Forge checks.
+
+This remains a pure normalization utility, not a connected provider adapter or ingestion service. It does not establish account ownership or tenant scope, fetch provider records, persist transactions, deduplicate against a database, reconcile payouts, calculate FX, create forecasts or expose financial data in the UI. A trusted provider adapter must establish owner/tenant scope and supply the provider's authoritative decimal precision before calling it. No financial account has been connected or accessed.
