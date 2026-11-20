@@ -11,6 +11,8 @@ test('accepts a bounded objective and defaults to the coordinator workflow', () 
     specialists: ['researcher', 'engineer', 'reviewer'],
     acceptanceCriteria: [],
     priority: 'balanced',
+    assumptions: [],
+    constraints: [],
   });
 });
 
@@ -130,4 +132,47 @@ test('plan creation revalidates stored specialist and outcome data instead of tr
     specialists: ['reviewer'],
     acceptanceCriteria: ['x'.repeat(241)],
   }, metadata));
+});
+
+
+test('validates bounded assumptions and constraints and exposes a contrarian review', () => {
+  const input = validateAgentRunSubmission({
+    objective: 'Choose a robust approach',
+    assumptions: ['The existing runtime remains authoritative'],
+    constraints: ['No production side effects'],
+  });
+  const plan = createAgentPlan(input, {
+    runId: 'run-first-principles',
+    createdAt: '2026-11-20T20:00:00.000Z',
+  });
+  assert.deepEqual(plan.assumptions, ['The existing runtime remains authoritative']);
+  assert.deepEqual(plan.constraints, ['No production side effects']);
+  assert.equal(plan.decision.recommendedApproach, 'staged');
+  assert.ok(plan.decision.rationale.length > 0);
+  assert.equal(plan.decision.alternativesConsidered.length, 2);
+  assert.ok(plan.decision.alternativesConsidered.every((item) => item.reasonNotSelected.length > 0));
+  assert.ok(plan.criticalReview.challengeQuestions.length >= 3);
+  assert.ok(plan.criticalReview.strongestAlternative);
+  assert.ok(plan.criticalReview.evidenceNeededToChangeRecommendation.length > 0);
+  assert.deepEqual(plan.verification.criteria, []);
+  assert.equal(plan.verification.completionRequiresEvidence, true);
+  assert.equal(plan.execution, 'plan-only');
+  assert.equal(plan.safety.toolsInvoked, false);
+});
+
+test('rejects unsafe, duplicate, excessive or oversized assumptions and constraints', () => {
+  for (const body of [
+    { assumptions: [''] },
+    { assumptions: ['duplicate', 'duplicate'] },
+    { assumptions: ['x'.repeat(241)] },
+    { assumptions: Array.from({ length: 9 }, (_, i) => 'assumption ' + i) },
+    { constraints: ['bad\\u0000value'] },
+    { constraints: ['same', 'same'] },
+    { constraints: Array.from({ length: 9 }, (_, i) => 'constraint ' + i) },
+  ]) {
+    assert.throws(() => validateAgentRunSubmission({
+      objective: 'Review the runtime',
+      ...body,
+    }));
+  }
 });
