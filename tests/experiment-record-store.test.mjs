@@ -202,3 +202,66 @@ test('bounds principal identifiers and list page sizes', async () => {
   await assert.rejects(() => listExperimentRecords(db, '../other-user'), /principal identifier/i);
   await assert.rejects(() => listExperimentRecords(db, 'principal-a', 101), /page size/i);
 });
+
+
+test('rejects a different immutable payload reusing an existing principal record ID', async () => {
+  const db = new FakeD1();
+  const original = await makeRecord('record-collision');
+  const changed = await makeRecord('record-collision');
+  const different = { ...changed, sourceRunId: 'different-source-run' };
+  // Recompute a valid digest for the altered record through the public builder
+  // by changing an input field rather than forging the digest.
+  const rebuilt = await makeRecord('record-collision');
+  assert.equal(original.recordDigest, rebuilt.recordDigest);
+  await appendExperimentRecord(db, 'principal-a', original);
+
+  const altered = await makeRecord('record-collision', 'principal-a');
+  const alteredWithDifferentTimestamp = await createAgentExperimentRecord({
+    id: altered.id,
+    ownerId: altered.ownerId,
+    sourceRunId: 'different-source-run',
+    benchmarkId: context.benchmarkId,
+    createdAt: '2026-11-20T20:06:00.000Z',
+    measurementContext: { ...context },
+    evaluation: (() => {
+      const result = evaluateAgentExperiment({
+        priority: 'lowest_cost',
+        criteria,
+        candidates: ['candidate-a', 'candidate-b'].map((candidateId, index) => ({
+          id: candidateId,
+          currency: 'GBP',
+          costMinorUnits: String(100 + index * 100),
+          elapsedMs: 1000 + index * 100,
+          safetyChecksPassed: true,
+          safetyEvidenceRef: 'safety:' + candidateId,
+          measurementContextId: context.id,
+          criterionResults: [{ criterionId: 'correctness', outcome: 'pass', evidenceRef: 'criterion:' + candidateId }],
+        })),
+      });
+      for (const candidate of result.candidates) {
+        candidate.costEvidenceRef = 'cost:' + candidate.id;
+        candidate.elapsedEvidenceRef = 'runtime:' + candidate.id;
+      }
+      return result;
+    })(),
+    evidence: [
+      { ref: context.workloadEvidenceRef, kind: 'benchmark', sha256: context.workloadDigest },
+      ...['candidate-a', 'candidate-b'].flatMap((candidateId) => [
+        { ref: 'safety:' + candidateId, kind: 'safety' },
+        { ref: 'cost:' + candidateId, kind: 'cost' },
+        { ref: 'runtime:' + candidateId, kind: 'runtime' },
+        { ref: 'criterion:' + candidateId, kind: 'criterion' },
+      ]),
+    ].map((item) => ({
+      ...item,
+      sha256: item.sha256 || 'sha256:' + 'b'.repeat(64),
+      capturedAt: '2026-11-20T20:00:00.000Z',
+    })),
+  });
+
+  assert.notEqual(original.recordDigest, alteredWithDifferentTimestamp.recordDigest);
+  await assert.rejects(
+    () => appendExperimentRecord(db, 'principal-a', alteredWithDifferentTimestamp),
+    /different immutable content/i,
+  );
+});
