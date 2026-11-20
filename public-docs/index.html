@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090d16">
+  <meta name="description" content="AEGIS is a modular, mobile-first AI workspace in active development. Explore its principles, current foundations and roadmap.">
+  <meta name="color-scheme" content="dark">
+  <title>AEGIS — A personal AI workspace</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="AEGIS home">
+      <span class="brand-mark" aria-hidden="true">A</span>
+      <span>AEGIS</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#principles">Principles</a>
+      <a href="#foundation">Foundation</a>
+      <a href="#roadmap">Roadmap</a>
+      <a class="nav-link" href="https://github.com/LAURENCE1977/Aegis-" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> INDEPENDENT AI WORKSPACE · IN DEVELOPMENT</p>
+      <h1 id="hero-title">A capable workspace.<br><span>Under your control.</span></h1>
+      <p class="hero-copy">AEGIS is an evolving, modular AI workspace designed to bring conversation, durable project context and carefully governed tools into one mobile-first experience.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="https://github.com/LAURENCE1977/Aegis-" target="_blank" rel="noopener noreferrer">Explore the source <span aria-hidden="true">↗</span></a>
+        <a class="button secondary" href="#principles">How it is designed</a>
+      </div>
+      <p class="hero-note">A working project, not a finished product. Capabilities are labelled by their actual implementation status.</p>
+    </section>
+
+    <section class="section" id="principles" aria-labelledby="principles-title">
+      <div class="section-heading">
+        <p class="eyebrow">01 / DESIGN PRINCIPLES</p>
+        <h2 id="principles-title">One core. Replaceable parts.</h2>
+        <p>AEGIS is being built around a portable core and clear boundaries, so providers and clients can evolve without locking the project to one vendor or device.</p>
+      </div>
+      <div class="principle-grid">
+        <article class="panel"><span class="panel-index">01</span><h3>Provider-neutral</h3><p>Model and infrastructure providers should sit behind replaceable adapters. A provider change should not require rebuilding the whole workspace.</p></article>
+        <article class="panel"><span class="panel-index">02</span><h3>Workspace-led</h3><p>Projects, files and durable context are the working foundation. Conversation is an interface to the workspace, not the only place work exists.</p></article>
+        <article class="panel"><span class="panel-index">03</span><h3>Human-governed</h3><p>Tools follow least-privilege rules. Sensitive or consequential actions require explicit approval, traceable decisions and a way to revoke access.</p></article>
+        <article class="panel"><span class="panel-index">04</span><h3>Portable by design</h3><p>The first client is the responsive web experience, with progressive enhancement for phones, tablets and desktop browsers.</p></article>
+      </div>
+    </section>
+
+    <section class="section foundation" id="foundation" aria-labelledby="foundation-title">
+      <div class="section-heading">
+        <p class="eyebrow">02 / REPOSITORY-RECORDED FOUNDATION</p>
+        <h2 id="foundation-title">What exists today.</h2>
+        <p>The project README and technical notes describe the following source-level foundations. Hosting and production status must be verified separately.</p>
+      </div>
+      <div class="feature-list">
+        <div><span class="feature-state">SOURCE IMPLEMENTED</span><h3>Mobile-first web interface</h3><p>A browser-based interface designed for phone, tablet and Chromebook layouts.</p></div>
+        <div><span class="feature-state">SOURCE IMPLEMENTED</span><h3>Authenticated application APIs</h3><p>Cloudflare Pages Functions with signed, expiring browser sessions and protected endpoints.</p></div>
+        <div><span class="feature-state">INITIAL READ-ONLY SLICE</span><h3>AEGIS Bridge</h3><p>A limited MCP endpoint exposing status and descriptive registries. It is not a general-purpose connector or execution service.</p></div>
+        <div><span class="feature-state">SOURCE FOUNDATION</span><h3>Forge and capability policy</h3><p>Read-only public repository discovery and descriptive capability declarations, with no automatic permission grants.</p></div>
+        <div><span class="feature-state">NOT YET DEPLOYED</span><h3>Durable runtime worker</h3><p>A bounded job-processing foundation exists in source. Live infrastructure provisioning and deployment are separate steps.</p></div>
+      </div>
+    </section>
+
+    <section class="section roadmap" id="roadmap" aria-labelledby="roadmap-title">
+      <div class="section-heading">
+        <p class="eyebrow">03 / DIRECTION</p>
+        <h2 id="roadmap-title">Build carefully. Expand deliberately.</h2>
+        <p>The roadmap is an ambition, not a claim that every capability is already available.</p>
+      </div>
+      <ol class="roadmap-list">
+        <li><span>01</span><div><h3>Reliable web and PWA experience</h3><p>Responsive layouts, accessibility, resilient sessions and a consistent experience across supported browsers.</p></div></li>
+        <li><span>02</span><div><h3>Durable workspace and runtime</h3><p>Persistent project context, resumable jobs, observable status and safe recovery.</p></div></li>
+        <li><span>03</span><div><h3>Governed integrations</h3><p>Explicit identity, narrow scopes, human approvals, audit trails and revocation before wider tool access.</p></div></li>
+        <li><span>04</span><div><h3>Specialist agents and provider choice</h3><p>Composable agents and model adapters with measurable quality, cost and reliability.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="closing">
+      <p class="eyebrow">OPEN DEVELOPMENT</p>
+      <h2>Trust the evidence.<br><span>Keep the human in control.</span></h2>
+      <p>Follow the repository for implementation details, change history and the current engineering record.</p>
+      <a class="button primary" href="https://github.com/LAURENCE1977/Aegis-" target="_blank" rel="noopener noreferrer">View AEGIS on GitHub <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">A</span><span>AEGIS</span></a>
+    <p>Personal AI workspace · Active development</p>
+    <p class="footer-note">This site describes the project at a high level. It does not expose application credentials, private configuration or internal operational endpoints.</p>
+  </footer>
+</body>
+</html>

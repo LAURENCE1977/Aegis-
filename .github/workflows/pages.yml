@@ -1,0 +1,65 @@
+name: AEGIS public documentation site
+
+on:
+  pull_request:
+    paths:
+      - "public-docs/**"
+      - ".github/workflows/pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "public-docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aegis-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Validate static documentation files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s public-docs/index.html
+          test -s public-docs/styles.css
+          grep -q '<html lang="en">' public-docs/index.html
+          grep -q 'name="viewport"' public-docs/index.html
+          grep -q 'id="main"' public-docs/index.html
+          grep -q 'prefers-reduced-motion' public-docs/styles.css
+          if grep -Eiq '(AEGIS_PASSWORD|AEGIS_SESSION_SECRET|AEGIS_MCP_TOKEN|AEGIS_JOB_TOKEN|Bearer [A-Za-z0-9._~-]{24,})' public-docs/*; then
+            echo "Potential credential material found in public documentation."
+            exit 1
+          fi
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload public documentation
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public-docs
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@v4
