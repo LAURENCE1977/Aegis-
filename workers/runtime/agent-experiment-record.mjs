@@ -1,6 +1,6 @@
 const ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const MAX_EVIDENCE = 64;
+const MAX_EVIDENCE = 80;
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -130,6 +130,10 @@ function validateEvaluation(value, contextId) {
       throw new TypeError('Candidate elapsed time must be a positive safe integer.');
     }
     const safetyRef = validateSafeText(candidate.safetyEvidenceRef, 'Safety evidence reference', 500);
+    const existingSafetyKind = requiredEvidence.get(safetyRef);
+    if (existingSafetyKind && existingSafetyKind !== 'safety') {
+      throw new TypeError('One evidence reference cannot represent different evidence kinds.');
+    }
     requiredEvidence.set(safetyRef, 'safety');
     if (typeof candidate.safetyChecksPassed !== 'boolean') {
       throw new TypeError('Candidate safety outcome must be explicit.');
@@ -156,6 +160,10 @@ function validateEvaluation(value, contextId) {
         return { criterionId, outcome: 'unknown', evidenceRef: null };
       }
       const ref = validateSafeText(result.evidenceRef, 'Criterion evidence reference', 500);
+      const existingCriterionKind = requiredEvidence.get(ref);
+      if (existingCriterionKind && existingCriterionKind !== 'criterion') {
+        throw new TypeError('One evidence reference cannot represent different evidence kinds.');
+      }
       requiredEvidence.set(ref, 'criterion');
       return { criterionId, outcome: result.outcome, evidenceRef: ref };
     });
@@ -243,6 +251,11 @@ function validateEvaluation(value, contextId) {
       throw new TypeError('Ranked candidates must contain every safe candidate exactly once.');
     }
   }
+  criteria.sort((left, right) => left.id.localeCompare(right.id));
+  candidates.sort((left, right) => left.id.localeCompare(right.id));
+  for (const candidate of candidates) {
+    candidate.criterionResults.sort((left, right) => left.criterionId.localeCompare(right.criterionId));
+  }
   const normalizedEvaluation = {
     priority: value.priority,
     currency,
@@ -268,7 +281,7 @@ function validateEvaluation(value, contextId) {
 
 function validateEvidence(value, requiredEvidence) {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_EVIDENCE) {
-    throw new TypeError('Provide between one and 64 evidence manifest entries.');
+    throw new TypeError('Provide between one and 80 evidence manifest entries.');
   }
   const seen = new Set();
   const evidence = value.map((item) => {
