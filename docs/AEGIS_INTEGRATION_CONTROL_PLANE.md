@@ -270,3 +270,16 @@ Draft PR #124 adds the first storage/repository slice:
 
 Migration `0006_integration_inventory.sql` is source only and passed isolated local D1 migration and schema validation. GitHub Actions run [44733885288](https://github.com/LAURENCE1977/Aegis-/actions/runs/44733885288) passed **455 Node.js tests, 0 failures**, plus the D1 integration-inventory constraint checks and the existing capability/Forge verification steps on the latest documentation head. It has not been applied to any Cloudflare database. No Composio records have been imported; the user's screenshots and later authorised inventory retrieval remain the source for actual account names, aliases, statuses and tool slugs.
 
+
+
+## Phase 3 adapter contract — isolated Composio executor (20 November 2026)
+
+Draft PR #130 adds `functions/lib/composio-adapter.mjs` as a bounded adapter foundation against Composio's documented v3.1 direct tool-execution API. The implementation fixes the API origin to `backend.composio.dev`, uses the exact tool slug from Sentinel's connection allowlist, requires a dated/pinned tool version and structured JSON arguments, selects one explicit connected-account ID, rejects redirects, applies a timeout and streamed response-size cap, and returns only parsed JSON. Upstream error bodies are not returned to callers. The project API key is injected into the adapter closure by trusted server code; it is never accepted from invocation input.
+
+The Sentinel context now forwards only the opaque platform account ID, connection type and a frozen exact-tool allowlist alongside the existing integration identity metadata. The adapter currently supports **owner-private connections only**. Shared/instant accounts remain unsupported until the correct Composio user identity and account-selection semantics are verified.
+
+**This is not an enabled connector.** The Composio adapter factory is not registered in the fixed Sentinel adapter map, no invocation route calls it, no Composio project key has been configured or resolved, and no external request has been made. The existing public `POST /api/sentinel/invoke` route remains restricted to the empty-input read-only module catalogue and explicitly rejects integration metadata.
+
+Before activation, reconcile the user's complete Composio inventory; verify that the inventory's `platformAccountId` is the exact Composio `connected_account_id`; establish a vault-backed project-key resolution path after Sentinel authorization; pin and validate each tool's schema/version; decide whether Composio project 2FA requires a separately mapped `user_id`; and complete exact-resource grant, one-time approval, output redaction, idempotency/replay, audit and failure tests. Do not add an alternate permission path or enable write/consequential actions.
+
+Verification on PR #130 head `088da9d0edbdd667145ea60e9f97f1654494da0e`: GitHub Actions run [44773913803](https://github.com/LAURENCE1977/Aegis-/actions/runs/44773913803) passed **485 Node.js tests, 0 failures**, and all isolated D1 migration, integration inventory, append-only audit, rate-limit, grant uniqueness and Forge migration/constraint checks. This is CI evidence only; it does not apply migrations to production D1 or deploy any service.
