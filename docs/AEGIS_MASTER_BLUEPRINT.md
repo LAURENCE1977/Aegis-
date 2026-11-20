@@ -441,6 +441,20 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 - A bounded SSE reader handles the three existing provider event formats and caps frame size (16 KiB), total stream size (256 KiB) and output length (12,000 characters). It cancels the provider stream at the output cap or on parsing failure. Provider error events return the existing generic user-safe error response. The legacy 503 response is preserved when the default Workers AI binding is missing; configured Anthropic/Qwen routes do not require that binding.
 - Added `tests/ask-provider-routing.test.mjs` for Anthropic, Qwen and default Workers AI routing. Tests were committed before implementation.
 - Updated `docs/AEGIS_MODEL_PROVIDERS.md` to record the route unification and its draft dependency.
-- **Verification limitation:** GitHub workflow-run and commit-status queries returned no runs/statuses for the PR head during this session. The code has not been claimed test-passed. CI must be confirmed before merge.
+- **Verification:** GitHub Actions run [44710633314](https://github.com/LAURENCE1977/Aegis-/actions/runs/44710633314) completed successfully for head `0d6f4ab42a67a10ad31a88a53d6628d498924110`; Node.js tests and isolated local D1/Forge migration and integrity checks passed.
 - No merge, production deployment, provider credential change, runtime setting change or external provider call was made.
-- Next: obtain CI evidence for PR #121 and its provider-registry dependency chain; review the stacked PR bases and reconcile duplicate/overlapping PRs before any merge. Keep production deployment and secret provisioning separately gated.
+- Next: PR #123 adds an optional, server-side verified registry gate on the shared model adapter. Its RED/GREEN CI evidence and current configuration boundary are recorded below. Review stacked PR ancestry before any merge; keep production deployment and runtime secret/configuration provisioning separately gated.
+
+
+## 20 November 2026 — live provider registry gate checkpoint
+
+- Draft PR #123: https://github.com/LAURENCE1977/Aegis-/pull/123
+- Branch: `feature/live-provider-registry-gate-2026-11-20`, stacked on PR #121 and the provider-registry prerequisite chain.
+- Added test-first coverage for exact adapter/model matching, disabled and stale provider rejection, malformed registry configuration, output limits, context limits and backwards-compatible legacy routing.
+- The first CI run for the test-only commit failed the six new tests as expected (449 passed, 6 failed), proving the new assertions exposed the missing runtime behavior.
+- The implementation adds optional server-side `AEGIS_PROVIDER_REGISTRY_JSON` support to the shared `createModelStream` adapter. If configured, the selected server-side adapter and exact configured native model ID must match a fresh, enabled registry model that supports `chat`; malformed or non-matching configuration fails closed.
+- Registry output is capped at the lower of the existing 1,024-token cap and the verified model limit. Input is checked with a conservative UTF-8 byte upper-bound plus per-message framing headroom against the verified context window. This is intentionally conservative, not exact tokenizer or billing accounting.
+- The same adapter is used by AG-UI and the legacy JSON `/api/ask` route. When no registry variable is configured, existing explicit provider settings remain backwards-compatible. A present but malformed registry does not fall back.
+- The registry source contains no secrets or endpoints and is limited to 16 KiB. No live provider/model catalogue is populated or enabled in production; no Cloudflare variable, credentials, permissions, merge or deployment was changed.
+- Unknown prices remain `null`; this gate does not rank by cost, discover models or prove account entitlements.
+- CI run [44730328797](https://github.com/LAURENCE1977/Aegis-/actions/runs/44730328797) completed successfully on head `ae7a6786a105914fabfc0db668315cddb897bd3a`: **458 Node.js tests passed, 0 failed**; capability D1 migrations/constraints, atomic rate-limit checks, grant/audit checks, Forge migrations and Forge licence/source/audit gates all passed.

@@ -438,3 +438,42 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
+
+
+test('AG-UI rejects a configured provider model absent from the server registry before provider access', async () => {
+  let called = false;
+  const verifiedAt = new Date(Date.now() - 1000).toISOString();
+  const registry = {
+    version: 1,
+    providers: [{
+      id: 'cloudflare-workers-ai',
+      adapterId: 'workers-ai',
+      displayName: 'Cloudflare Workers AI',
+      status: 'enabled',
+      termsUrl: 'https://developers.cloudflare.com/workers-ai/',
+      verifiedAt,
+      models: [{
+        id: 'model-a',
+        providerModelId: '@cf/meta/not-the-configured-model',
+        sourceUrl: 'https://developers.cloudflare.com/workers-ai/models/',
+        verifiedAt,
+        contextTokens: 8192,
+        maxOutputTokens: 512,
+        tasks: ['chat'],
+      }],
+    }],
+  };
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_PROVIDER_REGISTRY_JSON: JSON.stringify(registry),
+      AI: { async run() { called = true; throw new Error('must not run'); } },
+    },
+  });
+  assert.equal(response.status, 502);
+  assert.equal(called, false);
+  const body = await response.text();
+  assert.match(body, /AGENT_START_FAILED/);
+  assert.doesNotMatch(body, /not-the-configured-model/);
+});

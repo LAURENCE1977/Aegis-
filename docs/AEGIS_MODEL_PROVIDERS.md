@@ -22,9 +22,10 @@ The registry rollout is deliberately staged and is not yet complete:
 - PR #117 adds a server-owned adapter allowlist: `workers-ai`, `anthropic` and `alibaba-qwen`.
 - PR #118 makes the runtime provider adapter selection consult the same canonical allowlist before dispatch. This prevents the registry and runtime from drifting into separate adapter allowlists.
 - PR #119 adds mandatory per-model evidence provenance (`sourceUrl` and canonical `verifiedAt`) and independently rejects stale/future model evidence in `listEligibleModels`, even when the provider record itself is fresh. It still does not invent model catalogue entries or wire model selection into the live request path.
-- The live request path still selects the configured provider through `AEGIS_MODEL_PROVIDER`. It does **not yet** select a model through `listEligibleModels`; model ID enforcement, context/output limits and task compatibility are not yet enforced by live AG-UI routing.
+- PR #123 adds an optional server-side registry gate to the shared `createModelStream` adapter. When `AEGIS_PROVIDER_REGISTRY_JSON` is configured, the selected adapter and exact configured native model ID must match an enabled registry entry with fresh provider/model evidence and `chat` task support. Malformed registry data or an unmatched/stale/disabled model fails closed before provider access. When the variable is absent, existing explicit provider configuration remains backwards-compatible.
+- The live request path still uses the explicit server-side `AEGIS_MODEL_PROVIDER` selection. When `AEGIS_PROVIDER_REGISTRY_JSON` is present, PR #123 additionally requires the exact configured native model ID to be eligible through `listEligibleModels` for the `chat` task, and enforces the registry's output/context limits. When the optional registry variable is absent, legacy provider selection remains in compatibility mode and is not yet registry-governed.
 - PR #121 routes the legacy JSON `functions/api/ask.js` endpoint through `createModelStream`, so it now honours the configured Workers AI, Anthropic or Qwen adapter and returns the existing `{ response: text }` JSON shape. The bounded SSE reader accepts the three adapter event formats, rejects provider error events and caps frame, stream and output sizes. Regression tests cover each provider path. This is a draft stacked on the provider-registry provenance branch; do not describe it as production-live until its dependency chain is merged and deployed.
-- `providerModelId` is now an optional, separately validated native identifier on registry model records. It is returned by `listEligibleModels` without replacing the internal catalogue `id`. It remains optional until verified catalogue records are available; no live adapter consumes it yet.
+- `providerModelId` is an optional, separately validated native identifier in the registry schema and is returned by `listEligibleModels` without replacing the internal catalogue `id`. It is mandatory for an exact live adapter/model match whenever the optional registry gate is enabled; no production catalogue has yet been populated.
 - No model pricing, context limit or tool capability should be inferred from an unverified model ID. Missing or stale facts remain unknown and must block decisions that depend on them.
 
 ### Evidence sources and refresh policy
@@ -39,6 +40,21 @@ Use provider-owned documentation as the evidence source for each individual mode
 - [Alibaba Model Studio pricing](https://help.aliyun.com/en/model-studio/model-pricing)
 
 Pricing is region-, tier- and feature-dependent for some providers. The registry must not flatten tiered or conditional prices into a misleading single cost. If a model has tiered pricing, unsupported cache/batch pricing, or region-dependent pricing that the current cost planner cannot represent, cost stays unknown for routing purposes.
+
+## Optional live registry gate (PR #123)
+
+The provider registry can be supplied to the server runtime as the non-secret configuration variable `AEGIS_PROVIDER_REGISTRY_JSON` (version 1 JSON). It contains only AEGIS-owned provider/model metadata; it must never contain API keys, endpoints, browser input or credentials. The adapter rejects malformed/oversized configuration (maximum 16 KiB), and does not fall back to legacy routing when a registry value is present but invalid.
+
+When configured, every call through the shared model adapter:
+- requires an exact match for the server-selected adapter and configured native provider model ID;
+- requires the provider to be enabled and both provider/model evidence timestamps to be no more than 24 hours old and not in the future;
+- requires the model to declare the `chat` task;
+- caps output at the lower of the existing 1,024-token application limit and the verified model output limit;
+- applies a conservative input-context guard using the UTF-8 byte length of the serialized messages plus per-message framing headroom. This intentionally may reject some inputs earlier than a provider-specific tokenizer would; it does not claim exact billed-token accounting.
+
+Unknown input/output prices remain `null` and are not interpreted as zero or used to rank models. The gate does not discover models, verify account entitlements, select among multiple models, or create a verified catalogue. AEGIS currently has no configured production registry source or populated owner-verified model catalogue. With no registry variable configured, legacy explicit provider selection continues unchanged until the catalogue is reviewed and the owner enables the gate.
+
+The registry applies through the shared adapter used by AG-UI and the legacy JSON `/api/ask` route. `tests/ag-ui-api.test.mjs` verifies that an unregistered model is rejected on the actual AG-UI request path before provider access. GitHub Actions run [44730328797](https://github.com/LAURENCE1977/Aegis-/actions/runs/44730328797) passed 458 Node.js tests and the isolated D1/Forge verification steps. No runtime variable, provider credential or deployment was changed by PR #123.
 
 ## Anthropic Messages adapter
 
