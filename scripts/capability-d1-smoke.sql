@@ -53,3 +53,68 @@ INSERT INTO capability_invocation_limits (
   'owner', 'aegis-module-catalogue', 'list', 1794787200000, 1,
   '2026-11-16T00:00:00.000Z'
 );
+
+
+INSERT INTO integration_providers (
+  id, display_name, source_url, verified_at, status, created_by, created_at
+) VALUES (
+  'composio-smoke', 'Composio', 'https://composio.dev/',
+  '2026-11-16T00:00:00.000Z', 'reviewed', 'owner', '2026-11-16T00:00:00.000Z'
+);
+
+INSERT INTO integration_definitions (
+  id, provider_id, slug, display_name, description, auth_mode, source_url,
+  schema_version, schema_hash, status, created_by, created_at
+) VALUES (
+  'composio-github-smoke', 'composio-smoke', 'github', 'GitHub',
+  'GitHub toolkit metadata smoke fixture.', 'shared_platform_account',
+  'https://composio.dev/toolkits/github', 'v1',
+  'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  'reviewed', 'owner', '2026-11-16T00:00:00.000Z'
+);
+
+INSERT INTO integration_connections (
+  id, principal_id, integration_id, connection_key, connection_type, auth_mode,
+  account_alias, platform_account_id, platform_connection_id,
+  allowed_tool_slugs_json, scopes_json, status, last_observed_at,
+  health_state, health_checked_at, created_by, created_at, updated_at, revoked_at
+) VALUES
+(
+  'integration-connection-smoke-1', 'owner', 'composio-github-smoke', 'personal',
+  'instant_platform_managed', 'shared_platform_account', 'Personal GitHub',
+  'acct-opaque-personal', NULL, '["GITHUB_GET_REPO"]',
+  '["github:public-metadata:read"]', 'connected_unverified',
+  '2026-11-16T00:00:00.000Z', 'unknown', NULL, 'owner',
+  '2026-11-16T00:00:00.000Z', '2026-11-16T00:00:00.000Z', NULL
+),
+(
+  'integration-connection-smoke-2', 'owner', 'composio-github-smoke', 'work',
+  'instant_platform_managed', 'shared_platform_account', 'Work GitHub',
+  'acct-opaque-work', NULL, '["GITHUB_GET_REPO"]',
+  '["github:public-metadata:read"]', 'connected_unverified',
+  '2026-11-16T00:00:00.000Z', 'unknown', NULL, 'owner',
+  '2026-11-16T00:00:00.000Z', '2026-11-16T00:00:00.000Z', NULL
+);
+
+INSERT INTO integration_definitions (
+  id, provider_id, slug, display_name, description, auth_mode, source_url,
+  schema_version, schema_hash, status, created_by, created_at
+) VALUES (
+  'public-weather-smoke', 'composio-smoke', 'weather', 'Public Weather',
+  'Public no-auth integration fixture.', 'none_public',
+  'https://example.com/weather', NULL, NULL, 'discovered', 'owner',
+  '2026-11-16T00:00:00.000Z'
+);
+
+INSERT INTO integration_connections (
+  id, principal_id, integration_id, connection_key, connection_type, auth_mode,
+  account_alias, platform_account_id, platform_connection_id,
+  allowed_tool_slugs_json, scopes_json, status, last_observed_at,
+  health_state, health_checked_at, created_by, created_at, updated_at, revoked_at
+) VALUES (
+  'integration-connection-public-smoke', 'owner', 'public-weather-smoke', 'public-default',
+  'public_no_auth', 'none_public', 'Public weather', NULL, NULL,
+  '["WEATHER_FORECAST"]', '[]', 'connected_unverified',
+  '2026-11-16T00:00:00.000Z', 'unknown', NULL, 'owner',
+  '2026-11-16T00:00:00.000Z', '2026-11-16T00:00:00.000Z', NULL
+);
