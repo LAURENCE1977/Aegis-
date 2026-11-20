@@ -593,3 +593,19 @@ This doctrine extends the existing AEGIS mission and architecture. It does not a
 ## 10. Adaptive workspace design contract (20 November 2026)
 
 The task-adaptive interface is specified in [AEGIS Adaptive Workspace](AEGIS_ADAPTIVE_WORKSPACE.md). It defines stable orientation and control layers with task-specific work surfaces, a safe versioned surface-selection contract, mobile-first interaction principles, visible task state, evidence/provenance presentation and Sentinel-enforced action boundaries. This is a design contract and roadmap, not a claim that the proposed surfaces are implemented. The existing compact `index.html` shell and companion renderer remain in place; implementation must begin with an inventory and preserve existing routes and behaviour.
+
+
+## 9.10 Outcome Planner implementation update (20 November 2026)
+
+The existing durable plan-only agent workflow has been extended with an initial outcome contract:
+- optional, bounded acceptance criteria (up to eight, each 1–240 characters);
+- explicit planning priorities: balanced, lowest cost, fastest or highest reliability;
+- three comparable proposal templates (lean first pass, parallel discovery and staged assurance);
+- a priority-based recommendation while retaining all alternatives;
+- evidence-required verification metadata carried into the durable plan.
+
+The runtime persists the new values in a version-tolerant JSON envelope inside the existing specialist metadata column and continues to read legacy rows containing a plain specialist array. No new migration, public execution route, model call, external API call or tool permission was introduced. The plan queue remains deterministic and plan-only; the templates do not claim that specialist agents are running in parallel or that live cost/time estimates have been measured.
+
+The implementation and research provenance are recorded in [AEGIS durable agent orchestration](AEGIS_AGENT_ORCHESTRATION.md). The OpnForm, Morphic and Open-Morphic repositories were evaluated as architectural references only; no source code or dependencies were imported. Their licence obligations and adapter-first adoption decisions are documented there.
+
+This is a first structured outcome-planning slice, not a completed autonomous planner. Next work should connect plans to the owner-visible workspace, add explicit checkpoint/result evidence, and only then use verified capability metadata to improve strategy selection. Sentinel remains the sole authority for protected execution.
