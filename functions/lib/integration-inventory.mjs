@@ -57,20 +57,29 @@ function mapIntegration(row) {
   if (!row) return null;
   return { id: row.id, providerId: row.provider_id, slug: row.slug, displayName: row.display_name, description: row.description, authMode: row.auth_mode, sourceUrl: row.source_url, schemaVersion: row.schema_version, schemaHash: row.schema_hash, status: row.status, createdBy: row.created_by, createdAt: row.created_at };
 }
-function mapConnection(row) {
+function mapConnection(row, now = Date.now()) {
   if (!row) return null;
   const allowedToolSlugs = parseJsonArray(row.allowed_tool_slugs_json);
   const scopes = parseJsonArray(row.scopes_json);
   if (!allowedToolSlugs || !scopes ||
       allowedToolSlugs.some(item => typeof item !== 'string' || !TOOL_SLUG_PATTERN.test(item) || item.includes('*')) ||
       scopes.some(item => typeof item !== 'string' || !SCOPE_PATTERN.test(item) || item.includes('*'))) return null;
+  const checkedAt = row.health_checked_at;
+  const checkedMs = checkedAt ? Date.parse(checkedAt) : NaN;
+  const healthFresh = Number.isFinite(checkedMs) &&
+    checkedMs <= now + 60_000 && checkedMs >= now - 24 * 60 * 60 * 1000;
+  const healthState = healthFresh ? row.health_state : 'unknown';
+  const healthCheckedAt = healthFresh ? checkedAt : null;
+  const status = !healthFresh && ['connected', 'auth_required', 'restricted', 'rate_limited'].includes(row.status)
+    ? 'connected_unverified'
+    : row.status;
   return {
     id: row.id, principalId: row.principal_id, integrationId: row.integration_id,
     connectionKey: row.connection_key, connectionType: row.connection_type, authMode: row.auth_mode,
     accountAlias: row.account_alias, platformAccountId: row.platform_account_id,
     platformConnectionId: row.platform_connection_id, allowedToolSlugs, scopes,
-    status: row.status, lastObservedAt: row.last_observed_at, healthState: row.health_state,
-    healthCheckedAt: row.health_checked_at, createdBy: row.created_by, createdAt: row.created_at,
+    status, lastObservedAt: row.last_observed_at, healthState,
+    healthCheckedAt, createdBy: row.created_by, createdAt: row.created_at,
     updatedAt: row.updated_at, revokedAt: row.revoked_at,
   };
 }
@@ -160,6 +169,22 @@ export async function createIntegrationDefinition(db, input, now = Date.now()) {
   const mapped = mapIntegration(row); if (!mapped) throw new Error('Integration definition could not be persisted'); return mapped;
 }
 
+export async function listIntegrationProviders(db, limit = 50) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Integration provider database is required');
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Integration provider list limit must be between 1 and 100');
+  const result = await db.prepare('SELECT * FROM integration_providers ORDER BY display_name ASC, id ASC LIMIT ?')
+    .bind(limit).all();
+  return (result?.results || []).map(mapProvider).filter(Boolean);
+}
+
+export async function listIntegrationDefinitions(db, limit = 200) {
+  if (!db || typeof db.prepare !== 'function') throw new TypeError('Integration definition database is required');
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new TypeError('Integration definition list limit must be between 1 and 200');
+  const result = await db.prepare('SELECT * FROM integration_definitions ORDER BY display_name ASC, id ASC LIMIT ?')
+    .bind(limit).all();
+  return (result?.results || []).map(mapIntegration).filter(Boolean);
+}
+
 export async function upsertIntegrationConnection(db, input, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) throw new TypeError('Integration connection database and valid clock are required');
   const value = validateConnection(input, now);
@@ -201,21 +226,21 @@ export async function upsertIntegrationConnection(db, input, now = Date.now()) {
   const mapped = mapConnection(row); if (!mapped) throw new Error('Integration connection could not be persisted'); return mapped;
 }
 
-export async function loadIntegrationConnection(db, { principalId, integrationId, connectionKey } = {}) {
+export async function loadIntegrationConnection(db, { principalId, integrationId, connectionKey } = {}, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Integration connection database is required');
   key(principalId, 'integration connection principal'); id(integrationId, 'integration connection integration identifier'); key(connectionKey, 'integration connection key');
   const row = await db.prepare('SELECT * FROM integration_connections WHERE principal_id = ? AND integration_id = ? AND connection_key = ? LIMIT 1')
     .bind(principalId, integrationId, connectionKey).first();
-  return mapConnection(row);
+  return mapConnection(row, now);
 }
 
-export async function listIntegrationConnections(db, principalId, limit = 100) {
+export async function listIntegrationConnections(db, principalId, limit = 100, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Integration connection database is required');
   key(principalId, 'integration connection principal');
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Integration connection list limit must be between 1 and 100');
   const result = await db.prepare('SELECT * FROM integration_connections WHERE principal_id = ? ORDER BY last_observed_at DESC, id DESC LIMIT ?')
     .bind(principalId, limit).all();
-  return (result?.results || []).map(mapConnection).filter(Boolean);
+  return (result?.results || []).map(row => mapConnection(row, now)).filter(Boolean);
 }
 
 export async function recordIntegrationHealth(db, { id: connectionId, principalId, healthState, checkedAt } = {}, now = Date.now()) {
