@@ -232,6 +232,33 @@ export async function loadIntegrationConnection(db, { principalId, integrationId
   return mapConnection(row, now);
 }
 
+/** Load one exact owner's provider/integration/account context for tool preflight. */
+export async function loadIntegrationToolContext(db, { principalId, integrationId, connectionKey } = {}, now = Date.now()) {
+  if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) {
+    throw new TypeError('Integration tool context database and valid clock are required');
+  }
+  key(principalId, 'integration connection principal');
+  id(integrationId, 'integration connection integration identifier');
+  key(connectionKey, 'integration connection key');
+
+  const connection = await loadIntegrationConnection(db, {
+    principalId, integrationId, connectionKey,
+  }, now);
+  if (!connection) return null;
+
+  const integrationRow = await db.prepare('SELECT * FROM integration_definitions WHERE id = ?')
+    .bind(integrationId).first();
+  const integration = mapIntegration(integrationRow);
+  if (!integration) return null;
+
+  const providerRow = await db.prepare('SELECT * FROM integration_providers WHERE id = ?')
+    .bind(integration.providerId).first();
+  const provider = mapProvider(providerRow);
+  if (!provider) return null;
+
+  return { provider, integration, connection };
+}
+
 export async function listIntegrationConnections(db, principalId, limit = 100, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Integration connection database is required');
   key(principalId, 'integration connection principal');
