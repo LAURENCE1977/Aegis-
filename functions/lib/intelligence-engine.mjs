@@ -44,6 +44,15 @@ export function estimateTokenCount(text) {
   return Math.ceil(new TextEncoder().encode(text).byteLength / 4);
 }
 
+function estimateModelCost(model, estimatedInputTokens, requestedOutputTokens) {
+  if (model.inputCost === undefined || model.inputCost === null ||
+      model.outputCost === undefined || model.outputCost === null) {
+    return null;
+  }
+  return model.inputCost * estimatedInputTokens +
+    model.outputCost * requestedOutputTokens;
+}
+
 export function selectModelRoute({
   models,
   task,
@@ -75,12 +84,12 @@ export function selectModelRoute({
 
   if (!eligible.length) throw new Error('No eligible model route satisfies context, output and provider quota limits');
   eligible.sort((a, b) => {
-    const costA = (a.inputCost ?? 0) * estimatedInputTokens +
-      (a.outputCost ?? 0) * requestedOutputTokens;
-    const costB = (b.inputCost ?? 0) * estimatedInputTokens +
-      (b.outputCost ?? 0) * requestedOutputTokens;
-    return costA - costB ||
-      (a.priority ?? 100) - (b.priority ?? 100) ||
+    const costA = estimateModelCost(a, estimatedInputTokens, requestedOutputTokens);
+    const costB = estimateModelCost(b, estimatedInputTokens, requestedOutputTokens);
+    if (costA === null && costB !== null) return 1;
+    if (costB === null && costA !== null) return -1;
+    if (costA !== null && costB !== null && costA !== costB) return costA - costB;
+    return (a.priority ?? 100) - (b.priority ?? 100) ||
       a.contextTokens - b.contextTokens ||
       a.id.localeCompare(b.id);
   });
@@ -93,8 +102,7 @@ export function selectModelRoute({
     reservedOutputTokens: requestedOutputTokens,
     contextTokens: selected.contextTokens,
     maxOutputTokens: selected.maxOutputTokens,
-    estimatedCost: (selected.inputCost ?? 0) * estimatedInputTokens +
-      (selected.outputCost ?? 0) * requestedOutputTokens,
+    estimatedCost: estimateModelCost(selected, estimatedInputTokens, requestedOutputTokens),
     alternatives: eligible.slice(1).map(model => model.id),
   });
 }

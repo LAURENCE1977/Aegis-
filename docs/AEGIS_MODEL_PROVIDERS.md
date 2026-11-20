@@ -35,6 +35,10 @@ To activate Anthropic after the code is deployed:
 
 A GitHub Actions repository secret named ANTHROPIC_API_KEY is only available to GitHub Actions workflows. It is not automatically passed to Cloudflare runtime bindings. Never put the key in index.html, a public build variable, a commit, test fixture, or chat message.
 
+## Provider registry status
+
+`functions/lib/provider-registry.mjs` currently validates a versioned registry object and filters enabled, recently verified models by task. It is not yet wired into the live AG-UI request path. Missing input/output pricing is preserved as unknown (`null`), not converted to zero; the model planner ranks verified-price options ahead of unknown-price options and reports an unknown estimated cost as `null`.
+
 ## Next provider adapters
 
 - OpenAI-compatible endpoint adapter: fixed/allowlisted server-side base URL, provider/model registry, bounded SSE parser and no browser-controlled destinations.
