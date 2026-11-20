@@ -1,6 +1,6 @@
 import { verifyAgentExperimentRecordDigest } from './agent-experiment-record.mjs';
 
-const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/;
+const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
 const RECORD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 const MAX_RECORD_BYTES = 256 * 1024;
 const MAX_PAGE_SIZE = 100;
