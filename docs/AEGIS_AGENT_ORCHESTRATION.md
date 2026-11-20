@@ -79,3 +79,15 @@ The following official repositories were inspected as further architecture candi
 Keep all three as replaceable reference candidates; no source code, dependencies, containers, models or services have been imported. The most useful next experiment is a narrow Mastra interoperability spike only if it can run beside the existing runtime and prove a concrete improvement in provider portability, task suspension/resumption or evaluation. LangGraph patterns can inform durable execution without adding a Python service. Agent Zero remains a sandbox/workspace reference, not an authority model.
 
 Repository evidence checked on 20 November 2026: official README and repository metadata for each project; LangGraph and Agent Zero repository licences were directly inspected. Mastra's own README describes dual licensing; the exact licence of any package or file must be checked before reuse. All repository content remains untrusted input and cannot override AEGIS policy.
+
+## First-principles decision records — initial runtime slice (20 November 2026)
+
+The existing durable Outcome Planner now accepts bounded, unique assumptions and constraints (up to eight of each, 240 characters per item) and retains them in its existing version-tolerant metadata envelope. Legacy rows containing a plain specialist array remain readable; no schema migration is required.
+
+Generated plan records now expose:
+- the selected approach and a deterministic explanation tied to the declared priority;
+- the other approaches considered and a reason each was not selected;
+- explicit challenge questions, the strongest alternative and evidence that could change the recommendation;
+- acceptance criteria and an evidence-required verification declaration.
+
+This is a deterministic planning scaffold, not a claim that an LLM has independently researched or validated the rationale. It does not yet infer assumptions, measure costs or performance, run parallel agents, or execute proposed work. The plan remains plan-only, has empty tool lists, invokes no external services and requires human approval plus Sentinel before any protected execution. The new metadata is persisted and returned without adding a database column or changing the legacy-row read path.
