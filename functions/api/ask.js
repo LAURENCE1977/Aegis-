@@ -55,10 +55,10 @@ async function readProviderResponseText(stream) {
 
   const processFrame = (frame) => {
     if (frame.length > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
-    const data = frame.split(/\\r?\\n/)
+    const data = frame.split(/\r?\n/)
       .filter(line => line.startsWith("data:"))
       .map(line => line.slice(5).trimStart())
-      .join("\\n");
+      .join("\n");
     if (!data || data.trim() === "[DONE]") {
       if (data.trim() === "[DONE]") finished = true;
       return;
@@ -84,7 +84,7 @@ async function readProviderResponseText(stream) {
 
   const drainFrames = (flush = false) => {
     while (true) {
-      const match = /\\r?\\n\\r?\\n/.exec(buffer);
+      const match = /\r?\n\r?\n/.exec(buffer);
       if (!match) break;
       const index = match.index;
       if (index > MAX_PROVIDER_FRAME_BYTES) throw new Error("Provider frame too large");
