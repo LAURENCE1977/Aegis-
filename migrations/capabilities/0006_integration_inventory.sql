@@ -89,8 +89,8 @@ CREATE TABLE IF NOT EXISTS integration_connections (
   revoked_at TEXT,
   CHECK (
     (connection_type = 'public_no_auth' AND auth_mode = 'none_public' AND platform_connection_id IS NULL) OR
-    (connection_type = 'owner_private' AND auth_mode IN ('api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials', 'unknown')) OR
-    (connection_type = 'workspace_shared' AND auth_mode IN ('oauth2_client_credentials', 'shared_platform_account', 'session_delegation', 'unknown')) OR
+    (connection_type = 'owner_private' AND ((auth_mode IN ('api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials') AND platform_connection_id IS NOT NULL) OR auth_mode = 'unknown')) OR
+    (connection_type = 'workspace_shared' AND ((auth_mode = 'oauth2_client_credentials' AND platform_connection_id IS NOT NULL) OR auth_mode IN ('shared_platform_account', 'session_delegation', 'unknown'))) OR
     (connection_type = 'instant_platform_managed' AND auth_mode IN ('shared_platform_account', 'session_delegation', 'unknown')) OR
     connection_type = 'unknown'
   ),
