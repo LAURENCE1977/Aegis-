@@ -14,6 +14,8 @@ function candidate(id, { cost = '100', elapsed = 1000, outcomes = ['pass', 'pass
     costMinorUnits: cost,
     elapsedMs: elapsed,
     safetyChecksPassed: safe,
+    safetyEvidenceRef: 'safety-evidence:' + id,
+    measurementContextId: 'benchmark-context-v1',
     criterionResults: outcomes.map((outcome, index) => ({
       criterionId: criteria[index].id,
       outcome,
@@ -111,4 +113,15 @@ test('rejects malformed metrics, criteria and priorities', () => {
     candidates: [candidate('one', { outcomes: ['pass', 'pass'] }), candidate('two', { outcomes: ['pass', 'pass'] })]
       .map(item => ({ ...item, criterionResults: [...item.criterionResults, item.criterionResults[0]] })),
   }));
+});
+
+test('rejects candidates measured under different conditions or without safety evidence', () => {
+  const differentContext = [
+    candidate('one'),
+    { ...candidate('two'), measurementContextId: 'different-machine' },
+  ];
+  assert.throws(() => experiment('fastest', differentContext));
+  const missingSafetyEvidence = candidate('no-safety-evidence');
+  delete missingSafetyEvidence.safetyEvidenceRef;
+  assert.throws(() => experiment('balanced', [missingSafetyEvidence, candidate('other')]));
 });
