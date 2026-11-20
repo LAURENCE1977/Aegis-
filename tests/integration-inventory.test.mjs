@@ -15,6 +15,7 @@ class MemoryD1 {
     this.providers = new Map();
     this.integrations = new Map();
     this.connections = new Map();
+    this.platformConnections = new Map();
   }
   prepare(sql) {
     const db = this;
@@ -65,6 +66,13 @@ class MemoryD1 {
       },
       async first() {
         const v = this.values;
+        if (sql.includes('FROM capability_connections')) {
+          const [id, principalId, providerId, now] = v;
+          const row = db.platformConnections.get(id);
+          return row && row.principal_id === principalId && row.provider_id === providerId &&
+            row.status === 'active' && !row.revoked_at && (!row.expires_at || row.expires_at > now)
+            ? { ...row } : null;
+        }
         if (sql.includes('FROM integration_providers')) {
           const row = db.providers.get(v[0]);
           return row ? { ...row } : null;
@@ -284,4 +292,48 @@ test('rejects future evidence timestamps and hides malformed persisted allowlist
   const stored = db.connections.get(created.id);
   stored.allowed_tool_slugs_json = '["*"]';
   assert.equal((await listIntegrationConnections(db, 'owner-1')).length, 0);
+});
+
+
+test('platform credential links must belong to the same owner and integration provider', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  db.platformConnections.set('platform-conn-1', {
+    id: 'platform-conn-1', principal_id: 'owner-1', provider_id: 'composio',
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+  const created = await upsertIntegrationConnection(db, connection({
+    platformConnectionId: 'platform-conn-1',
+  }), Date.now());
+  assert.equal(created.platformConnectionId, 'platform-conn-1');
+
+  db.platformConnections.set('platform-conn-other-owner', {
+    id: 'platform-conn-other-owner', principal_id: 'owner-2', provider_id: 'composio',
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+  await assert.rejects(() => upsertIntegrationConnection(db, connection({
+    connectionKey: 'other-owner-link',
+    platformConnectionId: 'platform-conn-other-owner',
+  }), Date.now()), /platform credential connection/i);
+
+  db.platformConnections.set('platform-conn-wrong-provider', {
+    id: 'platform-conn-wrong-provider', principal_id: 'owner-1', provider_id: 'github',
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+  await assert.rejects(() => upsertIntegrationConnection(db, connection({
+    connectionKey: 'wrong-provider-link',
+    platformConnectionId: 'platform-conn-wrong-provider',
+  }), Date.now()), /platform credential connection/i);
+});
+
+test('owner-private credentials cannot be represented without an exact vault connection link', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  await assert.rejects(() => upsertIntegrationConnection(db, connection({
+    connectionType: 'owner_private',
+    authMode: 'api_key',
+    connectionKey: 'owner-private-without-vault',
+  }), Date.now()), /auth mode/i);
 });
