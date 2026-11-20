@@ -234,3 +234,40 @@ test('connection inventory is owner-scoped and bounded', async () => {
   assert.equal((await listIntegrationConnections(db, 'owner-2')).length, 0);
   await assert.rejects(() => listIntegrationConnections(db, 'owner-1', 101), /limit/i);
 });
+
+
+test('loads only the exact owner, integration and stable connection key', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  const created = await upsertIntegrationConnection(db, connection(), Date.now());
+  const loaded = await loadIntegrationConnection(db, {
+    principalId: 'owner-1',
+    integrationId: 'composio-github',
+    connectionKey: 'github-personal',
+  });
+  assert.equal(loaded.id, created.id);
+  assert.equal(await loadIntegrationConnection(db, {
+    principalId: 'owner-2',
+    integrationId: 'composio-github',
+    connectionKey: 'github-personal',
+  }), null);
+});
+
+test('repeated inventory sync is idempotent and resets old health to unknown', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  const created = await upsertIntegrationConnection(db, connection(), Date.now());
+  assert.equal(await recordIntegrationHealth(db, {
+    id: created.id, principalId: 'owner-1', healthState: 'healthy', checkedAt: now(),
+  }), true);
+  const refreshed = await upsertIntegrationConnection(db, connection({
+    accountAlias: 'Renamed account',
+    lastObservedAt: new Date(Date.now() + 1000).toISOString(),
+  }), Date.now() + 1000);
+  assert.equal(refreshed.id, created.id);
+  assert.equal(refreshed.accountAlias, 'Renamed account');
+  assert.equal(refreshed.healthState, 'unknown');
+  assert.equal(refreshed.healthCheckedAt, null);
+});
