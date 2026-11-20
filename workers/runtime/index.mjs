@@ -1,5 +1,11 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
 import {
+  appendExperimentRecord,
+  getExperimentRecord,
+  listExperimentRecords,
+  tombstoneExperimentRecord,
+} from './experiment-record-store.mjs';
+import {
   buildHealthCheckResult,
   isJobId,
   isTerminalJobStatus,
@@ -358,6 +364,97 @@ async function getJob(request, env, id) {
   return json({ job: parseJob(row) });
 }
 
+const EXPERIMENT_PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
+const MAX_EXPERIMENT_RECORD_BODY_BYTES = 300 * 1024;
+
+function trustedExperimentPrincipal(request) {
+  const value = request.headers.get('X-Aegis-Principal');
+  return typeof value === 'string' && EXPERIMENT_PRINCIPAL_PATTERN.test(value) ? value : null;
+}
+
+async function handleExperimentRecordRequest(request, env, url) {
+  if (!env?.DB || typeof env.DB.prepare !== 'function') {
+    return json({ error: 'Runtime database is not configured.' }, 503);
+  }
+  const principalId = trustedExperimentPrincipal(request);
+  if (!principalId) return json({ error: 'Trusted principal context is required.' }, 400);
+
+  const collectionPath = '/v1/experiment-records';
+  if (url.pathname === collectionPath && request.method === 'GET') {
+    const rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? 25 : Number(rawLimit);
+    let cursor = null;
+    const rawCursor = url.searchParams.get('cursor');
+    if (rawCursor) {
+      try { cursor = JSON.parse(rawCursor); } catch {
+        return json({ error: 'Experiment record cursor is invalid.' }, 400);
+      }
+    }
+    try {
+      return json(await listExperimentRecords(env.DB, principalId, { limit, cursor }));
+    } catch (error) {
+      return json({ error: error instanceof TypeError ? 'Experiment record query is invalid.' : 'Experiment record history is unavailable.' },
+        error instanceof TypeError ? 400 : 503);
+    }
+  }
+
+  if (url.pathname === collectionPath && request.method === 'POST') {
+    if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+      return json({ error: 'Content-Type must be application/json.' }, 415);
+    }
+    const declaredLength = Number(request.headers.get('Content-Length') || 0);
+    if (declaredLength > MAX_EXPERIMENT_RECORD_BODY_BYTES) {
+      return json({ error: 'Experiment record request is too large.' }, 413);
+    }
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > MAX_EXPERIMENT_RECORD_BODY_BYTES) {
+      return json({ error: 'Experiment record request is too large.' }, 413);
+    }
+    let body;
+    try { body = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+    if (!body || typeof body !== 'object' || Array.isArray(body) ||
+        Object.keys(body).length !== 1 || !Object.hasOwn(body, 'record')) {
+      return json({ error: 'A single experiment record field is required.' }, 400);
+    }
+    try {
+      const result = await appendExperimentRecord(env.DB, principalId, body.record);
+      return json({ record: result.record, created: result.created }, result.created ? 201 : 200);
+    } catch (error) {
+      if (error instanceof TypeError) return json({ error: 'Experiment record is invalid.' }, 400);
+      if (/different immutable content/i.test(error?.message || '')) {
+        return json({ error: 'Experiment record identifier already exists with different immutable content.' }, 409);
+      }
+      return json({ error: 'Experiment record could not be persisted.' }, 503);
+    }
+  }
+
+  const match = /^\\/v1\\/experiment-records\\/([^/]+)$/.exec(url.pathname);
+  if (!match) return json({ error: 'Not found.' }, 404);
+  let recordId;
+  try { recordId = decodeURIComponent(match[1]); } catch { return json({ error: 'Invalid experiment record identifier.' }, 400); }
+
+  if (request.method === 'GET') {
+    try {
+      const record = await getExperimentRecord(env.DB, principalId, recordId);
+      return record ? json({ record }) : json({ error: 'Experiment record not found.' }, 404);
+    } catch (error) {
+      return json({ error: error instanceof TypeError ? 'Experiment record identifier is invalid.' : 'Experiment record integrity check failed.' },
+        error instanceof TypeError ? 400 : 503);
+    }
+  }
+
+  if (request.method === 'DELETE') {
+    try {
+      const deleted = await tombstoneExperimentRecord(env.DB, principalId, recordId);
+      return deleted ? json({ deleted: true }) : json({ error: 'Experiment record not found.' }, 404);
+    } catch (error) {
+      return json({ error: error instanceof TypeError ? 'Experiment record identifier is invalid.' : 'Experiment record could not be deleted.' },
+        error instanceof TypeError ? 400 : 503);
+    }
+  }
+  return json({ error: 'Method not allowed.' }, 405);
+}
+
 export async function handleRuntimeFetch(request, env) {
   if (!env || typeof env.AEGIS_JOB_TOKEN !== 'string' || env.AEGIS_JOB_TOKEN.length < 32) {
     return json({ error: 'Runtime authentication is not configured.' }, 503);
@@ -368,6 +465,9 @@ export async function handleRuntimeFetch(request, env) {
   }
 
   const url = new URL(request.url);
+  if (url.pathname === '/v1/experiment-records' || url.pathname.startsWith('/v1/experiment-records/')) {
+    return handleExperimentRecordRequest(request, env, url);
+  }
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
