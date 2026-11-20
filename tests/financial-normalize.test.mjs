@@ -58,3 +58,10 @@ test('allows excess fractional zeroes but never rounds non-zero excess digits', 
     TypeError,
   );
 });
+
+test('rejects excessively long decimal input before BigInt conversion', () => {
+  assert.throws(
+    () => parseMoneyToMinorUnits({ amount: '9'.repeat(41), currency: 'GBP', minorUnitDigits: 2 }),
+    TypeError,
+  );
+});
