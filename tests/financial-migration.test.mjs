@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const migration = readFileSync(new URL('../migrations/finance/0001_read_only_ledger.sql', import.meta.url), 'utf8');
 
 test('financial accounts and transactions are owner-scoped and idempotently identifiable', () => {
+  assert.match(migration, /connection_ref TEXT NOT NULL/);
   assert.match(migration, /UNIQUE \(owner_id, provider_slug, external_account_ref\)/);
   assert.match(migration, /UNIQUE \(account_id, external_transaction_id\)/);
   assert.match(migration, /FOREIGN KEY \(account_id, owner_id\)[\s\S]*REFERENCES financial_accounts \(id, owner_id\)/);
