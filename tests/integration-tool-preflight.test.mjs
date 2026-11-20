@@ -81,5 +81,5 @@ test('fails closed for wildcard, malformed and duplicate tool or scope metadata'
 test('rejects revoked, disabled and expired health evidence', () => {
   assert.equal(evaluate({ connection: { ...connection, status: 'revoked' } }).reason, 'connection_not_connected');
   assert.equal(evaluate({ connection: { ...connection, status: 'disabled' } }).reason, 'connection_not_connected');
-  assert.equal(evaluate({ connection: { ...connection, healthCheckedAt: '2026-11-20T10:00:00.000Z' } }).reason, 'health_evidence_stale');
+  assert.equal(evaluate({ connection: { ...connection, healthCheckedAt: '2026-11-19T10:00:00.000Z' } }).reason, 'health_evidence_stale');
 });
