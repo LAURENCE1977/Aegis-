@@ -228,6 +228,9 @@ test('healthy status requires a timestamped health observation and revoked conne
   assert.equal(await recordIntegrationHealth(db, {
     id: created.id, principalId: 'owner-1', healthState: 'healthy', checkedAt: now(),
   }), true);
+  const verified = await loadIntegrationConnection(db, { principalId: 'owner-1', integrationId: 'composio-github', connectionKey: 'github-personal' });
+  assert.equal(verified.status, 'connected');
+  assert.equal(verified.healthState, 'healthy');
   assert.equal(await revokeIntegrationConnection(db, created.id, 'owner-1', Date.now()), true);
   assert.equal(await recordIntegrationHealth(db, {
     id: created.id, principalId: 'owner-1', healthState: 'healthy', checkedAt: now(),
@@ -336,4 +339,14 @@ test('owner-private credentials cannot be represented without an exact vault con
     authMode: 'api_key',
     connectionKey: 'owner-private-without-vault',
   }), Date.now()), /auth mode/i);
+});
+
+
+test('inventory sync cannot directly claim connected before a timestamped health observation', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration());
+  await assert.rejects(() => upsertIntegrationConnection(db, connection({
+    status: 'connected',
+  }), Date.now()), /status/i);
 });
