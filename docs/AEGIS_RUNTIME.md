@@ -152,3 +152,24 @@ Next: add D1/Queue integration tests against a disposable non-production environ
 ### Dead-letter recovery regression coverage
 
 The current DLQ recovery change also covers two edge cases: a running job whose lease has expired is failed with the stable `JOB_DELIVERY_EXHAUSTED` code, while a malformed dead-letter identifier is acknowledged without mutating any job or audit state. A fresh full-suite CI run is required for the latest PR head. The Pages preview does not deploy the separate runtime Worker or apply its D1 migrations.
+
+
+## Experiment record API — owner-session bridge (staged)
+
+The runtime now exposes internal service-authenticated routes for append, list, get and logical tombstone operations under `/v1/experiment-records`. These routes require the runtime bearer token and a server-supplied `X-Aegis-Principal` header. The runtime never accepts a principal field from the record body as authority; the record's embedded owner must match the trusted principal.
+
+The Pages API bridge uses the existing `authorizeOwner` session guard and the established single-owner constant `OWNER_ID = "owner"`. It creates the experiment record server-side with that owner, then forwards the request to the runtime Worker with the service bearer token and principal header. Browser input cannot choose or override the principal. The runtime token is never returned to the browser.
+
+Pages endpoints:
+- `GET /api/experiment-records?limit=25&cursor=...` — list the authenticated owner's history with keyset pagination.
+- `POST /api/experiment-records` — submit the bounded benchmark/evaluation/evidence input; the server adds the owner identity and computes the record digest.
+- `GET /api/experiment-records/:id` — read one owner-scoped record.
+- `DELETE /api/experiment-records/:id` — append a tombstone so the record is hidden from normal reads.
+
+The Pages bridge requires HTTPS `AEGIS_RUNTIME_URL` and the same `AEGIS_JOB_TOKEN` secret configured on the runtime Worker. Missing or invalid configuration fails closed with 503. The runtime Worker must be separately provisioned and deployed before these endpoints can operate; the Pages preview does not deploy it.
+
+**Identity model:** the current app is single-owner. Its signed Pages session proves access to that app, and the server maps the session to the fixed owner namespace. This is appropriate for the current single-owner prototype, not multi-user identity. A future multi-user release must introduce stable authenticated subject IDs and explicit principal mapping before enabling multiple accounts.
+
+**Trust boundary:** any service holding `AEGIS_JOB_TOKEN` can call the internal runtime API and assert a principal header. Keep this secret only in server-side Cloudflare secrets/settings; never expose it to browser code. The intended caller is the authenticated Pages bridge. A compromised service token can impersonate the owner and must be rotated.
+
+Logical deletion remains a tombstone, not physical erasure. Retention duration, backup expiry and authorised purge/erasure remain separate gates. No production runtime Worker or live D1 database was provisioned or deployed by this source change.
