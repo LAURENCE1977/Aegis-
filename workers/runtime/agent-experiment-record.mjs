@@ -44,6 +44,7 @@ function validateMeasurementContext(value) {
     benchmarkId: validateId(value.benchmarkId, 'Benchmark ID'),
     benchmarkVersion: validateSafeText(value.benchmarkVersion, 'Benchmark version', 40),
     workloadDigest: value.workloadDigest,
+    workloadEvidenceRef: validateSafeText(value.workloadEvidenceRef, 'Benchmark workload evidence reference', 500),
     runtime: value.runtime,
     runtimeVersion: validateSafeText(value.runtimeVersion, 'Runtime version', 80),
     region: value.region,
@@ -132,11 +133,20 @@ function validateEvaluation(value, contextId) {
       throw new TypeError('Candidate elapsed time must be a positive safe integer.');
     }
     const safetyRef = validateSafeText(candidate.safetyEvidenceRef, 'Safety evidence reference', 500);
+    const costRef = validateSafeText(candidate.costEvidenceRef, 'Cost evidence reference', 500);
+    const elapsedRef = validateSafeText(candidate.elapsedEvidenceRef, 'Elapsed-time evidence reference', 500);
     const existingSafetyKind = requiredEvidence.get(safetyRef);
     if (existingSafetyKind && existingSafetyKind !== 'safety') {
       throw new TypeError('One evidence reference cannot represent different evidence kinds.');
     }
     requiredEvidence.set(safetyRef, 'safety');
+    for (const [ref, kind] of [[costRef, 'cost'], [elapsedRef, 'runtime']]) {
+      const existingKind = requiredEvidence.get(ref);
+      if (existingKind && existingKind !== kind) {
+        throw new TypeError('One evidence reference cannot represent different evidence kinds.');
+      }
+      requiredEvidence.set(ref, kind);
+    }
     if (typeof candidate.safetyChecksPassed !== 'boolean') {
       throw new TypeError('Candidate safety outcome must be explicit.');
     }
@@ -282,12 +292,23 @@ function validateEvaluation(value, contextId) {
       !sameCanonicalValue(value.rankedCandidateIds || [], recomputed.rankedCandidateIds || [])) {
     throw new TypeError('Recorded evaluation does not match the deterministic evaluator output.');
   }
+  const metricEvidenceByCandidate = new Map(candidates.map((candidate) => [
+    candidate.id,
+    {
+      costEvidenceRef: validateSafeText(candidate.costEvidenceRef, 'Cost evidence reference', 500),
+      elapsedEvidenceRef: validateSafeText(candidate.elapsedEvidenceRef, 'Elapsed-time evidence reference', 500),
+    },
+  ]));
+  const normalizedCandidates = recomputed.candidates.map((candidate) => ({
+    ...candidate,
+    ...metricEvidenceByCandidate.get(candidate.id),
+  }));
   const normalizedEvaluation = {
     priority: recomputed.priority,
     currency: recomputed.currency,
     measurementContextId: recomputed.measurementContextId,
     criteria,
-    candidates: recomputed.candidates,
+    candidates: normalizedCandidates,
     excludedCandidateIds: recomputed.excludedCandidateIds,
     evidenceState: recomputed.evidenceState,
     recommendation: recomputed.recommendation,
@@ -372,7 +393,16 @@ export async function createAgentExperimentRecord(input) {
     throw new TypeError('Record benchmark ID must match the measurement context.');
   }
   const { evaluation, requiredEvidence } = validateEvaluation(input.evaluation, measurementContext.id);
+  const existingBenchmarkKind = requiredEvidence.get(measurementContext.workloadEvidenceRef);
+  if (existingBenchmarkKind && existingBenchmarkKind !== 'benchmark') {
+    throw new TypeError('Benchmark workload evidence reference must be unique to benchmark evidence.');
+  }
+  requiredEvidence.set(measurementContext.workloadEvidenceRef, 'benchmark');
   const evidence = validateEvidence(input.evidence, requiredEvidence);
+  const workloadEvidence = evidence.find((entry) => entry.ref === measurementContext.workloadEvidenceRef);
+  if (workloadEvidence?.sha256 !== measurementContext.workloadDigest) {
+    throw new TypeError('Benchmark workload evidence digest must match the recorded workload digest.');
+  }
   const unsignedRecord = {
     schemaVersion: 'aegis.experiment-record.v1',
     id,
