@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS integration_connections (
     connection_type = 'unknown'
   ),
   CHECK (health_state != 'healthy' OR health_checked_at IS NOT NULL),
+  CHECK (status != 'connected' OR (health_state IN ('healthy', 'degraded') AND health_checked_at IS NOT NULL)),
   CHECK (
     (status = 'revoked' AND revoked_at IS NOT NULL AND health_state = 'disabled') OR
     (status != 'revoked' AND revoked_at IS NULL)
