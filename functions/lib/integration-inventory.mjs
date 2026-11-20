@@ -102,8 +102,16 @@ function validateIntegration(input) {
 }
 function validConnectionAuthMode(connectionType, authMode, platformConnectionId) {
   if (connectionType === 'public_no_auth') return authMode === 'none_public' && platformConnectionId === null;
-  if (connectionType === 'owner_private') return ['api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials', 'unknown'].includes(authMode);
-  if (connectionType === 'workspace_shared') return ['oauth2_client_credentials', 'shared_platform_account', 'session_delegation', 'unknown'].includes(authMode);
+  if (connectionType === 'owner_private') {
+    return authMode === 'unknown' ||
+      (['api_key', 'oauth2_authorization_code_pkce', 'oauth2_client_credentials'].includes(authMode) &&
+       platformConnectionId !== null);
+  }
+  if (connectionType === 'workspace_shared') {
+    return authMode === 'shared_platform_account' || authMode === 'session_delegation' ||
+      authMode === 'unknown' ||
+      (authMode === 'oauth2_client_credentials' && platformConnectionId !== null);
+  }
   if (connectionType === 'instant_platform_managed') return ['shared_platform_account', 'session_delegation', 'unknown'].includes(authMode);
   return connectionType === 'unknown';
 }
@@ -155,8 +163,18 @@ export async function createIntegrationDefinition(db, input, now = Date.now()) {
 export async function upsertIntegrationConnection(db, input, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) throw new TypeError('Integration connection database and valid clock are required');
   const value = validateConnection(input, now);
-  const integration = await db.prepare('SELECT id, status FROM integration_definitions WHERE id = ?').bind(value.integrationId).first();
+  const integration = await db.prepare('SELECT id, status, provider_id FROM integration_definitions WHERE id = ?').bind(value.integrationId).first();
   if (!integration || integration.status === 'disabled') throw new Error('Integration definition is unavailable');
+  if (value.platformConnectionId !== null) {
+    const timestamp = new Date(now).toISOString();
+    const platformConnection = await db.prepare(`
+      SELECT id FROM capability_connections
+      WHERE id = ? AND principal_id = ? AND provider_id = ?
+        AND status = 'active' AND revoked_at IS NULL
+        AND (expires_at IS NULL OR expires_at > ?)
+    `).bind(value.platformConnectionId, value.principalId, integration.provider_id, timestamp).first();
+    if (!platformConnection) throw new Error('Platform credential connection is unavailable');
+  }
   const idValue = crypto.randomUUID(); const timestamp = new Date(now).toISOString();
   const result = await db.prepare(`
     INSERT INTO integration_connections (
