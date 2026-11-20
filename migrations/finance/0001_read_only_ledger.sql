@@ -179,3 +179,72 @@ WHEN OLD.id <> NEW.id
 BEGIN
   SELECT RAISE(ABORT, 'financial sync run identity is immutable');
 END;
+
+
+ALTER TABLE financial_sync_runs ADD UNIQUE (id, owner_id);
+
+CREATE TABLE IF NOT EXISTS financial_sync_run_events (
+  id TEXT PRIMARY KEY NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+  sync_run_id TEXT NOT NULL,
+  owner_id TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('created', 'updated')),
+  status TEXT NOT NULL CHECK (status IN ('running', 'complete', 'partial', 'failed')),
+  pages_read INTEGER NOT NULL CHECK (pages_read >= 0),
+  records_read INTEGER NOT NULL CHECK (records_read >= 0),
+  failure_code TEXT,
+  occurred_at TEXT NOT NULL,
+  FOREIGN KEY (sync_run_id, owner_id)
+    REFERENCES financial_sync_runs (id, owner_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_financial_sync_run_events_owner_time
+  ON financial_sync_run_events (owner_id, occurred_at DESC, id DESC);
+
+CREATE TRIGGER IF NOT EXISTS financial_sync_run_created_event
+AFTER INSERT ON financial_sync_runs
+BEGIN
+  INSERT INTO financial_sync_run_events (
+    sync_run_id, owner_id, event_type, status,
+    pages_read, records_read, failure_code, occurred_at
+  ) VALUES (
+    NEW.id, NEW.owner_id, 'created', NEW.status,
+    NEW.pages_read, NEW.records_read, NEW.failure_code, NEW.started_at
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS financial_sync_run_updated_event
+AFTER UPDATE ON financial_sync_runs
+WHEN OLD.status IS NOT NEW.status
+  OR OLD.pages_read IS NOT NEW.pages_read
+  OR OLD.records_read IS NOT NEW.records_read
+  OR OLD.completed_at IS NOT NEW.completed_at
+  OR OLD.failure_code IS NOT NEW.failure_code
+BEGIN
+  INSERT INTO financial_sync_run_events (
+    sync_run_id, owner_id, event_type, status,
+    pages_read, records_read, failure_code, occurred_at
+  ) VALUES (
+    NEW.id, NEW.owner_id, 'updated', NEW.status,
+    NEW.pages_read, NEW.records_read, NEW.failure_code,
+    COALESCE(NEW.completed_at, NEW.started_at)
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS financial_sync_run_terminal_immutable
+BEFORE UPDATE ON financial_sync_runs
+WHEN OLD.status IN ('complete', 'partial', 'failed')
+BEGIN
+  SELECT RAISE(ABORT, 'terminal financial sync runs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS financial_sync_run_events_no_update
+BEFORE UPDATE ON financial_sync_run_events
+BEGIN
+  SELECT RAISE(ABORT, 'financial sync run events are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS financial_sync_run_events_no_delete
+BEFORE DELETE ON financial_sync_run_events
+BEGIN
+  SELECT RAISE(ABORT, 'financial sync run events are append-only');
+END;
