@@ -399,6 +399,7 @@ function validateRunInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return "Invalid AG-UI request.";
   if (Object.keys(input).some(key => !["threadId", "runId", "protocolVersion", "messages", "tools", "context", "projectId", "workFocus"].includes(key))) return "Unsupported AG-UI request fields.";
   if (input.protocolVersion !== undefined && input.protocolVersion !== "1.0") return "Unsupported AG-UI protocol version.";
+  if (input.workFocus !== undefined && (typeof input.workFocus !== "string" || !WORK_FOCI.has(input.workFocus))) return "Invalid work focus.";
   if (typeof input.threadId !== "string" || typeof input.runId !== "string") return "AG-UI threadId and runId are required.";
   if (!Array.isArray(input.messages) || !input.messages.length || input.messages.length > MAX_MESSAGES) return "Invalid AG-UI messages.";
   if (input.tools !== undefined && (!Array.isArray(input.tools) || input.tools.length)) return "Frontend tools are not enabled until Sentinel mediation is connected.";
