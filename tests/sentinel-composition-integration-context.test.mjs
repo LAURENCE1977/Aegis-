@@ -53,6 +53,9 @@ test('fixed adapters receive integration identity metadata but never credential 
     integrationId: 'composio-github',
     integrationConnectionId: 'integration-connection-1',
     integrationToolSlug: 'GITHUB_GET_REPO',
+    integrationPlatformAccountId: 'ca_github_owner_123456',
+    integrationAllowedToolSlugs: ['GITHUB_GET_REPO'],
+    integrationConnectionType: 'owner_private',
     inputDigest: 'sha256:' + 'a'.repeat(64),
     secretRef: 'secret://must-not-cross-boundary',
     apiKey: 'must-not-cross-boundary',
@@ -70,6 +73,9 @@ test('fixed adapters receive integration identity metadata but never credential 
     integrationId: 'composio-github',
     integrationConnectionId: 'integration-connection-1',
     integrationToolSlug: 'GITHUB_GET_REPO',
+    integrationPlatformAccountId: 'ca_github_owner_123456',
+    integrationAllowedToolSlugs: ['GITHUB_GET_REPO'],
+    integrationConnectionType: 'owner_private',
     inputDigest: 'sha256:' + 'a'.repeat(64),
   });
   assert.equal(Object.isFrozen(received), true);
