@@ -431,3 +431,16 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+## 20 November 2026 — unified provider routing checkpoint
+
+- Draft PR #121: https://github.com/LAURENCE1977/Aegis-/pull/121
+- Branch: `feature/ask-route-provider-adapter-2026-11-20`, stacked on `feature/provider-model-provenance-2026-11-19`.
+- The legacy JSON `POST /api/ask` route previously called `env.AI.run` directly, bypassing the server-side provider adapter used by AG-UI.
+- PR #121 routes `/api/ask` through `createModelStream`, preserving the JSON `{ response: text }` contract and supporting the configured Workers AI, Anthropic and Qwen adapter paths.
+- A bounded SSE reader handles the three existing provider event formats and caps frame size (16 KiB), total stream size (256 KiB) and output length (12,000 characters). Provider error events return the existing generic user-safe error response.
+- Added `tests/ask-provider-routing.test.mjs` for Anthropic, Qwen and default Workers AI routing. Tests were committed before implementation.
+- Updated `docs/AEGIS_MODEL_PROVIDERS.md` to record the route unification and its draft dependency.
+- **Verification limitation:** GitHub workflow-run and commit-status queries returned no runs/statuses for the PR head during this session. The code has not been claimed test-passed. CI must be confirmed before merge.
+- No merge, production deployment, provider credential change, runtime setting change or external provider call was made.
+- Next: obtain CI evidence for PR #121 and its provider-registry dependency chain; review the stacked PR bases and reconcile duplicate/overlapping PRs before any merge. Keep production deployment and secret provisioning separately gated.
