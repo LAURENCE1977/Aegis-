@@ -433,3 +433,37 @@ export async function createAgentExperimentRecord(input) {
   const recordDigest = await sha256(canonical);
   return deepFreeze({ ...unsignedRecord, recordDigest });
 }
+
+
+const RECORD_FIELDS = [
+  'schemaVersion',
+  'id',
+  'ownerId',
+  'sourceRunId',
+  'benchmarkId',
+  'createdAt',
+  'measurementContext',
+  'evaluation',
+  'evidence',
+  'recordDigest',
+];
+
+export async function verifyAgentExperimentRecordDigest(record) {
+  if (!isRecord(record) || record.schemaVersion !== 'aegis.experiment-record.v1' ||
+      typeof record.recordDigest !== 'string' || !DIGEST_PATTERN.test(record.recordDigest)) {
+    return false;
+  }
+  const fields = Object.keys(record).sort();
+  if (JSON.stringify(fields) !== JSON.stringify([...RECORD_FIELDS].sort())) return false;
+
+  const {
+    recordDigest,
+    ...unsignedRecord
+  } = record;
+  try {
+    const canonical = JSON.stringify(canonicalize(unsignedRecord));
+    return await sha256(canonical) === recordDigest;
+  } catch {
+    return false;
+  }
+}
