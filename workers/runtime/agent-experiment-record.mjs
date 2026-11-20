@@ -1,3 +1,5 @@
+import { evaluateAgentExperiment } from './agent-evaluation.mjs';
+
 const ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const MAX_EVIDENCE = 80;
@@ -256,21 +258,43 @@ function validateEvaluation(value, contextId) {
   for (const candidate of candidates) {
     candidate.criterionResults.sort((left, right) => left.criterionId.localeCompare(right.criterionId));
   }
-  const normalizedEvaluation = {
+  const recomputed = evaluateAgentExperiment({
     priority: value.priority,
-    currency,
-    measurementContextId: contextId,
     criteria,
-    candidates,
-    excludedCandidateIds: expectedExcluded,
-    evidenceState: value.evidenceState,
-    recommendation: value.recommendation === null
-      ? null
-      : { candidateId: value.recommendation.candidateId, basis: value.recommendation.basis },
-    paretoFront: Array.isArray(value.paretoFront) ? [...value.paretoFront] : [],
-    status: value.status,
-    ...(Array.isArray(value.rankedCandidateIds)
-      ? { rankedCandidateIds: [...value.rankedCandidateIds] }
+    candidates: candidates.map((candidate) => ({
+      id: candidate.id,
+      currency: candidate.currency,
+      costMinorUnits: candidate.costMinorUnits,
+      elapsedMs: candidate.elapsedMs,
+      safetyChecksPassed: candidate.safetyChecksPassed,
+      safetyEvidenceRef: candidate.safetyEvidenceRef,
+      measurementContextId: candidate.measurementContextId,
+      criterionResults: candidate.criterionResults,
+    })),
+  });
+  const sameCanonicalValue = (left, right) =>
+    JSON.stringify(canonicalize(left)) === JSON.stringify(canonicalize(right));
+  if (value.status !== recomputed.status ||
+      value.currency !== recomputed.currency ||
+      !sameCanonicalValue(value.excludedCandidateIds, recomputed.excludedCandidateIds) ||
+      !sameCanonicalValue(value.recommendation, recomputed.recommendation) ||
+      !sameCanonicalValue(value.paretoFront || [], recomputed.paretoFront) ||
+      !sameCanonicalValue(value.rankedCandidateIds || [], recomputed.rankedCandidateIds || [])) {
+    throw new TypeError('Recorded evaluation does not match the deterministic evaluator output.');
+  }
+  const normalizedEvaluation = {
+    priority: recomputed.priority,
+    currency: recomputed.currency,
+    measurementContextId: recomputed.measurementContextId,
+    criteria,
+    candidates: recomputed.candidates,
+    excludedCandidateIds: recomputed.excludedCandidateIds,
+    evidenceState: recomputed.evidenceState,
+    recommendation: recomputed.recommendation,
+    paretoFront: recomputed.paretoFront,
+    status: recomputed.status,
+    ...(recomputed.rankedCandidateIds
+      ? { rankedCandidateIds: recomputed.rankedCandidateIds }
       : {}),
   };
   return {
