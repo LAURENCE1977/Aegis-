@@ -252,3 +252,21 @@ The integration layer is ready for initial controlled use only when:
 - read-only probes work without enabling write capabilities;
 - owner revocation blocks future invocations;
 - the system degrades safely when any provider or platform is unavailable.
+
+
+## Phase 1 implementation checkpoint — metadata-only inventory substrate
+
+Draft PR #124 adds the first storage/repository slice:
+
+- `integration_providers` stores provider identity, source URL, verification timestamp and review state.
+- `integration_definitions` stores a distinct integration/toolkit identity, provider link, auth mode, source URL, schema version/hash and review state.
+- `integration_connections` stores owner-scoped account/tenant records with stable per-integration connection keys, connection/auth classification, safe account alias and opaque platform account ID, optional link to an AEGIS platform credential connection, exact allowed tool slugs, scopes, connection status and separate health observations.
+- Multiple account connections can exist for the same integration; an upsert refresh resets health to `unknown` until a fresh observation is recorded.
+- Public/no-auth records require `none_public` and no platform credential connection. Owner-private API/OAuth connections and workspace client-credential connections require an exact platform credential link; the repository verifies that the linked `capability_connections` row is active and matches both the same principal and integration provider.
+- Inventory import cannot assert `healthy` or `connected`; imported rows remain `connected_unverified` until a separate timestamped health observation. A healthy/degraded observation transitions the connection to `connected`; auth-required, restricted and rate-limited observations update the corresponding connection status. D1 enforces that `connected` always has a healthy/degraded observation timestamp. The smoke fixture links two toolkit accounts to one Composio platform credential, while constraint checks reject duplicate account keys, wildcard allowlists, auth-mode mismatches, unprobed healthy/connected states and invalid credential links.
+- The repository exposes metadata only. It does not resolve vault secrets, create grants/approvals, register executable adapters or invoke external tools.
+- Owner-authenticated read-only `GET /api/integrations` returns bounded provider, integration and owner-scoped connection metadata with `Cache-Control: no-store`; it omits principal IDs, opaque platform account IDs, platform credential-link IDs and all secret material. It returns no grants or execution permissions.
+- Health observations expire after 24 hours for display/routing decisions. A stale previously connected state is exposed as `connected_unverified`; source-reported negative states such as `auth_required` are preserved rather than incorrectly rewritten as healthy/unverified.
+
+Migration `0006_integration_inventory.sql` is source only and passed isolated local D1 migration and schema validation. GitHub Actions run [44733885288](https://github.com/LAURENCE1977/Aegis-/actions/runs/44733885288) passed **455 Node.js tests, 0 failures**, plus the D1 integration-inventory constraint checks and the existing capability/Forge verification steps on the latest documentation head. It has not been applied to any Cloudflare database. No Composio records have been imported; the user's screenshots and later authorised inventory retrieval remain the source for actual account names, aliases, statuses and tool slugs.
+
