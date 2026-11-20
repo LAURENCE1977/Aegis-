@@ -90,6 +90,12 @@ The repository includes source-level capability grants, provider connection meta
 AEGIS has a plan-only durable specialist-run workflow on the existing runtime Worker and Queue. It stores objectives, idempotency and plans in D1; it does not run LLM agents or tools. See [docs/AEGIS_AGENT_ORCHESTRATION.md](docs/AEGIS_AGENT_ORCHESTRATION.md). Production activation requires the D1 migration and explicit `AGENT_RUNS_ENABLED=true` configuration.
 
 
+## Native Automation Engine (contract-only foundation)
+
+AEGIS now has a versioned, fail-closed automation definition contract in `workers/runtime/automation-contract.mjs`. It validates manual, scheduled and exact internal-event triggers; bounded agent-plan, owner-notification and capability-invocation steps; declarative conditions; explicit retry/limit defaults; exact capability scopes; mandatory human approval for capability steps; and pause/resume lifecycle rules. It rejects arbitrary code, shell commands, dynamic adapters, wildcard resources and external notification targets. See [docs/AEGIS_AUTOMATION_ENGINE.md](docs/AEGIS_AUTOMATION_ENGINE.md).
+
+This is **not yet a running automation engine**: D1 definitions/runs, owner APIs, scheduler, Queue dispatch, Workflows execution, Sentinel approval integration and the mobile Automation Centre remain to be built. No automation is active or executing.
+
 ## Forge repository inspection
 
 AEGIS Forge now has owner-authenticated, read-only endpoints to inspect public GitHub repository trees and read selected text blobs by immutable SHA. Requests and responses are bounded; outbound requests use only the fixed GitHub API origin, reject redirects and have a timeout. Source is never installed or executed and remains untrusted reference data. See [AEGIS Forge](AEGIS_FORGE.md).
