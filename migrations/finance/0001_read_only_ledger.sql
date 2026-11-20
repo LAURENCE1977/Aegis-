@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS financial_accounts (
     AND provider_slug = lower(provider_slug)
     AND provider_slug NOT GLOB '*[^a-z0-9_-]*'
   ),
+  connection_ref TEXT NOT NULL CHECK (length(connection_ref) BETWEEN 1 AND 128),
   external_account_ref TEXT NOT NULL CHECK (
     length(external_account_ref) BETWEEN 1 AND 256
     AND trim(external_account_ref) = external_account_ref
