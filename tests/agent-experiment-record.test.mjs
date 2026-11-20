@@ -79,7 +79,7 @@ function validInput() {
     sourceRunId: 'run-1',
     benchmarkId: measurementContext.benchmarkId,
     createdAt: '2026-11-20T20:05:00.000Z',
-    measurementContext,
+    measurementContext: { ...measurementContext },
     evaluation,
     evidence: refs.map((ref) => evidenceFor(ref)),
   };
