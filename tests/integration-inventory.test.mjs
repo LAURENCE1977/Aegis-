@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { evaluateIntegrationToolPreflight } from '../functions/lib/integration-tool-preflight.mjs';
 import assert from 'node:assert/strict';
 import {
   createIntegrationProvider,
@@ -7,6 +8,7 @@ import {
   listIntegrationDefinitions,
   upsertIntegrationConnection,
   loadIntegrationConnection,
+  loadIntegrationToolContext,
   listIntegrationConnections,
   recordIntegrationHealth,
   revokeIntegrationConnection,
@@ -401,4 +403,47 @@ test('source-reported auth-required status is not erased by an absent health pro
   const listed = await listIntegrationConnections(db, 'owner-1');
   assert.equal(listed[0].status, 'auth_required');
   assert.equal(listed[0].healthState, 'unknown');
+});
+
+
+test('loads an exact owner-scoped provider, integration and connection context for preflight', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration({ status: 'reviewed' }));
+  const created = await upsertIntegrationConnection(db, connection(), Date.now());
+  await recordIntegrationHealth(db, {
+    id: created.id, principalId: 'owner-1', healthState: 'healthy', checkedAt: now(),
+  });
+  const context = await loadIntegrationToolContext(db, {
+    principalId: 'owner-1',
+    integrationId: 'composio-github',
+    connectionKey: 'github-personal',
+  });
+  assert.equal(context.provider.id, 'composio');
+  assert.equal(context.integration.id, 'composio-github');
+  assert.equal(context.connection.id, created.id);
+  assert.deepEqual(evaluateIntegrationToolPreflight({
+    ...context,
+    principalId: 'owner-1',
+    toolSlug: 'GITHUB_GET_REPO',
+    requiredScopes: ['github:public-metadata:read'],
+    now: Date.now(),
+  }), { eligible: true, reason: 'eligible_for_sentinel_review' });
+});
+
+test('tool preflight context cannot be loaded across owners or from unknown connection keys', async () => {
+  const db = new MemoryD1();
+  await createIntegrationProvider(db, provider());
+  await createIntegrationDefinition(db, integration({ status: 'reviewed' }));
+  await upsertIntegrationConnection(db, connection(), Date.now());
+  assert.equal(await loadIntegrationToolContext(db, {
+    principalId: 'owner-2',
+    integrationId: 'composio-github',
+    connectionKey: 'github-personal',
+  }), null);
+  assert.equal(await loadIntegrationToolContext(db, {
+    principalId: 'owner-1',
+    integrationId: 'composio-github',
+    connectionKey: 'unknown-account',
+  }), null);
 });
