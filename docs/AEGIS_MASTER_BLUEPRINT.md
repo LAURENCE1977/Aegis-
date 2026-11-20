@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 15 November 2026.  
+**Canonical project record.** Last refreshed: 20 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -431,3 +431,16 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## 20 November 2026 — Native Automation Engine definition contract v0.1
+
+- Product priority correction: the AEGIS-native Automation Engine is a core operating-system capability, not an optional later device-integration feature. After the current security/Sentinel foundation, automation is the next core execution-plane priority.
+- New feature branch: `feature/automation-definition-contract-2026-11-20`, based directly on main `a73fef64fe8d35cdfb81870d8218addb834fa6eb`.
+- `workers/runtime/automation-contract.mjs` now validates versioned definitions, manual/interval/daily/weekly/exact-event triggers, bounded ordered steps, safe declarative conditions, exact capability/action/resource/scope references, mandatory human approval for capability invocation, safe retry/limit defaults and explicit lifecycle transitions.
+- Allowed step types are `agent.plan` (plan-only), `capability.invoke` (exact scope and mandatory approval) and `notify.owner` (internal owner notification only). Arbitrary shell/code/HTTP, dynamic adapters, wildcard scopes/resources and external notification recipients are rejected.
+- Focused tests: **12 passed, 0 failed**. Full local Node.js suite: **446 passed, 0 failed, 0 skipped** on Node.js 24.22.1. The repository CI uses Node.js 22; its result on this branch is pending. The remote sandbox did not include npm/Wrangler, so the unchanged D1/Forge migration scripts were not rerun locally.
+- Documentation: [`docs/AEGIS_AUTOMATION_ENGINE.md`](AEGIS_AUTOMATION_ENGINE.md). README now explicitly distinguishes this contract-only foundation from a running engine.
+- Not implemented by this slice: D1 schema/repository, owner APIs, scheduler, Queue dispatch, Workflow execution, Sentinel approval consumption, run history, notifications service and Automation Centre UI. No automation is activated; no Cloudflare resource was provisioned.
+- Cloudflare's published Free-plan reference was rechecked on 20 November: Workers 100,000 requests/day and 10 ms CPU per invocation; 5 Cron Triggers/account; D1 5 million rows read/day, 100,000 written/day, 5 GB total and 10 databases; Queues 10,000 operations/day with 24-hour retention; Workflows 3,000 steps/day, 1 GB-month state and 3-day default retention. These are shared account allowances, not verified account entitlements or remaining quota. Use one central Cron scheduler and retain canonical run/outbox state in D1 so Queue expiry cannot lose work.
+- Next: after security/Sentinel review, add the D1 automation definition/version/schedule/run/step/event schema and owner-scoped lifecycle APIs; then central scheduler, Queue/outbox recovery, Workflows, approval-aware execution and the mobile Automation Centre. AEGIS remains the source of truth; external workflow platforms are references/adapters only.
