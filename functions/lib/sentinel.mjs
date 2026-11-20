@@ -1,4 +1,5 @@
 import { evaluateCapabilityPolicy } from './capability-policy.mjs';
+import { evaluateIntegrationToolPreflight } from './integration-tool-preflight.mjs';
 
 function auditEvent(request, type, reasonCode, now) {
   return {
@@ -52,6 +53,7 @@ export async function runSentinelInvocation(request, dependencies = {}) {
   let grant;
   let connection;
   let approval = null;
+  let integrationContext = null;
   let decision;
   try {
     [grant, connection] = await Promise.all([
@@ -67,6 +69,32 @@ export async function runSentinelInvocation(request, dependencies = {}) {
       }),
     ]);
     const action = request.manifest.actions?.find((item) => item.id === request.actionId);
+    if (request.integrationTool !== undefined && request.integrationTool !== null) {
+      const integrationTool = request.integrationTool;
+      if (!integrationTool || typeof integrationTool !== 'object' || Array.isArray(integrationTool) ||
+          Object.keys(integrationTool).some((key) => !['integrationId', 'connectionKey', 'toolSlug'].includes(key)) ||
+          !validText(integrationTool.integrationId, 128) ||
+          !validText(integrationTool.connectionKey, 128) ||
+          !validText(integrationTool.toolSlug, 128) ||
+          typeof dependencies.loadIntegrationToolContext !== 'function') {
+        return recordDenied(request, dependencies, 'POLICY_CONTEXT_UNAVAILABLE', now);
+      }
+      integrationContext = await dependencies.loadIntegrationToolContext({
+        principalId: request.principalId,
+        integrationId: integrationTool.integrationId,
+        connectionKey: integrationTool.connectionKey,
+      });
+      const preflight = evaluateIntegrationToolPreflight({
+        ...integrationContext,
+        principalId: request.principalId,
+        toolSlug: integrationTool.toolSlug,
+        requiredScopes: action?.requiredScopes ?? [],
+        now,
+      });
+      if (!preflight.eligible) {
+        return recordDenied(request, dependencies, preflight.reason, now);
+      }
+    }
     if (action?.approval === 'human-always') {
       approval = await dependencies.loadApproval({
         principalId: request.principalId,
@@ -161,6 +189,9 @@ export async function runSentinelInvocation(request, dependencies = {}) {
       resourceId: request.resourceId,
       scopes: [...grant.scopes],
       connectionId: connection?.id ?? null,
+      integrationId: integrationContext?.integration?.id ?? null,
+      integrationConnectionId: integrationContext?.connection?.id ?? null,
+      integrationToolSlug: request.integrationTool?.toolSlug ?? null,
       inputDigest: request.inputDigest,
     });
   } catch {
