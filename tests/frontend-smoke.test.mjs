@@ -227,6 +227,7 @@ test('adaptive workspace exposes an accessible task-focus selector without chang
   assert.match(html, /workFocus\.addEventListener\('change'/);
   assert.match(html, /workFocusDescription\.textContent\s*=/);
   assert.match(html, /workFocusStatus\.textContent\s*=/);
+  assert.match(html, /workFocus:\s*workFocus\.value/);
   assert.match(html, /aria-live="polite"/);
   assert.doesNotMatch(html, /workFocus\.value[\s\S]{0,500}sentinel\/invoke/);
 });
