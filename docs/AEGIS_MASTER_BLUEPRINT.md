@@ -653,3 +653,10 @@ This doctrine is an overlay on the existing Outcome Planner, Adaptive Intelligen
 
 The full doctrine, safeguards, measures and delivery sequence are in [AEGIS First-Principles Evolution Doctrine](AEGIS_FIRST_PRINCIPLES_EVOLUTION.md). This is architecture direction, not a claim that the reasoning disciplines or evolution engine are implemented.
 
+
+
+## 9.16 First-principles Outcome Planner — initial implementation (20 November 2026)
+
+The existing durable planner has been extended with bounded assumptions and constraints, explicit decision rationale, recorded alternatives and rejection reasons, adversarial challenge questions, strongest-alternative identification and evidence required to revisit a recommendation. These fields are stored in the existing version-tolerant metadata envelope; legacy specialist-array rows remain readable and no database migration is introduced.
+
+This first runtime slice is deterministic and inspectable. It does not yet independently discover assumptions, perform live multi-agent debate, calculate measured cost or reliability, or execute work. The plan remains plan-only, with no tool invocation or external effects; Sentinel and human approval remain mandatory before protected execution. Implementation and regression coverage are in the existing agent runtime and orchestration tests. The design and limitations are documented in AEGIS_AGENT_ORCHESTRATION.md.
