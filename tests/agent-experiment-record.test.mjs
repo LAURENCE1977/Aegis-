@@ -148,3 +148,62 @@ test('rejects invalid ownership, timestamps and unsupported evaluation states', 
   badStatus.evaluation = { ...badStatus.evaluation, status: 'approved' };
   await assert.rejects(() => createAgentExperimentRecord(badStatus), /evaluation status/i);
 });
+
+
+test('rejects a forged evaluation that recommends a candidate marked unsafe', async () => {
+  const input = validInput();
+  input.evaluation = {
+    ...input.evaluation,
+    candidates: input.evaluation.candidates.map((item) =>
+      item.id === 'candidate-a' ? { ...item, safetyChecksPassed: false } : item
+    ),
+  };
+
+  await assert.rejects(() => createAgentExperimentRecord(input), /safety exclusion/i);
+});
+
+test('rejects criterion counts or criterion identities that do not match the recorded outcomes', async () => {
+  const wrongCounts = validInput();
+  wrongCounts.evaluation = {
+    ...wrongCounts.evaluation,
+    candidates: wrongCounts.evaluation.candidates.map((item, index) =>
+      index === 0 ? { ...item, passedCriteria: 1 } : item
+    ),
+  };
+  await assert.rejects(() => createAgentExperimentRecord(wrongCounts), /criterion counts/i);
+
+  const wrongIdentity = validInput();
+  wrongIdentity.evaluation = {
+    ...wrongIdentity.evaluation,
+    candidates: wrongIdentity.evaluation.candidates.map((item, index) =>
+      index === 0
+        ? { ...item, criterionResults: [{ ...item.criterionResults[0], criterionId: 'invented' }, item.criterionResults[1]] }
+        : item
+    ),
+  };
+  await assert.rejects(() => createAgentExperimentRecord(wrongIdentity), /criterion results must match/i);
+});
+
+test('rejects a complete evaluation that contains unknown results or inconsistent currency', async () => {
+  const incomplete = validInput();
+  incomplete.evaluation = {
+    ...incomplete.evaluation,
+    candidates: incomplete.evaluation.candidates.map((item, index) =>
+      index === 0
+        ? { ...item, criterionResults: item.criterionResults.map((result, resultIndex) =>
+            resultIndex === 0 ? { ...result, outcome: 'unknown', evidenceRef: null } : result
+          ) }
+        : item
+    ),
+  };
+  await assert.rejects(() => createAgentExperimentRecord(incomplete), /status does not match/i);
+
+  const mixedCurrency = validInput();
+  mixedCurrency.evaluation = {
+    ...mixedCurrency.evaluation,
+    candidates: mixedCurrency.evaluation.candidates.map((item, index) =>
+      index === 1 ? { ...item, currency: 'USD' } : item
+    ),
+  };
+  await assert.rejects(() => createAgentExperimentRecord(mixedCurrency), /same currency/i);
+});
