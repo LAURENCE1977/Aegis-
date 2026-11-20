@@ -421,7 +421,7 @@ async function handleExperimentRecordRequest(request, env, url) {
       return json({ record: result.record, created: result.created }, result.created ? 201 : 200);
     } catch (error) {
       if (error instanceof TypeError) return json({ error: 'Experiment record is invalid.' }, 400);
-      if (/different immutable content/i.test(error?.message || '')) {
+      if (/(different immutable content|tombstoned and cannot be restored)/i.test(error?.message || '')) {
         return json({ error: 'Experiment record identifier already exists with different immutable content.' }, 409);
       }
       return json({ error: 'Experiment record could not be persisted.' }, 503);
