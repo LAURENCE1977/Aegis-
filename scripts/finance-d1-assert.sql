@@ -15,4 +15,8 @@ SELECT 1,
     (SELECT COUNT(*) FROM financial_transaction_events WHERE transaction_id = 'finance-transaction-smoke' AND event_type = 'updated') = 1
     AND
     (SELECT COUNT(*) FROM financial_sync_runs WHERE id = 'finance-sync-smoke' AND status = 'complete') = 1
+    AND
+    (SELECT COUNT(*) FROM financial_sync_run_events WHERE sync_run_id = 'finance-sync-smoke' AND event_type = 'created') = 1
+    AND
+    (SELECT COUNT(*) FROM financial_sync_run_events WHERE sync_run_id = 'finance-sync-smoke' AND event_type = 'updated' AND status = 'complete') = 1
   THEN 1 ELSE 0 END;
