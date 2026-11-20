@@ -1,6 +1,6 @@
 const TOOL_SLUG_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
 const ACCOUNT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
-const VERSION_PATTERN = /^\\d{8}_\\d{2}$/;
+const VERSION_PATTERN = /^\d{8}_\d{2}$/;
 const MAX_ARGUMENT_BYTES = 32 * 1024;
 
 async function readBoundedJson(response, maxBytes) {
@@ -66,7 +66,7 @@ export function createComposioToolAdapter({
   }
 
   return async function executeComposioTool(input, context) {
-    if (typeof apiKey !== 'string' || !apiKey.trim()) {
+    if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey !== apiKey.trim() || apiKey.length > 4096 || /[\\u0000-\\u001f\\u007f]/.test(apiKey)) {
       throw new Error('Composio project credentials are unavailable');
     }
     if (!context || context.integrationConnectionType !== 'owner_private' ||
@@ -120,7 +120,7 @@ export function createComposioToolAdapter({
       throw new Error('Composio upstream request failed');
     }
     const contentType = response.headers?.get?.('content-type') || '';
-    if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+    if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
       await response.body?.cancel();
       throw new Error('Composio returned an unsupported response type');
     }
