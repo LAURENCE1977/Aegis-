@@ -14,6 +14,7 @@ const measurementContext = {
   benchmarkId: 'routing-baseline',
   benchmarkVersion: '1.0.0',
   workloadDigest: 'sha256:' + 'a'.repeat(64),
+  workloadEvidenceRef: 'benchmark:workload-v1',
   runtime: 'cloudflare-workers',
   runtimeVersion: '2026-11-20',
   region: 'WEUR',
@@ -40,7 +41,11 @@ function candidate(id, costMinorUnits) {
   };
 }
 
-function evidenceFor(ref, kind = ref.startsWith('safety:') ? 'safety' : 'criterion') {
+function evidenceFor(ref, kind = ref.startsWith('safety:') ? 'safety'
+  : ref.startsWith('cost:') ? 'cost'
+  : ref.startsWith('runtime:') ? 'runtime'
+  : ref.startsWith('benchmark:') ? 'benchmark'
+  : 'criterion') {
   return {
     kind,
     ref,
@@ -55,10 +60,19 @@ function validInput() {
     criteria,
     candidates: [candidate('candidate-a', '100'), candidate('candidate-b', '200')],
   });
-  const refs = evaluation.candidates.flatMap((item) => [
-    item.safetyEvidenceRef,
-    ...item.criterionResults.map((result) => result.evidenceRef).filter(Boolean),
-  ]);
+  for (const item of evaluation.candidates) {
+    item.costEvidenceRef = 'cost:' + item.id;
+    item.elapsedEvidenceRef = 'runtime:' + item.id;
+  }
+  const refs = [
+    measurementContext.workloadEvidenceRef,
+    ...evaluation.candidates.flatMap((item) => [
+      item.safetyEvidenceRef,
+      item.costEvidenceRef,
+      item.elapsedEvidenceRef,
+      ...item.criterionResults.map((result) => result.evidenceRef).filter(Boolean),
+    ]),
+  ];
   return {
     id: 'experiment-1',
     ownerId: 'owner-1',
@@ -78,7 +92,10 @@ test('creates a versioned immutable record with a SHA-256 digest and complete ev
   assert.equal(record.id, 'experiment-1');
   assert.equal(record.ownerId, 'owner-1');
   assert.equal(record.evaluation.recommendation.candidateId, 'candidate-a');
-  assert.equal(record.evidence.length, 6);
+  assert.equal(record.evidence.length, 11);
+  assert.equal(record.measurementContext.workloadEvidenceRef, 'benchmark:workload-v1');
+  assert.equal(record.evaluation.candidates[0].costEvidenceRef.startsWith('cost:'), true);
+  assert.equal(record.evaluation.candidates[0].elapsedEvidenceRef.startsWith('runtime:'), true);
   assert.match(record.recordDigest, /^sha256:[a-f0-9]{64}$/);
   assert.equal(Object.isFrozen(record), true);
   assert.equal(Object.isFrozen(record.measurementContext), true);
@@ -259,4 +276,29 @@ test('rejects a safe but non-optimal recommendation that contradicts the determi
   };
 
   await assert.rejects(() => createAgentExperimentRecord(input), /deterministic evaluator/i);
+});
+
+
+test('rejects a record when candidate cost or elapsed-time evidence is missing', async () => {
+  const missingCost = validInput();
+  missingCost.evidence = missingCost.evidence.filter((entry) => entry.kind !== 'cost');
+  await assert.rejects(() => createAgentExperimentRecord(missingCost), /cost evidence/i);
+
+  const missingRuntime = validInput();
+  missingRuntime.evidence = missingRuntime.evidence.filter((entry) => entry.kind !== 'runtime');
+  await assert.rejects(() => createAgentExperimentRecord(missingRuntime), /elapsed-time evidence/i);
+});
+
+test('requires benchmark workload evidence to match the recorded workload digest', async () => {
+  const missing = validInput();
+  missing.evidence = missing.evidence.filter((entry) => entry.kind !== 'benchmark');
+  await assert.rejects(() => createAgentExperimentRecord(missing), /benchmark workload evidence/i);
+
+  const mismatched = validInput();
+  mismatched.evidence = mismatched.evidence.map((entry) =>
+    entry.kind === 'benchmark'
+      ? { ...entry, sha256: 'sha256:' + 'c'.repeat(64) }
+      : entry
+  );
+  await assert.rejects(() => createAgentExperimentRecord(mismatched), /workload digest/i);
 });
