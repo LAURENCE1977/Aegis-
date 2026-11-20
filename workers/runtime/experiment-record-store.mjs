@@ -105,6 +105,13 @@ export async function appendExperimentRecord(db, principalId, record) {
     throw new Error('Experiment record identifier already exists with different immutable content.');
   }
 
+  const tombstone = await db.prepare(
+    "SELECT event_id FROM experiment_record_events WHERE principal_id = ? AND record_id = ? AND event_type = 'tombstoned' LIMIT 1"
+  ).bind(principalId, record.id).first();
+  if (tombstone) {
+    throw new Error('Experiment record has been tombstoned and cannot be restored.');
+  }
+
   // Idempotent recovery: if a previous attempt inserted the row but failed
   // before its audit event, this insert repairs the missing event.
   await db.prepare(

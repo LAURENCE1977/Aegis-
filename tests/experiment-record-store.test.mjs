@@ -57,6 +57,13 @@ class FakeD1 {
           },
           async first() {
             const [principalId, recordId] = values;
+            if (sql.startsWith('SELECT event_id FROM experiment_record_events')) {
+              return [...db.events.values()].find((event) =>
+                event.principal_id === principalId &&
+                event.record_id === recordId &&
+                event.event_type === 'tombstoned'
+              ) || null;
+            }
             const row = db.records.get(principalId + ':' + recordId) || null;
             if (row && sql.includes('NOT EXISTS') && [...db.events.values()].some((event) =>
               event.principal_id === principalId &&
@@ -246,4 +253,18 @@ test('paginates a principal history with a stable created-at and record-ID curso
   assert.equal(secondPage.records.length, 1);
   assert.equal(secondPage.nextCursor, null);
   assert.equal(new Set([...firstPage.records, ...secondPage.records].map((record) => record.id)).size, 3);
+});
+
+
+test('a tombstoned record cannot be restored by repeating the original append', async () => {
+  const db = new FakeD1();
+  const record = await makeRecord('record-no-resurrection');
+  await appendExperimentRecord(db, 'principal-a', record);
+  await tombstoneExperimentRecord(db, 'principal-a', record.id);
+
+  await assert.rejects(
+    () => appendExperimentRecord(db, 'principal-a', record),
+    /tombstoned and cannot be restored/i,
+  );
+  assert.equal(await getExperimentRecord(db, 'principal-a', record.id), null);
 });

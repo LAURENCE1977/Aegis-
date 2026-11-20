@@ -91,3 +91,12 @@ This stage does not create an API endpoint, authenticate users, run experiments,
 The history listing uses keyset pagination ordered by creation timestamp and record ID, with a bounded page size, so callers can continue through a principal's records without offset-based page drift.
 
 The existing Pages login uses a signed single-password session, but its HMAC payload currently carries an expiry only; it has no stable user or subject identifier. That session proves access to the single-owner app, but it does not yet supply a distinct principal claim suitable for a multi-user data boundary. The runtime's separate bearer token remains service authentication. A future adapter must explicitly establish the intended account/principal on the server before storage calls.
+
+
+## Owner-authenticated API bridge
+
+The current Pages application already uses an authenticated single-owner session guard and a server-owned `OWNER_ID = "owner"` for workspace and Sentinel APIs. The new Pages experiment-record endpoints reuse that established guard. They build records server-side, inject the fixed owner ID, and reject unknown input fields including any caller-supplied `ownerId`.
+
+The Pages bridge forwards to the separately authenticated runtime Worker using HTTPS, the server-only `AEGIS_JOB_TOKEN`, and a fixed `X-Aegis-Principal: owner` assertion. The runtime currently accepts only that principal; arbitrary tenant identifiers are rejected. The browser never receives the runtime service token. Missing runtime URL/token configuration fails closed.
+
+Endpoints are `GET/POST /api/experiment-records` and `GET/DELETE /api/experiment-records/:id`. Deletion appends a tombstone; the record is hidden from normal reads and cannot be restored by re-appending the same ID. A new experiment must use a new record ID. This is a single-owner integration only; signed subject claims and multi-user principal mapping remain future work.

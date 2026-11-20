@@ -1,0 +1,27 @@
+name = "aegis-runtime-dry-run"
+main = "workers/runtime/index.mjs"
+compatibility_date = "2026-11-20"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aegis-runtime-test"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations/runtime"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "aegis-jobs-test"
+
+[[queues.consumers]]
+queue = "aegis-jobs-test"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "aegis-jobs-dlq-test"
+
+[[queues.consumers]]
+queue = "aegis-jobs-dlq-test"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 5
