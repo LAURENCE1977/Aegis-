@@ -66,7 +66,7 @@ export function createComposioToolAdapter({
   }
 
   return async function executeComposioTool(input, context) {
-    if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey !== apiKey.trim() || apiKey.length > 4096 || /[\\u0000-\\u001f\\u007f]/.test(apiKey)) {
+    if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey !== apiKey.trim() || apiKey.length > 4096 || [...apiKey].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
       throw new Error('Composio project credentials are unavailable');
     }
     if (!context || context.integrationConnectionType !== 'owner_private' ||
