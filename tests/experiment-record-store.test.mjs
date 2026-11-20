@@ -57,7 +57,7 @@ class FakeD1 {
           },
           async first() {
             const [principalId, recordId] = values;
-            if (sql.includes('FROM experiment_record_events')) {
+            if (sql.startsWith('SELECT event_id FROM experiment_record_events')) {
               return [...db.events.values()].find((event) =>
                 event.principal_id === principalId &&
                 event.record_id === recordId &&
