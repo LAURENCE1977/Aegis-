@@ -431,3 +431,22 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+## Code Mode MCP research and prototype
+
+**Current status (2026-11-20):** Research and a host-side hand-off contract are present on draft pull requests #132 and #133. PR #133 is stacked on PR #132. The Node.js test suite and local D1 migration verification passed in GitHub Actions (442 tests, 0 failures). Cloudflare Pages reported a successful **preview** deployment for the branch; this is not a production deployment and Code Mode is not wired into the app.
+
+The prototype adds `functions/lib/code-mode-contract.mjs` and `tests/code-mode-contract.test.mjs`. It creates a bounded envelope for a future isolated executor and is deliberately not an executor: it does not evaluate source, call MCP, invoke Sentinel, or expose an API route. The feature is disabled unless a trusted server-side flag is exactly enabled. For this first synthetic-only stage it accepts only server-registry-resolved, approved, built-in, internal GET methods that are low-risk read actions, declare no writes, and have no network egress. It exposes only run ID, generated source, method identifiers and fixed execution budgets; no credentials, endpoint details, grants, approvals, or runtime bindings.
+
+**Next engineering gates:**
+1. Verify the exact pinned Cloudflare Code Mode SDK API, Worker Loader requirements, runtime compatibility, licence, and current experimental status.
+2. Build a separate isolated Worker proof of concept with one synthetic read-only method; do not evaluate generated code in Pages Functions or the control plane.
+3. Prove sandbox isolation, no ambient authority, call/output/time limits, cancellation and denial behavior with adversarial tests.
+4. Route every tool proxy call through the existing trusted capability bridge and Sentinel; do not rely on the envelope as authorisation.
+5. Keep the feature flag off and all changes in draft PRs until owner review. No merge, production activation, secrets or paid service configuration without explicit owner approval.
+
+Code Mode remains an optional orchestration layer above MCP and Composio. It does not replace the existing Bridge, AG-UI tool path, Sentinel, provider gateway, or specialist-agent runtime. Hedwig remains an optional future MCP workspace provider, not a dependency.
+
+### Code Mode compatibility finding
+
+Cloudflare's documented durable Code Mode runtime is built around an Agents SDK Durable Object application and Worker Loader. The documented `codeMcpServer()` route currently wraps an MCP SDK v1 server, while AEGIS's existing Bridge speaks the newer 2026-07-28 protocol shape. The MCP SDK v1 line does not plan support for that protocol revision. Do not replace or wrap AEGIS `/mcp` with that legacy route. The current best next step is a separate, synthetic-only Worker compatibility spike with `globalOutbound: null`, while evaluating the durable-runtime option separately. Cloudflare Code Mode remains experimental; latest package version observed during research is 0.5.6 (2026-10-29). The prototype remains disabled and unconnected.
