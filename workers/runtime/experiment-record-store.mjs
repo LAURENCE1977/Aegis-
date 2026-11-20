@@ -38,7 +38,7 @@ function parseStoredRecord(row, principalId) {
       record?.ownerId !== principalId ||
       record?.id !== row.record_id ||
       record?.recordDigest !== row.record_digest ||
-      !(awaitableDigestShape(record?.recordDigest))) {
+      !(isDigest(record?.recordDigest))) {
     throw new Error('Stored experiment record ownership or metadata is inconsistent.');
   }
   return record;
@@ -50,7 +50,8 @@ function awaitableDigestShape(value) {
 
 async function verifyStoredRecord(row, principalId) {
   const record = parseStoredRecord(row, principalId);
-  if (!record || !(await verifyAgentExperimentRecordDigest(record))) {
+  if (!record) return null;
+  if (!(await verifyAgentExperimentRecordDigest(record))) {
     throw new Error('Stored experiment record failed integrity verification.');
   }
   return record;
@@ -92,7 +93,7 @@ export async function appendExperimentRecord(db, principalId, record) {
     record.schemaVersion,
     record.recordDigest,
     serialized,
-    eventTimestamp(record),
+    new Date().toISOString(),
   ).run();
 
   const stored = await db.prepare(
