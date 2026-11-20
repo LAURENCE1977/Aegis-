@@ -10,7 +10,7 @@ const CURRENCY_PATTERN = /^[A-Z]{3}$/;
  * integer is a string so it remains JSON-safe at any supported magnitude.
  */
 export function parseMoneyToMinorUnits({ amount, currency, minorUnitDigits } = {}) {
-  if (typeof amount !== 'string' || !DECIMAL_AMOUNT_PATTERN.test(amount)) {
+  if (typeof amount !== 'string' || amount.length > 40 || !DECIMAL_AMOUNT_PATTERN.test(amount)) {
     throw new TypeError('Money amount must be an exact decimal string.');
   }
   if (typeof currency !== 'string' || !CURRENCY_PATTERN.test(currency.toUpperCase())) {
