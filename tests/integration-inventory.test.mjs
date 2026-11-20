@@ -44,11 +44,12 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('UPDATE integration_connections') && sql.includes('SET health_state = ?')) {
-          const [healthState, checkedAt, updatedAt, id, principalId] = v;
+          const [healthState, checkedAt, status, updatedAt, id, principalId] = v;
           const row = db.connections.get(id);
           if (!row || row.principal_id !== principalId || ['revoked', 'disabled'].includes(row.status)) return { meta: { changes: 0 } };
           row.health_state = healthState;
           row.health_checked_at = checkedAt;
+          row.status = status;
           row.updated_at = updatedAt;
           return { meta: { changes: 1 } };
         }
