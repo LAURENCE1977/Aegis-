@@ -78,6 +78,8 @@ function parseAgentRun(row) {
   let specialists = [];
   let acceptanceCriteria = [];
   let priority = 'balanced';
+  let assumptions = [];
+  let constraints = [];
   try {
     const stored = JSON.parse(row.specialists_json);
     if (Array.isArray(stored)) specialists = stored;
@@ -85,6 +87,8 @@ function parseAgentRun(row) {
       specialists = Array.isArray(stored.specialists) ? stored.specialists : [];
       acceptanceCriteria = Array.isArray(stored.acceptanceCriteria) ? stored.acceptanceCriteria : [];
       priority = typeof stored.priority === 'string' ? stored.priority : 'balanced';
+      assumptions = Array.isArray(stored.assumptions) ? stored.assumptions : [];
+      constraints = Array.isArray(stored.constraints) ? stored.constraints : [];
     }
   } catch { specialists = []; }
   return {
@@ -93,6 +97,8 @@ function parseAgentRun(row) {
     specialists,
     acceptanceCriteria,
     priority,
+    assumptions,
+    constraints,
     status: row.status,
     attempts: row.attempts,
     createdAt: row.created_at,
@@ -170,6 +176,8 @@ async function submitAgentRun(request, env) {
     specialists: submission.specialists,
     acceptanceCriteria: submission.acceptanceCriteria,
     priority: submission.priority,
+    assumptions: submission.assumptions,
+    constraints: submission.constraints,
   }), idempotencyKey || null, now, now).run();
   const row = idempotencyKey
     ? await env.DB.prepare('SELECT * FROM agent_runs WHERE idempotency_key = ?').bind(idempotencyKey).first()
