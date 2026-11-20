@@ -60,3 +60,12 @@ test('experiment record runtime routes fail closed when D1 is unavailable', asyn
   );
   assert.equal(response.status, 503);
 });
+
+
+test('single-owner runtime refuses caller-selected tenant identifiers', async () => {
+  const response = await handleRuntimeFetch(
+    request('/v1/experiment-records', { principal: 'another-owner' }),
+    { AEGIS_JOB_TOKEN: token, DB: { prepare() { throw new Error('must not query'); } } },
+  );
+  assert.equal(response.status, 400);
+});
