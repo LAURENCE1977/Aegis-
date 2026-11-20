@@ -349,7 +349,16 @@ function validateEvidence(value, requiredEvidence) {
   }).sort((left, right) => left.ref.localeCompare(right.ref));
   for (const [ref, kind] of requiredEvidence) {
     const entry = evidence.find((item) => item.ref === ref);
-    if (!entry) throw new TypeError('A referenced evaluation item is missing from the evidence manifest.');
+    if (!entry) {
+      const labels = {
+        safety: 'Safety evidence',
+        criterion: 'Criterion evidence',
+        cost: 'Cost evidence',
+        runtime: 'Elapsed-time evidence',
+        benchmark: 'Benchmark workload evidence',
+      };
+      throw new TypeError((labels[kind] || 'Referenced evidence') + ' is missing from the evidence manifest.');
+    }
     if (entry.kind !== kind) throw new TypeError('Evidence kind does not match the referenced evaluation result.');
   }
   return evidence;
