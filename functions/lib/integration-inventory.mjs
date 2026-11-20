@@ -61,7 +61,9 @@ function mapConnection(row) {
   if (!row) return null;
   const allowedToolSlugs = parseJsonArray(row.allowed_tool_slugs_json);
   const scopes = parseJsonArray(row.scopes_json);
-  if (!allowedToolSlugs || !scopes) return null;
+  if (!allowedToolSlugs || !scopes ||
+      allowedToolSlugs.some(item => typeof item !== 'string' || !TOOL_SLUG_PATTERN.test(item) || item.includes('*')) ||
+      scopes.some(item => typeof item !== 'string' || !SCOPE_PATTERN.test(item) || item.includes('*'))) return null;
   return {
     id: row.id, principalId: row.principal_id, integrationId: row.integration_id,
     connectionKey: row.connection_key, connectionType: row.connection_type, authMode: row.auth_mode,
@@ -72,13 +74,14 @@ function mapConnection(row) {
     updatedAt: row.updated_at, revokedAt: row.revoked_at,
   };
 }
-function validateProvider(input) {
+function validateProvider(input, now = Date.now()) {
   exactFields(input, new Set(['id', 'displayName', 'sourceUrl', 'verifiedAt', 'status', 'createdBy']), 'integration provider');
   id(input.id, 'integration provider identifier');
   text(input.displayName, 'integration provider name', 120);
   httpsUrl(input.sourceUrl, 'integration provider source URL');
   const verifiedAt = isoTime(input.verifiedAt, 'provider verification', true);
   if (!PROVIDER_STATUSES.has(input.status)) throw new TypeError('Invalid integration provider status');
+  if (verifiedAt && Date.parse(verifiedAt) > now + 60_000) throw new TypeError('Provider verification timestamp is in the future');
   if (input.status === 'reviewed' && !verifiedAt) throw new TypeError('Reviewed integration providers require verification evidence');
   owner(input.createdBy);
   return { ...input, verifiedAt };
@@ -104,7 +107,7 @@ function validConnectionAuthMode(connectionType, authMode, platformConnectionId)
   if (connectionType === 'instant_platform_managed') return ['shared_platform_account', 'session_delegation', 'unknown'].includes(authMode);
   return connectionType === 'unknown';
 }
-function validateConnection(input) {
+function validateConnection(input, now = Date.now()) {
   exactFields(input, new Set(['principalId', 'integrationId', 'connectionKey', 'connectionType', 'authMode', 'accountAlias', 'platformAccountId', 'platformConnectionId', 'allowedToolSlugs', 'scopes', 'status', 'lastObservedAt', 'healthState', 'healthCheckedAt', 'createdBy']), 'integration connection');
   key(input.principalId, 'integration connection principal'); id(input.integrationId, 'integration connection integration identifier'); key(input.connectionKey, 'integration connection key');
   if (!CONNECTION_TYPES.has(input.connectionType)) throw new TypeError('Invalid integration connection type');
@@ -122,6 +125,7 @@ function validateConnection(input) {
   }
   if (!CONNECTION_STATUSES.has(input.status)) throw new TypeError('Invalid integration connection status');
   const lastObservedAt = isoTime(input.lastObservedAt, 'last observed');
+  if (Date.parse(lastObservedAt) > now + 60_000) throw new TypeError('Integration observation timestamp is in the future');
   if (input.healthState !== 'unknown' || input.healthCheckedAt !== null) throw new TypeError('Inventory import cannot assert health; use a timestamped health observation');
   owner(input.createdBy);
   return { ...input, accountAlias, platformAccountId, platformConnectionId, lastObservedAt };
@@ -129,7 +133,7 @@ function validateConnection(input) {
 
 export async function createIntegrationProvider(db, input, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) throw new TypeError('Integration provider database and valid clock are required');
-  const value = validateProvider(input); const createdAt = new Date(now).toISOString();
+  const value = validateProvider(input, now); const createdAt = new Date(now).toISOString();
   await db.prepare(`INSERT INTO integration_providers (id, display_name, source_url, verified_at, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .bind(value.id, value.displayName.trim(), httpsUrl(value.sourceUrl, 'integration provider source URL'), value.verifiedAt, value.status, value.createdBy, createdAt).run();
   const row = await db.prepare('SELECT * FROM integration_providers WHERE id = ?').bind(value.id).first();
@@ -150,7 +154,7 @@ export async function createIntegrationDefinition(db, input, now = Date.now()) {
 
 export async function upsertIntegrationConnection(db, input, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function' || !Number.isFinite(now)) throw new TypeError('Integration connection database and valid clock are required');
-  const value = validateConnection(input);
+  const value = validateConnection(input, now);
   const integration = await db.prepare('SELECT id, status FROM integration_definitions WHERE id = ?').bind(value.integrationId).first();
   if (!integration || integration.status === 'disabled') throw new Error('Integration definition is unavailable');
   const idValue = crypto.randomUUID(); const timestamp = new Date(now).toISOString();
