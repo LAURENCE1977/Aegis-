@@ -54,7 +54,7 @@ When configured, every call through the shared model adapter:
 
 Unknown input/output prices remain `null` and are not interpreted as zero or used to rank models. The gate does not discover models, verify account entitlements, select among multiple models, or create a verified catalogue. AEGIS currently has no configured production registry source or populated owner-verified model catalogue. With no registry variable configured, legacy explicit provider selection continues unchanged until the catalogue is reviewed and the owner enables the gate.
 
-The registry applies through the shared adapter used by AG-UI and the legacy JSON `/api/ask` route. This remains source/CI evidence only; no runtime variable, provider credential or deployment was changed by PR #123.
+The registry applies through the shared adapter used by AG-UI and the legacy JSON `/api/ask` route. `tests/ag-ui-api.test.mjs` verifies that an unregistered model is rejected on the actual AG-UI request path before provider access. GitHub Actions run [44730328797](https://github.com/LAURENCE1977/Aegis-/actions/runs/44730328797) passed 458 Node.js tests and the isolated D1/Forge verification steps. No runtime variable, provider credential or deployment was changed by PR #123.
 
 ## Anthropic Messages adapter
 
