@@ -436,3 +436,12 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 ## Integration Control Plane — architecture contract (20 November 2026)
 
 A new architecture document, [AEGIS Integration Control Plane](AEGIS_INTEGRATION_CONTROL_PLANE.md), defines how provider inventories, shared/instant/private account connections, credential references, capability manifests, grants, approvals, adapters, health observations and invocations remain distinct. It composes the existing capability/Sentinel foundation rather than creating a parallel permission system. It explicitly distinguishes discovered tool schemas from platform-allowed tool slugs, active connection records from successful health probes, and unknown pricing from zero. It defines a read-only discovery-first rollout, bounded fixed adapters, vault-only credentials, exact-resource grants, digest-bound approvals, audit and a staged acceptance test suite. This is an architecture/documentation slice only: no general outbound connector manager, Composio runtime, OAuth flow, new permissions, provider connection, production resource or deployment is implemented or enabled by this document. The user's forthcoming Composio inventory remains a required reconciliation input; current inventories must disclose whether private, shared and instant accounts were actually included.
+
+
+## 20 November 2026 — integration schema compatibility review
+
+- PR #122's integration architecture was checked against the actual capability migrations on `main`.
+- The current `capability_connections` schema requires a non-null vault secret reference, allows only one active connection per principal/provider, and only tracks active/revoked. It does not yet represent multiple toolkit/account connections, public/no-auth or platform-managed connection types, exact platform tool allowlists, or independent health observations.
+- The existing encrypted vault binds secret resolution to principal/provider identity. Any future schema expansion must preserve this cryptographic binding and must not invent fake secret references for Composio shared/instant or public connections.
+- PR #122's architecture document now records the required migration and compatibility tests. No schema, runtime code, permissions, credentials, D1 database or deployment was changed.
+- The full Composio inventory is still needed before choosing stable integration/connection keys or importing any account metadata.
