@@ -232,7 +232,7 @@ test('AG-UI reports BitNet as not ready until its server endpoint, proxy key and
     fetchImpl:async()=>{throw new Error('must not fetch');},
   });
   assert.equal(response.status,503);
-  const events=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  const events=(await response.text()).trim().split('\n\n').map(frame=>JSON.parse(frame.slice(6)));
   assert.equal(events.at(-1).code,'PROVIDER_NOT_READY');
 });
 
