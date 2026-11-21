@@ -6,7 +6,6 @@ import {
 } from '../lib/owner-api.mjs';
 import {
   callExperimentRuntime,
-  experimentRuntimeError,
 } from '../lib/experiment-record-runtime.mjs';
 
 const OWNER_ID = 'owner';
@@ -16,6 +15,14 @@ function validLimit(value, fallback = 25) {
   if (value === null) return fallback;
   if (!/^(?:[1-9]|[1-9][0-9]|100)$/.test(value)) return null;
   return Number(value);
+}
+
+function runtimeError(result, fallback) {
+  if (result?.status === 400) return { error: 'Agent Operations request is invalid.' };
+  if (result?.status === 404) return { error: 'Agent Operations request was not found.' };
+  if (result?.status === 409) return { error: 'Agent Operations request or review conflicts with current immutable evidence.' };
+  if (result?.status === 413) return { error: 'Agent Operations request is too large.' };
+  return { error: fallback };
 }
 
 function exactKeys(value, keys) {
@@ -48,7 +55,7 @@ export async function onRequest({ request, env }) {
     const result = await callExperimentRuntime(env, OWNER_ID, '/v1/agent-operations?' + query.toString());
     if (!result.ok) {
       const status = [400, 404, 409, 413].includes(result.status) ? result.status : 503;
-      return jsonResponse(experimentRuntimeError(result, 'Agent Operations inbox is temporarily unavailable.'), status);
+      return jsonResponse(runtimeError(result, 'Agent Operations inbox is temporarily unavailable.'), status);
     }
     if (!Array.isArray(result.payload?.requests)) {
       return jsonResponse({ error: 'Agent Operations inbox is temporarily unavailable.' }, 503);
@@ -77,7 +84,7 @@ export async function onRequest({ request, env }) {
   });
   if (!result.ok) {
     const status = [400, 404, 409, 413].includes(result.status) ? result.status : 503;
-    return jsonResponse(experimentRuntimeError(result, 'Agent operation request could not be saved.'), status);
+    return jsonResponse(runtimeError(result, 'Agent operation request could not be saved.'), status);
   }
   const operationRequest = result.payload?.request;
   if (!operationRequest || operationRequest.status !== 'awaiting_human_review' ||
