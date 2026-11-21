@@ -43,3 +43,14 @@ Evidence must exactly match the digest-only references in the checkpoint. Comman
 Every item begins with `reviewStatus: awaiting_human_review`, `approvalGranted: false`, and `execution: not_authorised`. The item digest protects the complete request record, but does not authenticate its creator or prove the truth of its evidence. A future persistence/API layer must derive the principal from authenticated server context, enforce owner scoping, prevent replay, and bind any later human decision to the exact item and action digests. Sentinel must independently authorise any consequential operation.
 
 This increment adds no inbox database, route, scheduler, agent spawning, tool execution, MCP, network access, secrets, workspace mutation or deployment.
+
+
+## Experimental Laboratory profile contract
+
+`createExperimentalLabProfile` creates a deterministic, deeply frozen `aegis.experimental-lab-profile.v1` policy description for a future isolated experiment. Supported workload labels are untrusted repository inspection, generated-client review, document parsing, browser-capture fixtures and model evaluation.
+
+Profiles are deny-by-default: network disabled; ephemeral filesystem root; source mounted read-only; outputs quarantined; host paths, credentials, secret mounts, container socket, privileged execution and inter-experiment communication denied. Resource limits are bounded by hard ceilings. Every profile requires human review and Sentinel approval, and records `execution: not_authorised`.
+
+**This is a policy contract, not a functioning sandbox.** It does not create or enforce a container, VM, microVM, namespace, cgroup, filesystem mount, seccomp profile, network namespace or egress firewall. It does not execute untrusted workloads. A real runner must enforce these boundaries independently at the infrastructure layer, use disposable isolated environments, verify teardown, and pass adversarial escape tests before AEGIS can claim sandbox execution.
+
+Never mount production credentials, host home directories, Docker/container sockets, SSH agents, browser profiles or writable source workspaces into an experiment. Do not treat a container alone as a complete security boundary.
