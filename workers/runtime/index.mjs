@@ -6,6 +6,16 @@ import {
   tombstoneExperimentRecord,
 } from './experiment-record-store.mjs';
 import { summarizeAgentExperimentHistory } from './agent-experiment-history.mjs';
+import { createAgentOperationRequest } from './agent-operation-request.mjs';
+import {
+  appendAgentOperationRequest,
+  listAgentOperationRequests,
+} from './agent-operation-inbox-store.mjs';
+import {
+  appendAgentOperationReview,
+  listAgentOperationReviews,
+} from './agent-operation-review-ledger.mjs';
+import { listAgentWorkflowCheckpoints } from './agent-workflow-checkpoint-store.mjs';
 import { buildAgentExperimentProposals } from './agent-experiment-proposals.mjs';
 import {
   appendExperimentProposalReview,
@@ -586,6 +596,190 @@ async function handleExperimentRecordRequest(request, env, url) {
   return json({ error: 'Method not allowed.' }, 405);
 }
 
+
+const MAX_AGENT_OPERATION_BODY_BYTES = 32 * 1024;
+const MAX_AGENT_OPERATION_REVIEW_BODY_BYTES = 4096;
+
+async function readRuntimeJson(request, maxBytes) {
+  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return { ok: false, response: json({ error: 'Content-Type must be application/json.' }, 415) };
+  }
+  const declaredLength = Number(request.headers.get('Content-Length') || 0);
+  if (declaredLength > maxBytes) {
+    return { ok: false, response: json({ error: 'Request body is too large.' }, 413) };
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) {
+    return { ok: false, response: json({ error: 'Request body is too large.' }, 413) };
+  }
+  try {
+    return { ok: true, body: JSON.parse(raw) };
+  } catch {
+    return { ok: false, response: json({ error: 'Invalid JSON.' }, 400) };
+  }
+}
+
+function exactBodyKeys(body, keys) {
+  return Boolean(body && typeof body === 'object' && !Array.isArray(body) &&
+    Object.keys(body).sort().join(',') === [...keys].sort().join(','));
+}
+
+function trustedAgentOperationPrincipal(request) {
+  return trustedExperimentPrincipal(request);
+}
+
+async function handleAgentOperationInbox(request, env, principalId, url) {
+  if (request.method === 'GET') {
+    const rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? 25 : Number(rawLimit);
+    let cursor = null;
+    const rawCursor = url.searchParams.get('cursor');
+    if (rawCursor !== null) {
+      try { cursor = JSON.parse(rawCursor); } catch {
+        return json({ error: 'Agent Operations cursor is invalid.' }, 400);
+      }
+      if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor) ||
+          Object.keys(cursor).sort().join(',') !== 'createdAt,requestId') {
+        return json({ error: 'Agent Operations cursor is invalid.' }, 400);
+      }
+    }
+    try {
+      const result = await listAgentOperationRequests({
+        db: env.DB,
+        principalId,
+        limit,
+        afterCreatedAt: cursor?.createdAt ?? null,
+        afterRequestId: cursor?.requestId ?? null,
+      });
+      return json(result);
+    } catch (error) {
+      return json({ error: error instanceof TypeError ? 'Agent Operations query is invalid.' : 'Agent Operations inbox is unavailable.' },
+        error instanceof TypeError ? 400 : 503);
+    }
+  }
+
+  if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  const parsed = await readRuntimeJson(request, MAX_AGENT_OPERATION_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
+  if (!exactBodyKeys(body, ['requestId', 'definition', 'run', 'checkpoint', 'action'])) {
+    return json({ error: 'A request ID, workflow definition, run, persisted checkpoint and proposed action are required.' }, 400);
+  }
+
+  const sequence = body.checkpoint?.sequence;
+  if (!Number.isSafeInteger(sequence) || sequence < 1 ||
+      typeof body.run?.runId !== 'string') {
+    return json({ error: 'Workflow run and checkpoint identity are invalid.' }, 400);
+  }
+
+  try {
+    const history = await listAgentWorkflowCheckpoints({
+      db: env.DB,
+      principalId,
+      runId: body.run.runId,
+      afterSequence: sequence - 1,
+      limit: 1,
+    });
+    const persisted = history.checkpoints[0];
+    if (!persisted || persisted.sequence !== sequence ||
+        persisted.checkpointId !== body.checkpoint.checkpointId ||
+        persisted.checkpointDigest !== body.checkpoint.checkpointDigest) {
+      return json({ error: 'The proposed operation must reference an existing verified workflow checkpoint.' }, 409);
+    }
+
+    const now = new Date().toISOString();
+    const operationRequest = await createAgentOperationRequest({
+      requestId: body.requestId,
+      definition: body.definition,
+      run: body.run,
+      checkpoint: body.checkpoint,
+      action: body.action,
+      createdAt: now,
+      observedAt: now,
+    });
+    const saved = await appendAgentOperationRequest({
+      db: env.DB,
+      principalId,
+      definition: body.definition,
+      run: body.run,
+      checkpoint: body.checkpoint,
+      request: operationRequest,
+      now,
+    });
+    return json({ request: operationRequest, status: saved.status }, saved.status === 'appended' ? 201 : 200);
+  } catch (error) {
+    if (error instanceof TypeError || error instanceof RangeError) {
+      return json({ error: 'Agent operation request is invalid.' }, 400);
+    }
+    if (/different immutable content|checkpoint|not found|sequence/i.test(error?.message || '')) {
+      return json({ error: 'The workflow evidence is stale or the operation request conflicts with existing history.' }, 409);
+    }
+    return json({ error: 'Agent operation request could not be persisted.' }, 503);
+  }
+}
+
+async function handleAgentOperationReviews(request, env, principalId, url) {
+  if (request.method === 'GET') {
+    const requestId = url.searchParams.get('requestId');
+    const rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? 50 : Number(rawLimit);
+    if (typeof requestId !== 'string' || !requestId) {
+      return json({ error: 'An operation request ID is required.' }, 400);
+    }
+    try {
+      const reviews = await listAgentOperationReviews(env.DB, principalId, requestId, { limit });
+      return json({ reviews });
+    } catch (error) {
+      return json({ error: error instanceof TypeError ? 'Agent operation review query is invalid.' : 'Agent operation review history is unavailable.' },
+        error instanceof TypeError ? 400 : 503);
+    }
+  }
+
+  if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  const parsed = await readRuntimeJson(request, MAX_AGENT_OPERATION_REVIEW_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
+  if (!exactBodyKeys(body, [
+    'eventId', 'requestId', 'requestDigest', 'actionDigest',
+    'evidenceDigest', 'decision', 'note',
+  ])) {
+    return json({ error: 'A review event ID, request ID, exact digests, decision and note are required.' }, 400);
+  }
+
+  try {
+    const result = await appendAgentOperationReview(env.DB, principalId, {
+      ...body,
+      createdAt: new Date().toISOString(),
+    });
+    return json(result, result.created ? 201 : 200);
+  } catch (error) {
+    if (error instanceof TypeError || error instanceof RangeError) {
+      return json({ error: 'Agent operation review is invalid.' }, 400);
+    }
+    if (/not found|does not match|different immutable content|integrity/i.test(error?.message || '')) {
+      return json({ error: 'The review no longer matches the current immutable operation request.' }, 409);
+    }
+    return json({ error: 'Agent operation review could not be persisted.' }, 503);
+  }
+}
+
+async function handleAgentOperationRequest(request, env, url) {
+  if (!env?.DB || typeof env.DB.prepare !== 'function') {
+    return json({ error: 'Runtime database is not configured.' }, 503);
+  }
+  const principalId = trustedAgentOperationPrincipal(request);
+  if (!principalId) return json({ error: 'Trusted principal context is required.' }, 400);
+
+  const collectionPath = '/v1/agent-operations';
+  if (url.pathname === collectionPath) {
+    return handleAgentOperationInbox(request, env, principalId, url);
+  }
+  if (url.pathname === collectionPath + '/reviews') {
+    return handleAgentOperationReviews(request, env, principalId, url);
+  }
+  return json({ error: 'Not found.' }, 404);
+}
+
 export async function handleRuntimeFetch(request, env) {
   if (!env || typeof env.AEGIS_JOB_TOKEN !== 'string' || env.AEGIS_JOB_TOKEN.length < 32) {
     return json({ error: 'Runtime authentication is not configured.' }, 503);
@@ -598,6 +792,9 @@ export async function handleRuntimeFetch(request, env) {
   const url = new URL(request.url);
   if (url.pathname === '/v1/experiment-records' || url.pathname.startsWith('/v1/experiment-records/')) {
     return handleExperimentRecordRequest(request, env, url);
+  }
+  if (url.pathname === '/v1/agent-operations' || url.pathname.startsWith('/v1/agent-operations/')) {
+    return handleAgentOperationRequest(request, env, url);
   }
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
