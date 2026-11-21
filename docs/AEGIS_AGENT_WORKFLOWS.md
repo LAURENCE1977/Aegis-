@@ -27,3 +27,11 @@ Future orchestration must independently enforce each capability at the tool boun
 ## Authority boundary
 
 A checkpoint is a record of an observation, not proof that the observation is truthful, not an execution receipt, not a capability grant, and not an approval. Checkpoints never change a workflow run's plan-only status. Sentinel remains the independent authority for any consequential action. No workflow scheduler, agent spawning, network/MCP access, secrets, workspace mutation, test execution, remediation or deployment is introduced by this layer.
+
+## Sentinel-bound agent operation requests
+
+`createAgentOperationRequest` creates an immutable `aegis.agent-operation-request.v1` envelope for the future Agent Operations Inbox. It revalidates the workflow run and evidence checkpoint, requires a checkpoint that contains at least one digest-only evidence reference, and requires the proposed action to match a capability declared on a workflow step marked `human_required`.
+
+The request binds the canonical action digest, evidence digest, workflow-definition digest and checkpoint digest. Supported action types in this first contract are deliberately limited to `workspace_write`, `artifact_write` and `test_run`. Action parameters are represented by a SHA-256 digest; raw command text and arbitrary executable payloads are not accepted.
+
+A request is only `awaiting_human_review`. It always records `approvalGranted: false`, `execution: not_authorised`, no capabilities granted and no self-approval. This contract does not persist an inbox, authenticate an HTTP caller, create a route, approve an action, schedule work, execute tools, spawn agents, invoke MCP, access networks or secrets, or mutate a workspace. A future review decision must bind the exact request, action and evidence digests and still pass independent Sentinel authorization at the execution boundary.
