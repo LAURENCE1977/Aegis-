@@ -92,7 +92,6 @@ function deepFreeze(value) {
  */
 export function assessPinnedSoftwareSource({
   repository,
-  commitSha,
   treeSha,
   observedAt,
   files,
@@ -100,9 +99,6 @@ export function assessPinnedSoftwareSource({
   if (typeof repository !== 'string' || !REPOSITORY_PATTERN.test(repository) ||
       repository.includes('..') || repository.endsWith('.git')) {
     throw new TypeError('Repository must be a canonical owner/name identity.');
-  }
-  if (typeof commitSha !== 'string' || !SHA_PATTERN.test(commitSha)) {
-    throw new TypeError('A full immutable commit SHA is required.');
   }
   if (typeof treeSha !== 'string' || !SHA_PATTERN.test(treeSha)) {
     throw new TypeError('A full immutable tree SHA is required.');
@@ -168,7 +164,6 @@ export function assessPinnedSoftwareSource({
     schemaVersion: 'aegis.software-capability-assessment.v1',
     source: {
       repository,
-      commitSha: commitSha.toLowerCase(),
       treeSha: treeSha.toLowerCase(),
     },
     observedAt,
