@@ -28,3 +28,12 @@ This slice does not persist candidates, perform licence review, scan dependencie
 ## Candidate review lifecycle
 
 An inspected repository can be saved as an owner-scoped Forge candidate, pinned to the default-branch tree SHA. Candidate creation always starts with `decision: unassessed` and `licence.review: review-required`; GitHub's SPDX metadata is a hint, not legal clearance. The owner must attest to reviewing the actual licence text, provide an HTTPS evidence URL and a review note before choosing reuse/adapt/combine or marking a candidate approved. D1 triggers enforce the licence gate, immutable source identity and append-only candidate events. Candidate review does not install or execute the repository.
+
+
+## Pinned source inspection record
+
+The next inspection stage records a bounded, metadata-only selection of source files against a full immutable 40-character commit SHA. The pure `createPinnedSourceInspection` contract rejects branch names, mismatched repository identities, unsafe paths, duplicate paths, unsupported extensions, malformed blob IDs, oversized files and aggregate selections above 256 KiB. It caps a selection at 20 files and freezes the resulting record.
+
+The record explicitly labels source content as external and untrusted, instructs consumers never to follow instructions embedded in inspected content, and keeps fetch, network, build, install, execution and configuration mutation disabled. Sentinel approval remains mandatory; the record does not grant or imply execution authority.
+
+This contract is a validation and evidence boundary, not yet an automated commit/tree fetcher or a vulnerability scanner. Existing Forge inspection/read endpoints remain owner-authenticated and read-only. Any later source retrieval must resolve the commit and tree first, then verify every requested path/blob pair against that pinned tree before reading the blob.
