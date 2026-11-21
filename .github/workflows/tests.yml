@@ -103,6 +103,8 @@ jobs:
         run: bash scripts/runtime-agent-workflow-checkpoint-checks.sh
       - name: Verify owner-scoped append-only agent operation inbox
         run: bash scripts/runtime-agent-operation-inbox-checks.sh
+      - name: Verify digest-bound append-only agent operation reviews
+        run: bash scripts/runtime-agent-operation-review-checks.sh
 
       - name: Build runtime Worker without deploying
         run: wrangler deploy --dry-run --outdir .wrangler/runtime-dry-run --config wrangler.runtime-dry-run.toml
