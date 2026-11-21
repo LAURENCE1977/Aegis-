@@ -122,3 +122,20 @@ test('rejects non-object and missing definition inputs', async () => {
   await assert.rejects(() => createAgentWorkflowRun(null));
   await assert.rejects(() => createAgentWorkflowRun({ ...metadata }));
 });
+
+test('rejects accessor-backed workflow definitions without invoking getters', async () => {
+  const unsafe = JSON.parse(JSON.stringify(definition));
+  let getterCalls = 0;
+  Object.defineProperty(unsafe, 'title', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'attacker-controlled title';
+    },
+  });
+  await assert.rejects(() => createAgentWorkflowRun({
+    definition: unsafe,
+    ...metadata,
+  }));
+  assert.equal(getterCalls, 0);
+});
