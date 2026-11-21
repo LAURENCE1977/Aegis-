@@ -85,8 +85,8 @@ export async function readExperimentEvidenceArtifact({
   expectedEvidence,
   maxBytes = DEFAULT_MAX_BYTES,
 } = {}) {
-  validateId(ownerId, 'Authenticated owner ID');
-  validateId(recordId, 'Experiment record ID');
+  validateOwnerId(ownerId);
+  validateRecordId(recordId);
   validateManifestEntry(expectedEvidence);
   if (!bucket || typeof bucket.get !== 'function') {
     throw new TypeError('A trusted object-storage bucket binding is required.');
