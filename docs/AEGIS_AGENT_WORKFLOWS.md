@@ -43,3 +43,11 @@ A request is only `awaiting_human_review`. It always records `approvalGranted: f
 `listAgentOperationRequests` returns one principal's requests newest-first with a stable compound cursor. Each stored JSON envelope is parsed, its canonical request digest is recomputed, and indexed row metadata is checked before the item is returned. The store does not authenticate HTTP requests: route handlers must derive the principal from verified server identity, never from caller-controlled request data.
 
 Inbox persistence is not an approval mechanism. Every entry remains `awaiting_human_review`, with `approvalGranted: false` and `execution: not_authorised`. Human review must be a separate append-only decision bound to the exact request, action and evidence digests; Sentinel must independently enforce any eventual authorization at the execution boundary. No scheduler, agent spawning, capability grant, network/MCP access, secrets, workspace mutation or deployment is introduced here.
+
+## Digest-bound human review ledger
+
+`appendAgentOperationReview` accepts a human review observation only when the authenticated principal owns a verified, immutable inbox request and all three supplied digests match the persisted request, proposed action and evidence. It rechecks the request's canonical digest and row metadata before recording the event. The review ledger is append-only and event IDs are scoped to the authenticated principal.
+
+The supported outcomes are `accepted_for_sentinel_evaluation`, `rejected`, `needs_more_evidence` and `withdrawn`. Approval-like values such as `approved` and `execute` are rejected. Every returned event explicitly records `approvalGranted: false`, `execution: not_authorised` and `sentinelApprovalRequired: true`. Acceptance for Sentinel evaluation is not authorization to execute. Sentinel must independently assess and authorize the exact action at the eventual execution boundary.
+
+The ledger does not create an execution endpoint, capability grant, agent spawn, scheduler, network/MCP access, secret access, workspace mutation or deployment. HTTP route identity must be derived from verified server-side authentication.
