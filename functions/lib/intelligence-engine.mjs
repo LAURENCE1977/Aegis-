@@ -338,3 +338,70 @@ export function accountWorkload(input) {
     toolsInvoked: false,
   });
 }
+
+
+function validateIntelligencePlanInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      (Object.getPrototypeOf(input) !== Object.prototype && Object.getPrototypeOf(input) !== null)) {
+    throw new TypeError('Intelligence planning input must be a plain object');
+  }
+  const allowed = new Set([
+    'objective', 'messages', 'requestedOutputTokens', 'explicitType', 'maxInputTokens',
+  ]);
+  for (const key of Reflect.ownKeys(input)) {
+    const descriptor = typeof key === 'string' ? Object.getOwnPropertyDescriptor(input, key) : null;
+    if (!descriptor || !allowed.has(key) || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Intelligence planning input contains an unknown field or accessor');
+    }
+  }
+  for (const key of ['objective', 'messages', 'requestedOutputTokens']) {
+    if (!Object.hasOwn(input, key)) {
+      throw new TypeError('Intelligence planning input is missing ' + key);
+    }
+  }
+}
+
+/**
+ * Compose deterministic task translation and workload accounting.
+ * This is a planning-only boundary: it never selects a provider, invokes a
+ * model or tool, truncates input, or grants execution authority.
+ */
+export function planIntelligenceTask(input) {
+  validateIntelligencePlanInput(input);
+  const translation = translateTask({
+    objective: input.objective,
+    ...(input.explicitType === undefined ? {} : { explicitType: input.explicitType }),
+    requestedOutputTokens: input.requestedOutputTokens,
+  });
+  const workload = accountWorkload({
+    messages: input.messages,
+    requestedOutputTokens: input.requestedOutputTokens,
+    ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }),
+  });
+
+  const planStatus = translation.task === 'unknown'
+    ? 'clarification_required'
+    : workload.withinInputBudget === false
+      ? 'input_budget_exceeded'
+      : 'plan_ready';
+
+  return Object.freeze({
+    schemaVersion: 'aegis.intelligence-plan.v1',
+    task: Object.freeze({
+      task: translation.task,
+      classificationSource: translation.classificationSource,
+      evidence: translation.evidence,
+      routeStrategy: translation.routeStrategy,
+      modelRequired: translation.modelRequired,
+      modelCandidate: translation.modelCandidate,
+      objectiveInputBytes: translation.resources.inputBytes,
+      objectiveEstimatedInputTokens: translation.resources.objectiveEstimatedInputTokens,
+    }),
+    workload,
+    planStatus,
+    deterministicFirst: translation.routeStrategy === 'deterministic_first',
+    providerSelection: 'not_attempted',
+    execution: 'not_authorised',
+    toolsInvoked: false,
+  });
+}
