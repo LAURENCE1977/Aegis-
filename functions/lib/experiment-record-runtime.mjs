@@ -27,7 +27,8 @@ export async function callExperimentRuntime(env, principalId, path, {
   const config = runtimeConfig(env);
   if (!config) return { ok: false, status: 503, payload: null };
   const routePath = typeof path === 'string' ? path.split('?')[0] : '';
-  if (routePath !== '/v1/experiment-records' && !routePath.startsWith('/v1/experiment-records/')) {
+  if (routePath !== '/v1/experiment-records' && !routePath.startsWith('/v1/experiment-records/') &&
+      routePath !== '/v1/agent-operations' && !routePath.startsWith('/v1/agent-operations/')) {
     return { ok: false, status: 500, payload: null };
   }
 
