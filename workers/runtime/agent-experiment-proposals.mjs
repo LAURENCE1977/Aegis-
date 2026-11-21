@@ -71,6 +71,7 @@ function proposalFor(cohort, comparison, ownerId) {
 
   const id = [
     'proposal',
+    'v1',
     cohort.benchmarkId,
     cohort.workloadDigest.slice(7, 19),
     comparison.candidateId,
@@ -81,6 +82,7 @@ function proposalFor(cohort, comparison, ownerId) {
   return {
     id,
     schemaVersion: 'aegis.experiment-improvement-proposal.v1',
+    proposalVersion: 1,
     ownerId,
     status: 'human_review_required',
     benchmarkId: cohort.benchmarkId,
