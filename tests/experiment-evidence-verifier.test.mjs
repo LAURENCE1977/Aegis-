@@ -156,3 +156,16 @@ test('rejects an invalid or mismatched expected manifest entry', async () => {
     /reference/i,
   );
 });
+
+test('snapshots caller-owned bytes before asynchronous digest verification', async () => {
+  const mutableBytes = new Uint8Array(bytes);
+  const pending = verifyExperimentEvidenceArtifact({
+    ...options,
+    artifact: { ...artifact, bytes: mutableBytes },
+  });
+  mutableBytes.fill(0);
+
+  const result = await pending;
+  assert.equal(result.sha256, digest);
+  assert.equal(result.byteLength, bytes.byteLength);
+});
