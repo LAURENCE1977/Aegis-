@@ -47,6 +47,22 @@ Before enabling a runner:
 - Keep uploads, downloads, form submissions, messaging, purchases, deletion, account changes and code execution disabled until their individual Sentinel approval and audit paths are implemented.
 - Provide a kill switch and automatic context cleanup for failures, cancellations and timeouts.
 
+
+## Model and cost strategy
+
+Magnitude's vision-based browser actions need a model that can follow instructions and ground actions in screenshots. Its current compatibility guide recommends Claude Sonnet 4 and lists Qwen 2.5 VL 72B as an open-weight alternative; it also lists other 32B–72B vision models as less-tested options. This means a small text-only local model should not be assumed suitable for browser control.
+
+Magnitude supports OpenAI-compatible model endpoints, including OpenRouter and Ollama, but endpoint compatibility alone does not establish that a model is visually grounded or accurate enough for browser interaction.
+
+For Infinity Zero, separate the work by model role:
+- `act`: reserve the capable vision-grounded model for decisions that require visual interaction.
+- `extract` and `query`: use a smaller, cheaper model where quality tests show it is sufficient.
+- Cache repeatable, read-only extraction and stable task context where safe.
+- Measure tokens, latency, accuracy and cost per completed workflow before choosing defaults.
+- Do not let a cheaper model decide whether a sensitive action is permitted; Sentinel remains the independent authority.
+
+Magnitude documents separate LLM roles and prompt caching. Prompt caching is provider-dependent and is not a promise of zero-token inference.
+
 ## Rollout gates
 
 1. Complete unit and integration tests for the policy module.
