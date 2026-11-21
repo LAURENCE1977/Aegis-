@@ -217,6 +217,7 @@ test('runtime records a human review bound to all exact digests and never author
   const review = await handleRuntimeFetch(runtimeRequest('/v1/agent-operations/reviews', {
     method: 'POST',
     body: {
+      eventId: 'review-event-http-0004',
       requestId: request.requestId,
       requestDigest: request.requestDigest,
       actionDigest: request.actionDigest,
@@ -249,6 +250,7 @@ test('runtime rejects stale review digests and approval-like review decisions', 
   const stale = await handleRuntimeFetch(runtimeRequest('/v1/agent-operations/reviews', {
     method: 'POST',
     body: {
+      eventId: 'review-event-http-stale-0005',
       requestId: request.requestId, requestDigest: request.requestDigest,
       actionDigest: 'sha256:' + 'f'.repeat(64), evidenceDigest: request.evidenceDigest,
       decision: 'accepted_for_sentinel_evaluation', note: 'Stale action digest.',
@@ -258,6 +260,7 @@ test('runtime rejects stale review digests and approval-like review decisions', 
   const approvalLike = await handleRuntimeFetch(runtimeRequest('/v1/agent-operations/reviews', {
     method: 'POST',
     body: {
+      eventId: 'review-event-http-invalid-0005',
       requestId: request.requestId, requestDigest: request.requestDigest,
       actionDigest: request.actionDigest, evidenceDigest: request.evidenceDigest,
       decision: 'approved', note: 'Must not become an approval.',
