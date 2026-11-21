@@ -440,3 +440,20 @@ test('AG-UI marks Ollama as not ready when its private gateway configuration is 
   assert.equal(frames[0].message, 'The configured Ollama gateway is not ready.');
   assert.equal(called, false);
 });
+
+
+test('AG-UI marks Magnitude as not ready when its private inference gateway configuration is incomplete', async () => {
+  let called = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AEGIS_MODEL_PROVIDER: 'magnitude' },
+    fetchImpl: async () => { called = true; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/)
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'PROVIDER_NOT_READY');
+  assert.equal(frames[0].message, 'The configured Magnitude gateway is not ready.');
+  assert.equal(called, false);
+});
