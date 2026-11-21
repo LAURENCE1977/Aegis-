@@ -58,3 +58,21 @@ The proposal layer converts the verified analysis report into cautious, determin
 - Each proposal requires human review and independent Sentinel authorisation before consequential action. The output is marked `execution: not_authorised`.
 
 The proposal builder trusts its input to be the output of the existing digest-verifying history analyser; the runtime endpoint enforces this by building the report directly from owner-scoped persisted records. Evidence references remain references: this layer does not fetch source artifacts, independently verify their contents, persist proposals, invoke Sentinel or execute actions. A proposal is a review lead, not an approval or an instruction to deploy.
+
+
+## Human proposal review ledger
+
+Proposal review observations are recorded separately from the immutable experiment evidence:
+
+- Owner-authenticated Pages route: `/api/experiment-records/proposals/reviews` (GET and same-origin POST).
+- Internal runtime route: `/v1/experiment-records/proposals/reviews`, protected by the existing runtime bearer and trusted owner principal.
+- The runtime recomputes the current proposal from digest-verified persisted records before accepting a review. Stale proposal IDs are rejected with 409.
+- Supported decisions are `accepted_for_further_review`, `rejected`, `needs_more_evidence`, and `withdrawn`. There is intentionally no `approved` decision.
+- Each event records the proposal ID, reviewer principal, note, decision, workload digest, and first/last source record IDs. Event IDs are idempotent; reuse with different content is rejected.
+- Review events are append-only and owner-scoped. They are not edits to the proposal or experiment evidence.
+- Every returned event explicitly reports `approvalGranted: false` and `execution: not_authorised`. A review decision is not a Sentinel decision and cannot authorise a change.
+
+This ledger captures human review, not deployment readiness. Evidence artifact retrieval and independent verification remain a separate future capability; references and record digests alone do not prove the truth of an external artifact.
+
+
+Proposal IDs are versioned (`proposal:v1:` for the current contract). A future incompatible proposal interpretation must increment the version, so old human-review events cannot silently attach to a new proposal definition.

@@ -49,6 +49,8 @@ test('creates a review proposal from a verified comparable cohort with observed 
   assert.equal(proposals.proposals.length, 1);
   const proposal = proposals.proposals[0];
   assert.equal(proposal.candidateId, 'candidate-a');
+  assert.equal(proposal.proposalVersion, 1);
+  assert.match(proposal.id, /^proposal:v1:/);
   assert.deepEqual(proposal.observedChanges, ['cost', 'elapsedMs']);
   assert.equal(proposal.evidence.firstRecordId, 'record-old');
   assert.equal(proposal.evidence.lastRecordId, 'record-new');
