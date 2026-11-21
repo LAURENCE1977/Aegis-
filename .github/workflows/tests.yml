@@ -99,6 +99,8 @@ jobs:
 
       - name: Verify append-only software inventory nonce replay protection
         run: bash scripts/runtime-inventory-nonce-checks.sh
+      - name: Verify owner-scoped agent workflow checkpoint persistence
+        run: bash scripts/runtime-agent-workflow-checkpoint-checks.sh
 
       - name: Build runtime Worker without deploying
         run: wrangler deploy --dry-run --outdir .wrangler/runtime-dry-run --config wrangler.runtime-dry-run.toml
