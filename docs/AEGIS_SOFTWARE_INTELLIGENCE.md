@@ -123,3 +123,21 @@ The record:
 - grants no remediation, traffic-blocking or configuration-change authority and requires Sentinel approval.
 
 This normalizer does not query OSV, determine whether a deployed dependency is affected, calculate exploitability, or recommend a live response. Those require separate version-specific evidence, source provenance, confidence handling and human/Sentinel review. A CVSS vector supplied by an upstream database is evidence of what that source reported, not an AEGIS severity verdict.
+
+
+## Conservative advisory-to-inventory assessment
+
+`createAdvisoryInventoryAssessment` in `workers/runtime/advisory-inventory-assessment.mjs` compares an already-normalised OSV advisory evidence record with an explicitly supplied, timestamped inventory snapshot.
+
+The first implementation is deliberately narrow:
+- accepts one bounded inventory snapshot (1–500 package records) with a stable snapshot identifier and canonical observation timestamp;
+- validates package ecosystem, exact package name and installed version strings; rejects duplicate package identity/version tuples;
+- binds the result to the advisory ID, advisory observation time, inventory snapshot ID and inventory observation time;
+- reports `exact_version_listed` only when the exact package identity and exact installed version occur in the advisory's explicit version list;
+- reports `range_evaluation_required` when the package matches but only range evidence could establish applicability;
+- reports `not_listed_in_explicit_affected_versions` when the package matches an explicit-version-only advisory but the installed version is not listed;
+- reports `no_matching_advisory_package` when the inventory package is not present in the advisory.
+
+The overall status is only `potentially_affected`, `indeterminate` or `no_exact_version_match`. It never emits `unaffected`, `safe` or a remediation recommendation. A version absent from an explicit list is not proof that it is safe. No semantic-version, ecosystem range, Git commit or package-manager resolution is attempted in this stage.
+
+This is a pure deterministic comparison over caller-supplied evidence. It does not discover installed software, query package registries, fetch advisories, inspect a host, execute scanners, install updates, block traffic or change configuration. The inventory snapshot must come from a separately authorised and provenance-bearing source before operational use. Sentinel approval remains required for any consequential response.
