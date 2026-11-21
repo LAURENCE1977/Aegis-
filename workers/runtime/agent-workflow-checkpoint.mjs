@@ -62,7 +62,6 @@ export async function createAgentWorkflowCheckpoint(input) {
   ], 'Workflow run envelope');
 
   const runCanonical = canonicalizeInput(input.run);
-  const definitionCanonical = canonicalizeInput(input.definition);
   const rebuiltRun = await createAgentWorkflowRun({
     definition: input.definition,
     runId: input.run.runId,
