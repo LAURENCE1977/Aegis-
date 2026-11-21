@@ -75,6 +75,7 @@ test('is idempotent for the same event and rejects event ID reuse with different
   const db = new FakeD1();
   assert.equal((await appendExperimentProposalReview(db, 'owner', review)).created, true);
   assert.equal((await appendExperimentProposalReview(db, 'owner', review)).created, false);
+  assert.equal((await appendExperimentProposalReview(db, 'owner', { ...review, createdAt: '2026-11-21T09:01:00.000Z' })).created, false);
   await assert.rejects(
     () => appendExperimentProposalReview(db, 'owner', { ...review, note: 'Changed decision note.' }),
     /different immutable content/i,
