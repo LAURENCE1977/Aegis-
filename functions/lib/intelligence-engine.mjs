@@ -254,11 +254,24 @@ function validateWorkloadInput(input) {
       throw new TypeError('Workload input contains an unknown field or accessor');
     }
   }
-  if (!Array.isArray(input.messages) || input.messages.length < 1 || input.messages.length > 100) {
-    throw new TypeError('Workload requires between 1 and 100 messages');
+  if (!Array.isArray(input.messages) || Object.getPrototypeOf(input.messages) !== Array.prototype ||
+      input.messages.length < 1 || input.messages.length > 100) {
+    throw new TypeError('Workload requires a standard array of 1 to 100 messages');
+  }
+  const messageKeys = Reflect.ownKeys(input.messages);
+  if (messageKeys.length !== input.messages.length + 1 || !messageKeys.includes('length')) {
+    throw new TypeError('Workload message array must be dense and contain no extra properties');
+  }
+  const messages = [];
+  for (let index = 0; index < input.messages.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(input.messages, String(index));
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Workload message array accessors and holes are not allowed');
+    }
+    messages.push(descriptor.value);
   }
   let totalBytes = 0;
-  for (const message of input.messages) {
+  for (const message of messages) {
     if (!message || typeof message !== 'object' || Array.isArray(message) ||
         (Object.getPrototypeOf(message) !== Object.prototype && Object.getPrototypeOf(message) !== null)) {
       throw new TypeError('Invalid workload message');
