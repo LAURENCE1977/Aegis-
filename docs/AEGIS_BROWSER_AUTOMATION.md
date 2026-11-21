@@ -66,11 +66,10 @@ Magnitude documents separate LLM roles and prompt caching. Prompt caching is pro
 ## Rollout gates
 
 1. Complete unit and integration tests for the policy module.
-2. Add a server-side plan endpoint that authenticates users and sources allowlists from trusted configuration.
-3. Add Sentinel grant creation, approval, expiry, replay prevention and append-only audit events for browser actions.
-4. Build the isolated runner and network egress controls.
-5. Test with synthetic sites and disposable accounts before any real user session.
-6. Only then consider a staging deployment. Production activation remains a separate explicit approval.
+2. Add Sentinel grant creation, approval, expiry, replay prevention and append-only audit events for browser actions.
+3. Build the isolated runner and network egress controls.
+4. Test with synthetic sites and disposable accounts before any real user session.
+5. Only then consider a staging deployment. Production activation remains a separate explicit approval.
 
 ## References
 
