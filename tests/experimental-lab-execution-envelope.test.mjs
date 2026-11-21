@@ -36,7 +36,6 @@ test('creates an immutable, digest-bound, review-only execution envelope', async
   const envelope = await createExperimentalLabExecutionEnvelope(safeInput);
   assert.equal(envelope.schemaVersion, 'aegis.experimental-lab-execution-envelope.v1');
   assert.equal(envelope.envelopeId, safeInput.envelopeId);
-  assert.equal(envelope.profileDigest, 'sha256:' + '0'.repeat(64) === envelope.profileDigest ? 'never' : envelope.profileDigest);
   assert.match(envelope.profileDigest, /^sha256:[a-f0-9]{64}$/);
   assert.match(envelope.sourceDigest, /^sha256:[a-f0-9]{64}$/);
   assert.match(envelope.planDigest, /^sha256:[a-f0-9]{64}$/);
