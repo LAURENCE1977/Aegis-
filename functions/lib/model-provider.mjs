@@ -183,7 +183,7 @@ function resolveBitNetConfig(env) {
     throw new Error('BitNet endpoint is invalid.');
   }
   const hostname = url.hostname.toLowerCase();
-  const hostnameIsSafe = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname);
+  const hostnameIsSafe = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(hostname);
   if (url.protocol !== 'https:' || !hostnameIsSafe ||
       ['localhost', 'local', 'internal', 'lan', 'home', 'test', 'invalid', 'example'].some(suffix =>
         hostname === suffix || hostname.endsWith('.' + suffix)) ||
@@ -194,12 +194,12 @@ function resolveBitNetConfig(env) {
 
   const key = env.AEGIS_BITNET_API_KEY;
   if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
-      /[\\r\\n\\u0000]/.test(key)) {
+      /[\r\n\u0000]/.test(key)) {
     throw new Error('BitNet proxy API key is not configured.');
   }
   const model = env.AEGIS_BITNET_MODEL;
   if (typeof model !== 'string' || model.length > 129 ||
-      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?:\\/[A-Za-z0-9][A-Za-z0-9._-]{0,63})?$/.test(model)) {
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?:\/[A-Za-z0-9][A-Za-z0-9._-]{0,63})?$/.test(model)) {
     throw new Error('BitNet model is not configured or is invalid.');
   }
   return {
