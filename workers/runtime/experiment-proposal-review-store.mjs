@@ -84,7 +84,7 @@ export async function appendExperimentProposalReview(db, principalId, input) {
   }
   validateTimestamp(createdAt);
 
-  await db.prepare(
+  const inserted = await db.prepare(
     'INSERT INTO experiment_proposal_review_events (event_id, principal_id, proposal_id, decision, note, first_record_id, last_record_id, workload_digest, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(principal_id, event_id) DO NOTHING'
   ).bind(
     eventId, principalId, proposalId, decision, note.trim(), firstRecordId,
@@ -105,7 +105,7 @@ export async function appendExperimentProposalReview(db, principalId, input) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error('Review event identifier already exists with different immutable content.');
   }
-  return { created: true, review: mapEvent(stored, principalId) };
+  return { created: Number(inserted?.meta?.changes || 0) > 0, review: mapEvent(stored, principalId) };
 }
 
 /** Read only the authenticated principal's append-only review history. */
