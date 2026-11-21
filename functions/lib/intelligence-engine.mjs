@@ -238,3 +238,103 @@ export function translateTask(input) {
   };
   return Object.freeze(result);
 }
+
+
+const WORKLOAD_MESSAGE_ROLES = new Set(['system', 'user', 'assistant']);
+
+function validateWorkloadInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      (Object.getPrototypeOf(input) !== Object.prototype && Object.getPrototypeOf(input) !== null)) {
+    throw new TypeError('Workload input must be a plain object');
+  }
+  const allowed = new Set(['messages', 'requestedOutputTokens', 'maxInputTokens']);
+  for (const key of Reflect.ownKeys(input)) {
+    const descriptor = typeof key === 'string' ? Object.getOwnPropertyDescriptor(input, key) : null;
+    if (!descriptor || !allowed.has(key) || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Workload input contains an unknown field or accessor');
+    }
+  }
+  if (!Array.isArray(input.messages) || Object.getPrototypeOf(input.messages) !== Array.prototype ||
+      input.messages.length < 1 || input.messages.length > 100) {
+    throw new TypeError('Workload requires a standard array of 1 to 100 messages');
+  }
+  const messageKeys = Reflect.ownKeys(input.messages);
+  if (messageKeys.length !== input.messages.length + 1 || !messageKeys.includes('length')) {
+    throw new TypeError('Workload message array must be dense and contain no extra properties');
+  }
+  const messages = [];
+  for (let index = 0; index < input.messages.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(input.messages, String(index));
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Workload message array accessors and holes are not allowed');
+    }
+    messages.push(descriptor.value);
+  }
+  let totalBytes = 0;
+  for (const message of messages) {
+    if (!message || typeof message !== 'object' || Array.isArray(message) ||
+        (Object.getPrototypeOf(message) !== Object.prototype && Object.getPrototypeOf(message) !== null)) {
+      throw new TypeError('Invalid workload message');
+    }
+    const keys = Reflect.ownKeys(message);
+    if (keys.length !== 2 || !keys.includes('role') || !keys.includes('content')) {
+      throw new TypeError('Workload message must contain only role and content');
+    }
+    const roleDescriptor = Object.getOwnPropertyDescriptor(message, 'role');
+    const contentDescriptor = Object.getOwnPropertyDescriptor(message, 'content');
+    if (!roleDescriptor || !contentDescriptor ||
+        !Object.hasOwn(roleDescriptor, 'value') || !Object.hasOwn(contentDescriptor, 'value')) {
+      throw new TypeError('Workload message accessors are not allowed');
+    }
+    if (!WORKLOAD_MESSAGE_ROLES.has(roleDescriptor.value) ||
+        typeof contentDescriptor.value !== 'string' || !contentDescriptor.value.trim() ||
+        contentDescriptor.value.length > 100000) {
+      throw new TypeError('Invalid workload message role or content');
+    }
+    totalBytes += new TextEncoder().encode(contentDescriptor.value).byteLength;
+    if (totalBytes > 1000000) throw new RangeError('Workload input exceeds the 1 MB planning limit');
+  }
+  requirePositiveInteger(input.requestedOutputTokens, 'requested output tokens', { allowZero: true });
+  if (input.requestedOutputTokens > 1000000) throw new RangeError('Requested output budget is too large');
+  if (input.maxInputTokens !== undefined) {
+    requirePositiveInteger(input.maxInputTokens, 'maximum input tokens');
+    if (input.maxInputTokens > 10000000) throw new RangeError('Maximum input budget is too large');
+  }
+}
+
+/**
+ * Produce a conservative, provider-independent workload estimate.
+ * Token counts are planning heuristics, not provider-tokenizer measurements.
+ * No cost or hardware estimate is fabricated.
+ */
+export function accountWorkload(input) {
+  validateWorkloadInput(input);
+  let inputBytes = 0;
+  let estimatedInputTokens = 0;
+  for (const message of input.messages) {
+    const bytes = new TextEncoder().encode(message.content).byteLength;
+    inputBytes += bytes;
+    estimatedInputTokens += 4 + estimateTokenCount(message.content);
+  }
+  const requestedOutputTokens = input.requestedOutputTokens;
+  return Object.freeze({
+    schemaVersion: 'aegis.workload-account.v1',
+    messageCount: input.messages.length,
+    inputBytes,
+    estimatedInputTokens,
+    requestedOutputTokens,
+    estimatedTotalTokens: estimatedInputTokens + requestedOutputTokens,
+    maxInputTokens: input.maxInputTokens ?? null,
+    withinInputBudget: input.maxInputTokens === undefined
+      ? null : estimatedInputTokens <= input.maxInputTokens,
+    estimationMethod: 'utf8_bytes_div_4_plus_4_per_message',
+    providerTokenizerVerified: false,
+    estimatedCost: null,
+    actualUsage: null,
+    cpuEstimate: null,
+    memoryEstimateBytes: null,
+    latencyEstimateMs: null,
+    execution: 'not_authorised',
+    toolsInvoked: false,
+  });
+}
