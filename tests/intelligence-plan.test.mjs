@@ -60,7 +60,7 @@ test('keeps objective classification sizing separate from complete conversation 
       { role: 'user', content: 'Calculate 18 + 24 and show the arithmetic.' },
     ],
   }));
-  assert.equal(result.task.resources.inputBytes, Buffer.byteLength('Calculate a total', 'utf8'));
+  assert.equal(result.task.objectiveInputBytes, Buffer.byteLength('Calculate a total', 'utf8'));
   assert.equal(result.workload.inputBytes,
     Buffer.byteLength('Follow the approved rules.', 'utf8') +
     Buffer.byteLength('Calculate 18 + 24 and show the arithmetic.', 'utf8'));
