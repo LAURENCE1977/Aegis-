@@ -223,3 +223,12 @@ test('rejects arbitrary bucket keys and invalid owner or record identifiers', as
   );
   assert.equal(called, false);
 });
+
+test('accepts the runtime principal identifier character set for authenticated owners', async () => {
+  const key = await evidenceArtifactObjectKey({
+    ownerId: 'owner@example.test',
+    recordId,
+    ref: expectedEvidence.ref,
+  });
+  assert.match(key, /^aegis\\/evidence\\/v1\\/owner@example\\.test\\//);
+});
