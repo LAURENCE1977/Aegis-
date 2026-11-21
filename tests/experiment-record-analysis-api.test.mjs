@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestGet as analyseHistory } from '../functions/api/experiment-records/analysis.js';
+import { onRequestGet as getProposals } from '../functions/api/experiment-records/proposals.js';
 import { evaluateAgentExperiment } from '../workers/runtime/agent-evaluation.mjs';
 import { createAgentExperimentRecord } from '../workers/runtime/agent-experiment-record.mjs';
 import { handleRuntimeFetch } from '../workers/runtime/index.mjs';
@@ -208,4 +209,104 @@ test('runtime analysis endpoint fails closed when stored record integrity cannot
   );
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { error: 'Experiment history analysis is unavailable.' });
+});
+
+
+test('Pages proposal endpoint requires owner authentication before contacting runtime', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; throw new Error('must not fetch'); };
+  try {
+    const response = await getProposals({
+      request: new Request('https://aegis.example/api/experiment-records/proposals'),
+      env: {
+        AEGIS_PASSWORD: 'analysis-test-password',
+        AEGIS_SESSION_SECRET: sessionSecret,
+        AEGIS_RUNTIME_URL: 'https://runtime.example/',
+        AEGIS_JOB_TOKEN: token,
+      },
+    });
+    assert.equal(response.status, 401);
+    assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Pages proposal endpoint calls the fixed owner runtime route and validates its owner scope', async () => {
+  const originalFetch = globalThis.fetch;
+  let observed;
+  globalThis.fetch = async (url, init) => {
+    observed = { url: String(url), init };
+    return new Response(JSON.stringify({
+      proposals: {
+        schemaVersion: 'aegis.experiment-proposals.v1',
+        ownerId: 'owner',
+        proposalCount: 0,
+        proposals: [],
+      },
+    }));
+  };
+  try {
+    const response = await getProposals({
+      request: ownerRequest('/api/experiment-records/proposals'),
+      env: {
+        AEGIS_PASSWORD: 'analysis-test-password',
+        AEGIS_SESSION_SECRET: sessionSecret,
+        AEGIS_RUNTIME_URL: 'https://runtime.example/',
+        AEGIS_JOB_TOKEN: token,
+      },
+    });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.proposals.proposalCount, 0);
+    assert.equal(observed.url, 'https://runtime.example/v1/experiment-records/proposals');
+    assert.equal(observed.init.headers['X-Aegis-Principal'], 'owner');
+    assert.equal(observed.init.headers.Authorization, 'Bearer ' + token);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime proposal endpoint derives review leads from verified records and keeps execution unauthorised', async () => {
+  const older = await makeRecord({
+    id: 'proposal-old',
+    contextId: 'proposal-context-old',
+    createdAt: '2026-11-20T10:00:00.000Z',
+    cost: 200,
+  });
+  const newer = await makeRecord({
+    id: 'proposal-new',
+    contextId: 'proposal-context-new',
+    createdAt: '2026-11-20T11:00:00.000Z',
+    cost: 150,
+  });
+  const response = await handleRuntimeFetch(
+    runtimeRequest('/v1/experiment-records/proposals'),
+    { AEGIS_JOB_TOKEN: token, DB: historyDb([older, newer]) },
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.proposals.schemaVersion, 'aegis.experiment-proposals.v1');
+  assert.equal(body.proposals.ownerId, 'owner');
+  const proposal = body.proposals.proposals.find((item) => item.candidateId === 'candidate-a');
+  assert.ok(proposal);
+  assert.equal(proposal.approval.required, true);
+  assert.equal(proposal.approval.authority, 'Sentinel');
+  assert.equal(proposal.execution, 'not_authorised');
+  assert.equal(proposal.evidence.firstRecordId, 'proposal-old');
+  assert.equal(proposal.evidence.lastRecordId, 'proposal-new');
+});
+
+test('runtime proposal endpoint rejects an untrusted principal before reading D1', async () => {
+  let databaseCalls = 0;
+  const response = await handleRuntimeFetch(
+    runtimeRequest('/v1/experiment-records/proposals', { principal: 'someone-else' }),
+    {
+      AEGIS_JOB_TOKEN: token,
+      DB: { prepare() { databaseCalls += 1; throw new Error('must not query'); } },
+    },
+  );
+  assert.equal(response.status, 400);
+  assert.equal(databaseCalls, 0);
 });

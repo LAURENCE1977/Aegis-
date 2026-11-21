@@ -6,6 +6,7 @@ import {
   tombstoneExperimentRecord,
 } from './experiment-record-store.mjs';
 import { summarizeAgentExperimentHistory } from './agent-experiment-history.mjs';
+import { buildAgentExperimentProposals } from './agent-experiment-proposals.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -373,7 +374,7 @@ function trustedExperimentPrincipal(request) {
   return request.headers.get('X-Aegis-Principal') === 'owner' ? 'owner' : null;
 }
 
-async function handleExperimentRecordAnalysis(env, principalId) {
+async function loadExperimentRecordAnalysis(env, principalId) {
   const records = [];
   let cursor = null;
   try {
@@ -384,19 +385,42 @@ async function handleExperimentRecordAnalysis(env, principalId) {
       });
       records.push(...page.records);
       if (!page.nextCursor) {
-        const analysis = await summarizeAgentExperimentHistory(records);
-        return json({ analysis });
+        return { ok: true, analysis: await summarizeAgentExperimentHistory(records) };
       }
       if (records.length >= 500) {
-        return json({ error: 'Experiment history exceeds the 500-record analysis limit.' }, 413);
+        return { ok: false, status: 413 };
       }
       cursor = page.nextCursor;
     }
-    return json({ error: 'Experiment history exceeds the 500-record analysis limit.' }, 413);
+    return { ok: false, status: 413 };
   } catch {
     // Never return a partial report when a stored record fails integrity checks.
-    return json({ error: 'Experiment history analysis is unavailable.' }, 503);
+    return { ok: false, status: 503 };
   }
+}
+
+async function handleExperimentRecordAnalysis(env, principalId) {
+  const result = await loadExperimentRecordAnalysis(env, principalId);
+  if (!result.ok) {
+    return json({
+      error: result.status === 413
+        ? 'Experiment history exceeds the 500-record analysis limit.'
+        : 'Experiment history analysis is unavailable.',
+    }, result.status);
+  }
+  return json({ analysis: result.analysis });
+}
+
+async function handleExperimentRecordProposals(env, principalId) {
+  const result = await loadExperimentRecordAnalysis(env, principalId);
+  if (!result.ok) {
+    return json({
+      error: result.status === 413
+        ? 'Experiment history exceeds the 500-record analysis limit.'
+        : 'Experiment history analysis is unavailable.',
+    }, result.status);
+  }
+  return json({ proposals: buildAgentExperimentProposals(result.analysis) });
 }
 
 async function handleExperimentRecordRequest(request, env, url) {
@@ -410,6 +434,10 @@ async function handleExperimentRecordRequest(request, env, url) {
   if (url.pathname === collectionPath + '/analysis') {
     if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
     return handleExperimentRecordAnalysis(env, principalId);
+  }
+  if (url.pathname === collectionPath + '/proposals') {
+    if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
+    return handleExperimentRecordProposals(env, principalId);
   }
   if (url.pathname === collectionPath && request.method === 'GET') {
     const rawLimit = url.searchParams.get('limit');
