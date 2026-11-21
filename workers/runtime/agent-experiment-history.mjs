@@ -33,14 +33,46 @@ function validateHistoryRecord(record, index) {
   }
   if (!isRecord(record.measurementContext) ||
       !isRecord(record.evaluation) ||
+      !['complete', 'incomplete', 'no_safe_candidate'].includes(record.evaluation.status) ||
+      !['balanced', 'lowest_cost', 'fastest', 'highest_reliability'].includes(record.evaluation.priority) ||
+      typeof record.evaluation.currency !== 'string' ||
+      !/^[A-Z]{3}$/.test(record.evaluation.currency) ||
       !Array.isArray(record.evaluation.criteria) ||
-      !Array.isArray(record.evaluation.candidates)) {
-    throw new TypeError('Every history record must contain a measurement context and evaluation.');
+      record.evaluation.criteria.length < 1 || record.evaluation.criteria.length > 8 ||
+      !Array.isArray(record.evaluation.candidates) ||
+      record.evaluation.candidates.length < 2 || record.evaluation.candidates.length > 8) {
+    throw new TypeError('Every history record must contain a supported, bounded evaluation.');
+  }
+  const criteriaIds = new Set();
+  for (const criterion of record.evaluation.criteria) {
+    if (!isRecord(criterion) || typeof criterion.id !== 'string' ||
+        !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(criterion.id) ||
+        typeof criterion.description !== 'string' || !criterion.description.trim() ||
+        criterion.description.length > 240 || criteriaIds.has(criterion.id)) {
+      throw new TypeError('History record contains invalid or duplicate evaluation criteria.');
+    }
+    criteriaIds.add(criterion.id);
   }
   if (record.measurementContext.benchmarkId !== record.benchmarkId ||
+      typeof record.measurementContext.id !== 'string' ||
+      typeof record.measurementContext.benchmarkVersion !== 'string' ||
       typeof record.measurementContext.workloadDigest !== 'string' ||
-      !DIGEST_PATTERN.test(record.measurementContext.workloadDigest)) {
+      !DIGEST_PATTERN.test(record.measurementContext.workloadDigest) ||
+      typeof record.measurementContext.runtime !== 'string' ||
+      typeof record.measurementContext.runtimeVersion !== 'string' ||
+      typeof record.measurementContext.region !== 'string' ||
+      !Number.isInteger(record.measurementContext.concurrency) ||
+      !Number.isInteger(record.measurementContext.warmupRuns) ||
+      !Number.isInteger(record.measurementContext.measuredRuns) ||
+      !Number.isInteger(record.measurementContext.timeoutMs)) {
     throw new TypeError('History record benchmark context is inconsistent.');
+  }
+  const candidateIds = new Set();
+  for (const candidate of record.evaluation.candidates) {
+    if (!isRecord(candidate) || typeof candidate.id !== 'string' || candidateIds.has(candidate.id)) {
+      throw new TypeError('History record contains invalid or duplicate candidate identifiers.');
+    }
+    candidateIds.add(candidate.id);
   }
   return record;
 }
@@ -71,6 +103,7 @@ function cohortDescriptor(record) {
 function validateCandidate(candidate, contextId, criterionIds) {
   if (!isRecord(candidate) ||
       typeof candidate.id !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(candidate.id) ||
       candidate.measurementContextId !== contextId ||
       typeof candidate.costMinorUnits !== 'string' ||
       !/^(0|[1-9][0-9]{0,17})$/.test(candidate.costMinorUnits) ||
@@ -82,7 +115,12 @@ function validateCandidate(candidate, contextId, criterionIds) {
       !Array.isArray(candidate.criterionResults)) {
     throw new TypeError('History contains a malformed candidate measurement.');
   }
-  const resultIds = candidate.criterionResults.map((item) => item?.criterionId).sort(compareText);
+  const resultIds = candidate.criterionResults.map((item) => {
+    if (!isRecord(item) || typeof item.criterionId !== 'string') {
+      throw new TypeError('History contains a malformed criterion result.');
+    }
+    return item.criterionId;
+  }).sort(compareText);
   if (JSON.stringify(resultIds) !== JSON.stringify([...criterionIds].sort(compareText))) {
     throw new TypeError('History candidate criteria do not match the benchmark cohort.');
   }
@@ -176,7 +214,11 @@ export async function summarizeAgentExperimentHistory(records) {
 
     for (const candidateId of candidateIds) {
       const observations = candidatesByRecord.map(({ map }) => map.get(candidateId));
-      if (observations.some((candidate) => !candidate || !candidate.safetyChecksPassed)) {
+      if (observations.some((candidate) => !candidate)) {
+        incompleteCandidateIds.add(candidateId);
+        continue;
+      }
+      if (observations.some((candidate) => !candidate.safetyChecksPassed)) {
         excludedCandidateIds.add(candidateId);
         continue;
       }
