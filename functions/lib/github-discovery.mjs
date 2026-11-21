@@ -209,14 +209,14 @@ export async function readGitHubBlob(sourceUrl, blobSha, fetchImpl = fetch) {
   const data = await githubJson(endpoint, fetchImpl);
   if (!data || typeof data !== 'object' || Array.isArray(data) ||
       typeof data.sha !== 'string' || data.sha.toLowerCase() !== blobSha.toLowerCase()) {
-    throw new GitHubSourceError('GitHub returned a source blob that did not match the requested immutable blob SHA.', 502);
+    throw new GitHubSourceError('Source blob verification failed: GitHub returned a SHA that did not match the requested immutable blob.', 502);
   }
   if (data.encoding !== 'base64' || !Number.isSafeInteger(data.size) ||
       data.size < 0 || typeof data.content !== 'string') {
     throw new GitHubSourceError('GitHub returned invalid source blob metadata.', 502);
   }
   if (data.size > MAX_SOURCE_FILE_BYTES) {
-    throw new GitHubSourceError('Source blob exceeds the 32 KiB inspection limit.', 413);
+    throw new GitHubSourceError('Source blob size exceeds the 32 KiB inspection limit.', 413);
   }
   let binary;
   try { binary = atob(data.content.replace(/\\s+/g, '')); }
