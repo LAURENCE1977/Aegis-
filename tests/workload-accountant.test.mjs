@@ -47,13 +47,19 @@ test('reports whether the estimated input fits an optional input budget', () => 
 test('rejects malformed messages, accessors, oversized payloads and unknown fields', () => {
   const getterMessage = {};
   Object.defineProperty(getterMessage, 'role', { get() { throw new Error('must not run'); } });
+  const sparseMessages = new Array(1);
+  const accessorMessages = [];
+  Object.defineProperty(accessorMessages, '0', { get() { throw new Error('must not run'); }, configurable: true });
+  accessorMessages.length = 1;
+  const customIteratorMessages = [{ role: 'user', content: 'x' }];
+  customIteratorMessages[Symbol.iterator] = function* () { throw new Error('must not run'); };
   for (const input of [
     null,
     {},
     { messages: [] },
     { messages: [{ role: 'tool', content: 'x' }] },
     { messages: [{ role: 'user', content: '   ' }] },
-    { messages: [getterMessage] },
+    { messages: [getterMessage] },\n    { messages: sparseMessages, requestedOutputTokens: 1 },\n    { messages: accessorMessages, requestedOutputTokens: 1 },\n    { messages: customIteratorMessages, requestedOutputTokens: 1 },
     { messages: [{ role: 'user', content: 'x' }], requestedOutputTokens: -1 },
     { messages: [{ role: 'user', content: 'x' }], maxInputTokens: 0 },
     { messages: [{ role: 'user', content: 'x' }], execute: true },
