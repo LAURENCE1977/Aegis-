@@ -39,7 +39,7 @@ The review signals are triage hints, not security verdicts. An old repository is
 `assessPinnedSoftwareSource` in `workers/runtime/software-intelligence-analysis.mjs` adds a deterministic, local analysis step over source text that has already been read through AEGIS Forge's existing `/api/forge/inspect` and `/api/forge/read` flow. It deliberately does not add a second repository fetcher.
 
 The analysis contract:
-- binds findings to a canonical repository, immutable commit SHA, tree SHA and per-file blob SHA;
+- binds findings to a canonical repository, immutable Forge tree SHA and per-file blob SHA;
 - accepts at most 20 files, 32 KiB per file and 256 KiB total UTF-8 text;
 - accepts only a narrow text-file extension allowlist and rejects hidden/control paths, dependency/vendor/build directories and sensitive key/certificate paths;
 - validates declared byte sizes and rejects duplicate paths or blob references;
