@@ -142,7 +142,7 @@ function resolveOpenRouterConfig(env) {
   }
   const model = env.AEGIS_OPENROUTER_MODEL;
   if (typeof model !== 'string' || !model.trim() || model.length > 160 ||
-      !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._:-]{0,94}$/.test(model)) {
     throw new Error('OpenRouter model is not configured correctly.');
   }
   return { key, model };
