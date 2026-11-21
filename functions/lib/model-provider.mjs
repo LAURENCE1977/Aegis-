@@ -122,7 +122,7 @@ function resolveAnthropicConfig(env) {
 function resolveAxForgeConfig(env) {
   const key = env.AEGIS_AXFORGE_API_KEY;
   if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
-      /[\\r\\n\\u0000]/.test(key)) {
+      /[\r\n\u0000]/.test(key)) {
     throw new Error('AxForge API key is not configured.');
   }
   const model = env.AEGIS_AXFORGE_MODEL;
