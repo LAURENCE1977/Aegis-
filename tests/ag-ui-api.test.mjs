@@ -473,8 +473,8 @@ test('AG-UI streams Magnitude OpenAI-compatible inference text through the norma
       assert.equal(url, 'https://magnitude-gateway.example.net/inference/v1/chat/completions');
       assert.equal(options.headers.Authorization, 'Bearer test-magnitude-network-key-long-enough');
       const frames = [
-        'data: {"choices":[{"delta":{"content":"Hello from Magnitude."}}]}\\n\\n',
-        'data: [DONE]\\n\\n',
+        'data: {"choices":[{"delta":{"content":"Hello from Magnitude."}}]}\n\n',
+        'data: [DONE]\n\n',
       ];
       return new Response(modelSseStream(frames), {
         status: 200,
