@@ -98,3 +98,16 @@ Supported media types are deliberately limited to `application/json`, `text/plai
 Before reading bytes, the adapter checks the stored object size against the configured bound and requires object custom metadata to match the owner, record, evidence reference, evidence kind and capture timestamp in the immutable record manifest. It accepts only the same narrow media-type allowlist as the byte verifier, checks the actual body length against storage size metadata, and returns `null` for a missing object. The returned bytes are not yet trusted: they must be passed to `verifyExperimentEvidenceArtifact` to compare their actual SHA-256 digest with the immutable manifest.
 
 The adapter accepts an injected bucket binding but does not provision or configure one. It does not upload objects, expose public URLs, perform network fetches, persist attestations, invoke Sentinel or authorise execution. The owner identifier must come from the authenticated server context, and the manifest entry must come from a digest-verified stored experiment record. An ingestion path that writes immutable objects under this key scheme and an owner-scoped attestation store are still required for an end-to-end feature.
+
+
+## Owner-authenticated evidence verification service
+
+`getVerifiedExperimentEvidenceArtifact` composes the existing integrity and ownership boundaries in one server-side operation:
+
+1. It loads the record with `getExperimentRecord(db, principalId, recordId)`, which scopes the read to the principal and verifies the stored record digest.
+2. It selects the requested reference only from that record's evidence manifest; no caller-supplied manifest or digest is accepted.
+3. It reads the matching object through the private storage adapter and checks owner, record, reference, kind, capture timestamp, media type and size metadata.
+4. It calculates SHA-256 from the retrieved bytes and compares it with the immutable manifest digest.
+5. It returns only a metadata attestation, never the raw bytes.
+
+The service distinguishes `record_not_found`, `evidence_not_found`, `artifact_missing` and `verified`. A metadata or digest mismatch throws so an eventual API boundary can fail closed with a sanitised error. `principalId` must be supplied by authenticated server code. This service is not an HTTP route and does not upload evidence, persist attestations, call Sentinel or authorise execution.
