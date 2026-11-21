@@ -35,3 +35,11 @@ A checkpoint is a record of an observation, not proof that the observation is tr
 The request binds the canonical action digest, evidence digest, workflow-definition digest and checkpoint digest. Supported action types in this first contract are deliberately limited to `workspace_write`, `artifact_write` and `test_run`. Action parameters are represented by a SHA-256 digest; raw command text and arbitrary executable payloads are not accepted.
 
 A request is only `awaiting_human_review`. It always records `approvalGranted: false`, `execution: not_authorised`, no capabilities granted and no self-approval. This contract does not persist an inbox, authenticate an HTTP caller, create a route, approve an action, schedule work, execute tools, spawn agents, invoke MCP, access networks or secrets, or mutate a workspace. A future review decision must bind the exact request, action and evidence digests and still pass independent Sentinel authorization at the execution boundary.
+
+## Durable Agent Operations Inbox
+
+`appendAgentOperationRequest` revalidates the immutable operation request against its workflow definition and evidence checkpoint before persisting it under a server-authenticated principal. The runtime D1 table is owner-scoped, stores the exact request envelope and its definition, checkpoint, action and evidence digests, and rejects updates/deletes. Exact retries are idempotent; reusing a request identity with different content is rejected.
+
+`listAgentOperationRequests` returns one principal's requests newest-first with a stable compound cursor. Each stored JSON envelope is parsed, its canonical request digest is recomputed, and indexed row metadata is checked before the item is returned. The store does not authenticate HTTP requests: route handlers must derive the principal from verified server identity, never from caller-controlled request data.
+
+Inbox persistence is not an approval mechanism. Every entry remains `awaiting_human_review`, with `approvalGranted: false` and `execution: not_authorised`. Human review must be a separate append-only decision bound to the exact request, action and evidence digests; Sentinel must independently enforce any eventual authorization at the execution boundary. No scheduler, agent spawning, capability grant, network/MCP access, secrets, workspace mutation or deployment is introduced here.
