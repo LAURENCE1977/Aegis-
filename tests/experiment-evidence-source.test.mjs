@@ -178,7 +178,7 @@ test('rejects oversized objects before reading their body', async () => {
       ownerId,
       recordId,
       expectedEvidence,
-      maxBytes: 64,
+      maxBytes: 8,
     }),
     /size limit/i,
   );
