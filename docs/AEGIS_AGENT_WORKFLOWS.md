@@ -27,3 +27,19 @@ Future orchestration must independently enforce each capability at the tool boun
 ## Authority boundary
 
 A checkpoint is a record of an observation, not proof that the observation is truthful, not an execution receipt, not a capability grant, and not an approval. Checkpoints never change a workflow run's plan-only status. Sentinel remains the independent authority for any consequential action. No workflow scheduler, agent spawning, network/MCP access, secrets, workspace mutation, test execution, remediation or deployment is introduced by this layer.
+
+## Agent Operations Inbox item contract
+
+`createAgentOperationInboxItem` creates an immutable `aegis.agent-operation-inbox-item.v1` review request. It binds the item to the exact workflow-definition digest, plan-only run, evidence checkpoint, proposed action digest and evidence digest.
+
+An inbox item can only reference a human-gated `propose` step whose pinned workflow definition includes the matching capability. The initial action allowlist is deliberately small:
+
+- `workspace_write` with a `workspace:` target reference;
+- `artifact_write` with an `artifact:` target reference;
+- `test_run` with a `test:` target reference.
+
+Evidence must exactly match the digest-only references in the checkpoint. Commands, URLs, free-form prompts, arbitrary capability names, extra fields and accessor-backed records are rejected. This contract does not fetch or verify the underlying evidence bytes; a separate evidence-verification boundary remains necessary.
+
+Every item begins with `reviewStatus: awaiting_human_review`, `approvalGranted: false`, and `execution: not_authorised`. The item digest protects the complete request record, but does not authenticate its creator or prove the truth of its evidence. A future persistence/API layer must derive the principal from authenticated server context, enforce owner scoping, prevent replay, and bind any later human decision to the exact item and action digests. Sentinel must independently authorise any consequential operation.
+
+This increment adds no inbox database, route, scheduler, agent spawning, tool execution, MCP, network access, secrets, workspace mutation or deployment.
