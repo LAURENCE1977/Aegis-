@@ -424,3 +424,19 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
+
+test('AG-UI marks Ollama as not ready when its private gateway configuration is incomplete', async () => {
+  let called = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AEGIS_MODEL_PROVIDER: 'ollama' },
+    fetchImpl: async () => { called = true; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/)
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'PROVIDER_NOT_READY');
+  assert.equal(frames[0].message, 'The configured Ollama gateway is not ready.');
+  assert.equal(called, false);
+});
