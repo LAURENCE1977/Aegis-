@@ -102,10 +102,12 @@ export async function appendExperimentProposalReview(db, principalId, input) {
     stored.proposal_id, stored.decision, stored.note, stored.first_record_id,
     stored.last_record_id, stored.workload_digest, stored.created_at,
   ];
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+  const created = Number(inserted?.meta?.changes || 0) > 0;
+  if (JSON.stringify(actual.slice(0, 6)) !== JSON.stringify(expected.slice(0, 6)) ||
+      (created && actual[6] !== expected[6])) {
     throw new Error('Review event identifier already exists with different immutable content.');
   }
-  return { created: Number(inserted?.meta?.changes || 0) > 0, review: mapEvent(stored, principalId) };
+  return { created, review: mapEvent(stored, principalId) };
 }
 
 /** Read only the authenticated principal's append-only review history. */
