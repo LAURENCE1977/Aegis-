@@ -27,7 +27,7 @@ function validateId(value, label) {
 
 function validateText(value, label, maxLength = 500) {
   if (typeof value !== 'string' || !value.trim() || value.length > maxLength ||
-      /[\\u0000-\\u001f\\u007f]/.test(value)) {
+      /[\u0000-\u001f\u007f]/.test(value)) {
     throw new TypeError(label + ' must be bounded safe text.');
   }
 }
