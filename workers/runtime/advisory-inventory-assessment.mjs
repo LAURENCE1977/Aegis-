@@ -26,7 +26,9 @@ function boundedText(value, label, max, pattern) {
 }
 
 function normalizeInventoryPackage(value) {
-  if (!isRecord(value)) throw new TypeError('Inventory package must be an object.');
+  if (!isRecord(value) || Object.keys(value).some(key => !['ecosystem', 'name', 'version', 'purl'].includes(key))) {
+    throw new TypeError('Inventory package must contain only allowlisted fields.');
+  }
   const ecosystem = boundedText(value.ecosystem, 'Inventory ecosystem', 64, ECOSYSTEM_PATTERN);
   const name = boundedText(value.name, 'Inventory package name', 255, PACKAGE_PATTERN);
   const version = boundedText(value.version, 'Inventory package version', 128, VERSION_PATTERN);
@@ -67,7 +69,9 @@ export function createAdvisoryInventoryAssessment({
       advisoryRecord.affected.length < 1 || advisoryRecord.affected.length > 50) {
     throw new TypeError('A normalised advisory evidence record is required.');
   }
-  if (!isRecord(inventory)) throw new TypeError('Inventory snapshot is required.');
+  if (!isRecord(inventory) || Object.keys(inventory).some(key => !['snapshotId', 'observedAt', 'packages'].includes(key))) {
+    throw new TypeError('Inventory snapshot must contain only allowlisted fields.');
+  }
   const snapshotId = boundedText(inventory.snapshotId, 'Inventory snapshot identifier', 128, ID_PATTERN);
   if (!Array.isArray(inventory.packages) || inventory.packages.length < 1 ||
       inventory.packages.length > MAX_INVENTORY_PACKAGES) {
@@ -82,15 +86,23 @@ export function createAdvisoryInventoryAssessment({
   }
 
   const advisoryId = boundedText(advisoryRecord.advisory.id, 'Advisory identifier', 128, ID_PATTERN);
+  if (advisoryRecord.source.advisoryId !== advisoryId) {
+    throw new TypeError('Advisory source identity does not match its record.');
+  }
   const affected = advisoryRecord.affected.map(item => {
-    if (!isRecord(item) || !isRecord(item.package)) {
+    if (!isRecord(item) || Object.keys(item).some(key => !['package', 'ranges', 'versions'].includes(key)) ||
+        !isRecord(item.package) || Object.keys(item.package).some(key => !['ecosystem', 'name', 'purl'].includes(key))) {
       throw new TypeError('Advisory affected package identity is invalid.');
     }
     const ecosystem = boundedText(item.package.ecosystem, 'Advisory ecosystem', 64, ECOSYSTEM_PATTERN);
     const name = boundedText(item.package.name, 'Advisory package name', 255, PACKAGE_PATTERN);
     const versions = item.versions === undefined ? [] : item.versions;
     const ranges = item.ranges === undefined ? [] : item.ranges;
-    if (!Array.isArray(versions) || !Array.isArray(ranges)) {
+    if (!Array.isArray(versions) || versions.length > 200 ||
+        versions.some(version => typeof version !== 'string' || !VERSION_PATTERN.test(version)) ||
+        !Array.isArray(ranges) || ranges.length > 20 ||
+        ranges.some(range => !isRecord(range) || !['SEMVER', 'ECOSYSTEM', 'GIT'].includes(range.type) ||
+          !Array.isArray(range.events) || range.events.length < 1 || range.events.length > 100)) {
       throw new TypeError('Advisory version or range evidence is invalid.');
     }
     return { ecosystem, name, versions, hasRanges: ranges.length > 0 };
