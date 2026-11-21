@@ -94,6 +94,12 @@ export async function onRequestPost(context) {
         createTextRunErrorEvent({ message: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }),
       ], 503);
     }
+    if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "ollama" &&
+        (!env.AEGIS_OLLAMA_BASE_URL || !env.AEGIS_OLLAMA_API_KEY || !env.AEGIS_OLLAMA_MODEL)) {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The configured Ollama gateway is not ready.", code: "PROVIDER_NOT_READY" }),
+      ], 503);
+    }
     if (error instanceof TypeError) {
       return createAgUiSseResponse([
         createTextRunErrorEvent({ message: "The model request is invalid.", code: "INVALID_MODEL_REQUEST" }),
