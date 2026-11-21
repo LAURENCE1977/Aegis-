@@ -142,12 +142,13 @@ test('rejects caller-selected ownership, forged request envelopes and invalid pr
   assert.equal(db.rows.size, 0);
 });
 
-test('rejects future requests and oversized stored request envelopes', async () => {
+test('rejects a request newer than its server acceptance time', async () => {
   const db = new FakeD1();
-  const future = await makeRequest('operation-request-store-0004', '2026-11-21T15:31:00.000Z');
+  const request = await makeRequest('operation-request-store-0004');
   await assert.rejects(() => appendAgentOperationRequest({
-    db, principalId: 'owner-a', definition, run, checkpoint, request: future, now,
-  }), /future|checkpoint/i);
+    db, principalId: 'owner-a', definition, run, checkpoint, request,
+    now: '2026-11-21T15:14:00.000Z',
+  }), /future|observation/i);
 });
 
 test('detects tampering with persisted request bytes and row metadata', async () => {
