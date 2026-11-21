@@ -213,6 +213,7 @@ export async function summarizeAgentExperimentHistory(records) {
     const candidateComparisons = [];
 
     for (const candidateId of candidateIds) {
+      if (ordered.length < 2) continue;
       const observations = candidatesByRecord.map(({ map }) => map.get(candidateId));
       if (observations.some((candidate) => !candidate)) {
         incompleteCandidateIds.add(candidateId);
