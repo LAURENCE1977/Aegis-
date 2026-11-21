@@ -79,6 +79,15 @@ function validatePath(path) {
   }
 }
 
+export function isSoftwareSourcePathAllowed(path) {
+  try {
+    validatePath(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
