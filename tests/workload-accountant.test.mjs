@@ -54,7 +54,7 @@ test('rejects malformed messages, accessors, oversized payloads and unknown fiel
     { messages: [{ role: 'tool', content: 'x' }] },
     { messages: [{ role: 'user', content: '   ' }] },
     { messages: [getterMessage] },
-    { messages: [{ role: 'user', content: 'x' }], requestedOutputTokens: 0 },
+    { messages: [{ role: 'user', content: 'x' }], requestedOutputTokens: -1 },
     { messages: [{ role: 'user', content: 'x' }], maxInputTokens: 0 },
     { messages: [{ role: 'user', content: 'x' }], execute: true },
     { messages: [{ role: 'user', content: 'x'.repeat(1000001) }] },
