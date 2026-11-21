@@ -12,7 +12,8 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 |---|---|---|---|---|
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | ANTHROPIC_API_KEY, AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
-| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |\n| BitNet.cpp | AEGIS_MODEL_PROVIDER=bitnet | AEGIS_BITNET_BASE_URL, AEGIS_BITNET_API_KEY, AEGIS_BITNET_MODEL | OpenAI-compatible chat-completions SSE via an authenticated HTTPS gateway | No; fail closed |
+| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| BitNet.cpp | AEGIS_MODEL_PROVIDER=bitnet | AEGIS_BITNET_BASE_URL, AEGIS_BITNET_API_KEY, AEGIS_BITNET_MODEL | OpenAI-compatible chat-completions SSE via an authenticated HTTPS gateway | No; fail closed |
 
 ## Anthropic Messages adapter
 
