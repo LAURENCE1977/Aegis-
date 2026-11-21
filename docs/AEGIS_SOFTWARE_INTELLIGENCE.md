@@ -141,3 +141,20 @@ The first implementation is deliberately narrow:
 The overall status is only `potentially_affected`, `indeterminate` or `no_exact_version_match`. It never emits `unaffected`, `safe` or a remediation recommendation. A version absent from an explicit list is not proof that it is safe. No semantic-version, ecosystem range, Git commit or package-manager resolution is attempted in this stage.
 
 This is a pure deterministic comparison over caller-supplied evidence. It does not discover installed software, query package registries, fetch advisories, inspect a host, execute scanners, install updates, block traffic or change configuration. The inventory snapshot must come from a separately authorised and provenance-bearing source before operational use. Sentinel approval remains required for any consequential response.
+
+
+## Signed software inventory source evidence
+
+`verifySoftwareInventoryAttestation` in `workers/runtime/software-inventory-attestation.mjs` verifies a bounded inventory snapshot signed with HMAC-SHA-256 by a registered source key.
+
+The verifier:
+- requires the trusted source record to be supplied by the authenticated server from an owner-scoped source registry; a client must never choose the trusted owner, source record or secret key;
+- binds the signature to the owner ID, source ID, key ID, one-time nonce, signing timestamp and canonical inventory contents;
+- rejects mismatched owner/source/key identities, revoked or inactive keys, invalid key validity windows, stale/future timestamps, malformed signatures and unexpected fields;
+- canonicalises JSON object keys, bounds the inventory to 500 package records and 1 MiB, and emits a SHA-256 digest of the canonical snapshot;
+- returns only source identity and verification metadata; it never returns the shared secret or package payload;
+- reports `signature_valid` with acceptance still `pending_atomic_nonce_consumption`.
+
+A valid HMAC proves that the submitted bytes match a signature made by a holder of the registered shared key. It does not prove that the endpoint is uncompromised, that its inventory is complete, or that the source software is trustworthy. The caller must atomically consume the tuple (owner ID, source ID, nonce) in persistent storage before accepting or using a snapshot. This module does not prevent replay and does not create or manage trusted source registrations, secrets, inventory collection, endpoint scanning, network access or remediation.
+
+Key provisioning, rotation, revocation persistence, atomic nonce replay protection, an authenticated API adapter and Sentinel review remain separate work. Consequential response remains unauthorised.
