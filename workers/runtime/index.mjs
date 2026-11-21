@@ -444,7 +444,7 @@ async function handleExperimentProposalReviews(request, env, principalId, url) {
     }
   }
   if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const declaredLength = Number(request.headers.get('Content-Length') || 0);
