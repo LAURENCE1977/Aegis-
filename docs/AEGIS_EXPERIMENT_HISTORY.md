@@ -89,3 +89,12 @@ The source-level `verifyExperimentEvidenceArtifact` primitive verifies a byte pa
 - It performs no network access, URL resolution, persistence, Sentinel call or execution. An authenticated source adapter and owner-scoped attestation store must be designed separately before this can become an end-to-end evidence retrieval feature.
 
 Supported media types are deliberately limited to `application/json`, `text/plain` and `application/octet-stream`. This verifier proves that supplied bytes match the recorded digest and metadata; it does not prove that the original source was truthful, that the source was authorised, or that evidence remains fresh. Those are separate provenance and policy questions.
+
+
+## Private evidence object retrieval adapter
+
+`readExperimentEvidenceArtifact` is a server-side adapter for a trusted object-storage binding (such as a private R2 bucket). It derives the only permitted object key from the authenticated owner, exact experiment record ID and SHA-256 of the manifest reference. Callers cannot supply a URL, bucket name or raw object key.
+
+Before reading bytes, the adapter checks the stored object size against the configured bound and requires object custom metadata to match the owner, record, evidence reference, evidence kind and capture timestamp in the immutable record manifest. It accepts only the same narrow media-type allowlist as the byte verifier, checks the actual body length against storage size metadata, and returns `null` for a missing object. The returned bytes are not yet trusted: they must be passed to `verifyExperimentEvidenceArtifact` to compare their actual SHA-256 digest with the immutable manifest.
+
+The adapter accepts an injected bucket binding but does not provision or configure one. It does not upload objects, expose public URLs, perform network fetches, persist attestations, invoke Sentinel or authorise execution. The owner identifier must come from the authenticated server context, and the manifest entry must come from a digest-verified stored experiment record. An ingestion path that writes immutable objects under this key scheme and an owner-scoped attestation store are still required for an end-to-end feature.
