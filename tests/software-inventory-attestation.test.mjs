@@ -59,8 +59,8 @@ test('verifies a source signature and binds the result to the owner, source, key
     now,
   });
 
-  assert.equal(result.schemaVersion, 'aegis.verified-software-inventory.v1');
-  assert.equal(result.verification, 'verified');
+  assert.equal(result.schemaVersion, 'aegis.software-inventory-signature-verification.v1');
+  assert.equal(result.verification, 'signature_valid');
   assert.equal(result.ownerId, 'owner-a');
   assert.equal(result.sourceId, 'endpoint-agent-01');
   assert.equal(result.keyId, 'key-2026-01');
@@ -147,7 +147,8 @@ test('canonical signing is independent of JSON object key order', async () => {
     trustedSource,
     now,
   });
-  assert.equal(result.verification, 'verified');
+  assert.equal(result.verification, 'signature_valid');
+  assert.equal(result.acceptance, 'pending_atomic_nonce_consumption');
   assert.equal(result.inventoryDigest, await verifySoftwareInventoryAttestation({
     inventory, attestation: signedAttestation(), trustedSource, now,
   }).then(value => value.inventoryDigest));
