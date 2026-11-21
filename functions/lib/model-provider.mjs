@@ -255,7 +255,7 @@ function resolveMagnitudeConfig(env) {
   if (typeof model !== 'string' || model.length > 180 ||
       !/^[A-Za-z0-9][A-Za-z0-9._/-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*){0,2}$/.test(model) ||
       model.includes('..') || model.includes('//') || model.endsWith('/') || model.includes('/.')) {
-    throw new Error('Magnitude exact model ID is not configured or is invalid.');
+    throw new Error('Magnitude model ID is not configured or is invalid.');
   }
   return { endpoint: url.origin + '/inference/v1/chat/completions', key, model };
 }
