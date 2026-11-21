@@ -145,7 +145,7 @@ const DEFINITIONS = [
     upstreamCommit: '8c99fa36d90068c82d547f7c12a9d67a3e95f4ee',
     triggers: ['ci/cd', 'continuous integration', 'deployment pipeline', 'github actions', 'quality gates', 'release automation'],
     description: 'Automate repeatable quality gates while keeping production promotion controlled.',
-    guidance: 'Inspect the repository's actual build and test commands before editing workflows. Run fast static checks and focused tests early, then the full suite and build. Keep CI deterministic, least-privileged and free of production secrets. Use preview environments and explicit environment separation. Fail visibly rather than skipping or weakening checks. Preserve manual approval for production, secrets, billing, destructive operations and permission changes; document rollback and verify the deployed commit and health after an approved release.',
+    guidance: "Inspect the repository's actual build and test commands before editing workflows. Run fast static checks and focused tests early, then the full suite and build. Keep CI deterministic, least-privileged and free of production secrets. Use preview environments and explicit environment separation. Fail visibly rather than skipping or weakening checks. Preserve manual approval for production, secrets, billing, destructive operations and permission changes; document rollback and verify the deployed commit and health after an approved release.",
   },
 ];
 
