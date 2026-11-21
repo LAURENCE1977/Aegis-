@@ -230,6 +230,66 @@ async function createOllamaStream({ env, messages, tools, fetchImpl }) {
   return response.body;
 }
 
+
+function resolveMagnitudeConfig(env) {
+  const baseUrl = env.AEGIS_MAGNITUDE_BASE_URL;
+  if (typeof baseUrl !== 'string' || baseUrl.length > 2048) {
+    throw new Error('Magnitude gateway URL is not configured.');
+  }
+  let url;
+  try { url = new URL(baseUrl); } catch { throw new Error('Magnitude gateway URL is invalid.'); }
+  const hostname = url.hostname.toLowerCase();
+  const hostnameIsSafe = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname);
+  if (url.protocol !== 'https:' || !hostnameIsSafe ||
+      ['localhost', 'local', 'internal', 'lan', 'home', 'test', 'invalid', 'example'].some(suffix =>
+        hostname === suffix || hostname.endsWith('.' + suffix)) ||
+      url.username || url.password || (url.port && url.port !== '443') ||
+      url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('Magnitude gateway must be a public HTTPS origin without credentials or a custom path.');
+  }
+  const key = env.AEGIS_MAGNITUDE_API_KEY;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 || /[\\r\\n\\u0000]/.test(key)) {
+    throw new Error('Magnitude network access key is not configured.');
+  }
+  const model = env.AEGIS_MAGNITUDE_MODEL;
+  if (typeof model !== 'string' || model.length > 180 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._/-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*){0,2}$/.test(model) ||
+      model.includes('..') || model.includes('//') || model.endsWith('/') || model.includes('/.')) {
+    throw new Error('Magnitude exact model ID is not configured or is invalid.');
+  }
+  return { endpoint: url.origin + '/inference/v1/chat/completions', key, model };
+}
+
+async function createMagnitudeStream({ env, messages, tools, fetchImpl }) {
+  if (tools.length || messages.some(message =>
+    message.role === 'tool' || message.tool_calls !== undefined)) {
+    throw new Error('Magnitude tool calling is not enabled.');
+  }
+  const { endpoint, key, model } = resolveMagnitudeConfig(env);
+  let response;
+  try {
+    response = await fetchImpl(endpoint, {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({ model, messages, max_tokens: MAX_OUTPUT_TOKENS, stream: true }),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch { throw new Error('Magnitude provider request failed.'); }
+  if (!response || !response.ok || !response.body || typeof response.body.getReader !== 'function') {
+    throw new Error('Magnitude provider request failed.');
+  }
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/event-stream')) {
+    throw new Error('Magnitude provider returned an unsupported response type.');
+  }
+  return response.body;
+}
+
 export async function createModelStream({ env, messages, tools, fetchImpl = fetch }) {
   if (!env || typeof env !== 'object') throw new TypeError('Model environment is required');
   validateMessages(messages);
