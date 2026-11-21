@@ -230,5 +230,5 @@ test('accepts the runtime principal identifier character set for authenticated o
     recordId,
     ref: expectedEvidence.ref,
   });
-  assert.match(key, /^aegis\\/evidence\\/v1\\/owner@example\\.test\\//);
+  assert.ok(key.startsWith('aegis/evidence/v1/owner@example.test/'));
 });
