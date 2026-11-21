@@ -44,3 +44,17 @@ The internal route is:
 The runtime loads the authenticated owner's records through the existing keyset-paginated D1 store. It verifies stored row metadata and each record digest before analysis. It reads at most 500 records; if another page exists beyond that bound, it returns HTTP 413 rather than silently analysing a partial history. A corrupt record or failed integrity check causes the analysis request to fail closed without returning a partial report.
 
 The endpoint is read-only. It does not create records, run benchmarks, schedule agents, write experiment events, change policy, or invoke Sentinel-authorised actions. The runtime Worker and D1 still need their separately approved deployment/configuration before the endpoint can operate outside the preview environment.
+
+
+## Evidence-led improvement proposals
+
+The proposal layer converts the verified analysis report into cautious, deterministic review leads:
+
+- `GET /api/experiment-records/proposals` is protected by the existing owner-session guard.
+- The internal `GET /v1/experiment-records/proposals` route uses the same trusted owner principal, service bearer and bounded record-history loading as analysis.
+- A proposal is emitted only from a comparable cohort with at least two complete observations, for a candidate not listed as excluded or incomplete, and only when at least one measured dimension improved between the endpoints.
+- Any observed regression in another measured dimension is called out as a risk. Proposals preserve the baseline/latest values, deltas, workload digest and first/last source record IDs.
+- The benefit wording is explicitly potential and observational. Proposals never declare a winner, forecast future performance or rank candidates across incomparable cohorts.
+- Each proposal requires human review and independent Sentinel authorisation before consequential action. The output is marked `execution: not_authorised`.
+
+The proposal builder trusts its input to be the output of the existing digest-verifying history analyser; the runtime endpoint enforces this by building the report directly from owner-scoped persisted records. Evidence references remain references: this layer does not fetch source artifacts, independently verify their contents, persist proposals, invoke Sentinel or execute actions. A proposal is a review lead, not an approval or an instruction to deploy.
