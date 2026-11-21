@@ -8,6 +8,10 @@ import {
 import { summarizeAgentExperimentHistory } from './agent-experiment-history.mjs';
 import { buildAgentExperimentProposals } from './agent-experiment-proposals.mjs';
 import {
+  appendExperimentProposalReview,
+  listExperimentProposalReviews,
+} from './experiment-proposal-review-store.mjs';
+import {
   buildHealthCheckResult,
   isJobId,
   isTerminalJobStatus,
@@ -423,6 +427,70 @@ async function handleExperimentRecordProposals(env, principalId) {
   return json({ proposals: buildAgentExperimentProposals(result.analysis) });
 }
 
+async function handleExperimentProposalReviews(request, env, principalId, url) {
+  if (request.method === 'GET') {
+    const proposalId = url.searchParams.get('proposalId');
+    const rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? 50 : Number(rawLimit);
+    try {
+      const reviews = await listExperimentProposalReviews(
+        env.DB, principalId, proposalId, { limit },
+      );
+      return json({ reviews });
+    } catch (error) {
+      return json({ error: error instanceof TypeError
+        ? 'Proposal review query is invalid.'
+        : 'Proposal review history is unavailable.' }, error instanceof TypeError ? 400 : 503);
+    }
+  }
+  if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  const declaredLength = Number(request.headers.get('Content-Length') || 0);
+  if (declaredLength > 4096) return json({ error: 'Proposal review request is too large.' }, 413);
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > 4096) {
+    return json({ error: 'Proposal review request is too large.' }, 413);
+  }
+  let body;
+  try { body = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body) ||
+      Object.keys(body).sort().join(',') !== 'decision,eventId,note,proposalId') {
+    return json({ error: 'A proposal ID, event ID, decision and note are required.' }, 400);
+  }
+
+  const current = await loadExperimentRecordAnalysis(env, principalId);
+  if (!current.ok) {
+    return json({ error: current.status === 413
+      ? 'Experiment history exceeds the 500-record review limit.'
+      : 'Current experiment proposals are unavailable.' }, current.status);
+  }
+  const proposal = buildAgentExperimentProposals(current.analysis).proposals
+    .find((item) => item.id === body.proposalId);
+  if (!proposal) return json({ error: 'Proposal is no longer current; refresh before reviewing.' }, 409);
+
+  try {
+    const result = await appendExperimentProposalReview(env.DB, principalId, {
+      eventId: body.eventId,
+      proposalId: proposal.id,
+      decision: body.decision,
+      note: body.note,
+      firstRecordId: proposal.evidence.firstRecordId,
+      lastRecordId: proposal.evidence.lastRecordId,
+      workloadDigest: proposal.evidence.workloadDigest,
+      createdAt: new Date().toISOString(),
+    });
+    return json(result, result.created ? 201 : 200);
+  } catch (error) {
+    if (error instanceof TypeError) return json({ error: 'Proposal review input is invalid.' }, 400);
+    if (/different immutable content/i.test(error?.message || '')) {
+      return json({ error: 'Review event identifier already exists with different immutable content.' }, 409);
+    }
+    return json({ error: 'Proposal review could not be persisted.' }, 503);
+  }
+}
+
 async function handleExperimentRecordRequest(request, env, url) {
   if (!env?.DB || typeof env.DB.prepare !== 'function') {
     return json({ error: 'Runtime database is not configured.' }, 503);
@@ -434,6 +502,10 @@ async function handleExperimentRecordRequest(request, env, url) {
   if (url.pathname === collectionPath + '/analysis') {
     if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
     return handleExperimentRecordAnalysis(env, principalId);
+  }
+  if (url.pathname === collectionPath + '/proposals/reviews') {
+    if (!['GET', 'POST'].includes(request.method)) return json({ error: 'Method not allowed.' }, 405);
+    return handleExperimentProposalReviews(request, env, principalId, url);
   }
   if (url.pathname === collectionPath + '/proposals') {
     if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
