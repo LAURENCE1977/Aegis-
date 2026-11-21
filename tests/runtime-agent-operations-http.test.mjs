@@ -312,6 +312,7 @@ test('Pages review API proxies exact digest-bound review fields without exposing
       request: pagesRequest('/api/agent-operations/reviews', {
         method: 'POST',
         body: {
+          eventId: 'review-event-http-0007',
           requestId: 'operation-http-0007',
           requestDigest: 'sha256:' + 'a'.repeat(64),
           actionDigest: 'sha256:' + 'b'.repeat(64),
