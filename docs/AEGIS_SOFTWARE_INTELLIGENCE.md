@@ -158,3 +158,14 @@ The verifier:
 A valid HMAC proves that the submitted bytes match a signature made by a holder of the registered shared key. It does not prove that the endpoint is uncompromised, that its inventory is complete, or that the source software is trustworthy. The caller must atomically consume the tuple (owner ID, source ID, nonce) in persistent storage before accepting or using a snapshot. This module does not prevent replay and does not create or manage trusted source registrations, secrets, inventory collection, endpoint scanning, network access or remediation.
 
 Key provisioning, rotation, revocation persistence, atomic nonce replay protection, an authenticated API adapter and Sentinel review remain separate work. Consequential response remains unauthorised.
+
+
+### Persistent nonce replay protection
+
+The runtime migration `0005_software_inventory_nonces.sql` adds an owner- and source-scoped nonce ledger. `consumeSoftwareInventoryNonce` accepts only the metadata-only result of the signature verifier in the exact `signature_valid` / `pending_atomic_nonce_consumption` state and requires its non-authorising Sentinel boundary.
+
+The function performs one atomic D1 insert against the primary key `(owner_id, source_id, nonce)`. Exactly one concurrent request can insert a given tuple; a repeated tuple returns `replay_rejected`, even if the replay changes its snapshot ID or digest. The database stores only bounded identity, nonce, digest and timestamp metadata, never the inventory package list or HMAC key.
+
+Nonce rows are append-only and intentionally have no TTL or cleanup path. Deleting old nonce records would reopen replay windows. The migration's unique constraint is the actual concurrency boundary; the in-memory verifier alone is not.
+
+The local D1 CI checks cover duplicate nonce rejection, owner/source namespace separation, and update/delete rejection. This still does not provide trusted-source registration, secret provisioning or rotation, authenticated inventory collection, or a public API. A valid signature and consumed nonce establish neither endpoint integrity nor inventory completeness. No execution, installation, remediation, configuration change or Sentinel approval is granted.
