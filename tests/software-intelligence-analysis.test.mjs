@@ -6,7 +6,6 @@ const withContent = (file, content) => ({ ...file, content, size: new TextEncode
 
 const valid = {
   repository: 'example/agent',
-  commitSha: 'a'.repeat(40),
   treeSha: 'b'.repeat(40),
   observedAt: '2026-11-21T12:00:00.000Z',
   files: [
@@ -36,7 +35,6 @@ test('maps pinned source files to candidate capability signals with exact eviden
 
   assert.equal(result.schemaVersion, 'aegis.software-capability-assessment.v1');
   assert.equal(result.source.repository, 'example/agent');
-  assert.equal(result.source.commitSha, 'a'.repeat(40));
   assert.equal(result.source.treeSha, 'b'.repeat(40));
   assert.deepEqual(result.capabilities.map(item => item.id), [
     'agent-orchestration',
@@ -72,7 +70,6 @@ test('rejects path traversal, hidden control paths and vendored dependency trees
 });
 
 test('rejects mutable or malformed source identities and blob references', () => {
-  assert.throws(() => assessPinnedSoftwareSource({ ...valid, commitSha: 'main' }), /commit/i);
   assert.throws(() => assessPinnedSoftwareSource({ ...valid, treeSha: 'main' }), /tree/i);
   assert.throws(() => assessPinnedSoftwareSource({
     ...valid,
