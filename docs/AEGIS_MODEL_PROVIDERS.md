@@ -13,6 +13,7 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | ANTHROPIC_API_KEY, AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
 | Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| Ollama | AEGIS_MODEL_PROVIDER=ollama | AEGIS_OLLAMA_BASE_URL, AEGIS_OLLAMA_API_KEY, AEGIS_OLLAMA_MODEL | OpenAI-compatible chat-completions SSE through an authenticated HTTPS gateway | No; fail closed |
 
 ## Anthropic Messages adapter
 
@@ -35,10 +36,24 @@ To activate Anthropic after the code is deployed:
 
 A GitHub Actions repository secret named ANTHROPIC_API_KEY is only available to GitHub Actions workflows. It is not automatically passed to Cloudflare runtime bindings. Never put the key in index.html, a public build variable, a commit, test fixture, or chat message.
 
+## Ollama local inference adapter
+
+Ollama runs separately from Cloudflare Pages. The AEGIS adapter targets the OpenAI-compatible `POST /v1/chat/completions` endpoint through a separately secured HTTPS gateway.
+
+- Configure `AEGIS_OLLAMA_BASE_URL` as the gateway HTTPS origin only; AEGIS appends the fixed chat-completions path.
+- Configure `AEGIS_OLLAMA_API_KEY` as a server-side bearer credential that the gateway itself validates. A normal local Ollama listener does not enforce this credential by default.
+- Configure `AEGIS_OLLAMA_MODEL` explicitly using the model tag available on the Ollama host.
+- The adapter rejects HTTP, local-only hostnames, credentials, custom ports, paths, query strings and fragments. It never accepts a destination from the browser.
+- Requests use bounded AEGIS messages, a 60-second timeout, redirect rejection, SSE validation and generic upstream errors.
+- Provider-originated tool calling is disabled. AEGIS Sentinel remains the independent permission authority.
+- No automatic paid fallback occurs if the Ollama host or gateway is unavailable.
+
+Do not expose Ollama's unauthenticated port directly to the public internet. A Cloudflare Tunnel or equivalent private ingress may be used, but it must terminate behind an authentication layer that validates the configured bearer key. A tunnel alone is not authentication. Cloudflare Pages cannot reach Ollama on a user's `localhost`, and a browser on an iPad/phone cannot assume access to another device's loopback interface.
+
+The host must run Ollama and have the selected model downloaded. Model availability, hardware fit, latency and quality must be benchmarked on that host before choosing a default.
+
 ## Next provider adapters
 
-- OpenAI-compatible endpoint adapter: fixed/allowlisted server-side base URL, provider/model registry, bounded SSE parser and no browser-controlled destinations.
-- Local Ollama/LM Studio: private network/local gateway adapter, explicit reachability and CORS/network constraints; do not assume an iPad browser can reach a host service.
 - Additional providers only after endpoint, auth, rate limit, model IDs, streaming format, error mapping, cost and data handling are verified.
 
 ## Verification
