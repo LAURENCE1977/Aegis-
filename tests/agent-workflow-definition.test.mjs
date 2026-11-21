@@ -56,7 +56,7 @@ test('rejects duplicate step identifiers', () => {
 test('rejects dependencies that point forward or to unknown steps', () => {
   const input = structuredClone(valid);
   input.steps[0].dependsOn = ['analyse-findings'];
-  assert.throws(() => createAgentWorkflowDefinition(input), /dependency|precede|unknown/i);
+  assert.throws(() => createAgentWorkflowDefinition(input), /dependenc|precede|unknown/i);
 });
 
 test('requires human review for workspace writes and test execution capabilities', () => {
