@@ -33,14 +33,15 @@ function bucketWith(object, onGet = () => {}) {
 }
 
 function objectWith(overrides = {}) {
+  const { customMetadata = {}, httpMetadata, ...rest } = overrides;
   return {
     size: bytes.byteLength,
-    customMetadata: { ...metadata, ...(overrides.customMetadata || {}) },
-    httpMetadata: { contentType: 'application/json' },
+    httpMetadata: httpMetadata || { contentType: 'application/json' },
     async arrayBuffer() {
       return bytes.slice().buffer;
     },
-    ...overrides,
+    ...rest,
+    customMetadata: { ...metadata, ...customMetadata },
   };
 }
 
