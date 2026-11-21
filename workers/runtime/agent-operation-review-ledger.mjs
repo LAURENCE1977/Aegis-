@@ -1,4 +1,4 @@
-import { canonicalizeInput, digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
+import { digestCanonicalInput } from '../../functions/lib/canonical-input.mjs';
 
 const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
 const EVENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,99}$/;
