@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAgentOperationRequest } from '../workers/runtime/agent-operation-request.mjs';
+import { digestCanonicalInput } from '../functions/lib/canonical-input.mjs';
 import { createAgentWorkflowDefinition } from '../workers/runtime/agent-workflow-definition.mjs';
 import { createAgentWorkflowRun } from '../workers/runtime/agent-workflow-run.mjs';
 import { createAgentWorkflowCheckpoint } from '../workers/runtime/agent-workflow-checkpoint.mjs';
@@ -91,12 +92,10 @@ test('rejects a checkpoint that is not an evidence-reference observation', async
   );
 });
 
-test('rejects a checkpoint with no evidence references', async () => {
-  const empty = await createAgentWorkflowCheckpoint({
-    run, definition, checkpointId: 'checkpoint-empty-0001', sequence: 2,
-    observedAt: '2026-11-21T15:11:00.000Z', eventType: 'step_progress_observed',
-    stepId: 'prepare-change',
-  });
+test('rejects a forged evidence checkpoint with an empty evidence list', async () => {
+  const empty = { ...checkpoint, evidence: [] };
+  const { checkpointDigest, ...unsigned } = empty;
+  empty.checkpointDigest = await digestCanonicalInput(unsigned);
   await assert.rejects(
     () => createAgentOperationRequest({ ...input, checkpoint: empty }),
     /evidence/i,
