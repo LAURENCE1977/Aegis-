@@ -9,6 +9,16 @@ function isPlainRecord(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+function assertDataRecord(value, label) {
+  if (!isPlainRecord(value)) throw new TypeError(label + ' must be a plain object.');
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (typeof key !== 'string' || !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError(label + ' cannot contain symbols, accessors or hidden fields.');
+    }
+  }
+}
+
 function canonicalTimestamp(value, label) {
   if (typeof value !== 'string') throw new TypeError(label + ' must be a canonical UTC timestamp.');
   const parsed = new Date(value);
@@ -30,13 +40,14 @@ function deepFreeze(value) {
  * create an agent session, or authorise execution.
  */
 export async function createAgentWorkflowRun(input) {
-  if (!isPlainRecord(input) ||
-      Object.keys(input).some(key => !['definition', 'runId', 'createdAt', 'observedAt'].includes(key))) {
-    throw new TypeError('Workflow run input must be a plain object with only supported fields.');
+  assertDataRecord(input, 'Workflow run input');
+  if (Object.keys(input).some(key => !['definition', 'runId', 'createdAt', 'observedAt'].includes(key))) {
+    throw new TypeError('Workflow run input contains an unsupported field.');
   }
-  if (!isPlainRecord(input.definition)) {
-    throw new TypeError('A validated workflow definition is required.');
-  }
+  assertDataRecord(input.definition, 'Workflow definition');
+  // Canonicalize before reading any definition property so accessors are rejected
+  // without executing untrusted getter code.
+  const suppliedDefinition = canonicalizeInput(input.definition);
   if (typeof input.runId !== 'string' || !ID_PATTERN.test(input.runId)) {
     throw new TypeError('Workflow run identifier is invalid.');
   }
@@ -57,7 +68,7 @@ export async function createAgentWorkflowRun(input) {
     createdAt: source.createdAt,
     steps: source.steps,
   });
-  if (canonicalizeInput(source) !== canonicalizeInput(normalized)) {
+  if (suppliedDefinition !== canonicalizeInput(normalized)) {
     throw new TypeError('Workflow definition contains fields or values outside its validated contract.');
   }
 
