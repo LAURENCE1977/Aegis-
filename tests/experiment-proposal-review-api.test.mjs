@@ -11,7 +11,7 @@ const token = 'proposal-review-runtime-token-with-at-least-32-characters';
 const secret = 'proposal-review-pages-session-secret';
 const session = await createSessionToken(secret);
 const workloadDigest = 'sha256:' + 'a'.repeat(64);
-const proposalId = 'proposal:review-benchmark:aaaaaaaaaaaa:candidate-a:record-old:record-new';
+const proposalId = 'proposal:v1:review-benchmark:aaaaaaaaaaaa:candidate-a:record-old:record-new';
 
 class ReviewD1 {
   constructor(records = []) {
