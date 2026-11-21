@@ -14,12 +14,15 @@ function isRecord(value) {
 }
 
 function timestamp(value, field) {
-  if (typeof value !== 'string') throw new TypeError(field + ' timestamp is required.');
-  const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+  if (typeof value !== 'string' ||
+      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(value)) {
     throw new TypeError(field + ' timestamp must be canonical UTC.');
   }
-  return value;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new TypeError(field + ' timestamp must be canonical UTC.');
+  }
+  return parsed.toISOString();
 }
 
 function boundedText(value, field, max, optional = false) {
