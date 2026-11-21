@@ -601,7 +601,7 @@ const MAX_AGENT_OPERATION_BODY_BYTES = 32 * 1024;
 const MAX_AGENT_OPERATION_REVIEW_BODY_BYTES = 4096;
 
 async function readRuntimeJson(request, maxBytes) {
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return { ok: false, response: json({ error: 'Content-Type must be application/json.' }, 415) };
   }
   const declaredLength = Number(request.headers.get('Content-Length') || 0);
