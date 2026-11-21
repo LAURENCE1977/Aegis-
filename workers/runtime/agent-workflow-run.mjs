@@ -71,6 +71,9 @@ export async function createAgentWorkflowRun(input) {
   if (suppliedDefinition !== canonicalizeInput(normalized)) {
     throw new TypeError('Workflow definition contains fields or values outside its validated contract.');
   }
+  if (Date.parse(createdAt) < Date.parse(normalized.createdAt)) {
+    throw new RangeError('Workflow run cannot predate its pinned workflow definition.');
+  }
 
   const definitionDigest = await digestCanonicalInput(normalized);
   const steps = normalized.steps.map(step => ({
