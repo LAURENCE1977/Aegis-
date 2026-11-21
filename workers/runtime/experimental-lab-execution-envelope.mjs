@@ -76,8 +76,11 @@ function validateProfile(value) {
 
 function validateSource(value) {
   exactRecord(value, ['repositoryUrl', 'commitSha', 'treeDigest'], 'Pinned source');
-  if (typeof value.repositoryUrl !== 'string' ||
-      !/^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9_.-]+$/.test(value.repositoryUrl)) {
+  const repositoryUrlMatch = typeof value.repositoryUrl === 'string'
+    ? /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9_.-]{1,100})$/.exec(value.repositoryUrl)
+    : null;
+  if (!repositoryUrlMatch || repositoryUrlMatch[2] === '.' || repositoryUrlMatch[2] === '..' ||
+      repositoryUrlMatch[2].endsWith('.') || repositoryUrlMatch[2].endsWith('.git')) {
     throw new TypeError('Pinned source must use a canonical public GitHub repository URL.');
   }
   if (typeof value.commitSha !== 'string' || !COMMIT_PATTERN.test(value.commitSha)) {
