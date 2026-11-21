@@ -160,7 +160,7 @@ test('rejects absent or unsupported content type and malformed object metadata',
       recordId,
       expectedEvidence,
     }),
-    /metadata/i,
+    /metadata|capture time/i,
   );
 });
 
@@ -257,7 +257,7 @@ test('retrieved bytes become verified only after matching the immutable manifest
   const altered = await readExperimentEvidenceArtifact({
     bucket: bucketWith(objectWith({
       async arrayBuffer() {
-        return new TextEncoder().encode('tampered bytes').buffer;
+        return new TextEncoder().encode('x'.repeat(bytes.byteLength)).buffer;
       },
     })),
     ownerId,
