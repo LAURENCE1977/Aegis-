@@ -135,3 +135,105 @@ export function fitMessagesToContext(messages, maxInputTokens) {
   kept.reverse();
   return system ? [system, ...kept] : kept;
 }
+
+
+const TASK_SIGNALS = Object.freeze({
+  simple: Object.freeze(['calculate', 'compute', 'convert', 'count', 'sort', 'format', 'extract', 'validate']),
+  chat: Object.freeze(['explain', 'describe', 'answer', 'discuss', 'draft', 'rewrite', 'summarise', 'summarize', 'translate']),
+  coding: Object.freeze(['debug', 'code', 'implement', 'program', 'refactor', 'compile', 'typescript', 'javascript', 'python', 'function', 'test']),
+  research: Object.freeze(['research', 'investigate', 'sources', 'source', 'evidence', 'latest', 'compare', 'survey', 'findings']),
+  reasoning: Object.freeze(['reason', 'prove', 'derive', 'solve', 'strategy', 'plan', 'design', 'evaluate', 'assess', 'analyse', 'analyze', 'decision', 'tradeoff']),
+});
+const ALLOWED_TASK_TYPES = new Set(Object.keys(TASK_SIGNALS));
+
+function validateTaskTranslationInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      (Object.getPrototypeOf(input) !== Object.prototype && Object.getPrototypeOf(input) !== null)) {
+    throw new TypeError('Task translation input must be a plain object');
+  }
+  const allowed = new Set(['objective', 'explicitType', 'requestedOutputTokens']);
+  for (const key of Reflect.ownKeys(input)) {
+    if (typeof key !== 'string' || !allowed.has(key)) {
+      throw new TypeError('Task translation input contains an unknown field');
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(input, key);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('Task translation input must not contain accessors');
+    }
+  }
+  if (typeof input.objective !== 'string' || !input.objective.trim() ||
+      input.objective.length > 2000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(input.objective)) {
+    throw new TypeError('Task objective must contain 1–2000 safe characters');
+  }
+  if (input.explicitType !== undefined && !ALLOWED_TASK_TYPES.has(input.explicitType)) {
+    throw new TypeError('Unsupported explicit task type');
+  }
+  if (input.requestedOutputTokens !== undefined) {
+    requirePositiveInteger(input.requestedOutputTokens, 'requested output tokens');
+    if (input.requestedOutputTokens > 1000000) {
+      throw new RangeError('Requested output token budget is too large');
+    }
+  }
+}
+
+function freezeTaskEvidence(evidence) {
+  return Object.freeze(evidence.map(item => Object.freeze({
+    task: item.task,
+    signals: Object.freeze([...item.signals]),
+    score: item.score,
+  })));
+}
+
+/**
+ * Translate a bounded objective into a conservative task descriptor.
+ * This is lexical planning only: it does not invoke models, tools or executors.
+ * Ambiguous requests remain unknown rather than being guessed.
+ */
+export function translateTask(input) {
+  validateTaskTranslationInput(input);
+  const objective = input.objective.trim();
+  const tokens = new Set(objective.toLocaleLowerCase().match(/[a-z0-9]+/g) ?? []);
+  let task = input.explicitType ?? 'unknown';
+  let classificationSource = input.explicitType === undefined ? 'lexical' : 'explicit';
+  let evidence = [];
+
+  if (input.explicitType !== undefined) {
+    evidence = [{ task, signals: [], score: null }];
+  } else {
+    const scores = Object.entries(TASK_SIGNALS).map(([candidate, signals]) => ({
+      task: candidate,
+      signals: signals.filter(signal => tokens.has(signal)),
+    })).map(item => ({ ...item, score: item.signals.length }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.task.localeCompare(b.task));
+    if (scores.length) {
+      const topScore = scores[0].score;
+      const leaders = scores.filter(item => item.score === topScore);
+      evidence = leaders;
+      if (leaders.length === 1) task = leaders[0].task;
+    }
+  }
+
+  const routeStrategy = task === 'unknown' ? 'clarify'
+    : task === 'simple' ? 'deterministic_first' : 'model_candidate';
+  const result = {
+    schemaVersion: 'aegis.task-translation.v1',
+    objective,
+    task,
+    classificationSource,
+    evidence: freezeTaskEvidence(evidence),
+    routeStrategy,
+    modelRequired: task === 'unknown' ? null : task !== 'simple',
+    resources: Object.freeze({
+      inputBytes: new TextEncoder().encode(objective).byteLength,
+      estimatedInputTokens: estimateTokenCount(objective),
+      requestedOutputTokens: input.requestedOutputTokens ?? null,
+      cpuEstimate: null,
+      memoryEstimateBytes: null,
+      latencyEstimateMs: null,
+    }),
+    execution: 'not_authorised',
+    toolsInvoked: false,
+  };
+  return Object.freeze(result);
+}
