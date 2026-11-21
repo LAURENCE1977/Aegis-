@@ -162,7 +162,7 @@ function validateTaskTranslationInput(input) {
     }
   }
   if (typeof input.objective !== 'string' || !input.objective.trim() ||
-      input.objective.length > 2000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(input.objective)) {
+      input.objective.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(input.objective)) {
     throw new TypeError('Task objective must contain 1–2000 safe characters');
   }
   if (input.explicitType !== undefined && !ALLOWED_TASK_TYPES.has(input.explicitType)) {
