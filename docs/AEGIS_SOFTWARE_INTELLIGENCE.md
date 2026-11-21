@@ -33,6 +33,24 @@ It:
 
 The review signals are triage hints, not security verdicts. An old repository is not automatically malicious; a recent repository is not automatically safe; a licence identifier is not a licence-compliance opinion.
 
+
+## Pinned source capability analysis
+
+`assessPinnedSoftwareSource` in `workers/runtime/software-intelligence-analysis.mjs` adds a deterministic, local analysis step over source text that has already been read through AEGIS Forge's existing `/api/forge/inspect` and `/api/forge/read` flow. It deliberately does not add a second repository fetcher.
+
+The analysis contract:
+- binds findings to a canonical repository, immutable commit SHA, tree SHA and per-file blob SHA;
+- accepts at most 20 files, 32 KiB per file and 256 KiB total UTF-8 text;
+- accepts only a narrow text-file extension allowlist and rejects hidden/control paths, dependency/vendor/build directories and sensitive key/certificate paths;
+- validates declared byte sizes and rejects duplicate paths or blob references;
+- matches a fixed, version-controlled set of capability indicators for agent orchestration, MCP, security isolation, memory, observability, provider routing and testing;
+- emits only the capability ID, a candidate_signal confidence label, matched terms and exact path/blob references — never source excerpts;
+- returns deterministic, deeply frozen results and always leaves readiness unassessed.
+
+These are lexical indicators, not proof that a repository implements a capability correctly, securely or completely. They do not assess vulnerabilities, licence compliance, dependency provenance, code quality or runtime behaviour. A lack of matches is not evidence that a capability is absent. Source text remains untrusted, and the analysis has no network, shell, installation, execution, configuration or approval authority.
+
+The existing Forge inspection limits remain the outer boundary: public GitHub only, pinned tree/blob identities, fixed GitHub API origin, redirects rejected, bounded responses and no source execution.
+
 ## Sources and scope
 
 The initial source adapter is GitHub public repository metadata. Future read-only adapters may include:
