@@ -73,3 +73,6 @@ Proposal review observations are recorded separately from the immutable experime
 - Every returned event explicitly reports `approvalGranted: false` and `execution: not_authorised`. A review decision is not a Sentinel decision and cannot authorise a change.
 
 This ledger captures human review, not deployment readiness. Evidence artifact retrieval and independent verification remain a separate future capability; references and record digests alone do not prove the truth of an external artifact.
+
+
+Proposal IDs are versioned (`proposal:v1:` for the current contract). A future incompatible proposal interpretation must increment the version, so old human-review events cannot silently attach to a new proposal definition.
