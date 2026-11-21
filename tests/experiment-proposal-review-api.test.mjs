@@ -183,3 +183,29 @@ test('review store is principal-scoped and rejects attempts to label a review as
   assert.equal((await listExperimentProposalReviews(DB,'other-owner')).length,0);
   await assert.rejects(()=>appendExperimentProposalReview(DB,'owner',{...event,ownerId:'attacker'}),/owner/i);
 });
+
+
+test('runtime retries an identical review event without duplicating the append-only record',async()=>{
+  const records=[
+    await makeRecord('record-old','2026-11-20T10:00:00.000Z',200),
+    await makeRecord('record-new','2026-11-20T11:00:00.000Z',150),
+  ];
+  const DB=new ReviewD1(records);
+  const requestBody={
+    eventId:'review-event-idempotent',
+    proposalId,
+    decision:'needs_more_evidence',
+    note:'Verify the source artifacts independently.',
+  };
+  const first=await handleRuntimeFetch(
+    runtimeRequest('/v1/experiment-records/proposals/reviews','POST',requestBody),
+    {AEGIS_JOB_TOKEN:token,DB},
+  );
+  const second=await handleRuntimeFetch(
+    runtimeRequest('/v1/experiment-records/proposals/reviews','POST',requestBody),
+    {AEGIS_JOB_TOKEN:token,DB},
+  );
+  assert.equal(first.status,201);
+  assert.equal(second.status,200);
+  assert.equal(DB.events.size,1);
+});
