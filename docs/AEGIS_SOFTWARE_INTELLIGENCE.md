@@ -106,3 +106,20 @@ A proposal must never be labelled approved merely because an LLM, evaluator, con
 8. Human review and Sentinel-gated adoption.
 
 No stage implicitly enables the next stage. Each new data source, permission, network path, execution capability or production mutation requires its own review and tests.
+
+
+## Defensive advisory evidence
+
+`createAdvisoryEvidenceRecord` in `workers/runtime/advisory-evidence.mjs` is a pure, bounded normalizer for OSV-shaped vulnerability advisory data. It establishes a safe evidence contract before any external advisory feed is connected.
+
+The record:
+- preserves the advisory identifier, modified/published timestamps and bounded summary;
+- records affected ecosystem/package identities, explicit affected versions and version-range events;
+- retains source-supplied CVSS vectors without calculating or inventing a severity score;
+- accepts credential-free HTTPS references only;
+- rejects malformed identities, inconsistent timestamps, unsupported range events and oversized collections;
+- omits arbitrary advisory details, database-specific extensions and other unreviewed source fields;
+- marks all source content untrusted and all assessment status unassessed;
+- grants no remediation, traffic-blocking or configuration-change authority and requires Sentinel approval.
+
+This normalizer does not query OSV, determine whether a deployed dependency is affected, calculate exploitability, or recommend a live response. Those require separate version-specific evidence, source provenance, confidence handling and human/Sentinel review. A CVSS vector supplied by an upstream database is evidence of what that source reported, not an AEGIS severity verdict.
