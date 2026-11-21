@@ -1,4 +1,5 @@
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
+const PRINCIPAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,79}$/;
+const RECORD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const EVIDENCE_KINDS = new Set(['safety', 'criterion', 'benchmark', 'cost', 'runtime']);
 const MEDIA_TYPES = new Set([
@@ -10,9 +11,15 @@ const DEFAULT_MAX_BYTES = 1024 * 1024;
 const MAX_ALLOWED_BYTES = 10 * 1024 * 1024;
 const OBJECT_PREFIX = 'aegis/evidence/v1';
 
-function validateId(value, label) {
-  if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
-    throw new TypeError(label + ' must be a bounded identifier.');
+function validateOwnerId(value) {
+  if (typeof value !== 'string' || !PRINCIPAL_PATTERN.test(value)) {
+    throw new TypeError('Authenticated owner ID must be a bounded principal identifier.');
+  }
+}
+
+function validateRecordId(value) {
+  if (typeof value !== 'string' || !RECORD_ID_PATTERN.test(value)) {
+    throw new TypeError('Experiment record ID must be a bounded identifier.');
   }
 }
 
@@ -56,8 +63,8 @@ async function sha256Hex(value) {
  * The evidence reference is hashed so it is never interpreted as a path.
  */
 export async function evidenceArtifactObjectKey({ ownerId, recordId, ref } = {}) {
-  validateId(ownerId, 'Authenticated owner ID');
-  validateId(recordId, 'Experiment record ID');
+  validateOwnerId(ownerId);
+  validateRecordId(recordId);
   validateRef(ref);
   return OBJECT_PREFIX + '/' + ownerId + '/' + recordId + '/' + await sha256Hex(ref);
 }
