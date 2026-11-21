@@ -239,7 +239,7 @@ function resolveMagnitudeConfig(env) {
   let url;
   try { url = new URL(baseUrl); } catch { throw new Error('Magnitude gateway URL is invalid.'); }
   const hostname = url.hostname.toLowerCase();
-  const hostnameIsSafe = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname);
+  const hostnameIsSafe = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(hostname);
   if (url.protocol !== 'https:' || !hostnameIsSafe ||
       ['localhost', 'local', 'internal', 'lan', 'home', 'test', 'invalid', 'example'].some(suffix =>
         hostname === suffix || hostname.endsWith('.' + suffix)) ||
@@ -248,7 +248,7 @@ function resolveMagnitudeConfig(env) {
     throw new Error('Magnitude gateway must be a public HTTPS origin without credentials or a custom path.');
   }
   const key = env.AEGIS_MAGNITUDE_API_KEY;
-  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 || /[\\r\\n\\u0000]/.test(key)) {
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 || /[\r\n\u0000]/.test(key)) {
     throw new Error('Magnitude network access key is not configured.');
   }
   const model = env.AEGIS_MAGNITUDE_MODEL;
