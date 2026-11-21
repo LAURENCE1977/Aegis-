@@ -77,7 +77,7 @@ test('Ollama rejects non-HTTPS, credential-bearing, local and path-overridden ga
       env: { ...baseEnv, AEGIS_OLLAMA_BASE_URL: endpoint },
       messages: [{ role: 'user', content: 'hello' }],
       fetchImpl: async () => { throw new Error('must not fetch'); },
-    }), /Ollama endpoint/i);
+    }), /Ollama gateway/i);
   }
 });
 
