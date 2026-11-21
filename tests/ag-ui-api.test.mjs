@@ -225,6 +225,17 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
   assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
 });
 
+test('AG-UI reports BitNet as not ready until its server endpoint, proxy key and model are configured',async()=>{
+  const response=await onRequestPost({
+    request:await request(input()),
+    env:{...envBase,AEGIS_MODEL_PROVIDER:'bitnet'},
+    fetchImpl:async()=>{throw new Error('must not fetch');},
+  });
+  assert.equal(response.status,503);
+  const events=(await response.text()).trim().split('\\n\\n').map(frame=>JSON.parse(frame.slice(6)));
+  assert.equal(events.at(-1).code,'PROVIDER_NOT_READY');
+});
+
 test('AG-UI marks a response stopped by the output safety cap as cancelled, not successful',async()=>{
   let cancelled=false;
   const largeStream=new ReadableStream({
