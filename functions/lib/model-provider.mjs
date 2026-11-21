@@ -137,7 +137,7 @@ function resolveAxForgeConfig(env) {
 function resolveOpenRouterConfig(env) {
   const key = env.OPENROUTER_API_KEY;
   if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
-      /[\\r\\n\\u0000]/.test(key)) {
+      /[\r\n\u0000]/.test(key)) {
     throw new Error('OpenRouter API key is not configured.');
   }
   const model = env.AEGIS_OPENROUTER_MODEL;
