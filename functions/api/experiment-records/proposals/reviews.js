@@ -3,11 +3,11 @@ import {
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
-} from '../../lib/owner-api.mjs';
+} from '../../../lib/owner-api.mjs';
 import {
   callExperimentRuntime,
   experimentRuntimeError,
-} from '../../lib/experiment-record-runtime.mjs';
+} from '../../../lib/experiment-record-runtime.mjs';
 
 const OWNER_ID = 'owner';
 const REVIEW_PATH = '/v1/experiment-records/proposals/reviews';
