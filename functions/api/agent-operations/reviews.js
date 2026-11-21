@@ -6,7 +6,6 @@ import {
 } from '../../lib/owner-api.mjs';
 import {
   callExperimentRuntime,
-  experimentRuntimeError,
 } from '../../lib/experiment-record-runtime.mjs';
 
 const OWNER_ID = 'owner';
@@ -16,6 +15,14 @@ function validLimit(value) {
   if (value === null) return 50;
   if (!/^(?:[1-9]|[1-9][0-9]|100)$/.test(value)) return null;
   return Number(value);
+}
+
+function runtimeError(result, fallback) {
+  if (result?.status === 400) return { error: 'Agent Operations request is invalid.' };
+  if (result?.status === 404) return { error: 'Agent Operations request was not found.' };
+  if (result?.status === 409) return { error: 'Agent Operations request or review conflicts with current immutable evidence.' };
+  if (result?.status === 413) return { error: 'Agent Operations request is too large.' };
+  return { error: fallback };
 }
 
 function exactKeys(value, keys) {
@@ -41,7 +48,7 @@ export async function onRequest({ request, env }) {
     );
     if (!result.ok) {
       const status = [400, 404, 409, 413].includes(result.status) ? result.status : 503;
-      return jsonResponse(experimentRuntimeError(result, 'Agent operation review history is temporarily unavailable.'), status);
+      return jsonResponse(runtimeError(result, 'Agent operation review history is temporarily unavailable.'), status);
     }
     if (!Array.isArray(result.payload?.reviews)) {
       return jsonResponse({ error: 'Agent operation review history is temporarily unavailable.' }, 503);
@@ -72,7 +79,7 @@ export async function onRequest({ request, env }) {
     if (status === 409) {
       return jsonResponse({ error: 'The review no longer matches the current operation request.' }, status);
     }
-    return jsonResponse(experimentRuntimeError(result, 'Agent operation review could not be saved.'), status);
+    return jsonResponse(runtimeError(result, 'Agent operation review could not be saved.'), status);
   }
   const review = result.payload?.review;
   if (!review || review.requestId !== body.requestId ||
