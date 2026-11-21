@@ -116,7 +116,9 @@ export async function verifyExperimentEvidenceArtifact({
   }
   if (capturedAtMs > verifiedAtMs) throw new TypeError('Artifact capture time cannot be in the future.');
 
-  const actualDigest = await digestBytes(artifact.bytes);
+  // Snapshot caller-owned memory before the asynchronous digest operation.
+  const stableBytes = new Uint8Array(artifact.bytes);
+  const actualDigest = await digestBytes(stableBytes);
   if (actualDigest !== expectedEvidence.sha256) {
     throw new TypeError('Evidence artifact digest mismatch.');
   }
@@ -131,7 +133,7 @@ export async function verifyExperimentEvidenceArtifact({
     capturedAt: artifact.capturedAt,
     verifiedAt: now,
     mediaType: artifact.mediaType,
-    byteLength: artifact.bytes.byteLength,
+    byteLength: stableBytes.byteLength,
     verification: 'verified',
   });
 }
