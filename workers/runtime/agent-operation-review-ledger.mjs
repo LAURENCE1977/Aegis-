@@ -184,12 +184,15 @@ export async function appendAgentOperationReview(db, principalId, input) {
     stored.request_id, stored.request_digest, stored.action_digest, stored.evidence_digest,
     stored.decision, stored.note, stored.created_at,
   ];
-  if (stored.principal_id !== principalId || JSON.stringify(actual) !== JSON.stringify(expected)) {
+  const created = Number(inserted?.meta?.changes || 0) === 1;
+  if (stored.principal_id !== principalId ||
+      JSON.stringify(actual.slice(0, 6)) !== JSON.stringify(expected.slice(0, 6)) ||
+      (created && actual[6] !== expected[6])) {
     throw new Error('Review event identifier already exists with different immutable content.');
   }
 
   return Object.freeze({
-    created: Number(inserted?.meta?.changes || 0) === 1,
+    created,
     review: mapEvent(stored, principalId),
   });
 }
