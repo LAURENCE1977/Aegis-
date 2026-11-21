@@ -28,3 +28,14 @@ This slice does not persist candidates, perform licence review, scan dependencie
 ## Candidate review lifecycle
 
 An inspected repository can be saved as an owner-scoped Forge candidate, pinned to the default-branch tree SHA. Candidate creation always starts with `decision: unassessed` and `licence.review: review-required`; GitHub's SPDX metadata is a hint, not legal clearance. The owner must attest to reviewing the actual licence text, provide an HTTPS evidence URL and a review note before choosing reuse/adapt/combine or marking a candidate approved. D1 triggers enforce the licence gate, immutable source identity and append-only candidate events. Candidate review does not install or execute the repository.
+
+
+## Evidence-bound capability analysis
+
+- `POST /api/forge/analyse` accepts exactly one canonical public GitHub `sourceUrl`, after owner authentication and same-origin validation.
+- It reuses the existing Forge tree inspection and immutable blob reader. It does not create a second fetcher or accept arbitrary URLs.
+- It reads at most 20 selected files, bounded by the existing 32 KiB per-file limit and 256 KiB aggregate analysis limit.
+- Every blob response must match the SHA and byte size recorded in the inspected tree; a mismatch fails closed.
+- The deterministic analyser emits only fixed capability IDs, matched terms and path/blob evidence references. It does not return source excerpts.
+- The response reports available, selected and skipped file counts and propagates the tree truncation signal. It never claims complete coverage when the sample is incomplete.
+- Findings are lexical candidate signals, not security verdicts or proof of implementation quality. Readiness remains unassessed; no code is executed, installed, built or authorised.
