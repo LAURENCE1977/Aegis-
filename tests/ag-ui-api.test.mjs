@@ -91,7 +91,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\r?\n\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -450,7 +450,7 @@ test('AG-UI marks Magnitude as not ready when its private inference gateway conf
     fetchImpl: async () => { called = true; throw new Error('must not fetch'); },
   });
   assert.equal(response.status, 503);
-  const frames = (await response.text()).trim().split(/\\r?\\n\\r?\\n/)
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/)
     .map(frame => JSON.parse(frame.slice(6)));
   assert.equal(frames[0].type, 'RUN_ERROR');
   assert.equal(frames[0].code, 'PROVIDER_NOT_READY');
