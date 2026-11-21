@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { verifyExperimentEvidenceArtifact } from '../workers/runtime/experiment-evidence-verifier.mjs';
 import {
   evidenceArtifactObjectKey,
   readExperimentEvidenceArtifact,
@@ -231,4 +232,46 @@ test('accepts the runtime principal identifier character set for authenticated o
     ref: expectedEvidence.ref,
   });
   assert.ok(key.startsWith('aegis/evidence/v1/owner@example.test/'));
+});
+
+test('retrieved bytes become verified only after matching the immutable manifest digest', async () => {
+  const digest = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+  const manifest = { ...expectedEvidence, sha256: digest };
+  const retrieved = await readExperimentEvidenceArtifact({
+    bucket: bucketWith(objectWith()),
+    ownerId,
+    recordId,
+    expectedEvidence: manifest,
+  });
+  const attestation = await verifyExperimentEvidenceArtifact({
+    ownerId,
+    recordId,
+    artifact: retrieved,
+    expectedEvidence: manifest,
+    now: '2026-11-21T10:05:00.000Z',
+  });
+
+  assert.equal(attestation.sha256, digest);
+  assert.equal(attestation.verification, 'verified');
+
+  const altered = await readExperimentEvidenceArtifact({
+    bucket: bucketWith(objectWith({
+      async arrayBuffer() {
+        return new TextEncoder().encode('tampered bytes').buffer;
+      },
+    })),
+    ownerId,
+    recordId,
+    expectedEvidence: manifest,
+  });
+  await assert.rejects(
+    () => verifyExperimentEvidenceArtifact({
+      ownerId,
+      recordId,
+      artifact: altered,
+      expectedEvidence: manifest,
+      now: '2026-11-21T10:05:00.000Z',
+    }),
+    /digest mismatch/i,
+  );
 });
