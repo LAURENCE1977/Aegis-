@@ -42,8 +42,10 @@ test('returns honest input sizing without inventing CPU, memory or latency estim
     requestedOutputTokens: 300,
   });
   assert.equal(result.resources.inputBytes, Buffer.byteLength('Summarise this report', 'utf8'));
-  assert.ok(result.resources.estimatedInputTokens >= 1);
+  assert.ok(result.resources.objectiveEstimatedInputTokens >= 1);
   assert.equal(result.resources.requestedOutputTokens, 300);
+  assert.equal(result.modelRequired, null);
+  assert.equal(result.modelCandidate, true);
   assert.equal(result.resources.cpuEstimate, null);
   assert.equal(result.resources.memoryEstimateBytes, null);
   assert.equal(result.resources.latencyEstimateMs, null);
