@@ -7,7 +7,6 @@ const MAX_RANGES = 20;
 const MAX_EVENTS = 100;
 const MAX_VERSIONS = 200;
 const MAX_REFERENCES = 20;
-const MAX_SEVERITY = 10;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -15,7 +14,7 @@ function isRecord(value) {
 
 function timestamp(value, field) {
   if (typeof value !== 'string' ||
-      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(value)) {
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
     throw new TypeError(field + ' timestamp must be canonical UTC.');
   }
   const parsed = new Date(value);
@@ -118,6 +117,9 @@ export function createAdvisoryEvidenceRecord({ advisory, observedAt } = {}) {
   const modifiedAt = timestamp(advisory.modified, 'Modified');
   const publishedAt = advisory.published === undefined ? undefined : timestamp(advisory.published, 'Published');
   const observed = timestamp(observedAt, 'Observed');
+  if (Date.parse(observed) > Date.now()) {
+    throw new TypeError('Future observation timestamps are not accepted.');
+  }
   if (Date.parse(modifiedAt) > Date.parse(observed) ||
       (publishedAt && Date.parse(publishedAt) > Date.parse(modifiedAt))) {
     throw new TypeError('Advisory timestamps are not chronologically consistent.');
