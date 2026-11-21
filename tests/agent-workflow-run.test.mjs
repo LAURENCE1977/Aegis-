@@ -78,8 +78,11 @@ test('produces the same definition digest for equivalent key ordering', async ()
 
 test('pins changes to the workflow definition with a different digest', async () => {
   const changed = createAgentWorkflowDefinition({
-    ...JSON.parse(JSON.stringify(definition)),
+    workflowId: definition.workflowId,
     title: 'Updated defensive software review',
+    version: definition.version,
+    createdAt: definition.createdAt,
+    steps: JSON.parse(JSON.stringify(definition.steps)),
   });
   const [left, right] = await Promise.all([
     createAgentWorkflowRun({ definition, ...metadata }),
