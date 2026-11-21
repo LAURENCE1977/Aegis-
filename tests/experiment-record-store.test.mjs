@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateAgentExperiment } from '../workers/runtime/agent-evaluation.mjs';
 import { createAgentExperimentRecord } from '../workers/runtime/agent-experiment-record.mjs';
+import { createHash } from 'node:crypto';
+import { evidenceArtifactObjectKey } from '../workers/runtime/experiment-evidence-source.mjs';
+import { getVerifiedExperimentEvidenceArtifact } from '../workers/runtime/experiment-evidence-service.mjs';
 import {
   appendExperimentRecord,
   getExperimentRecord,
@@ -115,7 +118,7 @@ const context = {
   timeoutMs: 1000,
 };
 
-async function makeRecord(id = 'record-1', ownerId = 'principal-a', createdAt = '2026-11-20T20:05:00.000Z') {
+async function makeRecord(id = 'record-1', ownerId = 'principal-a', createdAt = '2026-11-20T20:05:00.000Z', evidenceDigestOverrides = {}) {
   const evaluation = evaluateAgentExperiment({
     priority: 'lowest_cost',
     criteria,
@@ -154,7 +157,7 @@ async function makeRecord(id = 'record-1', ownerId = 'principal-a', createdAt = 
     evidence: refs.map(({ ref, kind, sha256 }) => ({
       ref,
       kind,
-      sha256: sha256 || 'sha256:' + 'b'.repeat(64),
+      sha256: evidenceDigestOverrides[ref] || sha256 || 'sha256:' + 'b'.repeat(64),
       capturedAt: '2026-11-20T20:00:00.000Z',
     })),
   });
@@ -267,4 +270,125 @@ test('a tombstoned record cannot be restored by repeating the original append', 
     /tombstoned and cannot be restored/i,
   );
   assert.equal(await getExperimentRecord(db, 'principal-a', record.id), null);
+});
+
+
+test('loads a digest-verified record, retrieves its scoped artifact and returns only the attestation', async () => {
+  const db = new FakeD1();
+  const bytes = new TextEncoder().encode('trusted synthetic evidence');
+  const ref = 'safety:candidate-a';
+  const digest = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+  const record = await makeRecord('record-evidence', 'principal-a', '2026-11-20T20:05:00.000Z', {
+    [ref]: digest,
+  });
+  await appendExperimentRecord(db, 'principal-a', record);
+  const manifestEntry = record.evidence.find((entry) => entry.ref === ref);
+  const key = await evidenceArtifactObjectKey({ ownerId: 'principal-a', recordId: record.id, ref });
+  const bucket = {
+    async get(requestedKey) {
+      assert.equal(requestedKey, key);
+      return {
+        size: bytes.byteLength,
+        customMetadata: {
+          ownerId: 'principal-a',
+          recordId: record.id,
+          ref,
+          kind: manifestEntry.kind,
+          capturedAt: manifestEntry.capturedAt,
+        },
+        httpMetadata: { contentType: 'application/octet-stream' },
+        async arrayBuffer() { return bytes.slice().buffer; },
+      };
+    },
+  };
+
+  const result = await getVerifiedExperimentEvidenceArtifact({
+    db,
+    bucket,
+    principalId: 'principal-a',
+    recordId: record.id,
+    ref,
+    now: '2026-11-21T12:00:00.000Z',
+  });
+
+  assert.equal(result.status, 'verified');
+  assert.equal(result.attestation.sha256, digest);
+  assert.equal(result.attestation.ownerId, 'principal-a');
+  assert.equal(result.attestation.recordId, record.id);
+  assert.equal('bytes' in result, false);
+  assert.equal('bytes' in result.attestation, false);
+});
+
+test('does not access evidence storage when the authenticated principal cannot read the record', async () => {
+  const db = new FakeD1();
+  const record = await makeRecord('record-private');
+  await appendExperimentRecord(db, 'principal-a', record);
+  let storageRead = false;
+
+  const result = await getVerifiedExperimentEvidenceArtifact({
+    db,
+    bucket: { async get() { storageRead = true; return null; } },
+    principalId: 'principal-b',
+    recordId: record.id,
+    ref: 'safety:candidate-a',
+  });
+
+  assert.deepEqual(result, { status: 'record_not_found' });
+  assert.equal(storageRead, false);
+});
+
+test('distinguishes a missing manifest entry from a missing stored artifact', async () => {
+  const db = new FakeD1();
+  const record = await makeRecord('record-missing-evidence');
+  await appendExperimentRecord(db, 'principal-a', record);
+  const bucket = { async get() { return null; } };
+
+  const absentManifest = await getVerifiedExperimentEvidenceArtifact({
+    db, bucket, principalId: 'principal-a', recordId: record.id, ref: 'missing:ref',
+  });
+  assert.deepEqual(absentManifest, { status: 'evidence_not_found' });
+
+  const absentArtifact = await getVerifiedExperimentEvidenceArtifact({
+    db, bucket, principalId: 'principal-a', recordId: record.id, ref: 'safety:candidate-a',
+  });
+  assert.equal(absentArtifact.status, 'artifact_missing');
+  assert.equal(absentArtifact.ref, 'safety:candidate-a');
+  assert.equal('bytes' in absentArtifact, false);
+});
+
+test('fails closed when retrieved evidence bytes do not match the stored record digest', async () => {
+  const db = new FakeD1();
+  const bytes = new TextEncoder().encode('expected evidence payload');
+  const ref = 'safety:candidate-a';
+  const digest = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+  const record = await makeRecord('record-tampered-evidence', 'principal-a', '2026-11-20T20:05:00.000Z', {
+    [ref]: digest,
+  });
+  await appendExperimentRecord(db, 'principal-a', record);
+  const entry = record.evidence.find((item) => item.ref === ref);
+  const altered = new TextEncoder().encode('x'.repeat(bytes.byteLength));
+  const bucket = {
+    async get() {
+      return {
+        size: altered.byteLength,
+        customMetadata: {
+          ownerId: 'principal-a',
+          recordId: record.id,
+          ref,
+          kind: entry.kind,
+          capturedAt: entry.capturedAt,
+        },
+        httpMetadata: { contentType: 'application/octet-stream' },
+        async arrayBuffer() { return altered.slice().buffer; },
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => getVerifiedExperimentEvidenceArtifact({
+      db, bucket, principalId: 'principal-a', recordId: record.id, ref,
+      now: '2026-11-21T12:00:00.000Z',
+    }),
+    /digest mismatch/i,
+  );
 });
