@@ -51,3 +51,11 @@ Inbox persistence is not an approval mechanism. Every entry remains `awaiting_hu
 The supported outcomes are `accepted_for_sentinel_evaluation`, `rejected`, `needs_more_evidence` and `withdrawn`. Approval-like values such as `approved` and `execute` are rejected. Every returned event explicitly records `approvalGranted: false`, `execution: not_authorised` and `sentinelApprovalRequired: true`. Acceptance for Sentinel evaluation is not authorization to execute. Sentinel must independently assess and authorize the exact action at the eventual execution boundary.
 
 The ledger does not create an execution endpoint, capability grant, agent spawn, scheduler, network/MCP access, secret access, workspace mutation or deployment. HTTP route identity must be derived from verified server-side authentication.
+
+## Authenticated Agent Operations HTTP routes
+
+The runtime exposes `/v1/agent-operations` for owner-scoped inbox reads and request submissions, plus `/v1/agent-operations/reviews` for review history and append-only human decisions. Both routes require the runtime bearer token and the trusted single-owner principal assertion. Pages API routes additionally require the owner session, and writes require same-origin requests; the runtime token is never returned to the browser.
+
+A submitted operation must reference an existing checkpoint from the authenticated principal's persisted, digest-verified workflow history. The runtime rebuilds the request envelope and stores it only after checking the pinned workflow, checkpoint, action and evidence bindings. Review submissions carry a stable event ID and the exact request/action/evidence digests; the review ledger rechecks all bindings before appending. Retrying an identical review event remains idempotent even when the server acceptance timestamp differs.
+
+These routes only create and display review records. They do not execute proposed actions, create capability grants, spawn agents, call MCP, access secrets, mutate workspaces or deploy. A human review outcome such as `accepted_for_sentinel_evaluation` is not a Sentinel approval. Any eventual side effect must be translated to a registered capability and pass the existing Sentinel grant, policy, exact approval-consumption, audit and fixed-adapter path.
