@@ -24,7 +24,7 @@ function exactFields(value, allowed, label) {
 
 function text(value, label, max, pattern = null) {
   if (typeof value !== 'string' || value.length < 1 || value.length > max ||
-      value.trim() !== value || /[\\u0000-\\u001f\\u007f]/.test(value) ||
+      value.trim() !== value || /[\x00-\x1f\x7f]/.test(value) ||
       (pattern && !pattern.test(value))) {
     throw new TypeError(label + ' is invalid.');
   }
