@@ -102,6 +102,7 @@ test('rejects malformed, future-dated and unsupported evidence metadata', async 
     () => verifyExperimentEvidenceArtifact({
       ...options,
       artifact: { ...artifact, capturedAt: '2026-11-21T10:06:00.000Z' },
+      expectedEvidence: { ...expectedEvidence, capturedAt: '2026-11-21T10:06:00.000Z' },
     }),
     /future/i,
   );
