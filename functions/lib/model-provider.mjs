@@ -133,6 +133,56 @@ function resolveAxForgeConfig(env) {
   return { key, model };
 }
 
+
+function resolveOpenRouterConfig(env) {
+  const key = env.OPENROUTER_API_KEY;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
+      /[\\r\\n\\u0000]/.test(key)) {
+    throw new Error('OpenRouter API key is not configured.');
+  }
+  const model = env.AEGIS_OPENROUTER_MODEL;
+  if (typeof model !== 'string' || !model.trim() || model.length > 160 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
+    throw new Error('OpenRouter model is not configured correctly.');
+  }
+  return { key, model };
+}
+
+async function createOpenRouterStream({ env, messages, tools, fetchImpl }) {
+  if (tools.length) throw new Error('OpenRouter tool calling is not enabled.');
+  const { key, model } = resolveOpenRouterConfig(env);
+  let response;
+  try {
+    response = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        stream: true,
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new Error('OpenRouter provider request failed.');
+  }
+  if (!response || !response.ok || !response.body ||
+      typeof response.body.getReader !== 'function') {
+    throw new Error('OpenRouter provider request failed.');
+  }
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/event-stream')) {
+    throw new Error('OpenRouter provider returned an unsupported response type.');
+  }
+  return response.body;
+}
+
 function toAnthropicMessages(messages) {
   if (messages.some(message => message.role === 'tool' || message.tool_calls !== undefined)) {
     throw new Error('Anthropic tool calling is not enabled.');
@@ -248,6 +298,10 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
 
   if (provider === 'axforge') {
     return createAxForgeStream({ env, messages, tools: safeTools, fetchImpl });
+  }
+
+  if (provider === 'openrouter') {
+    return createOpenRouterStream({ env, messages, tools: safeTools, fetchImpl });
   }
 
   if (provider !== 'alibaba-qwen') {
