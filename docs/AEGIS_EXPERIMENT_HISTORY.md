@@ -76,3 +76,16 @@ This ledger captures human review, not deployment readiness. Evidence artifact r
 
 
 Proposal IDs are versioned (`proposal:v1:` for the current contract). A future incompatible proposal interpretation must increment the version, so old human-review events cannot silently attach to a new proposal definition.
+
+
+## Evidence artifact byte verification
+
+The source-level `verifyExperimentEvidenceArtifact` primitive verifies a byte payload supplied by an authenticated source adapter against one immutable experiment-record manifest entry:
+
+- It binds the artifact to the authenticated owner, exact experiment record ID, evidence reference, kind and canonical capture timestamp.
+- It calculates SHA-256 from the actual `Uint8Array` bytes using Web Crypto and compares the result with the digest stored in the immutable record.
+- It rejects malformed/future timestamps, unsupported media types, unexpected metadata fields, empty/non-byte payloads and payloads above the configured bound (1 MiB by default; hard maximum 10 MiB).
+- It returns a frozen, metadata-only attestation. Raw bytes are not copied into the result or logged.
+- It performs no network access, URL resolution, persistence, Sentinel call or execution. An authenticated source adapter and owner-scoped attestation store must be designed separately before this can become an end-to-end evidence retrieval feature.
+
+Supported media types are deliberately limited to `application/json`, `text/plain` and `application/octet-stream`. This verifier proves that supplied bytes match the recorded digest and metadata; it does not prove that the original source was truthful, that the source was authorised, or that evidence remains fresh. Those are separate provenance and policy questions.
