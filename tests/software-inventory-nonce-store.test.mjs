@@ -13,6 +13,14 @@ const verified = {
   inventoryDigest: 'sha256:' + 'a'.repeat(64),
   verification: 'signature_valid',
   acceptance: 'pending_atomic_nonce_consumption',
+  authority: {
+    executeCode: false,
+    installSoftware: false,
+    remediate: false,
+    changeConfiguration: false,
+    sentinelApprovalRequired: true,
+    response: 'not_authorised',
+  },
 };
 const now = '2026-11-21T14:00:00.000Z';
 
@@ -107,4 +115,14 @@ test('requires a D1 binding and canonical acceptance timestamp', async () => {
   await assert.rejects(() => consumeSoftwareInventoryNonce({
     db: new FakeD1(), verifiedAttestation: verified, now: 'not-a-time',
   }), /timestamp/i);
+});
+
+
+test('concurrent attempts with the same owner, source and nonce accept exactly one request', async () => {
+  const db = new FakeD1();
+  const results = await Promise.all(Array.from({ length: 20 }, () =>
+    consumeSoftwareInventoryNonce({ db, verifiedAttestation: verified, now })));
+  assert.equal(results.filter(result => result.status === 'accepted').length, 1);
+  assert.equal(results.filter(result => result.status === 'replay_rejected').length, 19);
+  assert.equal(db.rows.size, 1);
 });
