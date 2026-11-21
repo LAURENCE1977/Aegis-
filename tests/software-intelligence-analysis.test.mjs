@@ -139,7 +139,7 @@ test('returns deterministic deeply frozen findings and an empty result when no s
   });
   const second = assessPinnedSoftwareSource({
     ...valid,
-    files: [{ ...valid.files[0], content: 'A simple static website.' }],
+    files: [withContent(valid.files[0], 'A simple static website.')],
   });
 
   assert.deepEqual(first, second);
