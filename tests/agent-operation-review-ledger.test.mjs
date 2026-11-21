@@ -183,6 +183,9 @@ test('makes exact event retries idempotent and rejects event identity reuse with
   const { db, input } = await fixture();
   assert.equal((await appendAgentOperationReview(db, 'owner-a', input)).created, true);
   assert.equal((await appendAgentOperationReview(db, 'owner-a', input)).created, false);
+  assert.equal((await appendAgentOperationReview(db, 'owner-a', {
+    ...input, createdAt: '2026-11-21T15:22:00.000Z',
+  })).created, false);
   await assert.rejects(
     () => appendAgentOperationReview(db, 'owner-a', { ...input, note: 'Changed review note.' }),
     /different immutable content/i,
