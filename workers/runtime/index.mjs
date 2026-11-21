@@ -5,6 +5,7 @@ import {
   listExperimentRecords,
   tombstoneExperimentRecord,
 } from './experiment-record-store.mjs';
+import { summarizeAgentExperimentHistory } from './agent-experiment-history.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -372,6 +373,32 @@ function trustedExperimentPrincipal(request) {
   return request.headers.get('X-Aegis-Principal') === 'owner' ? 'owner' : null;
 }
 
+async function handleExperimentRecordAnalysis(env, principalId) {
+  const records = [];
+  let cursor = null;
+  try {
+    for (let pageNumber = 0; pageNumber < 5; pageNumber += 1) {
+      const page = await listExperimentRecords(env.DB, principalId, {
+        limit: 100,
+        cursor,
+      });
+      records.push(...page.records);
+      if (!page.nextCursor) {
+        const analysis = await summarizeAgentExperimentHistory(records);
+        return json({ analysis });
+      }
+      if (records.length >= 500) {
+        return json({ error: 'Experiment history exceeds the 500-record analysis limit.' }, 413);
+      }
+      cursor = page.nextCursor;
+    }
+    return json({ error: 'Experiment history exceeds the 500-record analysis limit.' }, 413);
+  } catch {
+    // Never return a partial report when a stored record fails integrity checks.
+    return json({ error: 'Experiment history analysis is unavailable.' }, 503);
+  }
+}
+
 async function handleExperimentRecordRequest(request, env, url) {
   if (!env?.DB || typeof env.DB.prepare !== 'function') {
     return json({ error: 'Runtime database is not configured.' }, 503);
@@ -380,6 +407,10 @@ async function handleExperimentRecordRequest(request, env, url) {
   if (!principalId) return json({ error: 'Trusted principal context is required.' }, 400);
 
   const collectionPath = '/v1/experiment-records';
+  if (url.pathname === collectionPath + '/analysis') {
+    if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
+    return handleExperimentRecordAnalysis(env, principalId);
+  }
   if (url.pathname === collectionPath && request.method === 'GET') {
     const rawLimit = url.searchParams.get('limit');
     const limit = rawLimit === null ? 25 : Number(rawLimit);
