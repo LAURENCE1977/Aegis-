@@ -139,3 +139,12 @@ test('rejects accessor-backed workflow definitions without invoking getters', as
   }));
   assert.equal(getterCalls, 0);
 });
+
+test('rejects a run timestamp earlier than its pinned workflow definition', async () => {
+  await assert.rejects(() => createAgentWorkflowRun({
+    definition,
+    runId: metadata.runId,
+    createdAt: '2026-11-21T13:59:59.000Z',
+    observedAt: '2026-11-21T15:30:00.000Z',
+  }), /before|earlier|definition/i);
+});
