@@ -223,10 +223,11 @@ export function translateTask(input) {
     classificationSource,
     evidence: freezeTaskEvidence(evidence),
     routeStrategy,
-    modelRequired: task === 'unknown' ? null : task !== 'simple',
+    modelRequired: task === 'simple' ? false : null,
+    modelCandidate: task !== 'unknown' && task !== 'simple',
     resources: Object.freeze({
       inputBytes: new TextEncoder().encode(objective).byteLength,
-      estimatedInputTokens: estimateTokenCount(objective),
+      objectiveEstimatedInputTokens: estimateTokenCount(objective),
       requestedOutputTokens: input.requestedOutputTokens ?? null,
       cpuEstimate: null,
       memoryEstimateBytes: null,
