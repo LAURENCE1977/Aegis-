@@ -119,7 +119,7 @@ test('rejects stale and future signatures and inventory observations', async () 
     inventory: { ...inventory, observedAt: '2026-11-22T00:00:00.000Z' },
     attestation: signedAttestation({}, { ...inventory, observedAt: '2026-11-22T00:00:00.000Z' }),
     trustedSource, now,
-  }), /future|clock/i);
+  }), /future|clock|newer/i);
 });
 
 test('rejects malformed signatures, unknown fields and weak source keys', async () => {
