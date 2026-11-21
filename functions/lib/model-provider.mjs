@@ -320,6 +320,10 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
     return createOllamaStream({ env, messages, tools: safeTools, fetchImpl });
   }
 
+  if (provider === 'magnitude') {
+    return createMagnitudeStream({ env, messages, tools: safeTools, fetchImpl });
+  }
+
   if (provider !== 'alibaba-qwen') {
     throw new Error('Unsupported AEGIS model provider.');
   }
