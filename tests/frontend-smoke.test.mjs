@@ -238,6 +238,8 @@ test('Health Vision is a private, session-only observation workspace with camera
     assert.match(html, new RegExp('id="' + id + '"'), 'missing Health Vision UI element: ' + id);
   }
   assert.match(html, /nothing is uploaded, sent to an AI model/i);
+  assert.match(html, /Health Vision roadmap/);
+  assert.match(html, /Stage 5 · Clinician collaboration/);
   assert.match(html, /does not analyse the image, diagnose, assess cancer risk/i);
   assert.match(html, /healthVisionSection\.hidden = panel !== 'health'/);
   assert.match(html, /healthVisionTab\.addEventListener\('click',\s*\(\) => showPanel\('health'\)\)/);
