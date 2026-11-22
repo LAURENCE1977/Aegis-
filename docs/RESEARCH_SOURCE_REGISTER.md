@@ -2,7 +2,7 @@
 
 Reviewed: 15 November 2026
 
-This is an evaluation register, not an integration claim. No external package, agent platform or service below has been installed or granted access to AEGIS.
+This is an evaluation register, not an integration claim. No external package, agent platform or service below has been installed or granted access to AEGIS. Each repository review should use [the Repository Adaptation Review Template](research/REPOSITORY_ADAPTATION_TEMPLATE.md) and distinguish README claims from code, tests and operational evidence.
 
 ## Priority assessment
 
