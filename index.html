@@ -317,6 +317,7 @@
     const MAX_SAVED = 40;
     let history = [];
     let busy = false;
+    let pendingPaidRun = null;
     const threadId = 'aegis-' + crypto.randomUUID();
 
     function loadHistory() {
@@ -1518,6 +1519,11 @@
                       body: JSON.stringify({ id: approval.id, decision }),
                     });
                     await loadApprovals();
+                    if (decision === 'approved' && pendingPaidRun && pendingPaidRun.approvalId === approval.id) {
+                      const pending = pendingPaidRun;
+                      pendingPaidRun = null;
+                      await resumeApprovedPaidRun(pending);
+                    }
                   } catch (error) {
                     approvalStatus.textContent = error.message;
                     button.disabled = false;
@@ -1650,6 +1656,33 @@
       }
     }
 
+    async function resumeApprovedPaidRun(pending) {
+      status.textContent = 'Approval accepted · starting exact run…';
+      const res = await fetch('/api/ag-ui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+        body: JSON.stringify(pending.requestBody)
+      });
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        return;
+      }
+      if (!res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch (error) {}
+        throw new Error(data.error || ('Error ' + res.status));
+      }
+      const assistantMessage = addMessage('', 'assistant');
+      const assistantText = assistantMessage.lastChild;
+      const reply = await readAgUiReply(res, delta => {
+        assistantText.textContent += delta;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+      history.push({ role: 'user', content: pending.text }, { role: 'assistant', content: reply });
+      saveHistory();
+      status.textContent = 'Ready';
+    }
+
     async function sendMessage() {
       const text = userInput.value.trim();
       if (!text || busy) return;
@@ -1676,22 +1709,34 @@
           role: 'user',
           content: text.slice(0, 4000),
         });
+        const runRequest = {
+          threadId,
+          runId: 'run-' + crypto.randomUUID(),
+          protocolVersion: '1.0',
+          messages,
+          tools: [],
+          context: [],
+          projectId: chatProjectSelect.value || undefined,
+        };
         const res = await fetch('/api/ag-ui', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-          body: JSON.stringify({
-            threadId,
-            runId: 'run-' + crypto.randomUUID(),
-            protocolVersion: '1.0',
-            messages,
-            tools: [],
-            context: [],
-            projectId: chatProjectSelect.value || undefined,
-          })
+          body: JSON.stringify(runRequest)
         });
         if (res.status === 401) {
           showLogin('Your session has expired. Sign in again.');
           return;
+        }
+        if (res.status === 202) {
+          let data = {};
+          try { data = await res.json(); } catch (error) {}
+          if (data.code === 'PAID_INFERENCE_APPROVAL_REQUIRED' && data.approval && typeof data.approval.id === 'string') {
+            pendingPaidRun = { approvalId: data.approval.id, requestBody: runRequest, text };
+            addMessage(data.error + ' ' + data.approval.operationSummary + ' Open the Approvals tab and approve it to resume this exact run. No paid provider has been contacted yet.', 'assistant');
+            status.textContent = 'Waiting for your approval';
+            showPanel('approvals');
+            return;
+          }
         }
         if (!res.ok) {
           if ((res.headers.get('content-type') || '').includes('text/event-stream')) {
