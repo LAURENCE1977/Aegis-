@@ -86,7 +86,7 @@ test('paid approval binding is exact to the run, provider, model, token ceiling 
   }
   assert.equal(base.capabilityId, 'paid-inference');
   assert.equal(base.actionId, 'dispatch');
-  assert.match(base.resourceId, /run-123/);
+  assert.match(base.resourceId, /^paid-inference:[a-f0-9]{64}$/);
   assert.doesNotMatch(base.operationSummary, /Hello|prompt text/i);
 });
 
@@ -97,7 +97,7 @@ test('paid inference creates one pending owner approval with a short expiry', as
   assert.equal(result.status, 'pending');
   assert.equal(result.approval.requestedBy, 'owner:ag-ui');
   assert.equal(Date.parse(result.approval.expiresAt), now + 10 * 60 * 1000);
-  assert.equal(result.approval.resourceId, 'paid-inference:anthropic:claude-sonnet-4-5:run-123');
+  assert.match(result.approval.resourceId, /^paid-inference:[a-f0-9]{64}$/);
 });
 
 test('repeated identical paid requests reuse the same pending approval instead of creating duplicates', async () => {
