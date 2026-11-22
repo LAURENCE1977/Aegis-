@@ -454,3 +454,29 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## 2026-11-22 update — private LLM pilot hardening
+
+- PR #194 remains an open draft; it is not merged and does not make the private LLM live.
+- Added a Jan Desktop hardening checklist to `docs/AEGIS_PRIVATE_LLM_ARCHITECTURE.md`, based on the current official documentation: local model explicitly selected; loopback-only API; non-empty API key; verbose request/response logs disabled; CORS disabled unless needed; server-side tool execution disabled; and remote-provider routing explicitly ruled out for a local-only test.
+- The Jan documentation confirms the Local API Server is an OpenAI-compatible interface at the default loopback address, but a Jan UI/API server does not itself prove all requests remain local. Verify the selected provider and network behavior.
+- Verified the preceding PR #194 commit `22c3eb39a01a8adf1394b73dbc4e63da7995ff07` passed the AEGIS tests workflow, including Node.js tests and isolated local D1 migration/capability checks.
+- The follow-on documentation commit is `999dc0f745dd7a1675d30372dc1cde1ce9886e3c`. It is documentation-only, so the preceding workflow result must not be represented as a test run for this new commit.
+- Cloudflare Pages reported a preview build in progress for `999dc0f` when last checked. Wait for a fresh Pages result before claiming this commit is preview-deployed.
+- No model runtime, model weights, provider endpoint, secrets, Cloudflare resource, Oracle instance or paid service has been installed or changed.
+- Next safe build gate: map the existing server-side AG-UI model gateway and provider adapters to a private OpenAI-compatible inference adapter, then write tests first. Do not implement or activate that adapter until the target host, private network path, authentication method, TLS, egress boundary and operator ownership are verified. Do not point a Cloudflare Worker at a developer's loopback address or expose an unauthenticated model server.
+
+## APInex provider adapter — PR #195 (22 November 2026)
+
+- PR #195: https://github.com/LAURENCE1977/Aegis-/pull/195 — open draft, stacked on PR #192; not merged or production-live.
+- Adds a fixed-origin APInex OpenAI-compatible streaming adapter behind the authenticated server-side AG-UI gateway.
+- APInex credentials are resolved from the owner-scoped encrypted provider vault; provider and model selection remain server-side.
+- Tool calling is disabled for APInex in this first iteration. Reasoning-only response fields are not emitted to the AG-UI client.
+- APInex runs through the existing explicit paid-inference gate, exact-run owner approval, D1 quota reservation and usage accounting. This deliberately applies even to `free/*` model IDs until account-specific free-tier eligibility and allowance checks are implemented.
+- Acceptance tests were added first and failed for the expected missing adapter/credential/policy behavior. The implementation then passed the full Node.js suite and isolated capability, runtime usage-ledger and Forge D1 migration/smoke checks on commit `785888184a4e6e02c8bc498548401a0e4f606723`.
+- Cloudflare Pages preview for that exact commit succeeded: https://900b78a8.aegis-6yk.pages.dev.
+- Read-only audit of the correct AEGIS Cloudflare account found zero D1 databases and no D1 binding on the AEGIS Pages production configuration. The encrypted provider vault and paid-inference ledger therefore cannot be activated until owner-approved D1 provisioning, binding and migrations are completed.
+- No APInex key has been stored; no live APInex request has been made; no D1 resource, production binding, secret or production deployment has been created or changed.
+- APInex public documentation distinguishes daily-free-eligible models from subscription-only models and exposes account allowance state. The published daily allowance figures are not consistent across public pages; do not hardcode a quota. Implement a separate authenticated subscription/model-eligibility preflight before allowing the free-tier route. Never infer free eligibility from the `free/` prefix alone.
+
