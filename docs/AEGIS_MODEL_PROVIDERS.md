@@ -76,3 +76,41 @@ A GitHub Actions repository secret named ANTHROPIC_API_KEY is only available to 
 ## Verification
 
 Provider tests must assert request endpoint, headers, payload transformation, timeout, redirect policy, response type and that secrets are never returned. AG-UI integration tests must prove that each provider's event shape produces text deltas and a terminal event. A mocked success response alone is not proof of provider interoperability.
+
+## APInex — external OpenAI-compatible provider candidate (not connected)
+
+**Status:** Documentation-only candidate. No APInex account, key, provider adapter, Composio custom toolkit or production route has been configured or tested.
+
+APInex currently documents:
+- API root: `https://api.apinex.bond/v1`.
+- Model discovery: `GET /v1/models`.
+- Chat: `POST /v1/chat/completions`.
+- Bearer authentication with an APInex-issued key.
+- OpenAI-compatible JSON responses and optional server-sent-event streaming.
+
+References: [APInex Chat Completions API](https://apinex.bond/developers/models/chat) and [APInex model catalogue](https://apinex.bond/models).
+
+### Proposed AEGIS integration
+
+Treat APInex as a distinct third-party provider behind the existing authenticated AG-UI model gateway. Reuse the existing provider-neutral adapter boundary only after verifying the current gateway implementation and tests.
+
+- Fixed server-side origin and paths only; never accept a base URL, endpoint, model host or redirect target from browser input.
+- Store `APINEX_API_KEY` only in the encrypted AEGIS provider vault or the correct Cloudflare runtime secret. Never expose it to browser code, prompts, logs, Git history or chat.
+- Use an explicit server-side provider selection such as `AEGIS_MODEL_PROVIDER=apinex` and a separately configured exact model ID.
+- First implementation must be text-only, non-streaming and tool-free. Add bounded SSE only after protocol tests pass. Ignore provider reasoning fields and do not persist hidden reasoning.
+- Enforce request/response size limits, finite timeout, redirect rejection, content-type checks, strict response validation and generic user-safe error mapping.
+- Apply AEGIS per-run owner approval and finite token/spend ceilings to any paid model. A zero-priced catalogue entry is not evidence of unlimited or guaranteed free capacity; verify the current account allowance and exact model eligibility. Never silently fall back from a free model to a paid model.
+- Do not route health images, health notes, personal secrets, credentials or confidential repository content to APInex. Vendor privacy/retention claims require independent review and suitable contractual/legal approval before any sensitive-data use.
+- Do not accept model-originated tool calls in the first phase. Any future tool use must be translated into AEGIS-owned tool intents and independently checked by Sentinel, grants and owner approval.
+
+### Acceptance gates
+
+1. Owner creates an APInex account and key directly with APInex; the key is entered only into a secure secret store, never chat.
+2. Read-only model discovery is tested against the exact account and returns a reviewed allowlist.
+3. Mocked tests prove fixed origin, bearer header handling, timeout, redirect rejection, bounded payloads, response validation and secret redaction.
+4. A deliberately small, non-sensitive live smoke test is approved by the owner and uses a confirmed zero-priced model with a strict output-token cap.
+5. Confirm actual usage/allowance after the test; verify no paid fallback and no sensitive prompt retention in AEGIS logs.
+6. Only after review may streaming or tool calling be considered as separate changes.
+
+APInex is an external inference service, not a private LLM runtime and not a replacement for the local/private inference path. AEGIS remains the policy, identity, approval and audit authority.
+
