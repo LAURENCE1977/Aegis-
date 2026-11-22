@@ -4,7 +4,8 @@ import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
 import { resolvePaidInferencePolicy, isPaidInferenceProvider } from "../lib/paid-inference-policy.mjs";
-import { extractProviderUsage, mergeProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
+import { reserveTokenUsage, settleTokenUsage, deriveUsageReservationIds } from "../lib/usage-accounting.mjs";
+import { extractProviderUsage, mergeProviderUsage, addProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -86,11 +87,12 @@ export async function onRequestPost(context) {
   const tools = toolsEnabled ? getAgentToolDefinitions() : undefined;
   let promptMessages;
   let modelStream;
+  let usageAccounting = null;
+  let modelEnv = env;
+  const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
   try {
     const history = messages.slice(0, -1).slice(-10);
     promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    let modelEnv = env;
-    const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
     if (isPaidInferenceProvider(selectedProvider)) {
       const selectedModel = selectedProvider === "anthropic"
         ? env.AEGIS_ANTHROPIC_MODEL
@@ -103,16 +105,32 @@ export async function onRequestPost(context) {
     }
     if (env.AEGIS_DB && ["anthropic", "alibaba-qwen"].includes(selectedProvider)) {
       const connected = await resolveConnectedProviderCredential({
-        db: env.AEGIS_DB,
-        env,
-        principalId: "owner",
-        providerId: selectedProvider,
+        db: env.AEGIS_DB, env, principalId: "owner", providerId: selectedProvider,
       });
       if (connected) {
         modelEnv = selectedProvider === "anthropic"
           ? { ...env, ANTHROPIC_API_KEY: connected.apiKey }
           : { ...env, AEGIS_QWEN_API_KEY: connected.apiKey };
       }
+    }
+    if (isPaidInferenceProvider(selectedProvider)) {
+      if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function" || typeof env.AEGIS_DB.batch !== "function") {
+        return json({ error: "Verified token quota storage is required before paid inference.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
+      }
+      const modelId = selectedProvider === "anthropic" ? modelEnv.AEGIS_ANTHROPIC_MODEL : (modelEnv.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
+      const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId });
+      const reservationTools = selectedProvider === "alibaba-qwen" ? (tools || []) : [];
+      const reserved = await reserveTokenUsage({
+        db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
+        messages: promptMessages, tools: reservationTools, maxOutputTokens: 1024,
+        requestCount: reservationTools.length ? 2 : 1, extraPromptBytes: reservationTools.length ? MAX_TOOL_RESULT * 4 : 0,
+        now: new Date().toISOString(),
+      });
+      if (reserved.reservedUnits > policy.maxTokensPerRun) {
+        return json({ error: "The estimated token reservation exceeds the approved per-run ceiling.", code: "PAID_INFERENCE_BUDGET_EXCEEDED" }, 403);
+      }
+      usageAccounting = { db: env.AEGIS_DB, reservationId: reservationIds.reservationId, providerId: selectedProvider, modelId };
     }
     modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
@@ -141,8 +159,9 @@ export async function onRequestPost(context) {
     threadId: input.threadId,
     runId: input.runId,
     startEvents,
+    usageAccounting,
     toolContext: toolsEnabled ? {
-      env,
+      env: modelEnv,
       db: env.AEGIS_DB,
       fetchImpl,
       promptMessages,
@@ -151,7 +170,7 @@ export async function onRequestPost(context) {
   });
 }
 
-function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents, toolContext }) {
+function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents, toolContext, usageAccounting }) {
   const encoder = new TextEncoder();
   let reader;
   const body = new ReadableStream({
@@ -163,6 +182,8 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
         let cancelled = false;
         let toolRound = 0;
         let providerUsage = null;
+        let requestUsage = null;
+        let usageIncomplete = false;
 
         const emitText = (delta) => {
           if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
@@ -227,7 +248,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               let payload;
               try { payload = JSON.parse(data); } catch { return; }
               const usageUpdate = extractProviderUsage(payload);
-              if (usageUpdate) providerUsage = mergeProviderUsage(providerUsage, usageUpdate);
+              if (usageUpdate) requestUsage = mergeProviderUsage(requestUsage, usageUpdate);
               if (payload.type === "error") {
                 throw agentStreamError(
                   "PROVIDER_STREAM_ERROR",
@@ -306,6 +327,14 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               break;
             }
 
+            if (usageAccounting) {
+              if (isCompleteProviderUsage(requestUsage)) {
+                try { providerUsage = providerUsage ? addProviderUsage(providerUsage, requestUsage) : requestUsage; }
+                catch { usageIncomplete = true; }
+              } else { usageIncomplete = true; }
+            }
+            requestUsage = null;
+
             const calls = [...toolCalls.values()];
             if (!calls.length) {
               activeStream = null;
@@ -362,12 +391,20 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
             toolRound += 1;
           }
 
+          let usageAccountingStatus;
+          if (usageAccounting) {
+            if (!cancelled && !usageIncomplete && isCompleteProviderUsage(providerUsage)) {
+              try {
+                await settleTokenUsage({ db: usageAccounting.db, reservationId: usageAccounting.reservationId, providerId: usageAccounting.providerId, modelId: usageAccounting.modelId, usage: providerUsage, now: new Date().toISOString() });
+                usageAccountingStatus = "settled";
+              } catch { usageAccountingStatus = "reconciliation_required"; }
+            } else { usageAccountingStatus = "reconciliation_required"; }
+          }
           controller.enqueue(encoder.encode(encodeAgUiSse(
             createTextRunFinishEvents({
-              threadId,
-              runId,
-              outcome: cancelled ? "cancelled" : undefined,
+              threadId, runId, outcome: cancelled ? "cancelled" : undefined,
               usage: isCompleteProviderUsage(providerUsage) ? providerUsage : undefined,
+              usageAccountingStatus,
             }),
           )));
           controller.close();
