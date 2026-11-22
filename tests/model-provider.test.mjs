@@ -222,3 +222,73 @@ test('Anthropic provider rejects tool calls until its own Sentinel adapter is im
     fetchImpl: async () => { throw new Error('must not fetch'); },
   }), /Anthropic tool calling is not enabled/i);
 });
+test('APInex uses only its fixed HTTPS endpoint, accepts namespaced model IDs, and remains tool-free', async () => {
+  let captured;
+  const stream = new ReadableStream({ start(controller) { controller.close(); } });
+  const result = await createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'apinex',
+      APINEX_API_KEY: 'test-apinex-api-key-long-enough',
+      AEGIS_APINEX_MODEL: 'free/deepseek-v4.1-flash',
+    },
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async (url, options) => {
+      captured = { url, options };
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(result, stream);
+  assert.equal(captured.url, 'https://api.apinex.bond/v1/chat/completions');
+  assert.equal(captured.options.method, 'POST');
+  assert.equal(captured.options.redirect, 'error');
+  assert.equal(captured.options.headers.Authorization, 'Bearer test-apinex-api-key-long-enough');
+  const body = JSON.parse(captured.options.body);
+  assert.equal(body.model, 'free/deepseek-v4.1-flash');
+  assert.equal(body.stream, true);
+  assert.equal(body.max_tokens, 1024);
+  assert.deepEqual(body.messages, [{ role: 'user', content: 'hello' }]);
+  assert.equal('tools' in body, false);
+  assert.equal('tool_choice' in body, false);
+});
+
+test('APInex requires a server-side key and exact safe model identifier before network access', async () => {
+  let called = false;
+  const base = {
+    AEGIS_MODEL_PROVIDER: 'apinex',
+    APINEX_API_KEY: 'test-apinex-api-key-long-enough',
+    AEGIS_APINEX_MODEL: 'free/deepseek-v4.1-flash',
+  };
+  await assert.rejects(() => createModelStream({
+    env: { ...base, APINEX_API_KEY: undefined },
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async () => { called = true; return readable(); },
+  }), /APInex API key is not configured/i);
+  await assert.rejects(() => createModelStream({
+    env: { ...base, AEGIS_APINEX_MODEL: '../attacker' },
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async () => { called = true; return readable(); },
+  }), /model/i);
+  assert.equal(called, false);
+});
+
+test('APInex rejects all tool definitions and hides provider diagnostics', async () => {
+  await assert.rejects(() => createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'apinex',
+      APINEX_API_KEY: 'test-apinex-api-key-long-enough',
+      AEGIS_APINEX_MODEL: 'free/deepseek-v4.1-flash',
+    },
+    messages: [{ role: 'user', content: 'hello' }],
+    tools: serverTools,
+    fetchImpl: async () => { throw new Error('must not fetch'); },
+  }), /APInex tool calling is not enabled/i);
+  await assert.rejects(() => createModelStream({
+    env: {
+      AEGIS_MODEL_PROVIDER: 'apinex',
+      APINEX_API_KEY: 'test-apinex-api-key-long-enough',
+      AEGIS_APINEX_MODEL: 'free/deepseek-v4.1-flash',
+    },
+    messages: [{ role: 'user', content: 'hello' }],
+    fetchImpl: async () => new Response('private upstream diagnostic', { status: 401 }),
+  }), /APInex provider request failed/i);
+});
