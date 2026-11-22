@@ -105,7 +105,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
   async function showPhoto(file) {
     clearPhotoPreview();
     if (!file) return;
-    if (!file.type || !file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       status.textContent = 'Choose an image file supported by this browser.';
       return;
     }
@@ -166,7 +166,12 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
     const canvas = document.createElement('canvas');
     canvas.width = cameraVideo.videoWidth;
     canvas.height = cameraVideo.videoHeight;
-    canvas.getContext('2d').drawImage(cameraVideo, 0, 0);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      status.textContent = 'Camera capture is not supported in this browser.';
+      return;
+    }
+    context.drawImage(cameraVideo, 0, 0);
     canvas.toBlob(async blob => {
       if (!blob) {
         status.textContent = 'Could not capture this frame. Please try again.';
@@ -215,6 +220,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
 
   exportButton.addEventListener('click', () => {
     if (!observations.length) return;
+    if (!confirm('This text report contains personal health notes. Only save or share it if you are comfortable doing so. Continue?')) return;
     const report = formatHealthVisionReport(observations);
     const url = URL.createObjectURL(new Blob([report], { type: 'text/plain;charset=utf-8' }));
     const link = document.createElement('a');
