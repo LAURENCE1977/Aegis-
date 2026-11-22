@@ -2,7 +2,8 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
 
 (() => {
   const section = document.getElementById('healthVisionSection');
-  if (!section) return;
+  const appPanel = document.getElementById('appPanel');
+  if (!section || !appPanel) return;
 
   const form = document.getElementById('healthObservationForm');
   const kind = document.getElementById('healthKind');
@@ -141,10 +142,16 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
       return;
     }
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
+      if (section.hidden || appPanel.hidden || document.hidden) {
+        stream.getTracks().forEach(track => track.stop());
+        status.textContent = 'Camera start cancelled because Health Vision is no longer active.';
+        return;
+      }
+      cameraStream = stream;
       cameraVideo.srcObject = cameraStream;
       cameraVideo.hidden = false;
       await cameraVideo.play();
@@ -243,10 +250,12 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
   });
   sectionObserver.observe(section, { attributes: true, attributeFilter: ['hidden'] });
 
-  const appPanel = document.getElementById('appPanel');
   const appObserver = new MutationObserver(() => {
     if (appPanel.hidden) clearAll();
   });
   appObserver.observe(appPanel, { attributes: true, attributeFilter: ['hidden'] });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopCamera();
+  });
   window.addEventListener('pagehide', clearAll, { once: true });
 })();
