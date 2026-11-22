@@ -76,6 +76,9 @@ Official protocol references: [APInex Chat Completions](https://apinex.bond/deve
 
 ### Activation gates
 
+
+**Current infrastructure blocker (read-only audit, 2026-11-22):** The correct Cloudflare account for the AEGIS Pages project currently lists zero D1 databases, and the `aegis` Pages production configuration has no D1 binding. The encrypted provider vault and paid-token ledger therefore cannot be enabled in that environment yet. No database or binding has been created. Owner approval is required before provisioning D1 or changing production configuration.
+
 1. Merge the provider implementation only after review of PR #195 and its parent branch.
 2. Confirm the production/preview D1 migrations, vault keyring and active key version are configured for the intended environment.
 3. Owner creates an APInex account and obtains an APInex key directly from APInex. Never paste it into chat or commit it.
