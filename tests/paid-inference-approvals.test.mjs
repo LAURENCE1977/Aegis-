@@ -108,6 +108,18 @@ test('repeated identical paid requests reuse the same pending approval instead o
   assert.equal(db.rows.size, 1);
 });
 
+test('an approved run cannot authorize a changed prompt or token estimate', async () => {
+  const db = new ApprovalMemoryD1();
+  const created = await requestPaidInferenceApproval(db, request(), Date.parse('2026-11-22T18:00:00.000Z'));
+  const row = db.rows.get(created.approval.id);
+  row.status = 'approved';
+  row.decided_by = 'owner';
+  row.decided_at = '2026-11-22T18:00:30.000Z';
+  const changed = await consumePaidInferenceApproval(db, request({ estimatedTokens: 2401 }), Date.parse('2026-11-22T18:01:00.000Z'));
+  assert.equal(changed, null);
+  assert.equal(row.status, 'approved');
+});
+
 test('an approval is consumed once for the same exact paid run and cannot be replayed', async () => {
   const db = new ApprovalMemoryD1();
   const created = await requestPaidInferenceApproval(db, request(), Date.parse('2026-11-22T18:00:00.000Z'));
