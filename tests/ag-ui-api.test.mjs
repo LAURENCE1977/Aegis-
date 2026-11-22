@@ -684,3 +684,27 @@ test('AG-UI blocks a paid Qwen request before network access without explicit ow
   assert.equal(providerCalls, 0);
   assert.match(await response.text(), /explicitly approved/i);
 });
+
+test('AG-UI blocks approved paid inference before provider access when verified quota storage is absent', async () => {
+  let providerCalls = 0;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      AEGIS_PAID_INFERENCE_APPROVED: 'true',
+      AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
+    },
+    fetchImpl: async () => {
+      providerCalls += 1;
+      return new Response(modelSseStream(['data: [DONE]\\n\\n']), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+  assert.equal(response.status, 503);
+  assert.equal(providerCalls, 0);
+  assert.match(await response.text(), /verified token quota storage/i);
+});
