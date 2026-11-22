@@ -68,6 +68,7 @@ test('usage dashboard returns safe verified quota and paid-run gate metadata', a
       AEGIS_DB: db,
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_QWEN_API_KEY: 'must-never-be-returned',
     },
   });
