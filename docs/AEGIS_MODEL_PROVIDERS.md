@@ -22,7 +22,7 @@ The authenticated AG-UI gateway now resolves the selected Anthropic or Alibaba Q
 - Resolution is bound to the fixed owner principal, exact provider ID, active non-expired connection and exact `<provider>:inference:chat` scope.
 - The secret is decrypted only in server-side code and passed directly into the selected provider adapter. It is never returned to the browser, inserted into the prompt, or written to audit events.
 - An active vault connection takes precedence over the legacy runtime key. If the connection exists but cannot be resolved or decrypted, the request fails closed; it does not silently fall back to the legacy key.
-- If no vault connection exists, the previous server-side environment-key configuration remains available for compatibility.
+- If no provider connection has ever been created, the previous server-side environment-key configuration remains available for compatibility. If a connection record exists but is revoked or expired, legacy environment-key fallback is disabled for that provider; the owner must create a new active vault connection.
 - The credential resolver currently supports only Anthropic and Alibaba Qwen because these are the only adapters present in this branch. Other provider IDs shown in the connection catalogue are securely storable, but are not live inference adapters yet.
 - The vault keyring and active key version must be configured as server-side Worker secrets. A missing or invalid keyring prevents vault resolution.
 
