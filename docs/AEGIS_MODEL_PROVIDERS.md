@@ -12,7 +12,8 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 |---|---|---|---|---|
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | Active owner vault connection (preferred), otherwise ANTHROPIC_API_KEY; AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
-| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | Active owner vault connection (preferred), otherwise AEGIS_QWEN_API_KEY; workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |\n| APInex | AEGIS_MODEL_PROVIDER=apinex | Active owner vault connection; APINEX_API_KEY is never browser-visible; AEGIS_APINEX_MODEL | Fixed APInex Chat Completions endpoint; OpenAI-compatible SSE | Disabled in the first adapter |
+| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | Active owner vault connection (preferred), otherwise AEGIS_QWEN_API_KEY; workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| APInex | AEGIS_MODEL_PROVIDER=apinex | Active owner vault connection; APINEX_API_KEY is never browser-visible; AEGIS_APINEX_MODEL | Fixed APInex Chat Completions endpoint; OpenAI-compatible SSE | Disabled in the first adapter |
 
 ## Encrypted provider connection resolution
 
@@ -26,11 +27,26 @@ The authenticated AG-UI gateway resolves selected Anthropic, Alibaba Qwen or API
 - The credential resolver supports Anthropic, Alibaba Qwen and APInex for live inference. Other provider IDs shown in the connection catalogue may be securely storable without being live inference adapters.
 - The vault keyring and active key version must be configured as server-side Worker secrets. A missing or invalid keyring prevents vault resolution.
 
+## Zero-spend default
+
+AEGIS is configured to fail closed rather than incur provider charges:
+
+- The default Workers AI model is `@cf/zai-org/glm-4.7-flash`, which Cloudflare lists as available on Workers Free. Do not substitute a model that requires Workers Paid or prepaid credits.
+- Cloudflare documents a 10,000-Neuron daily free allocation for Workers AI. On Workers Free, requests beyond that allocation fail until the daily reset; they do not become paid overages. Keep the account on Workers Free and never upgrade it to Workers Paid for this project.
+- Paid external providers (Anthropic, Alibaba Qwen and APInex) require **both** `AEGIS_ALLOW_PAID_SPEND=true` and `AEGIS_PAID_INFERENCE_APPROVED=true`, plus a finite token ceiling, fresh D1 quota, and exact-run owner approval. The new `AEGIS_ALLOW_PAID_SPEND` switch is intentionally absent by default. Without it, requests return `PAID_SPEND_DISABLED` before credentials, approvals, quota reservations or provider dispatch.
+- For a zero-payment deployment, leave `AEGIS_ALLOW_PAID_SPEND` unset. Do not set it in Cloudflare Pages/Workers secrets or variables. An API key, a model ID containing `free/`, or a provider's advertised free allowance does not override this lock.
+- No automatic paid fallback, plan upgrade, prepaid-credit purchase, provider failover or model substitution is allowed. If a free allowance is exhausted or a provider asks for payment, stop and wait for the allowance reset or use a verified local model.
+- Cloudflare D1 Free has finite database, storage and daily query limits. Exceeding the free daily read/write limits causes queries to fail until reset. Never upgrade Workers to Paid to recover service; wait for reset or reduce usage.
+
+The default model was changed from the previous Llama 3.3 70B ID because Cloudflare's current catalogue/deprecation notes make that an unsuitable default for a free-first deployment. The replacement is explicitly listed among models available on Workers Free.
+
+References: [Workers AI pricing and free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/), [Workers AI model availability](https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/), [D1 Free limits](https://developers.cloudflare.com/d1/platform/limits/), [D1 free-tier enforcement](https://developers.cloudflare.com/changelog/post/2026-09-01-d1-free-tier-limit-enforcement/).
+
 ## Paid inference approval and token accounting
 
 The AG-UI gateway applies a fail-closed paid-inference policy to Anthropic, Alibaba Qwen and APInex:
 
-- The owner must explicitly set `AEGIS_PAID_INFERENCE_APPROVED=true`; having an API key is not approval.
+- The deployment must explicitly set `AEGIS_ALLOW_PAID_SPEND=true` **and** the owner must separately set `AEGIS_PAID_INFERENCE_APPROVED=true`. The spend switch is unset by default; having an API key or the legacy approval flag is not permission to spend.
 - The owner must configure a finite `AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN` ceiling. The current supported maximum is 100,000 tokens.
 - The deployment-level switch is only a feature gate; each paid dispatch also requires a separate owner decision in the authenticated Approvals inbox. A key or deployment flag alone never grants per-run consent.
 - The pending approval is bound server-side to the exact thread/run, provider, model, estimated token reservation, maximum token ceiling and a digest of the prepared prompt and server-selected tools. Prompt contents and the digest are not exposed in the inbox.
