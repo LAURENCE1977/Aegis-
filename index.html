@@ -124,6 +124,7 @@
         <button class="secondary" id="workspaceTab" type="button">Projects</button>
         <button class="secondary" id="memoryTab" type="button">Memory</button>
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
+        <button class="secondary" id="usageTab" type="button">Usage</button>
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
         <button class="secondary" id="providerTab" type="button">Providers</button>
@@ -220,6 +221,14 @@
         <p class="status" id="approvalStatus" role="status" aria-live="polite">Loading approvals…</p>
         <div id="approvalList" aria-live="polite"></div>
       </section>
+      <section class="memory-panel" id="usageSection" hidden>
+        <h2>Usage &amp; quota</h2>
+        <p class="memory-help">A read-only view of verified provider limits, settled usage and tokens held for unfinished runs. Unknown or stale quota is never presented as available capacity.</p>
+        <p class="status" id="usageStatus" role="status" aria-live="polite">Usage has not been loaded.</p>
+        <div id="usageGate" class="workspace-card" aria-live="polite"></div>
+        <div id="usageWindowList" aria-live="polite"></div>
+        <div class="workspace-actions"><button class="secondary" id="refreshUsageBtn" type="button">Refresh usage</button></div>
+      </section>
       <section class="memory-panel" id="memorySection" hidden>
         <h2>My AEGIS memory</h2>
         <button class="secondary" id="exportMemoriesBtn" type="button">Export this scope</button>
@@ -252,6 +261,12 @@
     const memoryTab = document.getElementById('memoryTab');
     const workspaceTab = document.getElementById('workspaceTab');
     const approvalTab = document.getElementById('approvalTab');
+    const usageTab = document.getElementById('usageTab');
+    const usageSection = document.getElementById('usageSection');
+    const usageStatus = document.getElementById('usageStatus');
+    const usageGate = document.getElementById('usageGate');
+    const usageWindowList = document.getElementById('usageWindowList');
+    const refreshUsageBtn = document.getElementById('refreshUsageBtn');
     const forgeTab = document.getElementById('forgeTab');
     const securityTab = document.getElementById('securityTab');
     const providerTab = document.getElementById('providerTab');
@@ -659,6 +674,7 @@
       workspaceSection.hidden = panel !== 'projects';
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
+      usageSection.hidden = panel !== 'usage';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
       providerSection.hidden = panel !== 'providers';
@@ -670,11 +686,14 @@
       if (panel === 'projects') loadWorkspaces();
       if (panel === 'memory') loadMemories();
       if (panel === 'approvals') loadApprovals();
+      if (panel === 'usage') loadUsage();
     }
     chatTab.addEventListener('click', () => showPanel('chat'));
     workspaceTab.addEventListener('click', () => showPanel('projects'));
     memoryTab.addEventListener('click', () => showPanel('memory'));
     approvalTab.addEventListener('click', () => showPanel('approvals'));
+    usageTab.addEventListener('click', () => showPanel('usage'));
+    refreshUsageBtn.addEventListener('click', loadUsage);
     forgeTab.addEventListener('click', () => showPanel('forge'));
     securityTab.addEventListener('click', () => showPanel('security'));
     providerTab.addEventListener('click', () => showPanel('providers'));
@@ -1541,6 +1560,79 @@
         approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
           ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
           : error.message;
+      }
+    }
+
+
+    async function loadUsage() {
+      usageStatus.textContent = 'Checking provider quota and reservations…';
+      usageGate.replaceChildren();
+      usageWindowList.replaceChildren();
+      refreshUsageBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/usage');
+        const gateTitle = document.createElement('h3');
+        gateTitle.textContent = 'Paid inference readiness';
+        const gateDetail = document.createElement('p');
+        const gateOn = data.paidInference?.enabledByDeploymentGate === true;
+        const ceiling = Number.isSafeInteger(data.paidInference?.maxTokensPerRun)
+          ? new Intl.NumberFormat().format(data.paidInference.maxTokensPerRun) + ' tokens per run'
+          : 'No valid finite per-run ceiling configured';
+        const selectedProvider = data.paidInference?.selectedProviderId || 'unknown provider';
+        const selectedModel = data.paidInference?.selectedModelId || 'no paid model selected';
+        gateDetail.textContent = 'Deployment gate: ' + (gateOn ? 'enabled' : 'disabled') +
+          ' · Selected: ' + selectedProvider + ' / ' + selectedModel + ' · ' + ceiling;
+        const readiness = document.createElement('p');
+        readiness.textContent = data.paidInference?.canAuthorisePaidRun === true
+          ? 'A current verified quota window has enough headroom for the configured ceiling. Each run still needs your separate approval.'
+          : 'Not ready for paid inference. Check the deployment gate, finite token ceiling and a current verified quota window.';
+        usageGate.append(gateTitle, gateDetail, readiness);
+
+        const windows = Array.isArray(data.windows) ? data.windows : [];
+        if (!windows.length) {
+          usageWindowList.textContent = 'No active token quota windows are recorded. AEGIS will not guess a provider limit or remaining balance.';
+          usageWindowList.className = 'memory-empty';
+        } else {
+          usageWindowList.className = '';
+          windows.forEach(window => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h3');
+            title.textContent = window.providerId + ' · ' + window.modelId;
+            const state = document.createElement('p');
+            state.textContent = 'Quota status: ' + window.status +
+              (window.verifiedAt ? ' · checked ' + new Date(window.verifiedAt).toLocaleString() : '');
+            const balance = document.createElement('p');
+            balance.textContent = window.remainingUnits === null
+              ? 'Remaining quota: unavailable until the quota is freshly verified'
+              : 'Remaining: ' + new Intl.NumberFormat().format(window.remainingUnits) +
+                ' tokens · limit ' + new Intl.NumberFormat().format(window.limitUnits);
+            const usage = document.createElement('p');
+            usage.textContent = 'Settled: ' + new Intl.NumberFormat().format(window.settledUnits ?? 0) +
+              ' · Reserved for unfinished runs: ' + new Intl.NumberFormat().format(window.reservedUnits ?? 0) +
+              ' · Outstanding reservations: ' + new Intl.NumberFormat().format(window.outstandingReservations ?? 0);
+            const period = document.createElement('p');
+            period.textContent = 'Window: ' + new Date(window.windowStart).toLocaleString() +
+              ' – ' + new Date(window.windowEnd).toLocaleString();
+            card.append(title, state, balance, usage, period);
+            if (window.sourceUrl) {
+              const source = document.createElement('a');
+              source.href = window.sourceUrl;
+              source.target = '_blank';
+              source.rel = 'noopener noreferrer';
+              source.textContent = 'Quota source';
+              card.append(source);
+            }
+            usageWindowList.append(card);
+          });
+        }
+        usageStatus.textContent = 'Last checked ' + new Date(data.checkedAt).toLocaleString() +
+          ' · read-only · no provider was contacted';
+      } catch (error) {
+        usageStatus.textContent = error.message || 'Usage information is unavailable.';
+        usageWindowList.textContent = 'Quota is unknown. Paid inference readiness remains blocked until the ledger can be read.';
+      } finally {
+        refreshUsageBtn.disabled = false;
       }
     }
 

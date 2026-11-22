@@ -215,3 +215,14 @@ test('Security Centre exposes read-only capability and module inventory without 
   assert.match(html, /moduleNode\.textContent\s*=\s*module\.name/);
   assert.match(html, /No grants are created by this inventory/);
 });
+
+test('Control Centre exposes a read-only usage and quota panel with fail-closed messaging', () => {
+  for (const id of ['usageTab','usageSection','usageStatus','usageGate','usageWindowList','refreshUsageBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing usage control element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/usage'/);
+  assert.match(html, /Remaining quota: unavailable until the quota is freshly verified/);
+  assert.match(html, /Reserved for unfinished runs/);
+  assert.match(html, /Every paid run still requires separate exact-run owner approval|separate approval/);
+  assert.match(html, /textContent\s*=\s*window\.providerId/);
+});

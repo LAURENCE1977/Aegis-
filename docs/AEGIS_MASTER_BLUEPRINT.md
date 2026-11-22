@@ -440,6 +440,17 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 - No preview deployment has been created for PR #190. PRs #188–#190 remain drafts and are not merged. `main` and production have not been changed. Do not merge or promote without explicit owner approval.
 - Remaining activation gate: the deployment owner must deliberately configure the deployment-level paid-inference switch, finite token ceiling, provider credential and fresh verified quota window. No live paid inference is enabled by this code change.
 
+
+## Usage and quota Control Centre — PR #191 (22 November 2026)
+- PR #191: https://github.com/LAURENCE1977/Aegis-/pull/191 — open draft stacked on PR #190; see GitHub for the live head SHA.
+- Adds owner-authenticated, read-only `GET /api/usage` and a Usage tab to the Control Centre.
+- The panel reports active token quota windows, verification freshness, selected paid provider/model, finite per-run ceiling, settled usage, open reservations and remaining quota.
+- Readiness is bound to the selected paid provider and exact model, the separate deployment-level gate, the finite per-run ceiling and sufficient fresh verified headroom. Workers AI/non-paid selections cannot be mistaken for paid readiness.
+- Stale, future-dated, missing or inconsistent quota is reported as unavailable; it is never converted into assumed free capacity. The dashboard does not return credentials, reservation IDs or prompt data and does not contact providers.
+- Every paid run still requires exact-run owner approval.
+- GitHub Actions run `45059633962` passed: **533 tests, 533 passed, 0 failed**. Capability, rate-limit, runtime usage-ledger and Forge isolated D1 migration/smoke checks also passed.
+- Draft only; no merge, production deployment, live paid inference or secrets access. Real quota telemetry and deployment bindings remain separate owner configuration tasks.
+
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
