@@ -84,3 +84,10 @@ export function formatHealthVisionReport(observations, generatedAt = new Date().
   lines.push('Images are not included in this report.');
   return lines.join('\n');
 }
+
+
+/** Returns whether an async preview may still publish into the active session. */
+export function isHealthPreviewRequestCurrent(requestVersion, currentVersion, sessionActive) {
+  return Number.isSafeInteger(requestVersion) && Number.isSafeInteger(currentVersion) &&
+    requestVersion === currentVersion && sessionActive === true;
+}
