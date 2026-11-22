@@ -4,6 +4,7 @@ import {
   validateUsageReservation,
   validateUsageSettlement,
   isUsageWindowActive,
+  validateExistingUsageReservation,
 } from '../functions/lib/usage-ledger.mjs';
 
 const reservation = {
@@ -46,4 +47,55 @@ test('quota window is active only inside its half-open UTC interval', () => {
   assert.equal(isUsageWindowActive(reservation, '2026-11-22T00:00:00.000Z'), true);
   assert.equal(isUsageWindowActive(reservation, '2026-11-22T23:59:59.999Z'), true);
   assert.equal(isUsageWindowActive(reservation, '2026-11-23T00:00:00.000Z'), false);
+});
+
+
+const existingReservation = {
+  principal_id: 'user_001',
+  project_id: null,
+  provider_id: 'workers-ai',
+  model_id: 'llama-33',
+  unit_kind: 'neurons',
+  reserved_units: 2500,
+  window_start: '2026-11-22T00:00:00.000Z',
+  window_end: '2026-11-23T00:00:00.000Z',
+  quota_window_id: 'quota_001',
+  status: 'reserved',
+};
+
+test('allows an idempotent retry only while the original reservation remains open', () => {
+  assert.equal(validateExistingUsageReservation(
+    existingReservation,
+    reservation,
+    'quota_001',
+  ), true);
+});
+
+test('rejects replay of an idempotency key after its reservation was settled', () => {
+  assert.throws(() => validateExistingUsageReservation(
+    { ...existingReservation, status: 'settled' },
+    reservation,
+    'quota_001',
+  ), /already been consumed/i);
+});
+
+test('rejects replay of an idempotency key after its reservation was released', () => {
+  assert.throws(() => validateExistingUsageReservation(
+    { ...existingReservation, status: 'released' },
+    reservation,
+    'quota_001',
+  ), /already been consumed/i);
+});
+
+test('rejects idempotent retries whose provider, model, unit or reservation differs', () => {
+  assert.throws(() => validateExistingUsageReservation(
+    existingReservation,
+    { ...reservation, reservedUnits: 2501 },
+    'quota_001',
+  ), /different usage reservation/i);
+  assert.throws(() => validateExistingUsageReservation(
+    existingReservation,
+    reservation,
+    'quota_002',
+  ), /different usage reservation/i);
 });
