@@ -159,3 +159,17 @@ test('does not enable providers or infer token capacity from neuron quotas', asy
   assert.equal(mapped['disabled-provider'].models, undefined);
   assert.equal(mapped.cloudflare, undefined);
 });
+
+
+test('does not let a quota observation re-enable a model disabled by server policy', async () => {
+  const { mergeResourcePoolProviderState } = await import('../functions/lib/resource-pool.mjs');
+  const snapshot = buildResourcePoolSnapshot({ rows: [tokenWindow], now });
+  const mapped = mergeResourcePoolProviderState(snapshot, {
+    openrouter: {
+      enabled: true,
+      models: { 'model-a': { enabled: false, remainingTokens: 999999 } },
+    },
+  });
+  assert.equal(mapped.openrouter.models['model-a'].enabled, false);
+  assert.equal(mapped.openrouter.models['model-a'].remainingTokens, 7500);
+});
