@@ -5,6 +5,7 @@ import {
   validateUsageSettlement,
   isUsageWindowActive,
   validateExistingUsageReservation,
+  isQuotaVerificationFresh,
 } from '../functions/lib/usage-ledger.mjs';
 
 const reservation = {
@@ -98,4 +99,29 @@ test('rejects idempotent retries whose provider, model, unit or reservation diff
     reservation,
     'quota_002',
   ), /different usage reservation/i);
+});
+
+
+test('accepts a quota verification only while it is current and not from the future', () => {
+  assert.equal(isQuotaVerificationFresh(
+    '2026-11-22T11:00:00.000Z',
+    '2026-11-22T11:30:00.000Z',
+  ), true);
+  assert.equal(isQuotaVerificationFresh(
+    '2026-11-22T10:00:00.000Z',
+    '2026-11-22T11:30:00.000Z',
+  ), false);
+  assert.equal(isQuotaVerificationFresh(
+    '2026-11-22T11:31:00.000Z',
+    '2026-11-22T11:30:00.000Z',
+  ), false);
+});
+
+test('rejects invalid quota verification timestamps and freshness limits', () => {
+  assert.equal(isQuotaVerificationFresh('not-a-date', '2026-11-22T11:30:00.000Z'), false);
+  assert.equal(isQuotaVerificationFresh(
+    '2026-11-22T11:00:00.000Z',
+    '2026-11-22T11:30:00.000Z',
+    0,
+  ), false);
 });
