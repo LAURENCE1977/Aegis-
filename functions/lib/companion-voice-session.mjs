@@ -177,10 +177,10 @@ export function applyVoiceSessionEvent(session, inputEvent, context = {}) {
   }
 
   if (event.sessionId !== session.sessionId) return denied(session, 'SESSION_MISMATCH');
-  if (context.principalId !== undefined && context.principalId !== session.principalId) {
+  if (context.principalId !== session.principalId) {
     return denied(session, 'SESSION_OWNER_MISMATCH');
   }
-  if (context.clientId !== undefined && context.clientId !== session.clientId) {
+  if (context.clientId !== session.clientId) {
     return denied(session, 'SESSION_CLIENT_MISMATCH');
   }
   if (session.status === 'closed') return denied(session, 'SESSION_CLOSED');
