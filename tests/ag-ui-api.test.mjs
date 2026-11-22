@@ -915,7 +915,7 @@ test('AG-UI requires a fresh exact-run approval before retrying incomplete paid 
   assert.equal([...db.reservations.values()].filter(row => row.status === 'settled').length, 1);
 });
 
-test('AG-UI blocks a paid Qwen request before network access without explicit owner approval', async () => {
+test('AG-UI blocks a paid Qwen request by default under the zero-spend policy', async () => {
   let providerCalls = 0;
   const response = await onRequestPost({
     request: await request(input()),
@@ -937,7 +937,7 @@ test('AG-UI blocks a paid Qwen request before network access without explicit ow
 
   assert.equal(response.status, 403);
   assert.equal(providerCalls, 0);
-  assert.match(await response.text(), /explicitly approved/i);
+  assert.equal((await response.json()).code, 'PAID_SPEND_DISABLED');
 });
 
 test('AG-UI blocks approved paid inference before provider access when verified quota storage is absent', async () => {
