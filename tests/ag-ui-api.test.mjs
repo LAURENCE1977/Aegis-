@@ -317,6 +317,7 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
     env:{
       ...envBase,
       AEGIS_MODEL_PROVIDER:'alibaba-qwen',
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_DB: new UsageLedgerMemoryD1(),
@@ -341,13 +342,43 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
   assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
 });
 
+test('AG-UI zero-spend mode blocks paid provider calls even when legacy approval is enabled', async () => {
+  const db = new UsageLedgerMemoryD1();
+  let providerCalls = 0;
+  const env = {
+    ...envBase,
+    AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
+    AEGIS_DB: db,
+    AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+    AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+    AEGIS_QWEN_REGION: 'ap-southeast-1',
+    AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+  };
+  const response = await onRequestPost({
+    request: await request(input({ runId: 'run-zero-spend-lock' })),
+    env,
+    fetchImpl: async () => {
+      providerCalls += 1;
+      throw new Error('paid provider must not be contacted');
+    },
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).code, 'PAID_SPEND_DISABLED');
+  assert.equal(providerCalls, 0);
+  assert.equal(db.approvals.size, 0);
+  assert.equal(db.reservations.size, 0);
+});
+
 test('AG-UI blocks paid provider access until the owner approves the exact run', async () => {
   const db = new UsageLedgerMemoryD1(null, { autoApprovePaid: false });
   let providerCalls = 0;
   const env = {
     ...envBase,
     AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
-    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_ALLOW_PAID_SPEND: 'true',
+      AEGIS_PAID_INFERENCE_APPROVED: 'true',
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
     AEGIS_DB: db,
     AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -459,6 +490,7 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_DB: new UsageLedgerMemoryD1(),
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -518,6 +550,7 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -576,6 +609,7 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
       AEGIS_DB: new UsageLedgerMemoryD1(),
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
@@ -666,6 +700,7 @@ test('AG-UI uses the active encrypted vault credential for Anthropic instead of 
       ...vaultEnv,
       AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'anthropic',
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'legacy-environment-key-must-not-win',
@@ -711,6 +746,7 @@ test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy 
       ...vaultEnv,
       AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -742,6 +778,7 @@ test('AG-UI includes Qwen provider-reported token usage only when the final usag
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_DB: new UsageLedgerMemoryD1(),
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -780,6 +817,7 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
       AEGIS_DB: new UsageLedgerMemoryD1(),
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
@@ -813,6 +851,7 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
       AEGIS_DB: new UsageLedgerMemoryD1(),
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
@@ -837,7 +876,8 @@ test('AG-UI requires a fresh exact-run approval before retrying incomplete paid 
   const env = {
     ...envBase,
     AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
-    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_ALLOW_PAID_SPEND: 'true',
+      AEGIS_PAID_INFERENCE_APPROVED: 'true',
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
     AEGIS_DB: db,
     AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -911,6 +951,7 @@ test('AG-UI blocks approved paid inference before provider access when verified 
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
       AEGIS_QWEN_REGION: 'ap-southeast-1',
       AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+      AEGIS_ALLOW_PAID_SPEND: 'true',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
     },
