@@ -184,3 +184,16 @@ test('transcript text and confidence are bounded and validated', () => {
     text: 'hello', confidence: 0.9, locale: 'English',
   })), /locale/);
 });
+
+test('session events reject a mismatched authenticated owner or browser client binding', () => {
+  const initial = session();
+  const start = event('capture.started', 1, { source: 'push-to-talk' });
+  assert.equal(applyVoiceSessionEvent(initial, start, {
+    now, principalId: 'different-owner', clientId: 'browser-01',
+    userInitiated: true, captureGranted: true,
+  }).reasonCode, 'SESSION_OWNER_MISMATCH');
+  assert.equal(applyVoiceSessionEvent(initial, start, {
+    now, principalId: 'owner-01', clientId: 'different-browser',
+    userInitiated: true, captureGranted: true,
+  }).reasonCode, 'SESSION_CLIENT_MISMATCH');
+});
