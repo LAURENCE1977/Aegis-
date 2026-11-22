@@ -25,7 +25,8 @@ test('creates a bounded observation without retaining image or arbitrary input f
 });
 
 test('rejects missing, malformed and overlong observation content', () => {
-  assert.throws(() => createHealthObservation({}, now), /description/i);
+  assert.throws(() => createHealthObservation({}, now), /kind/i);
+  assert.throws(() => createHealthObservation({ ...valid, description: '' }, now), /description/i);
   assert.throws(() => createHealthObservation({ ...valid, kind: 'diagnosis' }, now), /kind/i);
   assert.throws(() => createHealthObservation({ ...valid, description: 'x'.repeat(2001) }, now), /description/i);
   assert.throws(() => createHealthObservation({ ...valid, observedOn: 'not-a-date' }, now), /date/i);
