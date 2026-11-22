@@ -186,3 +186,66 @@ export async function readResourcePoolSnapshot({
   }
   return buildResourcePoolSnapshot({ rows: result.results, now, maxAgeMs });
 }
+
+
+/**
+ * Merge verified token balances into server-approved provider state.
+ * Provider enablement and paid-fallback approval remain owned by the caller;
+ * quota observations can reduce capacity but can never enable a provider.
+ */
+export function mergeResourcePoolProviderState(snapshot, providerState) {
+  if (!snapshot || typeof snapshot !== 'object' ||
+      snapshot.schemaVersion !== 'aegis.resource-pool.v1' ||
+      !Array.isArray(snapshot.budgets)) {
+    throw new TypeError('Invalid resource-pool snapshot');
+  }
+  if (!providerState || typeof providerState !== 'object' || Array.isArray(providerState)) {
+    throw new TypeError('Invalid server provider state');
+  }
+
+  const merged = {};
+  for (const [providerId, state] of Object.entries(providerState)) {
+    if (!ID.test(providerId) || !state || typeof state !== 'object' || Array.isArray(state)) {
+      throw new TypeError('Invalid server provider state entry');
+    }
+    if (state.models !== undefined &&
+        (!state.models || typeof state.models !== 'object' || Array.isArray(state.models))) {
+      throw new TypeError('Invalid server model provider state');
+    }
+    merged[providerId] = state.enabled === true
+      ? { ...state, models: { ...(state.models ?? {}) } }
+      : { ...state };
+  }
+
+  for (const budget of snapshot.budgets) {
+    if (!budget || typeof budget !== 'object' || Array.isArray(budget) ||
+        typeof budget.providerId !== 'string' || !ID.test(budget.providerId) ||
+        typeof budget.modelId !== 'string' || !ID.test(budget.modelId) ||
+        !UNIT_KINDS.has(budget.unitKind) ||
+        !Number.isSafeInteger(budget.remainingUnits) || budget.remainingUnits < 0) {
+      throw new TypeError('Invalid resource-pool budget entry');
+    }
+    if (budget.unitKind !== 'tokens') continue;
+
+    const provider = merged[budget.providerId];
+    if (!provider || provider.enabled !== true) continue;
+
+    provider.models[budget.modelId] = {
+      ...(provider.models[budget.modelId] ?? {}),
+      enabled: true,
+      remainingTokens: budget.remainingUnits,
+      quotaWindowId: budget.quotaWindowId,
+    };
+  }
+
+  for (const provider of Object.values(merged)) {
+    if (provider.models) {
+      for (const [modelId, state] of Object.entries(provider.models)) {
+        provider.models[modelId] = Object.freeze({ ...state });
+      }
+      Object.freeze(provider.models);
+    }
+    Object.freeze(provider);
+  }
+  return Object.freeze(merged);
+}
