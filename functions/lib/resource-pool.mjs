@@ -230,9 +230,10 @@ export function mergeResourcePoolProviderState(snapshot, providerState) {
     const provider = merged[budget.providerId];
     if (!provider || provider.enabled !== true) continue;
 
+    const existingModel = provider.models[budget.modelId] ?? {};
     provider.models[budget.modelId] = {
-      ...(provider.models[budget.modelId] ?? {}),
-      enabled: true,
+      ...existingModel,
+      enabled: existingModel.enabled !== false,
       remainingTokens: budget.remainingUnits,
       quotaWindowId: budget.quotaWindowId,
     };
