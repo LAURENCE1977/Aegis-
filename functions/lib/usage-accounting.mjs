@@ -71,7 +71,7 @@ export function estimateTokenReservation({
   return reservation;
 }
 
-/** Stable, opaque D1 identifiers derived from a single AG-UI provider run. */
+/** Stable, opaque D1 identifiers scoped to one paid dispatch attempt. */
 export async function deriveUsageReservationIds({ threadId, runId, providerId, modelId, attemptId } = {}) {
   requireIdentifier(threadId, 'thread identifier');
   requireIdentifier(runId, 'run identifier');
