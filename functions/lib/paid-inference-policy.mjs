@@ -26,6 +26,12 @@ export function resolvePaidInferencePolicy(env, providerId, modelId) {
   if (typeof modelId !== 'string' || !ID.test(modelId)) {
     throw new TypeError('Invalid paid inference model identifier');
   }
+  if (env.AEGIS_ALLOW_PAID_SPEND !== 'true') {
+    throw policyError(
+      'PAID_SPEND_DISABLED',
+      'Paid provider spending is disabled by the AEGIS zero-spend policy.',
+    );
+  }
   if (env.AEGIS_PAID_INFERENCE_APPROVED !== 'true') {
     throw policyError(
       'PAID_INFERENCE_NOT_APPROVED',
