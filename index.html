@@ -1578,8 +1578,10 @@
         const ceiling = Number.isSafeInteger(data.paidInference?.maxTokensPerRun)
           ? new Intl.NumberFormat().format(data.paidInference.maxTokensPerRun) + ' tokens per run'
           : 'No valid finite per-run ceiling configured';
+        const selectedProvider = data.paidInference?.selectedProviderId || 'unknown provider';
+        const selectedModel = data.paidInference?.selectedModelId || 'no paid model selected';
         gateDetail.textContent = 'Deployment gate: ' + (gateOn ? 'enabled' : 'disabled') +
-          ' · ' + ceiling;
+          ' · Selected: ' + selectedProvider + ' / ' + selectedModel + ' · ' + ceiling;
         const readiness = document.createElement('p');
         readiness.textContent = data.paidInference?.canAuthorisePaidRun === true
           ? 'A current verified quota window has enough headroom for the configured ceiling. Each run still needs your separate approval.'
