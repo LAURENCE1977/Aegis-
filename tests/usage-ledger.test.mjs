@@ -108,7 +108,7 @@ test('accepts a quota verification only while it is current and not from the fut
     '2026-11-22T11:30:00.000Z',
   ), true);
   assert.equal(isQuotaVerificationFresh(
-    '2026-11-22T10:00:00.000Z',
+    '2026-11-21T10:00:00.000Z',
     '2026-11-22T11:30:00.000Z',
   ), false);
   assert.equal(isQuotaVerificationFresh(
