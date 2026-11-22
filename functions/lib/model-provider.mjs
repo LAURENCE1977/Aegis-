@@ -220,6 +220,7 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
         messages,
         max_tokens: MAX_OUTPUT_TOKENS,
         stream: true,
+        stream_options: { include_usage: true },
         ...(safeTools.length ? { tools: safeTools, tool_choice: 'auto' } : {}),
       }),
       signal: AbortSignal.timeout(60000),
