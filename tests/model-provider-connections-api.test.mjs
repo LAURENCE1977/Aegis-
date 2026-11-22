@@ -128,6 +128,9 @@ test('owner can list supported providers without receiving credentials or vault 
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.ok(body.providers.some(provider => provider.id === 'openrouter'));
+  assert.equal(body.providers.find(provider => provider.id === 'anthropic').inferenceStatus, 'vault_backed_chat');
+  assert.equal(body.providers.find(provider => provider.id === 'alibaba-qwen').inferenceStatus, 'vault_backed_chat');
+  assert.equal(body.providers.find(provider => provider.id === 'openrouter').inferenceStatus, 'vault_only');
   assert.equal(body.connections.length, 0);
   assert.equal(JSON.stringify(body).includes('secretRef'), false);
   assert.equal(JSON.stringify(body).includes('apiKey'), false);
