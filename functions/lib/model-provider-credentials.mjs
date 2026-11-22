@@ -31,7 +31,21 @@ export async function resolveConnectedProviderCredential({
   if (!Number.isFinite(now)) throw new TypeError('Invalid provider credential clock');
 
   const connection = await loadConnection(db, { principalId, providerId }, now);
-  if (!connection) return null;
+  if (!connection) {
+    // Once the owner has created a connection, revocation/expiry must not
+    // silently reactivate a legacy environment credential for this provider.
+    const historical = await db.prepare(`
+      SELECT id, status, revoked_at, expires_at
+      FROM capability_connections
+      WHERE principal_id = ? AND provider_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT 1
+    `).bind(principalId, providerId).first();
+    if (historical) {
+      throw new Error('Provider connection is inactive; legacy environment fallback is disabled');
+    }
+    return null;
+  }
 
   const requiredScope = providerId + ':inference:chat';
   if (!Array.isArray(connection.scopes) || !connection.scopes.includes(requiredScope)) {
