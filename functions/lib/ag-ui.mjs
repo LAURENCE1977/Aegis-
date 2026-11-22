@@ -35,15 +35,16 @@ export function createTextRunContentEvent({ runId, delta, now = Date.now() }) {
   return { type: 'TEXT_MESSAGE_CONTENT', messageId: runId, delta, timestamp: now };
 }
 
-export function createTextRunFinishEvents({ threadId, runId, now = Date.now(), outcome, usage }) {
+export function createTextRunFinishEvents({ threadId, runId, now = Date.now(), outcome, usage, usageAccountingStatus }) {
   requireIdentifier(threadId, 'thread ID');
   requireIdentifier(runId, 'run ID');
   if (!Number.isSafeInteger(now)) throw new TypeError('Invalid AG-UI timestamp');
   if (outcome !== undefined && outcome !== 'cancelled') throw new TypeError('Invalid AG-UI run outcome');
   if (usage !== undefined && !isCompleteProviderUsage(usage)) throw new TypeError('Invalid AG-UI provider usage');
+  if (usageAccountingStatus !== undefined && !['settled', 'reconciliation_required'].includes(usageAccountingStatus)) throw new TypeError('Invalid AG-UI usage accounting status');
   return [
     { type: 'TEXT_MESSAGE_END', messageId: runId, timestamp: now },
-    { type: 'RUN_FINISHED', threadId, runId, timestamp: now, ...(outcome ? { outcome } : {}), ...(usage ? { usage } : {}) },
+    { type: 'RUN_FINISHED', threadId, runId, timestamp: now, ...(outcome ? { outcome } : {}), ...(usage ? { usage } : {}), ...(usageAccountingStatus ? { usageAccountingStatus } : {}) },
   ];
 }
 
@@ -83,7 +84,8 @@ export function encodeAgUiSse(events) {
       : event.type === 'RUN_FINISHED'
         ? typeof event.threadId === 'string' && typeof event.runId === 'string' &&
           (event.outcome === undefined || event.outcome === 'cancelled') &&
-          (event.usage === undefined || isCompleteProviderUsage(event.usage))
+          (event.usage === undefined || isCompleteProviderUsage(event.usage)) &&
+          (event.usageAccountingStatus === undefined || ['settled', 'reconciliation_required'].includes(event.usageAccountingStatus))
         : event.type === 'TEXT_MESSAGE_START'
           ? typeof event.messageId === 'string' && (event.role === undefined || event.role === 'assistant')
           : event.type === 'TEXT_MESSAGE_CONTENT'
