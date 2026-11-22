@@ -32,14 +32,17 @@ The AG-UI gateway now applies a fail-closed paid-inference policy to Anthropic a
 
 - The owner must explicitly set `AEGIS_PAID_INFERENCE_APPROVED=true`; having an API key is not approval.
 - The owner must configure a finite `AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN` ceiling. The current supported maximum is 100,000 tokens.
-- This is a deployment-level owner approval switch, not yet a per-run approval prompt in the chat UI.
+- The deployment-level switch is only a feature gate; each paid dispatch also requires a separate owner decision in the authenticated Approvals inbox. A key or deployment flag alone never grants per-run consent.
+- The pending approval is bound server-side to the exact thread/run, provider, model, estimated token reservation, maximum token ceiling and a digest of the prepared prompt and server-selected tools. Prompt contents and the digest are not exposed in the inbox.
+- Pending approvals expire after 10 minutes. The existing owner-only approve/deny API records the decision; after approval, the browser resumes the same request and the server atomically consumes the exact decision once before reserving quota or contacting the provider.
+- A partial unique D1 index prevents concurrent duplicate active approvals. Replays, changed prompts, changed models/providers, changed token estimates/ceilings, denied decisions and expired decisions fail closed.
 - AEGIS requires D1 and one fresh, verified, active quota window matching the selected provider and model.
 - It estimates a conservative reservation and reserves quota before the paid provider is contacted. If policy, storage, quota or reservation fails, the provider is not called.
 - Complete, provider-matched usage is settled against the reservation. Qwen tool-round usage is aggregated across the initial and follow-up provider requests.
 - Incomplete, cancelled, mismatched or over-reservation usage is not settled or presented as a complete total; the reservation remains open for reconciliation.
 - A separate retry-safety change assigns each received paid dispatch attempt a distinct opaque reservation identity, preventing a repeated thread/run ID from reusing an earlier open reservation.
 
-Cloudflare Workers AI / Neurons remain on their separate accounting path; their units are not mixed with provider token quotas. These paid-accounting changes are present on draft PR #188 and its draft retry-safety follow-up PR #189. They are not merged to `main` or production-live.
+Cloudflare Workers AI / Neurons remain on their separate accounting path; their units are not mixed with provider token quotas. These paid-accounting and exact-run approval changes are present on draft PRs #188–#190. PR #190 adds the per-run owner-consent workflow on top of PR #189. They are not merged to `main` or production-live.
 
 Automatic provider routing and provider failover are not implemented. Provider selection remains server-side through `AEGIS_MODEL_PROVIDER`; browser request fields cannot select a provider.
 
