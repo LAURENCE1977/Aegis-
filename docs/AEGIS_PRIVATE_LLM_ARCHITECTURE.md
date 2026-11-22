@@ -165,3 +165,55 @@ This proposal does not provision Oracle compute or GPU capacity, change Cloudfla
 - BentoML docs: https://docs.bentoml.com/
 - NVIDIA Triton docs: https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/
 - LoRAX: https://github.com/predibase/lorax
+
+
+## 12. Desktop and local workbench candidates
+
+Jan and text-generation-webui are useful additions to the evaluation, but they should not be confused with the production AEGIS inference service.
+
+| Tool | Best role in AEGIS evaluation | Strengths | Boundary / decision |
+|---|---|---|---|
+| Jan Desktop | First local operator client and small-model smoke-test candidate | Desktop UI; local llama.cpp/MLX model execution; documented OpenAI-compatible local API; can connect to compatible gateways | **Recommended first desktop evaluation**, subject to a compatible host and hardware. Keep the API bound to 127.0.0.1 for a personal test. Jan can also connect to cloud providers, so select and verify the local model route explicitly. |
+| text-generation-webui (oobabooga/textgen) | Optional advanced local model workbench | Multiple inference backends, model/adapter experimentation, UI and compatible API; supports tool-calling and extensions | **Secondary specialist evaluation**, not the default AEGIS production server. Its extension and tool surface increases review burden. Pin a release/commit and inspect the licence and dependencies before any trial. |
+| llama.cpp / llama-server | Minimal local inference engine | Direct GGUF runtime and API without requiring a full chat workbench | Preferred low-resource engine baseline where the host supports it. |
+| vLLM | Controlled production serving candidate | Dedicated model serving and concurrency features | Prefer only after a suitable GPU host and workload are verified. |
+
+### Jan-specific checks
+
+Jan's documentation describes a local API server with an OpenAI-compatible interface. The documented default is 127.0.0.1:1337; its configuration can bind to 0.0.0.0 for LAN access, and API-key authentication can be disabled if left empty. For the AEGIS test, keep loopback binding, set authentication if any other local process can reach it, and do not enable LAN exposure or server-side tool execution. Verbose request/response logging must be reviewed and disabled or suitably redacted before any sensitive test. Jan's local server can also be configured with remote providers; a Jan UI alone is not proof that a request stayed local.
+
+### text-generation-webui-specific checks
+
+The current oobabooga textgen project documents a desktop/local model application with multiple backends and OpenAI/Anthropic-compatible APIs. Its API options include network listening, API keys and a public Cloudflare URL option. AEGIS must not use the public-URL/tunnel option for this pilot. Keep the service loopback-only, require an API key, do not enable admin/model-management endpoints for clients, and leave arbitrary extensions or tool execution disabled until each capability has been separately reviewed. Treat the extension ecosystem, model loaders and Python dependencies as additional supply-chain and attack surface.
+
+### Proposed evaluation decision
+
+1. Use Jan as the simplest human-operated local client for a synthetic prompt smoke test, if a suitable Windows, macOS or Linux host is available. Do not assume the Chromebook can host a useful model; first establish its supported Linux environment, RAM, CPU and storage without installing anything.
+2. Compare one small GGUF model against llama.cpp directly using the same synthetic prompt set. Record model revision/hash, quantization, memory use, latency and output quality.
+3. Only add text-generation-webui if the evaluation needs its extra backend, extension, vision or adapter experimentation. Do not deploy Jan or text-generation-webui as a public AEGIS service.
+4. For AEGIS integration, connect a client only to a test gateway endpoint. AEGIS authentication, Sentinel authorization, audit, quotas and data classification must remain in front of every model runtime. A desktop API key is not a substitute for AEGIS identity or policy.
+5. Do not use personal, account, repository-secret or Health Vision data in either workbench. Synthetic data only.
+
+## 13. First pilot: definition of done
+
+The first pilot is a **local-only, synthetic-data model smoke test**, not a Cloudflare or Oracle deployment.
+
+- A host is identified and its CPU, RAM, GPU/VRAM, free storage and operating system are recorded.
+- One small, licence-reviewed GGUF instruction model is selected; its exact repository revision and artifact hash are recorded.
+- Jan or llama.cpp is selected as the single initial runtime; do not install multiple runtimes just to compare them.
+- The model endpoint listens on loopback only and is not exposed through a tunnel, router port-forward, public URL or LAN binding.
+- A fixed synthetic test set checks basic instruction following, structured output, refusal behavior and prompt-injection handling.
+- Request/response logging is inspected for accidental payload retention; secrets and real user data are never included.
+- The test records cold-start time, warm latency, peak RAM/VRAM, model load failures and observed output quality.
+- Results are written up with limitations and a stop/rollback note before any AEGIS gateway integration is proposed.
+
+**Stop conditions:** no suitable host, unclear model licence/provenance, unexpected outbound traffic, unauthenticated non-loopback access, sensitive payload logging, unstable runtime, or any request to connect production tools/health data. If any stop condition occurs, do not proceed to the gateway stage.
+
+## Additional official references checked (22 November 2026)
+
+- Jan local API server: https://docs.jan.ai/desktop/api-server
+- Jan API reference: https://docs.jan.ai/desktop/api-preference
+- Jan custom endpoints: https://docs.jan.ai/desktop/remote-models/custom-endpoint
+- Jan model management: https://docs.jan.ai/desktop/manage-models
+- oobabooga textgen repository: https://github.com/oobabooga/textgen
+- textgen API documentation: https://github.com/oobabooga/textgen/wiki/12-%E2%80%90-OpenAI-API
