@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 15 November 2026.  
+**Canonical project record.** Last refreshed: 22 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -427,6 +427,17 @@ Migration `0006_invocation_limits.sql` adds an atomic per-principal, capability 
 
 The AG-UI 1.0 endpoint supports authenticated streaming chat through the default Workers AI text-only route. An optional Qwen OpenAI-compatible provider can expose exactly two server-defined read-only tools only when the owner explicitly enables `AEGIS_AGENT_TOOLS_ENABLED=true`, selects the tested `qwen3.8-flash` model, configures its runtime API key/workspace/region and provides AEGIS D1. The tool loop permits one tool call and one no-tools follow-up only. Tool arguments are strict, resource IDs are derived server-side, and execution passes through exact grants, atomic rate limits, Sentinel audit and the fixed adapter registry. Provider frames are capped at 16 KiB, total provider bytes at 256 KiB and user-visible output at 12,000 characters. No private GitHub access, source-file reading, shell, browser, MCP, writes or deletes are enabled. No provider secrets or runtime flags are set by this code change.
 
+
+## Paid inference gate, usage ledger and retry safety — PRs #188–#189 (22 November 2026)
+
+- PR #188: https://github.com/LAURENCE1977/Aegis-/pull/188 — open draft, based on the paid-inference approval feature branch. Its current head is `fc7b0c75ad62b81848cb112131c1cabf1c4c0642`.
+- PR #188 adds a fail-closed owner-configured approval switch and finite per-run token ceiling for Anthropic and Qwen; requires a fresh verified provider/model quota window and D1 reservation before dispatch; settles only complete provider-matched usage; aggregates Qwen tool-round usage; and leaves incomplete, cancelled, mismatched or over-limit usage reserved for reconciliation.
+- The approval switch (`AEGIS_PAID_INFERENCE_APPROVED=true`) is a deployment-level owner setting. A per-run interactive approval prompt in the chat UI is not yet implemented.
+- PR #189: https://github.com/LAURENCE1977/Aegis-/pull/189 — open draft stacked on PR #188. It gives each received paid dispatch attempt a distinct opaque reservation identity, so a repeated AG-UI thread/run ID cannot reuse an earlier open reservation after an incomplete stream.
+- PR #189 GitHub Actions run `45034929466` completed successfully: **515 Node.js tests passed, 0 failed**, including the new retry regression; all isolated capability, rate-limit, runtime usage-ledger and Forge D1 migration checks passed.
+- Cloudflare Pages created a branch preview at https://repair-aegis-paid-inference.aegis-6yk.pages.dev. This is preview evidence only; it is not a production promotion.
+- Neither PR is merged. `main` and the production deployment have not been changed by these PRs. Do not merge or promote without explicit owner approval.
+- Next review point: decide whether to replace the deployment-level paid-inference approval switch with a one-time, exact-run approval workflow before enabling paid inference in a user-facing production deployment.
 
 ## Anthropic provider adapter
 
