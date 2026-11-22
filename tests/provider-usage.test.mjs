@@ -27,6 +27,8 @@ test('extracts Anthropic output-token usage from message_delta', () => {
   }), {
     inputTokens: null,
     outputTokens: 87,
+    cacheCreationInputTokens: null,
+    cacheReadInputTokens: null,
     totalTokens: null,
     source: 'anthropic',
   });
