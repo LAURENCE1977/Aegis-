@@ -1,3 +1,5 @@
+import { createOpenAICompatibleStream } from './openai-compatible-stream.mjs';
+
 const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct';
 const QWEN_REGIONS = new Set([
   'ap-southeast-1',
@@ -205,37 +207,16 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
   if (safeTools.length && model !== 'qwen3.8-flash') {
     throw new Error('Tool calling is not enabled for this Qwen model.');
   }
-  let response;
-  try {
-    response = await fetchImpl(endpoint, {
-      method: 'POST',
-      redirect: 'error',
-      headers: {
-        Authorization: 'Bearer ' + key,
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        stream: true,
-        ...(safeTools.length ? { tools: safeTools, tool_choice: 'auto' } : {}),
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
-  } catch {
-    throw new Error('Qwen provider request failed.');
-  }
-  if (!response || !response.ok || !response.body ||
-      typeof response.body.getReader !== 'function') {
-    throw new Error('Qwen provider request failed.');
-  }
-  const contentType = response.headers?.get?.('content-type') || '';
-  if (!contentType.toLowerCase().includes('text/event-stream')) {
-    throw new Error('Qwen provider returned an unsupported response type.');
-  }
-  return response.body;
+  return createOpenAICompatibleStream({
+    providerName: 'Qwen',
+    endpoint,
+    apiKey: key,
+    model,
+    messages,
+    tools: safeTools,
+    allowTools: model === 'qwen3.8-flash',
+    fetchImpl,
+  });
 }
 
 export const MODEL_PROVIDER_LIMITS = Object.freeze({
