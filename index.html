@@ -125,6 +125,7 @@
         <button class="secondary" id="memoryTab" type="button">Memory</button>
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
         <button class="secondary" id="usageTab" type="button">Usage</button>
+        <button class="secondary" id="healthVisionTab" type="button">Health Vision</button>
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
         <button class="secondary" id="providerTab" type="button">Providers</button>
@@ -228,6 +229,59 @@
         <div id="usageGate" class="workspace-card" aria-live="polite"></div>
         <div id="usageWindowList" aria-live="polite"></div>
         <div class="workspace-actions"><button class="secondary" id="refreshUsageBtn" type="button">Refresh usage</button></div>
+      </section>
+      <section class="memory-panel" id="healthVisionSection" hidden>
+        <h2>AEGIS Health Vision</h2>
+        <p class="memory-help">A private, non-diagnostic space to record what you notice, keep track of changes during this visit, and prepare notes for a healthcare professional.</p>
+        <div class="workspace-card" role="note">
+          <h3>Privacy by design — Stage 1</h3>
+          <p>Photos and notes stay in this open browser page's temporary memory. Nothing is uploaded, sent to an AI model, written to AEGIS memory, or saved between sessions. Signing out, reloading, closing this page or clearing the session removes them.</p>
+          <p>Image checks are technical only. AEGIS does not analyse the image, diagnose, assess cancer risk, triage symptoms or recommend treatment. Photos are not attached to notes or included in reports.</p>
+        </div>
+        <form class="memory-form" id="healthObservationForm">
+          <label for="healthKind">What are you recording?</label>
+          <select id="healthKind" required>
+            <option value="skin">Skin or visible change</option>
+            <option value="wound">Wound or healing progress</option>
+            <option value="symptom">Symptom or sensation</option>
+            <option value="general">General observation</option>
+          </select>
+          <label for="healthBodyArea">Area (optional)</label>
+          <input id="healthBodyArea" maxlength="120" placeholder="e.g. left forearm" autocomplete="off" />
+          <label for="healthObservedOn">When did you first notice it?</label>
+          <input id="healthObservedOn" type="date" required />
+          <label for="healthDescription">What have you noticed?</label>
+          <textarea id="healthDescription" maxlength="2000" rows="3" required placeholder="Describe what you can see or feel, in your own words."></textarea>
+          <label for="healthSymptoms">Other symptoms (optional)</label>
+          <textarea id="healthSymptoms" maxlength="1000" rows="2" placeholder="For example, tenderness or itching."></textarea>
+          <label for="healthChanges">Changes over time (optional)</label>
+          <textarea id="healthChanges" maxlength="1000" rows="2" placeholder="For example, whether it seems different from yesterday."></textarea>
+          <label for="healthPhotoInput">Optional photo preview (not saved with your note)</label>
+          <input id="healthPhotoInput" type="file" accept="image/*" capture="environment" />
+          <div class="memory-actions">
+            <button class="secondary" id="healthStartCameraBtn" type="button">Use webcam</button>
+            <button class="secondary" id="healthCaptureFrameBtn" type="button" hidden>Capture frame</button>
+            <button class="secondary" id="healthStopCameraBtn" type="button" hidden>Stop camera</button>
+          </div>
+          <video id="healthCameraVideo" autoplay muted playsinline hidden style="width:100%;max-height:18rem;border-radius:.75rem;background:#000"></video>
+          <div id="healthPhotoPreview" class="workspace-card" hidden>
+            <img id="healthPhotoPreviewImage" alt="Temporary photo preview" style="display:block;max-width:100%;max-height:18rem;object-fit:contain;margin:auto;border-radius:.5rem" />
+            <p class="memory-help">Temporary preview only. It is not uploaded, interpreted or included in your report.</p>
+            <button class="secondary" id="healthClearPhotoBtn" type="button">Clear photo preview</button>
+          </div>
+          <button id="healthAddObservationBtn" type="submit">Add observation to this session</button>
+        </form>
+        <p class="status" id="healthVisionStatus" role="status" aria-live="polite">Ready. Nothing has been recorded or uploaded.</p>
+        <h3>Session observations</h3>
+        <div id="healthObservationList" aria-live="polite"></div>
+        <div class="workspace-actions">
+          <button class="secondary" id="healthExportBtn" type="button" disabled>Export text report</button>
+          <button class="secondary" id="healthClearAllBtn" type="button" disabled>Clear session</button>
+        </div>
+        <div class="workspace-card" role="note">
+          <h3>When to get help</h3>
+          <p>Do not use this tool for emergencies. In the UK, call 999 for a life-threatening emergency. For urgent medical help that is not an emergency, use NHS 111. If you are worried about a change, contact an appropriate healthcare professional rather than waiting for this tool.</p>
+        </div>
       </section>
       <section class="memory-panel" id="memorySection" hidden>
         <h2>My AEGIS memory</h2>
@@ -1881,5 +1935,6 @@
 
     checkSession();
   </script>
+  <script type="module" src="/health-vision.js"></script>
 </body>
 </html>
