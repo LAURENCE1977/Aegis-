@@ -83,3 +83,14 @@ No suitable always-on Windows/Linux host has been confirmed for this project. Th
 ## Decision
 
 **Adapt, don't copy.** Reuse AEGIS's generic provider gateway and Infinity Zero policy. Treat LM Studio as one compatible local endpoint, with native model-management features as an optional later extension. No code from LM Studio or other third-party repositories is copied by this assessment.
+
+
+## Additional official repository inspection
+
+The official `lmstudio-ai/lmstudio-js` README describes a TypeScript SDK that supports browser and Node-compatible environments, local model inference, tool definitions, model load/unload, configuration and embeddings. Its root `package.json` identifies the package as MIT-licensed. This is useful if AEGIS later needs LM Studio-specific model-management operations, but ordinary chat still fits the generic OpenAI-compatible adapter.
+
+The official `lmstudio-ai/lms` README documents server start/stop, model listing, load/unload and status commands. Its root package manifest and LICENSE also identify MIT. Keep this CLI as a host-side operations tool, not as AEGIS's remote execution interface.
+
+**Important security finding:** the `lms` README documents an LM Link agentic-use switch. It explicitly warns that connected agents can read and modify files and run commands with the host user's permissions. AEGIS must not enable that broad agentic-use mode as an integration shortcut. It conflicts with AEGIS's narrow capability model, Sentinel approval and no-arbitrary-shell rule. If remote control is ever needed, build a separate, typed, allowlisted companion agent with per-action grants, audit, cancellation and no shell access.
+
+The SDK's browser support does not make a browser-side API token safe. AEGIS must keep any LM Studio API token server-side and provide a private authenticated path to the host; do not embed the token in the web app or browser storage.
