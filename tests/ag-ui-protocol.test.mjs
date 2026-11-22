@@ -45,3 +45,19 @@ test('run finish can explicitly report a producer-cancelled outcome', () => {
   assert.match(encoded, /"outcome":"cancelled"/);
   assert.throws(() => createTextRunFinishEvents({ threadId: 't', runId: 'r', outcome: 'mystery' }), /outcome/i);
 });
+
+
+test('run finish exposes only the supported usage-accounting terminal states', () => {
+  const settled = createTextRunFinishEvents({
+    threadId: 't', runId: 'r', now: 1, usageAccountingStatus: 'settled',
+  });
+  const held = createTextRunFinishEvents({
+    threadId: 't', runId: 'r', now: 1, usageAccountingStatus: 'reconciliation_required',
+  });
+  assert.equal(settled.at(-1).usageAccountingStatus, 'settled');
+  assert.equal(held.at(-1).usageAccountingStatus, 'reconciliation_required');
+  assert.match(encodeAgUiSse(held), /"usageAccountingStatus":"reconciliation_required"/);
+  assert.throws(() => createTextRunFinishEvents({
+    threadId: 't', runId: 'r', usageAccountingStatus: 'free',
+  }), /accounting status/i);
+});
