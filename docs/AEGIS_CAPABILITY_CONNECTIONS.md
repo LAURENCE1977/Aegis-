@@ -2,7 +2,7 @@
 
 ## Status
 
-This branch adds the owner-scoped connection metadata repository and D1 migration. It does **not** implement a credential vault, OAuth callback, provider login, connection UI or adapter execution. No credential value is accepted or stored by these functions.
+This branch builds on the owner-scoped connection metadata repository and adds the AES-GCM vault-backed provider key panel/API. It does not implement OAuth or live model-adapter execution. Stored provider credentials remain vault-only until a separately reviewed runtime integration is completed.
 
 ## Data boundary
 
@@ -13,6 +13,14 @@ This branch adds the owner-scoped connection metadata repository and D1 migratio
 - Sentinel lookup is exact on trusted principal and provider, and ignores revoked or expired connections.
 - Listing strips the vault reference. The trusted Sentinel loader may receive it as a reference, never as credential material.
 - Revocation is owner-scoped and returns false for missing, foreign or already-revoked records.
+
+## Owner-facing provider connection API
+
+- `GET /api/model-provider-connections` returns the fixed provider catalogue and redacted connection metadata.
+- `POST /api/model-provider-connections` accepts an allowlisted provider ID and API key over an authenticated same-origin request, stores the key in the encrypted vault and returns only safe metadata.
+- `DELETE /api/model-provider-connections` revokes the provider connection and erases the stored ciphertext.
+- The UI never writes keys to localStorage, chat history or browser logs. It clears the password field after a successful store, on sign-out and when leaving the panel.
+- The current status is `vault_only`; a stored key is not proof that the provider is connected to inference.
 
 ## API
 
@@ -29,12 +37,12 @@ Creation requires `createdBy: 'owner'`. Scope strings are explicit and bounded. 
 
 `migrations/capabilities/0003_connections.sql` follows the approval migration and the grant migration planned in PR #29. Apply it only after the earlier capability migrations, in order, to the intended D1 database. It has not been applied to any Cloudflare environment.
 
-## Remaining before use
+## Remaining before live provider use
 
-1. Provision an encrypted secret-vault adapter with authenticated put/get/delete, versioning, audit and revocation. Never put the secret value in D1 or model context.
-2. Add owner-authenticated connection lifecycle APIs and UI with explicit provider consent.
-3. Compose this repository with the grant loader, approval store and audit writer in the trusted Sentinel composition root.
-4. Add the reviewed server-owned adapter router and egress controls.
-5. Exercise the complete flow in non-production before any deployment.
+1. Provision the vault keyring and active version as Cloudflare Worker secrets; the application does not generate or upload them.
+2. Connect each supported provider to its reviewed server-side adapter, resolving credentials only inside trusted server code.
+3. Compose provider calls with the resource-pool reservation/settlement flow and explicit paid-use approval.
+4. Add redacted invocation audit and fixed-host egress controls.
+5. Exercise the complete flow in non-production before any production deployment.
 
-This is a storage primitive, not a working connected account. No connection can currently be used to access a provider.
+The current UI securely stores credentials but cannot yet use them to access a provider.
