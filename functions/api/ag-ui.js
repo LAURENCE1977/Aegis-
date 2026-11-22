@@ -3,7 +3,9 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
-import { extractProviderUsage, mergeProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
+import { resolvePaidInferencePolicy, isPaidInferenceProvider } from "../lib/paid-inference-policy.mjs";
+import { reserveTokenUsage, settleTokenUsage, deriveUsageReservationIds, estimateTokenReservation } from "../lib/usage-accounting.mjs";
+import { extractProviderUsage, mergeProviderUsage, addProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -85,23 +87,64 @@ export async function onRequestPost(context) {
   const tools = toolsEnabled ? getAgentToolDefinitions() : undefined;
   let promptMessages;
   let modelStream;
+  let usageAccounting = null;
+  let modelEnv = env;
+  const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
   try {
     const history = messages.slice(0, -1).slice(-10);
     promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    let modelEnv = env;
-    const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
+    if (isPaidInferenceProvider(selectedProvider)) {
+      const selectedModel = selectedProvider === "anthropic"
+        ? env.AEGIS_ANTHROPIC_MODEL
+        : (env.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      try {
+        resolvePaidInferencePolicy(env, selectedProvider, selectedModel);
+      } catch (error) {
+        return json({ error: error?.message || "Paid inference is not approved.", code: error?.code || "PAID_INFERENCE_POLICY_REJECTED" }, 403);
+      }
+    }
     if (env.AEGIS_DB && ["anthropic", "alibaba-qwen"].includes(selectedProvider)) {
       const connected = await resolveConnectedProviderCredential({
-        db: env.AEGIS_DB,
-        env,
-        principalId: "owner",
-        providerId: selectedProvider,
+        db: env.AEGIS_DB, env, principalId: "owner", providerId: selectedProvider,
       });
       if (connected) {
         modelEnv = selectedProvider === "anthropic"
           ? { ...env, ANTHROPIC_API_KEY: connected.apiKey }
           : { ...env, AEGIS_QWEN_API_KEY: connected.apiKey };
       }
+    }
+    if (isPaidInferenceProvider(selectedProvider)) {
+      if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function" || typeof env.AEGIS_DB.batch !== "function") {
+        return json({ error: "Verified token quota storage is required before paid inference.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
+      }
+      const modelId = selectedProvider === "anthropic" ? modelEnv.AEGIS_ANTHROPIC_MODEL : (modelEnv.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      if (selectedProvider === "anthropic" && (!modelEnv.ANTHROPIC_API_KEY || !modelId)) {
+        return json({ error: "The configured Anthropic provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
+      }
+      if (selectedProvider === "alibaba-qwen" &&
+          (!modelEnv.AEGIS_QWEN_API_KEY || !modelEnv.AEGIS_QWEN_WORKSPACE_ID || !modelEnv.AEGIS_QWEN_REGION)) {
+        return json({ error: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
+      }
+      const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
+      const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId });
+      const reservationTools = selectedProvider === "alibaba-qwen" ? (tools || []) : [];
+      const reservationInput = {
+        messages: promptMessages, tools: reservationTools, maxOutputTokens: 1024,
+        requestCount: reservationTools.length ? 2 : 1, extraPromptBytes: reservationTools.length ? MAX_TOOL_RESULT * 4 : 0,
+      };
+      const estimatedUnits = estimateTokenReservation(reservationInput);
+      if (estimatedUnits > policy.maxTokensPerRun) {
+        return json({ error: "The estimated token reservation exceeds the approved per-run ceiling.", code: "PAID_INFERENCE_BUDGET_EXCEEDED" }, 403);
+      }
+      try {
+        await reserveTokenUsage({
+          db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
+          ...reservationInput, now: new Date().toISOString(),
+        });
+      } catch {
+        return json({ error: "No active verified token quota is available; the paid provider was not contacted.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
+      }
+      usageAccounting = { db: env.AEGIS_DB, reservationId: reservationIds.reservationId, providerId: selectedProvider, modelId };
     }
     modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
@@ -130,8 +173,9 @@ export async function onRequestPost(context) {
     threadId: input.threadId,
     runId: input.runId,
     startEvents,
-    toolContext: toolsEnabled ? {
-      env,
+    usageAccounting,
+    toolContext: toolsEnabled && selectedProvider === "alibaba-qwen" ? {
+      env: modelEnv,
       db: env.AEGIS_DB,
       fetchImpl,
       promptMessages,
@@ -140,7 +184,7 @@ export async function onRequestPost(context) {
   });
 }
 
-function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents, toolContext }) {
+function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents, toolContext, usageAccounting }) {
   const encoder = new TextEncoder();
   let reader;
   const body = new ReadableStream({
@@ -152,6 +196,8 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
         let cancelled = false;
         let toolRound = 0;
         let providerUsage = null;
+        let requestUsage = null;
+        let usageIncomplete = false;
 
         const emitText = (delta) => {
           if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
@@ -216,7 +262,10 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               let payload;
               try { payload = JSON.parse(data); } catch { return; }
               const usageUpdate = extractProviderUsage(payload);
-              if (usageUpdate) providerUsage = mergeProviderUsage(providerUsage, usageUpdate);
+              if (usageUpdate) {
+                if (usageAccounting) requestUsage = mergeProviderUsage(requestUsage, usageUpdate);
+                else providerUsage = mergeProviderUsage(providerUsage, usageUpdate);
+              }
               if (payload.type === "error") {
                 throw agentStreamError(
                   "PROVIDER_STREAM_ERROR",
@@ -295,6 +344,14 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               break;
             }
 
+            if (usageAccounting) {
+              if (isCompleteProviderUsage(requestUsage)) {
+                try { providerUsage = providerUsage ? addProviderUsage(providerUsage, requestUsage) : requestUsage; }
+                catch { usageIncomplete = true; }
+              } else { usageIncomplete = true; }
+            }
+            requestUsage = null;
+
             const calls = [...toolCalls.values()];
             if (!calls.length) {
               activeStream = null;
@@ -351,12 +408,22 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
             toolRound += 1;
           }
 
+          let usageAccountingStatus;
+          if (usageAccounting) {
+            if (!cancelled && !usageIncomplete && isCompleteProviderUsage(providerUsage)) {
+              try {
+                await settleTokenUsage({ db: usageAccounting.db, reservationId: usageAccounting.reservationId, providerId: usageAccounting.providerId, modelId: usageAccounting.modelId, usage: providerUsage, now: new Date().toISOString() });
+                usageAccountingStatus = "settled";
+              } catch { usageAccountingStatus = "reconciliation_required"; }
+            } else { usageAccountingStatus = "reconciliation_required"; }
+          }
           controller.enqueue(encoder.encode(encodeAgUiSse(
             createTextRunFinishEvents({
-              threadId,
-              runId,
-              outcome: cancelled ? "cancelled" : undefined,
-              usage: isCompleteProviderUsage(providerUsage) ? providerUsage : undefined,
+              threadId, runId, outcome: cancelled ? "cancelled" : undefined,
+              usage: usageAccounting
+                ? (!usageIncomplete && !cancelled && isCompleteProviderUsage(providerUsage) ? providerUsage : undefined)
+                : (isCompleteProviderUsage(providerUsage) ? providerUsage : undefined),
+              usageAccountingStatus,
             }),
           )));
           controller.close();
