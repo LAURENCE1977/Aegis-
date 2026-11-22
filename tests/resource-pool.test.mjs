@@ -14,6 +14,7 @@ const tokenWindow = {
   usedUnits: 2500,
   sourceUrl: 'https://provider.example/limits',
   verifiedAt: '2026-11-22T03:00:00.000Z',
+  status: 'enabled',
 };
 
 test('builds one view while preserving tokens and neurons as separate resource units', () => {
@@ -89,7 +90,21 @@ test('reads only active enabled windows and returns a redacted snapshot from D1'
           bound = values;
           return {
             async all() {
-              return { results: [{ ...tokenWindow, quota_window_id: tokenWindow.quotaWindowId, quota_window_id: tokenWindow.quotaWindowId }] };
+              return {
+                results: [{
+                  quota_window_id: tokenWindow.quotaWindowId,
+                  provider_id: tokenWindow.providerId,
+                  model_id: tokenWindow.modelId,
+                  unit_kind: tokenWindow.unitKind,
+                  window_start: tokenWindow.windowStart,
+                  window_end: tokenWindow.windowEnd,
+                  limit_units: tokenWindow.limitUnits,
+                  used_units: tokenWindow.usedUnits,
+                  source_url: tokenWindow.sourceUrl,
+                  verified_at: tokenWindow.verifiedAt,
+                  status: tokenWindow.status,
+                }],
+              };
             },
           };
         },
