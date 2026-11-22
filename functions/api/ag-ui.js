@@ -3,6 +3,7 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
+import { resolvePaidInferencePolicy, isPaidInferenceProvider } from "../lib/paid-inference-policy.mjs";
 import { extractProviderUsage, mergeProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
   executeAgentToolCall,
@@ -90,6 +91,16 @@ export async function onRequestPost(context) {
     promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
     let modelEnv = env;
     const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
+    if (isPaidInferenceProvider(selectedProvider)) {
+      const selectedModel = selectedProvider === "anthropic"
+        ? env.AEGIS_ANTHROPIC_MODEL
+        : (env.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      try {
+        resolvePaidInferencePolicy(env, selectedProvider, selectedModel);
+      } catch (error) {
+        return json({ error: error?.message || "Paid inference is not approved.", code: error?.code || "PAID_INFERENCE_POLICY_REJECTED" }, 403);
+      }
+    }
     if (env.AEGIS_DB && ["anthropic", "alibaba-qwen"].includes(selectedProvider)) {
       const connected = await resolveConnectedProviderCredential({
         db: env.AEGIS_DB,
