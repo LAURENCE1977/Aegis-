@@ -1,5 +1,5 @@
-const PAID_TOKEN_PROVIDERS = new Set(['anthropic', 'alibaba-qwen']);
-const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const PAID_TOKEN_PROVIDERS = new Set(['anthropic', 'alibaba-qwen', 'apinex']);
+const ID = /^(?:[A-Za-z0-9][A-Za-z0-9._-]*\/)?[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MAX_TOKENS_PER_RUN = 100000;
 
 export function isPaidInferenceProvider(providerId) {
@@ -25,6 +25,12 @@ export function resolvePaidInferencePolicy(env, providerId, modelId) {
   }
   if (typeof modelId !== 'string' || !ID.test(modelId)) {
     throw new TypeError('Invalid paid inference model identifier');
+  }
+  if (env.AEGIS_ALLOW_PAID_SPEND !== 'true') {
+    throw policyError(
+      'PAID_SPEND_DISABLED',
+      'Paid provider spending is disabled by the AEGIS zero-spend policy.',
+    );
   }
   if (env.AEGIS_PAID_INFERENCE_APPROVED !== 'true') {
     throw policyError(

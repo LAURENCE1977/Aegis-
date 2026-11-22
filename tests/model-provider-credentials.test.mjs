@@ -140,3 +140,25 @@ test('an expired provider connection also disables legacy credential fallback', 
     db, env: vaultEnv, principalId: 'owner', providerId: 'anthropic',
   }), /inactive/i);
 });
+test('resolves an APInex credential only for the owner and exact chat-inference scope', async () => {
+  const db = new MemoryD1();
+  await connect(db, 'apinex', 'apinex-server-secret-123456');
+  const result = await resolveConnectedProviderCredential({
+    db, env: vaultEnv, principalId: 'owner', providerId: 'apinex',
+  });
+  assert.equal(result.apiKey, 'apinex-server-secret-123456');
+  assert.equal(result.connectionId, 'connection-apinex');
+  assert.equal(Object.hasOwn(result, 'secretRef'), false);
+});
+
+test('revoked APInex connections fail closed and cannot fall back to an environment key', async () => {
+  const db = new MemoryD1();
+  await connect(db, 'apinex', 'apinex-server-secret-123456');
+  const row = db.connections.get('connection-apinex');
+  row.status = 'revoked';
+  row.revoked_at = new Date().toISOString();
+  await assert.rejects(() => resolveConnectedProviderCredential({
+    db, env: { ...vaultEnv, APINEX_API_KEY: 'legacy-apinex-key-123456' },
+    principalId: 'owner', providerId: 'apinex',
+  }), /inactive/i);
+});

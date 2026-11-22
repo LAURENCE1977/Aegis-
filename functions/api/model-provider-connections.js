@@ -27,9 +27,10 @@ const PROVIDERS = Object.freeze([
   { id: "nebius", name: "Nebius" },
   { id: "alibaba-qwen", name: "Alibaba Qwen" },
   { id: "axforge", name: "AxForge" },
+  { id: "apinex", name: "APInex" },
 ]);
 const PROVIDER_IDS = new Set(PROVIDERS.map(provider => provider.id));
-const VAULT_BACKED_CHAT_PROVIDERS = new Set(["anthropic", "alibaba-qwen"]);
+const VAULT_BACKED_CHAT_PROVIDERS = new Set(["anthropic", "alibaba-qwen", "apinex"]);
 
 function databaseAvailable(env) {
   return Boolean(env?.AEGIS_DB && typeof env.AEGIS_DB.prepare === "function");

@@ -13,24 +13,40 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | Active owner vault connection (preferred), otherwise ANTHROPIC_API_KEY; AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
 | Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | Active owner vault connection (preferred), otherwise AEGIS_QWEN_API_KEY; workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| APInex | AEGIS_MODEL_PROVIDER=apinex | Active owner vault connection; APINEX_API_KEY is never browser-visible; AEGIS_APINEX_MODEL | Fixed APInex Chat Completions endpoint; OpenAI-compatible SSE | Disabled in the first adapter |
 
 ## Encrypted provider connection resolution
 
-The authenticated AG-UI gateway now resolves the selected Anthropic or Alibaba Qwen credential from the encrypted provider vault when an active owner connection exists.
+The authenticated AG-UI gateway resolves selected Anthropic, Alibaba Qwen or APInex credentials from the encrypted provider vault when an active owner connection exists.
 
 - The provider ID is selected only by server-side `AEGIS_MODEL_PROVIDER`; browser request fields cannot select a provider or a vault reference.
 - Resolution is bound to the fixed owner principal, exact provider ID, active non-expired connection and exact `<provider>:inference:chat` scope.
 - The secret is decrypted only in server-side code and passed directly into the selected provider adapter. It is never returned to the browser, inserted into the prompt, or written to audit events.
 - An active vault connection takes precedence over the legacy runtime key. If the connection exists but cannot be resolved or decrypted, the request fails closed; it does not silently fall back to the legacy key.
 - If no provider connection has ever been created, the previous server-side environment-key configuration remains available for compatibility. If a connection record exists but is revoked or expired, legacy environment-key fallback is disabled for that provider; the owner must create a new active vault connection.
-- The credential resolver currently supports only Anthropic and Alibaba Qwen because these are the only adapters present in this branch. Other provider IDs shown in the connection catalogue are securely storable, but are not live inference adapters yet.
+- The credential resolver supports Anthropic, Alibaba Qwen and APInex for live inference. Other provider IDs shown in the connection catalogue may be securely storable without being live inference adapters.
 - The vault keyring and active key version must be configured as server-side Worker secrets. A missing or invalid keyring prevents vault resolution.
+
+## Zero-spend default
+
+AEGIS is configured to fail closed rather than incur provider charges:
+
+- The default Workers AI model is `@cf/zai-org/glm-4.7-flash`, which Cloudflare lists as available on Workers Free. Do not substitute a model that requires Workers Paid or prepaid credits.
+- Cloudflare documents a 10,000-Neuron daily free allocation for Workers AI. On Workers Free, requests beyond that allocation fail until the daily reset; they do not become paid overages. Keep the account on Workers Free and never upgrade it to Workers Paid for this project.
+- Paid external providers (Anthropic, Alibaba Qwen and APInex) require **both** `AEGIS_ALLOW_PAID_SPEND=true` and `AEGIS_PAID_INFERENCE_APPROVED=true`, plus a finite token ceiling, fresh D1 quota, and exact-run owner approval. The new `AEGIS_ALLOW_PAID_SPEND` switch is intentionally absent by default. Without it, requests return `PAID_SPEND_DISABLED` before credentials, approvals, quota reservations or provider dispatch.
+- For a zero-payment deployment, leave `AEGIS_ALLOW_PAID_SPEND` unset. Do not set it in Cloudflare Pages/Workers secrets or variables. An API key, a model ID containing `free/`, or a provider's advertised free allowance does not override this lock.
+- No automatic paid fallback, plan upgrade, prepaid-credit purchase, provider failover or model substitution is allowed. If a free allowance is exhausted or a provider asks for payment, stop and wait for the allowance reset or use a verified local model.
+- Cloudflare D1 Free has finite database, storage and daily query limits. Exceeding the free daily read/write limits causes queries to fail until reset. Never upgrade Workers to Paid to recover service; wait for reset or reduce usage.
+
+The default model was changed from the previous Llama 3.3 70B ID because Cloudflare's current catalogue/deprecation notes make that an unsuitable default for a free-first deployment. The replacement is explicitly listed among models available on Workers Free.
+
+References: [Workers AI pricing and free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/), [Workers AI model availability](https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/), [D1 Free limits](https://developers.cloudflare.com/d1/platform/limits/), [D1 free-tier enforcement](https://developers.cloudflare.com/changelog/post/2026-09-01-d1-free-tier-limit-enforcement/).
 
 ## Paid inference approval and token accounting
 
-The AG-UI gateway now applies a fail-closed paid-inference policy to Anthropic and Alibaba Qwen on the paid-accounting feature branch:
+The AG-UI gateway applies a fail-closed paid-inference policy to Anthropic, Alibaba Qwen and APInex:
 
-- The owner must explicitly set `AEGIS_PAID_INFERENCE_APPROVED=true`; having an API key is not approval.
+- The deployment must explicitly set `AEGIS_ALLOW_PAID_SPEND=true` **and** the owner must separately set `AEGIS_PAID_INFERENCE_APPROVED=true`. The spend switch is unset by default; having an API key or the legacy approval flag is not permission to spend.
 - The owner must configure a finite `AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN` ceiling. The current supported maximum is 100,000 tokens.
 - The deployment-level switch is only a feature gate; each paid dispatch also requires a separate owner decision in the authenticated Approvals inbox. A key or deployment flag alone never grants per-run consent.
 - The pending approval is bound server-side to the exact thread/run, provider, model, estimated token reservation, maximum token ceiling and a digest of the prepared prompt and server-selected tools. Prompt contents and the digest are not exposed in the inbox.
@@ -55,6 +71,53 @@ Automatic provider routing and provider failover are not implemented. Provider s
 - Uses bounded message sizes, a 60-second request timeout, redirect rejection and SSE content-type validation.
 - Parses only content_block_delta events whose delta type is text_delta; unknown event types are ignored and provider error events become generic user-safe errors.
 - Does not expose Anthropic tool use yet. Tool calls must be separately modelled through the AEGIS server-owned tool registry and Sentinel, not accepted directly from a provider response.
+
+
+## APInex Chat Completions adapter
+
+**Implementation status:** Added on draft PR #195; not merged to `main` and not production-live. The adapter is covered by the Node.js suite and has a successful Cloudflare Pages preview build. No APInex key has been stored and no live APInex request has been made.
+
+- Fixed endpoint: `https://api.apinex.bond/v1/chat/completions`; no caller-supplied base URL, endpoint or redirect target.
+- Uses a server-side Bearer key resolved from the owner vault under provider ID `apinex` and scope `apinex:inference:chat`.
+- Requires the exact server-side `AEGIS_APINEX_MODEL` identifier. Namespaced IDs such as `free/deepseek-v4.1-flash` are accepted with strict path-segment validation; arbitrary hosts and traversal-like model IDs are rejected.
+- Uses OpenAI-compatible SSE with a 60-second timeout, redirect rejection, response-body checks and `text/event-stream` validation.
+- Requests a bounded 1,024-token output and usage reporting. If complete provider usage is absent or inconsistent, the existing usage ledger leaves the reservation open for reconciliation rather than inventing a final total.
+- Tool calling is disabled. The AG-UI route does not pass its tool definitions to APInex. Provider-returned tool calls are not executed.
+- APInex may include `reasoning_content`; the AG-UI text parser emits only supported text deltas and does not expose the reasoning field.
+- APInex is treated as metered external inference, including when the selected model is advertised as free. Every run requires the existing explicit owner paid-inference feature gate, a finite token ceiling, exact-run approval, and a matching active D1 quota window. This conservative policy remains until account-specific free-tier eligibility and billing behavior have been verified.
+- No automatic paid-model fallback, provider failover or model substitution is allowed.
+- Do not route health data, secrets, credentials or confidential repository content to APInex.
+
+Official protocol references: [APInex Chat Completions](https://apinex.bond/developers/models/chat) and [APInex model catalogue](https://apinex.bond/models).
+
+### Free-tier eligibility is a separate future gate
+
+APInex's public pricing page advertises a daily allowance for free-category models, and its free-model guide distinguishes daily-free-eligible entries from subscription-only entries. The guide describes weighted allowance consumption and an authenticated `GET /v1/subscription` status containing fields such as `allowed`, `tokens_remaining` and `resets_at_utc`.
+
+The current AEGIS adapter does **not** yet perform that preflight or verify model-level `allowFree` eligibility. Therefore it deliberately treats every APInex dispatch as metered and requires the paid-inference approval/quota path, even when the configured ID begins with `free/`. This is a safety hold, not a claim that the free models necessarily cost money.
+
+A later free-tier optimisation should be implemented separately and test-first:
+- Authenticate a read-only subscription/allowance check using the same vault-resolved key.
+- Verify the exact model's current daily-free eligibility from trusted current catalogue metadata; a `free/` prefix alone is insufficient.
+- Enforce the account's remaining weighted allowance and reset time, plus AEGIS's own finite per-run/daily cap.
+- Fail closed on missing, stale, contradictory or unavailable eligibility data.
+- Never fall back to a paid model or use subscription-only free-category models without an active subscription.
+- Reconcile actual usage after the response; do not assume model IDs or advertised allowances remain stable.
+
+References: [APInex pricing](https://apinex.bond/pricing), [APInex free-model allowance guide](https://apinex.bond/guides/free-llm-api-keys-for-developers-complete-list).
+
+### Activation gates
+
+
+**Current infrastructure blocker (read-only audit, 2026-11-22):** The correct Cloudflare account for the AEGIS Pages project currently lists zero D1 databases, and the `aegis` Pages production configuration has no D1 binding. The encrypted provider vault and paid-token ledger therefore cannot be enabled in that environment yet. No database or binding has been created. Owner approval is required before provisioning D1 or changing production configuration.
+
+1. Merge the provider implementation only after review of PR #195 and its parent branch.
+2. Confirm the production/preview D1 migrations, vault keyring and active key version are configured for the intended environment.
+3. Owner creates an APInex account and obtains an APInex key directly from APInex. Never paste it into chat or commit it.
+4. Store the key using the authenticated AEGIS provider-connection screen/API, which encrypts it in the provider vault.
+5. Configure the exact model ID and owner-approved token ceiling in the server environment. Do not enable paid inference merely because a key exists.
+6. Add a verified provider/model quota window and test first with a small, non-sensitive prompt after explicit per-run approval.
+7. Confirm actual APInex usage and billing before any broader use. No sensitive-data use without a separate privacy and contractual review.
 
 ## Runtime configuration
 

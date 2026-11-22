@@ -101,34 +101,46 @@ export async function onRequestPost(context) {
     if (isPaidInferenceProvider(selectedProvider)) {
       const selectedModel = selectedProvider === "anthropic"
         ? env.AEGIS_ANTHROPIC_MODEL
-        : (env.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+        : selectedProvider === "apinex"
+          ? env.AEGIS_APINEX_MODEL
+          : (env.AEGIS_QWEN_MODEL || "qwen3.8-flash");
       try {
         resolvePaidInferencePolicy(env, selectedProvider, selectedModel);
       } catch (error) {
         return json({ error: error?.message || "Paid inference is not approved.", code: error?.code || "PAID_INFERENCE_POLICY_REJECTED" }, 403);
       }
     }
-    if (env.AEGIS_DB && ["anthropic", "alibaba-qwen"].includes(selectedProvider)) {
+    if (env.AEGIS_DB && ["anthropic", "alibaba-qwen", "apinex"].includes(selectedProvider)) {
       const connected = await resolveConnectedProviderCredential({
         db: env.AEGIS_DB, env, principalId: "owner", providerId: selectedProvider,
       });
       if (connected) {
         modelEnv = selectedProvider === "anthropic"
           ? { ...env, ANTHROPIC_API_KEY: connected.apiKey }
-          : { ...env, AEGIS_QWEN_API_KEY: connected.apiKey };
+          : selectedProvider === "apinex"
+            ? { ...env, APINEX_API_KEY: connected.apiKey }
+            : { ...env, AEGIS_QWEN_API_KEY: connected.apiKey };
       }
     }
     if (isPaidInferenceProvider(selectedProvider)) {
       if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function" || typeof env.AEGIS_DB.batch !== "function") {
         return json({ error: "Verified token quota storage is required before paid inference.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
       }
-      const modelId = selectedProvider === "anthropic" ? modelEnv.AEGIS_ANTHROPIC_MODEL : (modelEnv.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      const modelId = selectedProvider === "anthropic"
+        ? modelEnv.AEGIS_ANTHROPIC_MODEL
+        : selectedProvider === "apinex"
+          ? modelEnv.AEGIS_APINEX_MODEL
+          : (modelEnv.AEGIS_QWEN_MODEL || "qwen3.8-flash");
       if (selectedProvider === "anthropic" && (!modelEnv.ANTHROPIC_API_KEY || !modelId)) {
         return json({ error: "The configured Anthropic provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
       }
       if (selectedProvider === "alibaba-qwen" &&
           (!modelEnv.AEGIS_QWEN_API_KEY || !modelEnv.AEGIS_QWEN_WORKSPACE_ID || !modelEnv.AEGIS_QWEN_REGION)) {
         return json({ error: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
+      }
+      if (selectedProvider === "apinex" &&
+          (!modelEnv.APINEX_API_KEY || !modelEnv.AEGIS_APINEX_MODEL)) {
+        return json({ error: "The configured APInex provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
       }
       const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
       const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId, attemptId: crypto.randomUUID() });
@@ -192,12 +204,23 @@ export async function onRequestPost(context) {
       }
       usageAccounting = { db: env.AEGIS_DB, reservationId: reservationIds.reservationId, providerId: selectedProvider, modelId };
     }
-    modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
+    modelStream = await createModelStream({
+      env: modelEnv,
+      messages: promptMessages,
+      tools: selectedProvider === "alibaba-qwen" ? tools : undefined,
+      fetchImpl,
+    });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
         (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
       return createAgUiSseResponse([
         createTextRunErrorEvent({ message: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }),
+      ], 503);
+    }
+    if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "apinex" &&
+        (!modelEnv.APINEX_API_KEY || !modelEnv.AEGIS_APINEX_MODEL)) {
+      return createAgUiSseResponse([
+        createTextRunErrorEvent({ message: "The configured APInex provider is not ready.", code: "PROVIDER_NOT_READY" }),
       ], 503);
     }
     if (error instanceof TypeError) {

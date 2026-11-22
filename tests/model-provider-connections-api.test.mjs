@@ -257,3 +257,29 @@ test('provider list reports the newest active connection after a revoked histori
   const body = await listed.json();
   assert.equal(body.providers.find(provider => provider.id === 'openrouter').connectionStatus, 'stored');
 });
+test('owner can securely store and list APInex as a vault-backed chat provider without exposing its key', async () => {
+  const db = new MemoryD1();
+  const saved = await onRequestPost({
+    request: await request('/api/model-provider-connections', {
+      method: 'POST',
+      body: { providerId: 'apinex', apiKey: 'sk-apx-test-secret-value-123456789' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(saved.status, 201);
+  const savedBody = await saved.json();
+  assert.equal(savedBody.runtimeStatus, 'vault_backed_chat');
+  assert.equal(savedBody.connection.providerId, 'apinex');
+  assert.equal(JSON.stringify(savedBody).includes('sk-apx-test-secret-value-123456789'), false);
+
+  const listed = await onRequestGet({
+    request: await request('/api/model-provider-connections'),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(listed.status, 200);
+  const body = await listed.json();
+  const apinex = body.providers.find(provider => provider.id === 'apinex');
+  assert.equal(apinex.connectionStatus, 'stored');
+  assert.equal(apinex.inferenceStatus, 'vault_backed_chat');
+  assert.equal(JSON.stringify(body).includes('sk-apx-test-secret-value-123456789'), false);
+});
