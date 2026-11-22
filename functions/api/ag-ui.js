@@ -4,7 +4,7 @@ import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
 import { resolvePaidInferencePolicy, isPaidInferenceProvider } from "../lib/paid-inference-policy.mjs";
-import { reserveTokenUsage, settleTokenUsage, deriveUsageReservationIds } from "../lib/usage-accounting.mjs";
+import { reserveTokenUsage, settleTokenUsage, deriveUsageReservationIds, estimateTokenReservation } from "../lib/usage-accounting.mjs";
 import { extractProviderUsage, mergeProviderUsage, addProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
   executeAgentToolCall,
@@ -121,15 +121,18 @@ export async function onRequestPost(context) {
       const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
       const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId });
       const reservationTools = selectedProvider === "alibaba-qwen" ? (tools || []) : [];
-      const reserved = await reserveTokenUsage({
-        db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
+      const reservationInput = {
         messages: promptMessages, tools: reservationTools, maxOutputTokens: 1024,
         requestCount: reservationTools.length ? 2 : 1, extraPromptBytes: reservationTools.length ? MAX_TOOL_RESULT * 4 : 0,
-        now: new Date().toISOString(),
-      });
-      if (reserved.reservedUnits > policy.maxTokensPerRun) {
+      };
+      const estimatedUnits = estimateTokenReservation(reservationInput);
+      if (estimatedUnits > policy.maxTokensPerRun) {
         return json({ error: "The estimated token reservation exceeds the approved per-run ceiling.", code: "PAID_INFERENCE_BUDGET_EXCEEDED" }, 403);
       }
+      await reserveTokenUsage({
+        db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
+        ...reservationInput, now: new Date().toISOString(),
+      });
       usageAccounting = { db: env.AEGIS_DB, reservationId: reservationIds.reservationId, providerId: selectedProvider, modelId };
     }
     modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
