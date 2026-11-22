@@ -14,13 +14,69 @@ async function request(body,{authenticated=true,origin='https://aegis.example'}=
 }
 
 class UsageLedgerMemoryD1 {
-  constructor(delegate = null) {
+  constructor(delegate = null, { autoApprovePaid = true } = {}) {
     this.delegate = delegate;
     this.reservations = new Map();
+    this.approvals = new Map();
+    this.autoApprovePaid = autoApprovePaid;
     this.quota = { id: "quota-test-001", window_start: new Date(Date.now() - 60000).toISOString(), window_end: new Date(Date.now() + 86400000).toISOString() };
   }
   prepare(sql) {
     const owner = this;
+    if (sql.includes("INSERT INTO capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; }, async run() {
+        const v = this.values;
+        const approved = owner.autoApprovePaid;
+        owner.approvals.set(v[0], {
+          id: v[0], principal_id: v[1], capability_id: v[2], capability_version: v[3],
+          action_id: v[4], resource_id: v[5], operation_summary: v[6], connection_id: v[7],
+          input_digest: v[8], requested_by: v[9], requested_at: v[10], expires_at: v[11],
+          status: approved ? "approved" : "pending",
+          decided_by: approved ? "owner" : null,
+          decided_at: approved ? new Date(Date.parse(v[10]) + 1000).toISOString() : null,
+          consumed_at: null,
+        });
+        return { meta: { changes: 1 } };
+      } };
+    }
+    if (sql.includes("FROM capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; },
+        async first() {
+          const v = this.values;
+          if (sql.includes("WHERE id = ?")) {
+            const row = owner.approvals.get(v[0]);
+            return row ? { ...row } : null;
+          }
+          if (sql.includes("input_digest = ?")) {
+            const row = [...owner.approvals.values()].find(item =>
+              item.principal_id === v[0] && item.capability_id === v[1] &&
+              item.capability_version === v[2] && item.action_id === v[3] &&
+              item.resource_id === v[4] && item.input_digest === v[5] &&
+              (!sql.includes("status = 'approved'") || item.status === "approved") &&
+              (!sql.includes("expires_at > ?") || item.expires_at > v.at(-1))
+            );
+            return row ? { ...row } : null;
+          }
+          return null;
+        },
+        async run() { return { meta: { changes: 1 } }; }
+      };
+    }
+    if (sql.includes("UPDATE capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; }, async first() {
+        const v = this.values;
+        const [consumedAt, id, expiresAt, principal, capability, version, action, resource, summary, connection, digest] = v;
+        const row = owner.approvals.get(id);
+        if (!row || row.status !== "approved" || row.consumed_at || row.expires_at <= expiresAt ||
+            row.principal_id !== principal || row.capability_id !== capability ||
+            row.capability_version !== version || row.action_id !== action ||
+            row.resource_id !== resource || row.operation_summary !== summary ||
+            row.connection_id !== connection || row.input_digest !== digest) return null;
+        row.status = "consumed";
+        row.consumed_at = consumedAt;
+        return { ...row };
+      } };
+    }
     if (sql.includes("FROM model_usage_quota_windows") && sql.includes("SELECT id, window_start")) {
       return { bind(...values) { this.values = values; return this; }, async all() {
         return { results: [{ ...owner.quota, provider_id: this.values[0], model_id: this.values[1] }] };
