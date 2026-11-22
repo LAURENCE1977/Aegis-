@@ -92,7 +92,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\\r?\n\\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -501,7 +501,7 @@ test('AG-UI uses the active encrypted vault credential for Anthropic instead of 
     fetchImpl: async (_url, options) => {
       authorization = options.headers.Authorization;
       return new Response(modelSseStream([
-        'event: message_stop\\ndata: {"type":"message_stop"}\\n\\n',
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
@@ -545,8 +545,8 @@ test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy 
     fetchImpl: async (_url, options) => {
       authorization = options.headers.Authorization;
       return new Response(modelSseStream([
-        'data: {"choices":[{"delta":{"content":"Vault Qwen works."}}]}\\n\\n',
-        'data: [DONE]\\n\\n',
+        'data: {"choices":[{"delta":{"content":"Vault Qwen works."}}]}\n\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
