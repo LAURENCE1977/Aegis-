@@ -466,3 +466,17 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 - Cloudflare Pages reported a preview build in progress for `999dc0f` when last checked. Wait for a fresh Pages result before claiming this commit is preview-deployed.
 - No model runtime, model weights, provider endpoint, secrets, Cloudflare resource, Oracle instance or paid service has been installed or changed.
 - Next safe build gate: map the existing server-side AG-UI model gateway and provider adapters to a private OpenAI-compatible inference adapter, then write tests first. Do not implement or activate that adapter until the target host, private network path, authentication method, TLS, egress boundary and operator ownership are verified. Do not point a Cloudflare Worker at a developer's loopback address or expose an unauthenticated model server.
+
+## APInex provider adapter — PR #195 (22 November 2026)
+
+- PR #195: https://github.com/LAURENCE1977/Aegis-/pull/195 — open draft, stacked on PR #192; not merged or production-live.
+- Adds a fixed-origin APInex OpenAI-compatible streaming adapter behind the authenticated server-side AG-UI gateway.
+- APInex credentials are resolved from the owner-scoped encrypted provider vault; provider and model selection remain server-side.
+- Tool calling is disabled for APInex in this first iteration. Reasoning-only response fields are not emitted to the AG-UI client.
+- APInex runs through the existing explicit paid-inference gate, exact-run owner approval, D1 quota reservation and usage accounting. This deliberately applies even to `free/*` model IDs until account-specific free-tier eligibility and allowance checks are implemented.
+- Acceptance tests were added first and failed for the expected missing adapter/credential/policy behavior. The implementation then passed the full Node.js suite and isolated capability, runtime usage-ledger and Forge D1 migration/smoke checks on commit `785888184a4e6e02c8bc498548401a0e4f606723`.
+- Cloudflare Pages preview for that exact commit succeeded: https://900b78a8.aegis-6yk.pages.dev.
+- Read-only audit of the correct AEGIS Cloudflare account found zero D1 databases and no D1 binding on the AEGIS Pages production configuration. The encrypted provider vault and paid-inference ledger therefore cannot be activated until owner-approved D1 provisioning, binding and migrations are completed.
+- No APInex key has been stored; no live APInex request has been made; no D1 resource, production binding, secret or production deployment has been created or changed.
+- APInex public documentation distinguishes daily-free-eligible models from subscription-only models and exposes account allowance state. The published daily allowance figures are not consistent across public pages; do not hardcode a quota. Implement a separate authenticated subscription/model-eligibility preflight before allowing the free-tier route. Never infer free eligibility from the `free/` prefix alone.
+
