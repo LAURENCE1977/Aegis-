@@ -53,3 +53,16 @@ test('rejects unknown providers and malformed model identifiers', () => {
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
   }, 'anthropic', '../model'), /model/i);
 });
+test('treats APInex as a metered external provider requiring owner approval even for free-tier model IDs', () => {
+  assert.equal(isPaidInferenceProvider('apinex'), true);
+  assert.throws(() => resolvePaidInferencePolicy({
+    APINEX_API_KEY: 'a-valid-looking-apinex-secret',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
+  }, 'apinex', 'free/deepseek-v4.1-flash'), error => error.code === 'PAID_INFERENCE_NOT_APPROVED');
+  const policy = resolvePaidInferencePolicy({
+    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
+  }, 'apinex', 'free/deepseek-v4.1-flash');
+  assert.equal(policy.providerId, 'apinex');
+  assert.equal(policy.modelId, 'free/deepseek-v4.1-flash');
+});
