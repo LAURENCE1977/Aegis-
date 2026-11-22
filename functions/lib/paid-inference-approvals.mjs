@@ -127,14 +127,33 @@ export async function requestPaidInferenceApproval(db, input, now = Date.now()) 
 }
 
 /** Consume the owner's decision atomically immediately before paid dispatch. */
+export async function digestPaidInferenceRequest(messages, tools = []) {
+  if (!Array.isArray(messages) || !Array.isArray(tools)) {
+    throw new TypeError('Prepared paid inference messages and tools are required');
+  }
+  return sha256(JSON.stringify({ messages, tools }));
+}
+
 export async function consumePaidInferenceApproval(db, input, now = Date.now()) {
   if (!db || typeof db.prepare !== 'function') {
     throw new TypeError('Paid inference approval database is required');
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid paid inference approval clock');
   const binding = await buildPaidInferenceApprovalBinding(input);
+  const approved = await db.prepare(`
+    SELECT id FROM capability_approvals
+    WHERE principal_id = ? AND capability_id = ? AND capability_version = ?
+      AND action_id = ? AND resource_id = ? AND input_digest = ?
+      AND status = 'approved' AND consumed_at IS NULL AND expires_at > ?
+    ORDER BY decided_at DESC LIMIT 1
+  `).bind(
+    binding.principalId, binding.capabilityId, binding.capabilityVersion,
+    binding.actionId, binding.resourceId, binding.inputDigest,
+    new Date(now).toISOString(),
+  ).first();
+  if (!approved) return null;
   return consumeApproval(db, {
-    id: input.approvalId,
+    id: approved.id,
     ...binding,
     now,
   });
