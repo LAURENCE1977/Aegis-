@@ -74,6 +74,22 @@ Automatic provider routing and provider failover are not implemented. Provider s
 
 Official protocol references: [APInex Chat Completions](https://apinex.bond/developers/models/chat) and [APInex model catalogue](https://apinex.bond/models).
 
+### Free-tier eligibility is a separate future gate
+
+APInex's public pricing page advertises a daily allowance for free-category models, and its free-model guide distinguishes daily-free-eligible entries from subscription-only entries. The guide describes weighted allowance consumption and an authenticated `GET /v1/subscription` status containing fields such as `allowed`, `tokens_remaining` and `resets_at_utc`.
+
+The current AEGIS adapter does **not** yet perform that preflight or verify model-level `allowFree` eligibility. Therefore it deliberately treats every APInex dispatch as metered and requires the paid-inference approval/quota path, even when the configured ID begins with `free/`. This is a safety hold, not a claim that the free models necessarily cost money.
+
+A later free-tier optimisation should be implemented separately and test-first:
+- Authenticate a read-only subscription/allowance check using the same vault-resolved key.
+- Verify the exact model's current daily-free eligibility from trusted current catalogue metadata; a `free/` prefix alone is insufficient.
+- Enforce the account's remaining weighted allowance and reset time, plus AEGIS's own finite per-run/daily cap.
+- Fail closed on missing, stale, contradictory or unavailable eligibility data.
+- Never fall back to a paid model or use subscription-only free-category models without an active subscription.
+- Reconcile actual usage after the response; do not assume model IDs or advertised allowances remain stable.
+
+References: [APInex pricing](https://apinex.bond/pricing), [APInex free-model allowance guide](https://apinex.bond/guides/free-llm-api-keys-for-developers-complete-list).
+
 ### Activation gates
 
 
