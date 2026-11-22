@@ -5,6 +5,7 @@ import {
   providerUsageUnits,
   findActiveTokenQuotaWindow,
   settleTokenUsage,
+  deriveUsageReservationIds,
 } from '../functions/lib/usage-accounting.mjs';
 
 const now = '2026-11-22T12:00:00.000Z';
@@ -18,11 +19,31 @@ test('estimates a conservative token reservation from the exact bounded prompt p
     maxOutputTokens: 1024,
     overheadTokens: 128,
   });
-  const bytes = new TextEncoder().encode(JSON.stringify([
+  const bytes = new TextEncoder().encode(JSON.stringify({ messages: [
     { role: 'system', content: 'You are AEGIS.' },
     { role: 'user', content: 'Hello 🌍' },
-  ])).byteLength;
+  ], tools: [] })).byteLength;
   assert.equal(estimate, bytes + 1024 + 128);
+});
+
+test('reserves for each potential provider request and includes server tool definitions', () => {
+  const messages = [{ role: 'user', content: 'run one approved tool' }];
+  const tools = [{ type: 'function', function: { name: 'aegis_lookup', parameters: {} } }];
+  const one = estimateTokenReservation({ messages, tools, maxOutputTokens: 1024, overheadTokens: 128 });
+  const two = estimateTokenReservation({ messages, tools, maxOutputTokens: 1024, overheadTokens: 128, requestCount: 2, extraPromptBytes: 4096 });
+  assert.ok(two >= one * 2 + 4096 - 128);
+});
+
+test('derives stable, provider-scoped reservation identifiers without exposing run IDs', async () => {
+  const input = { threadId: 'thread-1', runId: 'run-1', providerId: 'alibaba-qwen', modelId: 'qwen3.8-flash' };
+  const first = await deriveUsageReservationIds(input);
+  const second = await deriveUsageReservationIds(input);
+  const otherProvider = await deriveUsageReservationIds({ ...input, providerId: 'anthropic' });
+  assert.deepEqual(first, second);
+  assert.notEqual(first.idempotencyKey, otherProvider.idempotencyKey);
+  assert.match(first.idempotencyKey, /^agui-[a-f0-9]{64}$/);
+  assert.match(first.reservationId, /^usage-[a-f0-9]{64}$/);
+  assert.doesNotMatch(JSON.stringify(first), /run-1|thread-1/);
 });
 
 test('rejects invalid or excessive token reservation inputs', () => {
