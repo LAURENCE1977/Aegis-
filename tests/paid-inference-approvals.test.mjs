@@ -43,7 +43,7 @@ class ApprovalMemoryD1 {
           const row = db.rows.get(v[0]);
           return row ? { ...row } : null;
         }
-        if (sql.includes('SELECT * FROM capability_approvals') && sql.includes('input_digest = ?')) {
+        if (sql.includes('FROM capability_approvals') && sql.includes('input_digest = ?')) {
           const row = [...db.rows.values()].find(item =>
             item.principal_id === v[0] && item.capability_id === v[1] &&
             item.capability_version === v[2] && item.action_id === v[3] &&
