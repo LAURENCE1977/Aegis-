@@ -37,6 +37,12 @@ export async function onRequestGet({ request, env }) {
       now,
       paidInferenceApproved: env.AEGIS_PAID_INFERENCE_APPROVED,
       maxTokensPerRun: env.AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN,
+      selectedProviderId: env.AEGIS_MODEL_PROVIDER || 'workers-ai',
+      selectedModelId: (env.AEGIS_MODEL_PROVIDER || 'workers-ai') === 'anthropic'
+        ? (env.AEGIS_ANTHROPIC_MODEL || null)
+        : (env.AEGIS_MODEL_PROVIDER || 'workers-ai') === 'alibaba-qwen'
+          ? (env.AEGIS_QWEN_MODEL || 'qwen3.8-flash')
+          : null,
     });
     return jsonResponse(dashboard);
   } catch {
