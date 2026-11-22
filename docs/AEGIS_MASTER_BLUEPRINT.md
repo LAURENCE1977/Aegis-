@@ -432,12 +432,13 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 
 - PR #188: https://github.com/LAURENCE1977/Aegis-/pull/188 — open draft, based on the paid-inference approval feature branch. Its current head is `fc7b0c75ad62b81848cb112131c1cabf1c4c0642`.
 - PR #188 adds a fail-closed owner-configured approval switch and finite per-run token ceiling for Anthropic and Qwen; requires a fresh verified provider/model quota window and D1 reservation before dispatch; settles only complete provider-matched usage; aggregates Qwen tool-round usage; and leaves incomplete, cancelled, mismatched or over-limit usage reserved for reconciliation.
-- The approval switch (`AEGIS_PAID_INFERENCE_APPROVED=true`) is a deployment-level owner setting. A per-run interactive approval prompt in the chat UI is not yet implemented.
+- The deployment switch (`AEGIS_PAID_INFERENCE_APPROVED=true`) remains a separate owner-controlled feature gate. It is not a substitute for per-run consent.
 - PR #189: https://github.com/LAURENCE1977/Aegis-/pull/189 — open draft stacked on PR #188. It gives each received paid dispatch attempt a distinct opaque reservation identity, so a repeated AG-UI thread/run ID cannot reuse an earlier open reservation after an incomplete stream.
-- PR #189 GitHub Actions run `45034929466` completed successfully: **515 Node.js tests passed, 0 failed**, including the new retry regression; all isolated capability, rate-limit, runtime usage-ledger and Forge D1 migration checks passed.
-- Cloudflare Pages created a branch preview at https://repair-aegis-paid-inference.aegis-6yk.pages.dev. This is preview evidence only; it is not a production promotion.
-- Neither PR is merged. `main` and the production deployment have not been changed by these PRs. Do not merge or promote without explicit owner approval.
-- Next review point: decide whether to replace the deployment-level paid-inference approval switch with a one-time, exact-run approval workflow before enabling paid inference in a user-facing production deployment.
+- PR #190: https://github.com/LAURENCE1977/Aegis-/pull/190 — open draft stacked on PR #189. It adds exact-run owner approval to the existing Approvals inbox, binding consent to thread/run, provider, model, estimated token reservation, maximum token ceiling and a digest of the prepared prompt/tools. Prompt contents and digests are not exposed to the inbox.
+- Per-run approvals expire after 10 minutes, are owner-only and are atomically consumed once before quota reservation/provider dispatch. Duplicate active requests are prevented by a partial unique D1 index. A changed request, replay, denial or expiry fails closed. The browser resumes the original request after approval.
+- GitHub Actions run `45055697236` passed the Node.js suite and all isolated capability, rate-limit, runtime usage-ledger and Forge D1 migration/smoke checks for the implementation head before the documentation refresh.
+- No preview deployment has been created for PR #190. PRs #188–#190 remain drafts and are not merged. `main` and production have not been changed. Do not merge or promote without explicit owner approval.
+- Remaining activation gate: the deployment owner must deliberately configure the deployment-level paid-inference switch, finite token ceiling, provider credential and fresh verified quota window. No live paid inference is enabled by this code change.
 
 ## Anthropic provider adapter
 
