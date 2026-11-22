@@ -2,7 +2,7 @@
 
 ## Status
 
-The native vault primitive uses Web Crypto AES-256-GCM. It is a server-side library, not a user-facing credential manager. It has no OAuth callback, provider UI or live provider integration yet.
+The native vault uses Web Crypto AES-256-GCM. The current feature branch adds an owner-authenticated provider connection panel and API for storing keys from a fixed allowlist. This is not OAuth, and saved credentials are not yet consumed by live model inference.
 
 ## Key management
 
@@ -13,7 +13,7 @@ The Worker must receive two encrypted deployment secrets:
 
 Keep the keyring in the Worker secret store, never in D1, source control, browser code, logs or model context. Retain prior key versions in the keyring until every ciphertext written with them has been migrated or intentionally revoked. Rotate by adding a new key version and changing the active version; old versions remain readable while present.
 
-No key has been generated, configured or uploaded by this change.
+No key has been generated, configured or uploaded by this change. The UI/API fail closed until the keyring and active version are provisioned as Worker secrets.
 
 ## Cryptographic design
 
@@ -34,8 +34,10 @@ revokeVaultSecret(db, { principalId, providerId, secretRef }, now?)
 
 The resolver must only be called from a trusted Sentinel-approved adapter path. Never pass its plaintext return value to an agent, model prompt, browser client or audit record.
 
+The owner-authenticated `/api/model-provider-connections` GET/POST/DELETE routes list safe metadata, store allowlisted keys through the vault and revoke them. API responses never return plaintext keys or vault references. The current UI labels these records `vault_only`: storage is implemented, live model-runtime use is not.
+
 ## Migration and remaining integration
 
 Apply `migrations/capabilities/0004_secret_vault.sql` after the earlier capability migrations, in order, to the intended D1 database. It has not been applied to any environment.
 
-Before provider use, add owner-authenticated connection setup and deletion flows, safe key provisioning/rotation procedures, Sentinel composition with exact grants and single-use approvals, redacted invocation audit, and a fixed-host adapter router with SSRF/redirect/response/deadline controls. Validate all of this in non-production before any deployment.
+Before provider use, provision and rotate the vault keyring safely, connect the stored credentials to reviewed model adapters, compose provider use with resource-pool reservations and paid-use approval, add redacted invocation audit, and enforce fixed-host egress/redirect/response/deadline controls. Validate all of this in non-production before any production deployment.
