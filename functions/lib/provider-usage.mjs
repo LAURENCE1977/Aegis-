@@ -114,3 +114,26 @@ export function isCompleteProviderUsage(usage) {
       usage.cacheCreationInputTokens + usage.cacheReadInputTokens &&
     ['anthropic', 'openai-compatible'].includes(usage.source));
 }
+
+
+/** Sum complete usage from separate provider requests within one AG-UI run. */
+export function addProviderUsage(current, incoming) {
+  if (!isCompleteProviderUsage(current) || !isCompleteProviderUsage(incoming)) {
+    throw new TypeError('Only complete provider usage can be accumulated');
+  }
+  if (current.source !== incoming.source) {
+    throw new TypeError('Provider usage source mismatch');
+  }
+  const combined = usageRecord({
+    inputTokens: current.inputTokens + incoming.inputTokens,
+    outputTokens: current.outputTokens + incoming.outputTokens,
+    cacheCreationInputTokens: current.cacheCreationInputTokens + incoming.cacheCreationInputTokens,
+    cacheReadInputTokens: current.cacheReadInputTokens + incoming.cacheReadInputTokens,
+    totalTokens: current.totalTokens + incoming.totalTokens,
+    source: current.source,
+  });
+  if (!combined || !isCompleteProviderUsage(combined)) {
+    throw new RangeError('Accumulated provider usage exceeds safe limits');
+  }
+  return combined;
+}
