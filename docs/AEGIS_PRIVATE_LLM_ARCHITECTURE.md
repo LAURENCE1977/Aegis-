@@ -217,3 +217,24 @@ The first pilot is a **local-only, synthetic-data model smoke test**, not a Clou
 - Jan model management: https://docs.jan.ai/desktop/manage-models
 - oobabooga textgen repository: https://github.com/oobabooga/textgen
 - textgen API documentation: https://github.com/oobabooga/textgen/wiki/12-%E2%80%90-OpenAI-API
+
+
+## 14. Jan Desktop configuration hardening (current documentation check)
+
+The current Jan Desktop documentation adds several operational details that must be included in any local pilot checklist:
+
+- A local model must be loaded and selected as the default Local API Server model before the server can start.
+- The documented default endpoint is `http://127.0.0.1:1337/v1`; keep the host at `127.0.0.1`. Do not change it to `0.0.0.0` or expose it through a tunnel, router port-forward or public URL.
+- Configure a non-empty API key even for a loopback pilot. An empty key disables authentication.
+- Turn **Verbose Server Logs off** before testing anything other than synthetic prompts; the setting is documented as enabled by default and can record request/response details.
+- Turn **CORS off** when the API is used only by local non-browser clients. It is documented as enabled by default.
+- Keep **Execute Tools on Server** disabled. Tool execution must remain client-dispatched and, for any later AEGIS integration, independently checked by AEGIS policy and Sentinel.
+- Jan can route requests to configured remote/custom providers as well as its local model. A Jan interface or running API server is therefore not proof of local-only inference; verify the selected model/provider and test network behavior before describing a request as private.
+- Jan's local API documents OpenAI-compatible chat completions and an Anthropic-compatible messages endpoint. Compatibility does not establish equivalent support for every tool, vision, audio or structured-output feature; test only the capabilities actually needed.
+
+**Pilot configuration acceptance:** loopback binding; non-empty API key; verbose logs off; CORS off unless a reviewed browser client requires it; server-side tool execution off; local model explicitly selected; synthetic test prompts only; no external provider selected. Re-check these settings after Jan updates because defaults and behavior may change.
+
+**Source check (22 November 2026):** Jan Local API Server documentation and API reference:
+- https://docs.jan.ai/desktop/api-server
+- https://docs.jan.ai/desktop/api-preference
+- https://docs.jan.ai/desktop/quickstart
