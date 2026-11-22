@@ -63,3 +63,59 @@ test('rejects malformed model catalogues and message lists', () => {
   assert.throws(() => selectModelRoute({ models: [{ id: 'bad' }], task: 'simple', estimatedInputTokens: 1, requestedOutputTokens: 1 }), /model/i);
   assert.throws(() => fitMessagesToContext([{ role: 'tool', content: 'x' }], 10), /message/i);
 });
+
+test('free-only routing excludes paid models even when their price or priority is attractive', () => {
+  const mixed = [
+    { id: 'free', providerId: 'free-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0, outputCost: 0, priority: 20 },
+    { id: 'paid', providerId: 'paid-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0.000001, outputCost: 0.000001, priority: 1 },
+  ];
+  const route = selectModelRoute({
+    models: mixed, task: 'chat', estimatedInputTokens: 100, requestedOutputTokens: 100,
+    costMode: 'free-only',
+  });
+  assert.equal(route.modelId, 'free');
+});
+
+test('free-only routing treats missing cost metadata as unknown rather than free', () => {
+  const unknown = [{
+    id: 'unknown-cost', providerId: 'provider-a',
+    contextTokens: 8192, maxOutputTokens: 1024, priority: 1,
+  }];
+  assert.throws(() => selectModelRoute({
+    models: unknown, task: 'chat', estimatedInputTokens: 100, requestedOutputTokens: 100,
+    costMode: 'free-only',
+  }), /no eligible/i);
+});
+
+test('paid routing requires allow-paid mode and explicit provider approval', () => {
+  const paid = [{
+    id: 'paid', providerId: 'paid-provider',
+    contextTokens: 8192, maxOutputTokens: 1024,
+    inputCost: 0.000001, outputCost: 0.000002, priority: 1,
+  }];
+  const request = {
+    models: paid, task: 'chat', estimatedInputTokens: 100, requestedOutputTokens: 100,
+    costMode: 'allow-paid',
+  };
+  assert.throws(() => selectModelRoute(request), /no eligible/i);
+  assert.throws(() => selectModelRoute({
+    ...request,
+    providerState: { 'paid-provider': { enabled: true, remainingTokens: 1000, paidFallbackApproved: false } },
+  }), /no eligible/i);
+  assert.equal(selectModelRoute({
+    ...request,
+    providerState: { 'paid-provider': { enabled: true, remainingTokens: 1000, paidFallbackApproved: true } },
+  }).modelId, 'paid');
+});
+
+test('free-only routing stops at exhausted free quota and never falls through to paid', () => {
+  const mixed = [
+    { id: 'free', providerId: 'free-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0, outputCost: 0, priority: 1 },
+    { id: 'paid', providerId: 'paid-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0.000001, outputCost: 0.000001, priority: 2 },
+  ];
+  assert.throws(() => selectModelRoute({
+    models: mixed, task: 'chat', estimatedInputTokens: 100, requestedOutputTokens: 100,
+    costMode: 'free-only',
+    providerState: { 'free-provider': { enabled: true, remainingTokens: 0 }, 'paid-provider': { enabled: true, remainingTokens: 1000, paidFallbackApproved: true } },
+  }), /no eligible/i);
+});
