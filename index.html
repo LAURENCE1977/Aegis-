@@ -317,6 +317,8 @@
     const approvalTab = document.getElementById('approvalTab');
     const usageTab = document.getElementById('usageTab');
     const usageSection = document.getElementById('usageSection');
+    const healthVisionSection = document.getElementById('healthVisionSection');
+    const healthVisionTab = document.getElementById('healthVisionTab');
     const usageStatus = document.getElementById('usageStatus');
     const usageGate = document.getElementById('usageGate');
     const usageWindowList = document.getElementById('usageWindowList');
@@ -729,6 +731,7 @@
       memorySection.hidden = panel !== 'memory';
       approvalSection.hidden = panel !== 'approvals';
       usageSection.hidden = panel !== 'usage';
+      healthVisionSection.hidden = panel !== 'health';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
       providerSection.hidden = panel !== 'providers';
@@ -747,6 +750,7 @@
     memoryTab.addEventListener('click', () => showPanel('memory'));
     approvalTab.addEventListener('click', () => showPanel('approvals'));
     usageTab.addEventListener('click', () => showPanel('usage'));
+    healthVisionTab.addEventListener('click', () => showPanel('health'));
     refreshUsageBtn.addEventListener('click', loadUsage);
     forgeTab.addEventListener('click', () => showPanel('forge'));
     securityTab.addEventListener('click', () => showPanel('security'));
