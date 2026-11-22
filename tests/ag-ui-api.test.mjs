@@ -587,6 +587,8 @@ test('AG-UI includes Qwen provider-reported token usage only when the final usag
   assert.deepEqual(events.at(-1).usage, {
     inputTokens: 19,
     outputTokens: 7,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
     totalTokens: 26,
     source: 'openai-compatible',
   });
@@ -602,7 +604,7 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
       AEGIS_ANTHROPIC_MODEL: 'claude-sonnet-4-5',
     },
     fetchImpl: async () => new Response(modelSseStream([
-      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\n\n',
+      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\n\n',
       'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Metered Anthropic."}}\n\n',
       'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":11}}\n\n',
       'event: message_stop\ndata: {"type":"message_stop"}\n\n',
@@ -614,6 +616,8 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
   assert.deepEqual(events.at(-1).usage, {
     inputTokens: 31,
     outputTokens: 11,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
     totalTokens: 42,
     source: 'anthropic',
   });
