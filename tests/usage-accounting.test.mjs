@@ -119,11 +119,11 @@ test('fails closed on duplicate active token quota windows', async () => {
 
 
 test('settles only provider-reported actual usage against the exact reserved provider and model', async () => {
-  let selectedSql = '';
+  const preparedSql = [];
   let batchStatements = [];
   const db = {
     prepare(sql) {
-      selectedSql = sql;
+      preparedSql.push(sql);
       return { bind() { return this; }, async first() {
         return {
           reserved_units: 2000,
@@ -154,7 +154,7 @@ test('settles only provider-reported actual usage against the exact reserved pro
     },
     now,
   });
-  assert.match(selectedSql, /JOIN model_usage_quota_windows/);
+  assert.ok(preparedSql.some(sql => /JOIN model_usage_quota_windows/.test(sql)));
   assert.deepEqual(result, { reservationId: 'usage-run-001', actualUnits: 400, status: 'settled' });
   assert.equal(batchStatements.length, 2);
 });
