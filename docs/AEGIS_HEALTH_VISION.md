@@ -2,7 +2,7 @@
 
 ## Purpose and intended use
 
-Health Vision begins as a personal, non-diagnostic observation and preparation workspace. Stage 1 helps an individual capture a temporary image preview, write down what they noticed and when, compare their own notes over time, and prepare a text-only summary to discuss with a healthcare professional.
+Health Vision begins as a personal, non-diagnostic observation and preparation workspace. Stage 1 helps an individual capture a temporary image preview, write down what they noticed and when within the current browser session, and prepare a text-only summary to discuss with a healthcare professional.
 
 It does not interpret images, detect disease, calculate risk, recommend treatment, triage symptoms, or replace professional care. It must not be marketed as a medical scanner or diagnostic system.
 
