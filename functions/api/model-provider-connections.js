@@ -131,7 +131,7 @@ export async function onRequestPost({ request, env }) {
     } catch {
       return jsonResponse({ error: "Connection setup failed; vault cleanup needs attention." }, 503);
     }
-    if (/already exists|unique constraint|sqlite_constraint|d1_error/i.test(String(error?.message || ""))) {
+    if (/already exists|unique constraint|sqlite_constraint/i.test(String(error?.message || ""))) {
       return jsonResponse({ error: "A connection already exists for this provider. Revoke it before replacing the key." }, 409);
     }
     return jsonResponse({ error: "Provider connection could not be saved." }, 503);
