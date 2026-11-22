@@ -379,14 +379,14 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
           qwenToolDelta({ tool_calls: [{
             index: 0, function: { arguments: '}' },
           }] }),
-          'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}\\n\\n',
-          'data: [DONE]\\n\\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}\n\n',
+          'data: [DONE]\n\n',
         ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
       }
       return new Response(modelSseStream([
         qwenToolDelta({ content: 'I checked AEGIS and found the module catalogue.' }),
-        'data: {"choices":[],"usage":{"prompt_tokens":20,"completion_tokens":5,"total_tokens":25}}\\n\\n',
-        'data: [DONE]\\n\\n',
+        'data: {"choices":[],"usage":{"prompt_tokens":20,"completion_tokens":5,"total_tokens":25}}\n\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
@@ -745,7 +745,7 @@ test('AG-UI blocks a paid Qwen request before network access without explicit ow
     },
     fetchImpl: async () => {
       providerCalls += 1;
-      return new Response(modelSseStream(['data: [DONE]\\n\\n']), {
+      return new Response(modelSseStream(['data: [DONE]\n\n']), {
         status: 200, headers: { 'Content-Type': 'text/event-stream' },
       });
     },
@@ -772,7 +772,7 @@ test('AG-UI blocks approved paid inference before provider access when verified 
     },
     fetchImpl: async () => {
       providerCalls += 1;
-      return new Response(modelSseStream(['data: [DONE]\\n\\n']), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      return new Response(modelSseStream(['data: [DONE]\n\n']), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
   assert.equal(response.status, 503);
