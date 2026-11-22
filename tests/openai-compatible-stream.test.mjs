@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createOpenAICompatibleStream } from '../functions/lib/openai-compatible-stream.mjs';
 
 const base = {
-  provider: 'example',
+  providerName: 'example',
   endpoint: 'https://api.provider.com/v1/chat/completions',
   apiKey: 'server-side-test-key-long-enough',
   model: 'provider/model-v1',
@@ -125,7 +125,7 @@ test('generic OpenAI-compatible stream validates server-side credentials and mod
     { apiKey: 'bad\nkey' },
     { model: '' },
     { model: '../secret' },
-    { provider: 'bad provider' },
+    { providerName: 'bad/provider' },
   ]) {
     await assert.rejects(() => createOpenAICompatibleStream({
       ...base,
