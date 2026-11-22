@@ -75,7 +75,7 @@ test('finds exactly one active, fresh token quota window for the requested provi
           bound = values;
           return {
             async all() {
-              return { results: [{ id: 'quota-qwen-001' }] };
+              return { results: [{ id: 'quota-qwen-001', window_start: '2026-11-22T00:00:00.000Z', window_end: '2026-11-23T00:00:00.000Z' }] };
             },
           };
         },
@@ -85,7 +85,7 @@ test('finds exactly one active, fresh token quota window for the requested provi
   const quota = await findActiveTokenQuotaWindow({
     db, providerId: 'alibaba-qwen', modelId: 'qwen3.8-flash', now,
   });
-  assert.deepEqual(quota, { id: 'quota-qwen-001' });
+  assert.deepEqual(quota, { id: 'quota-qwen-001', windowStart: '2026-11-22T00:00:00.000Z', windowEnd: '2026-11-23T00:00:00.000Z' });
   assert.match(sql, /unit_kind = 'tokens'/);
   assert.match(sql, /verified_at >=/);
   assert.deepEqual(bound, [
