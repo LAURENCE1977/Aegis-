@@ -414,13 +414,12 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
-      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
       AEGIS_QWEN_REGION: 'ap-southeast-1',
-      AEGIS_DB: db,
+      AEGIS_DB: new UsageLedgerMemoryD1(db),
     },
     fetchImpl: async (_url, options) => {
       captured = JSON.parse(options.body);
