@@ -454,3 +454,15 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## 2026-11-22 update — private LLM pilot hardening
+
+- PR #194 remains an open draft; it is not merged and does not make the private LLM live.
+- Added a Jan Desktop hardening checklist to `docs/AEGIS_PRIVATE_LLM_ARCHITECTURE.md`, based on the current official documentation: local model explicitly selected; loopback-only API; non-empty API key; verbose request/response logs disabled; CORS disabled unless needed; server-side tool execution disabled; and remote-provider routing explicitly ruled out for a local-only test.
+- The Jan documentation confirms the Local API Server is an OpenAI-compatible interface at the default loopback address, but a Jan UI/API server does not itself prove all requests remain local. Verify the selected provider and network behavior.
+- Verified the preceding PR #194 commit `22c3eb39a01a8adf1394b73dbc4e63da7995ff07` passed the AEGIS tests workflow, including Node.js tests and isolated local D1 migration/capability checks.
+- The follow-on documentation commit is `999dc0f745dd7a1675d30372dc1cde1ce9886e3c`. It is documentation-only, so the preceding workflow result must not be represented as a test run for this new commit.
+- Cloudflare Pages reported a preview build in progress for `999dc0f` when last checked. Wait for a fresh Pages result before claiming this commit is preview-deployed.
+- No model runtime, model weights, provider endpoint, secrets, Cloudflare resource, Oracle instance or paid service has been installed or changed.
+- Next safe build gate: map the existing server-side AG-UI model gateway and provider adapters to a private OpenAI-compatible inference adapter, then write tests first. Do not implement or activate that adapter until the target host, private network path, authentication method, TLS, egress boundary and operator ownership are verified. Do not point a Cloudflare Worker at a developer's loopback address or expose an unauthenticated model server.
