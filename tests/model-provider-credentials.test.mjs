@@ -32,6 +32,13 @@ class MemoryD1 {
       },
       async first() {
         const v = this.values;
+        if (sql.includes('FROM capability_connections') && sql.includes('ORDER BY created_at DESC, id DESC')) {
+          const [principal, provider] = v;
+          const row = [...db.connections.values()]
+            .filter(item => item.principal_id === principal && item.provider_id === provider)
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0];
+          return row ? { ...row } : null;
+        }
         if (sql.includes('FROM capability_connections')) {
           const [principal, provider, now] = v;
           const row = [...db.connections.values()].find(item =>
@@ -77,12 +84,19 @@ test('resolves a connected provider key only for its exact owner/provider and in
   assert.equal(Object.hasOwn(result, 'secretRef'), false);
 });
 
-test('does not resolve credentials from revoked, expired or absent connections', async () => {
+test('does not silently fall back to a legacy key after a stored provider connection is revoked', async () => {
   const db = new MemoryD1();
   await connect(db, 'anthropic', 'anthropic-server-secret-123456');
   const row = db.connections.get('connection-anthropic');
   row.status = 'revoked';
   row.revoked_at = new Date().toISOString();
+  await assert.rejects(() => resolveConnectedProviderCredential({
+    db, env: vaultEnv, principalId: 'owner', providerId: 'anthropic',
+  }), /inactive/i);
+});
+
+test('returns null only when no provider connection has ever been created', async () => {
+  const db = new MemoryD1();
   assert.equal(await resolveConnectedProviderCredential({
     db, env: vaultEnv, principalId: 'owner', providerId: 'anthropic',
   }), null);
