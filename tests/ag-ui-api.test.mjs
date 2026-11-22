@@ -12,6 +12,62 @@ async function request(body,{authenticated=true,origin='https://aegis.example'}=
   if(authenticated) headers.Cookie='__Host-aegis_session='+await createSessionToken(secret);
   return new Request('https://aegis.example/api/ag-ui',{method:'POST',headers,body:JSON.stringify(body)});
 }
+
+class UsageLedgerMemoryD1 {
+  constructor(delegate = null) {
+    this.delegate = delegate;
+    this.reservations = new Map();
+    this.quota = { id: "quota-test-001", window_start: new Date(Date.now() - 60000).toISOString(), window_end: new Date(Date.now() + 86400000).toISOString() };
+  }
+  prepare(sql) {
+    const owner = this;
+    if (sql.includes("FROM model_usage_quota_windows") && sql.includes("SELECT id, window_start")) {
+      return { bind(...values) { this.values = values; return this; }, async all() {
+        return { results: [{ ...owner.quota, provider_id: this.values[0], model_id: this.values[1] }] };
+      } };
+    }
+    if (sql.includes("model_usage_reservations") || sql.includes("model_usage_events")) {
+      return { sql, values: [], bind(...values) { this.values = values; return this; },
+        async first() {
+          if (sql.includes("WHERE r.idempotency_key = ?")) {
+            const row = [...owner.reservations.values()].find(item => item.idempotency_key === this.values[0]);
+            return row ? owner.join(row) : null;
+          }
+          if (sql.includes("WHERE r.id = ?")) {
+            const row = owner.reservations.get(this.values[0]);
+            return row ? { reserved_units: row.reserved_units, status: row.status, provider_id: row.provider_id, model_id: row.model_id, unit_kind: "tokens" } : null;
+          }
+          return null;
+        },
+        async run() { return { meta: { changes: 1 } }; }
+      };
+    }
+    if (owner.delegate?.prepare) return owner.delegate.prepare(sql);
+    return { bind() { return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { meta: { changes: 1 } }; } };
+  }
+  join(row) {
+    return { ...row, provider_id: row.provider_id, model_id: row.model_id, unit_kind: "tokens", window_start: this.quota.window_start, window_end: this.quota.window_end };
+  }
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) {
+      const sql = statement.sql || "";
+      const v = statement.values || [];
+      if (sql.includes("INSERT INTO model_usage_reservations")) {
+        const [id, idempotency_key, principal_id, project_id, reserved_units, created_at, updated_at, quota_window_id, provider_id, model_id] = v;
+        if (!this.reservations.has(id)) this.reservations.set(id, { id, idempotency_key, principal_id, project_id, reserved_units, actual_units: null, status: "reserved", created_at, updated_at, quota_window_id, provider_id, model_id });
+      } else if (sql.includes("UPDATE model_usage_reservations SET status = 'settled'")) {
+        const [actual_units, updated_at, id] = v;
+        const row = this.reservations.get(id);
+        if (row?.status === "reserved") { row.status = "settled"; row.actual_units = actual_units; row.updated_at = updated_at; }
+      }
+      results.push({ meta: { changes: 1 } });
+    }
+    return results;
+  }
+}
+
+
 const input=(overrides={})=>({
   threadId:'thread-123',runId:'run-123',protocolVersion:'1.0',
   messages:[{id:'user-1',role:'user',content:'Hello AEGIS.'}],
@@ -205,6 +261,7 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
     env:{
       ...envBase,
       AEGIS_MODEL_PROVIDER:'alibaba-qwen',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_QWEN_API_KEY:'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID:'workspace-123',
       AEGIS_QWEN_REGION:'ap-southeast-1',
@@ -299,13 +356,14 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
       ...envBase,
       AEGIS_AGENT_TOOLS_ENABLED: 'true',
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
       AEGIS_QWEN_REGION: 'ap-southeast-1',
       AEGIS_QWEN_MODEL: 'qwen3.8-flash',
-      AEGIS_DB: db,
+      AEGIS_DB: new UsageLedgerMemoryD1(db),
     },
     fetchImpl: async (_url, options) => {
       const payload = JSON.parse(options.body);
@@ -411,6 +469,7 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
@@ -499,7 +558,7 @@ test('AG-UI uses the active encrypted vault credential for Anthropic instead of 
     env: {
       ...envBase,
       ...vaultEnv,
-      AEGIS_DB: db,
+      AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'anthropic',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
@@ -544,7 +603,7 @@ test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy 
     env: {
       ...envBase,
       ...vaultEnv,
-      AEGIS_DB: db,
+      AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
