@@ -2,6 +2,7 @@ import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/a
 import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
+import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -86,7 +87,22 @@ export async function onRequestPost(context) {
   try {
     const history = messages.slice(0, -1).slice(-10);
     promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
-    modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
+    let modelEnv = env;
+    const selectedProvider = String(env.AEGIS_MODEL_PROVIDER || "workers-ai");
+    if (env.AEGIS_DB && ["anthropic", "alibaba-qwen"].includes(selectedProvider)) {
+      const connected = await resolveConnectedProviderCredential({
+        db: env.AEGIS_DB,
+        env,
+        principalId: "owner",
+        providerId: selectedProvider,
+      });
+      if (connected) {
+        modelEnv = selectedProvider === "anthropic"
+          ? { ...env, ANTHROPIC_API_KEY: connected.apiKey }
+          : { ...env, AEGIS_QWEN_API_KEY: connected.apiKey };
+      }
+    }
+    modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
         (!env.AEGIS_QWEN_API_KEY || !env.AEGIS_QWEN_WORKSPACE_ID || !env.AEGIS_QWEN_REGION)) {
