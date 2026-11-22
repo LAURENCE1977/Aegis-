@@ -103,6 +103,9 @@ test('does not mix different providers, models, units or inactive windows', () =
     paidInferenceApproved: 'true',
     maxTokensPerRun: '5000',
   });
-  assert.equal(result.windows.length, 1);
-  assert.equal(result.windows[0].providerId, 'alibaba-qwen');
+  assert.equal(result.windows.length, 2);
+  assert.deepEqual(
+    result.windows.map(window => window.providerId + '/' + window.modelId).sort(),
+    ['alibaba-qwen/qwen3.8-flash', 'anthropic/claude-model'],
+  );
 });
