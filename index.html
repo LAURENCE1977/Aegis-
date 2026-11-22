@@ -694,6 +694,7 @@
         providerStatus.textContent = data.message || 'Credential stored securely.';
         await loadProviderConnections();
       } catch (error) {
+        providerApiKey.value = '';
         providerStatus.textContent = error.message || 'Credential could not be stored.';
       } finally {
         saveProviderBtn.disabled = false;
