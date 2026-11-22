@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHealthObservation, formatHealthVisionReport } from '../health-vision-core.mjs';
+import { createHealthObservation, formatHealthVisionReport, isHealthPreviewRequestCurrent } from '../health-vision-core.mjs';
 
 const now = '2026-11-22T20:00:00.000Z';
 const valid = {
@@ -51,4 +51,11 @@ test('report enforces bounded entry count and rejects malformed records', () => 
   const observation = createHealthObservation(valid, now);
   assert.throws(() => formatHealthVisionReport(Array(21).fill(observation), now), /20/);
   assert.throws(() => formatHealthVisionReport([{ ...observation, description: null }], now), /invalid/i);
+});
+
+
+test('invalidates an asynchronous photo preview after clear or session close', () => {
+  assert.equal(isHealthPreviewRequestCurrent(4, 4, true), true);
+  assert.equal(isHealthPreviewRequestCurrent(3, 4, true), false);
+  assert.equal(isHealthPreviewRequestCurrent(4, 4, false), false);
 });
