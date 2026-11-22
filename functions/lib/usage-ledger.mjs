@@ -85,8 +85,7 @@ export async function reserveUsage({ db, reservation, quotaWindowId, now }) {
     'SELECT r.*, w.provider_id, w.model_id, w.unit_kind, w.window_start, w.window_end FROM model_usage_reservations r JOIN model_usage_quota_windows w ON w.id = r.quota_window_id WHERE r.idempotency_key = ?'
   ).bind(input.idempotencyKey).first();
   if (existing) {
-    const same = existing.id === input.id &&
-      existing.principal_id === input.principalId &&
+    const same = existing.principal_id === input.principalId &&
       existing.project_id === (input.projectId ?? null) &&
       existing.provider_id === input.providerId &&
       existing.model_id === input.modelId &&
@@ -126,8 +125,12 @@ export async function reserveUsage({ db, reservation, quotaWindowId, now }) {
     'SELECT r.*, w.provider_id, w.model_id, w.unit_kind, w.window_start, w.window_end FROM model_usage_reservations r JOIN model_usage_quota_windows w ON w.id = r.quota_window_id WHERE r.idempotency_key = ?'
   ).bind(input.idempotencyKey).first();
   if (saved) {
-    if (saved.id !== input.id || saved.reserved_units !== input.reservedUnits ||
-        saved.principal_id !== input.principalId || saved.quota_window_id !== quotaWindowId) {
+    if (saved.reserved_units !== input.reservedUnits ||
+        saved.principal_id !== input.principalId ||
+        saved.project_id !== (input.projectId ?? null) ||
+        saved.provider_id !== input.providerId || saved.model_id !== input.modelId ||
+        saved.unit_kind !== input.unitKind || saved.window_start !== input.windowStart ||
+        saved.window_end !== input.windowEnd || saved.quota_window_id !== quotaWindowId) {
       throw new Error('Idempotency key already belongs to a different usage reservation');
     }
     return reservationFromRow(saved);
