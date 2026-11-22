@@ -1,6 +1,7 @@
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const UNIT_KINDS = new Set(['tokens', 'neurons']);
+const DEFAULT_MAX_VERIFICATION_AGE_MS = 24 * 60 * 60 * 1000;
 
 function requireId(value, label) {
   if (typeof value !== 'string' || !ID.test(value)) throw new TypeError('Invalid ' + label);
@@ -54,6 +55,22 @@ export function isUsageWindowActive(window, now) {
     Date.parse(now) < Date.parse(window.windowEnd);
 }
 
+export function isQuotaVerificationFresh(
+  verifiedAt,
+  now,
+  maxAgeMs = DEFAULT_MAX_VERIFICATION_AGE_MS,
+) {
+  try {
+    requireUtc(verifiedAt, 'quota verification time');
+    requireUtc(now, 'current time');
+    if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 1) return false;
+    const age = Date.parse(now) - Date.parse(verifiedAt);
+    return age >= 0 && age <= maxAgeMs;
+  } catch {
+    return false;
+  }
+}
+
 function requireDb(db) {
   if (!db || typeof db.prepare !== 'function' || typeof db.batch !== 'function') {
     throw new TypeError('D1 database binding is required');
@@ -76,27 +93,39 @@ function reservationFromRow(row) {
   });
 }
 
-export async function reserveUsage({ db, reservation, quotaWindowId, now }) {
+export function validateExistingUsageReservation(existing, input, quotaWindowId) {
+  if (!existing || existing.status !== 'reserved') {
+    throw new Error('Idempotency key has already been consumed; a new key is required');
+  }
+  const same = existing.principal_id === input.principalId &&
+    existing.project_id === (input.projectId ?? null) &&
+    existing.provider_id === input.providerId &&
+    existing.model_id === input.modelId &&
+    existing.unit_kind === input.unitKind &&
+    existing.reserved_units === input.reservedUnits &&
+    existing.window_start === input.windowStart &&
+    existing.window_end === input.windowEnd &&
+    existing.quota_window_id === quotaWindowId;
+  if (!same) throw new Error('Idempotency key already belongs to a different usage reservation');
+  return true;
+}
+
+export async function reserveUsage({ db, reservation, quotaWindowId, now, maxAgeMs = DEFAULT_MAX_VERIFICATION_AGE_MS }) {
   requireDb(db);
   const input = validateUsageReservation(reservation);
   requireId(quotaWindowId, 'quota window');
   requireUtc(now, 'current time');
+  if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 1) {
+    throw new TypeError('Invalid quota verification age');
+  }
   if (!isUsageWindowActive(input, now)) throw new Error('Usage quota window is not active');
+  const verifiedAfter = new Date(Date.parse(now) - maxAgeMs).toISOString();
 
   const existing = await db.prepare(
     'SELECT r.*, w.provider_id, w.model_id, w.unit_kind, w.window_start, w.window_end FROM model_usage_reservations r JOIN model_usage_quota_windows w ON w.id = r.quota_window_id WHERE r.idempotency_key = ?'
   ).bind(input.idempotencyKey).first();
   if (existing) {
-    const same = existing.principal_id === input.principalId &&
-      existing.project_id === (input.projectId ?? null) &&
-      existing.provider_id === input.providerId &&
-      existing.model_id === input.modelId &&
-      existing.unit_kind === input.unitKind &&
-      existing.reserved_units === input.reservedUnits &&
-      existing.window_start === input.windowStart &&
-      existing.window_end === input.windowEnd &&
-      existing.quota_window_id === quotaWindowId;
-    if (!same) throw new Error('Idempotency key already belongs to a different usage reservation');
+    validateExistingUsageReservation(existing, input, quotaWindowId);
     return reservationFromRow(existing);
   }
 
@@ -108,13 +137,14 @@ export async function reserveUsage({ db, reservation, quotaWindowId, now }) {
     WHERE w.id = ? AND w.provider_id = ? AND w.model_id = ? AND w.unit_kind = ?
       AND w.window_start = ? AND w.window_end = ? AND w.status = 'enabled'
       AND w.window_start <= ? AND w.window_end > ?
+      AND w.verified_at <= ? AND w.verified_at >= ?
       AND (SELECT COALESCE(SUM(CASE WHEN status = 'reserved' THEN reserved_units WHEN status = 'settled' THEN actual_units ELSE 0 END), 0)
            FROM model_usage_reservations WHERE quota_window_id = w.id) + ? <= w.limit_units
     ON CONFLICT(idempotency_key) DO NOTHING
   `).bind(
     input.id, input.idempotencyKey, input.principalId, input.projectId ?? null,
     input.reservedUnits, now, now, quotaWindowId, input.providerId, input.modelId,
-    input.unitKind, input.windowStart, input.windowEnd, now, now, input.reservedUnits,
+    input.unitKind, input.windowStart, input.windowEnd, now, now, now, verifiedAfter, input.reservedUnits,
   );
   const event = db.prepare(`
     INSERT OR IGNORE INTO model_usage_events (event_id, reservation_id, event_type, detail_json, created_at)
@@ -127,14 +157,7 @@ export async function reserveUsage({ db, reservation, quotaWindowId, now }) {
     'SELECT r.*, w.provider_id, w.model_id, w.unit_kind, w.window_start, w.window_end FROM model_usage_reservations r JOIN model_usage_quota_windows w ON w.id = r.quota_window_id WHERE r.idempotency_key = ?'
   ).bind(input.idempotencyKey).first();
   if (saved) {
-    if (saved.reserved_units !== input.reservedUnits ||
-        saved.principal_id !== input.principalId ||
-        saved.project_id !== (input.projectId ?? null) ||
-        saved.provider_id !== input.providerId || saved.model_id !== input.modelId ||
-        saved.unit_kind !== input.unitKind || saved.window_start !== input.windowStart ||
-        saved.window_end !== input.windowEnd || saved.quota_window_id !== quotaWindowId) {
-      throw new Error('Idempotency key already belongs to a different usage reservation');
-    }
+    validateExistingUsageReservation(saved, input, quotaWindowId);
     return reservationFromRow(saved);
   }
   throw new Error('Usage quota exhausted or quota window unavailable; no reservation was created');
