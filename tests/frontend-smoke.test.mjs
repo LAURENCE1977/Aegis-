@@ -252,6 +252,8 @@ test('Health Vision does not add a server API route or persistent health-data br
   assert.doesNotThrow(() => new vm.Script(script.replace(/^import[^\n]*\n/, '')));
   assert.doesNotMatch(script, /localStorage|sessionStorage|indexedDB|fetch\s*\(/);
   assert.match(script, /getUserMedia/);
+  assert.match(script, /section\.hidden \|\| appPanel\.hidden \|\| document\.hidden/);
+  assert.match(script, /visibilitychange/);
   assert.match(script, /URL\.createObjectURL/);
   assert.match(script, /pagehide/);
   assert.match(script, /appPanel\.hidden/);
