@@ -55,6 +55,26 @@ jobs:
             exit 1
           fi
 
+      - name: Apply runtime migrations to isolated local D1
+        run: wrangler d1 migrations apply aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1
+      - name: Verify runtime usage quota reservation and append-only events
+        shell: bash
+        run: |
+          output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --file scripts/runtime-d1-usage-ledger.sql --json)
+          echo "$output"
+          if ! echo "$output" | grep -q '"PASS"'; then
+            echo "Expected the quota ledger to reserve within the limit and reject over-reservation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE model_usage_events SET event_type = 'released' WHERE event_id = 'reserve:reservation-smoke-1'"; then
+            echo "Expected append-only usage event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM model_usage_events WHERE event_id = 'reserve:reservation-smoke-1'"; then
+            echo "Expected append-only usage event trigger to reject deletion."
+            exit 1
+          fi
+
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
       - name: Verify Forge licence gates, immutable source identity and append-only review events
