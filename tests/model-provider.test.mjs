@@ -8,7 +8,7 @@ function readable(text='data: [DONE]\n\n'){
   }),{status:200,headers:{'Content-Type':'text/event-stream'}});
 }
 
-test('Workers AI remains the default provider and preserves existing streaming contract',async()=>{
+test('Workers AI defaults to a model documented as available on the Free plan',async()=>{
   let call;
   const stream=new ReadableStream({start(controller){controller.close();}});
   const result=await createModelStream({
@@ -16,7 +16,7 @@ test('Workers AI remains the default provider and preserves existing streaming c
     messages:[{role:'user',content:'hello'}],
   });
   assert.equal(result,stream);
-  assert.equal(call.model,'@cf/meta/llama-3.3-70b-instruct');
+  assert.equal(call.model,'@cf/zai-org/glm-4.7-flash');
   assert.equal(call.options.stream,true);
 });
 
