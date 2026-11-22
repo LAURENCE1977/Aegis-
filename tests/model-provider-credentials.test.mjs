@@ -67,6 +67,7 @@ async function connect(db, providerId, apiKey, scopes = [providerId + ':inferenc
     provider_id: providerId,
     secret_ref: stored.secretRef,
     scopes_json: JSON.stringify(scopes),
+    created_at: new Date().toISOString(),
     status: 'active',
     revoked_at: null,
     expires_at: null,
@@ -127,4 +128,15 @@ test('fails closed when a connection exists but its vault key cannot be decrypte
   await assert.rejects(() => resolveConnectedProviderCredential({
     db, env: {}, principalId: 'owner', providerId: 'anthropic',
   }), /vault/i);
+});
+
+
+test('an expired provider connection also disables legacy credential fallback', async () => {
+  const db = new MemoryD1();
+  await connect(db, 'anthropic', 'anthropic-server-secret-123456');
+  const row = db.connections.get('connection-anthropic');
+  row.expires_at = new Date(Date.now() - 60_000).toISOString();
+  await assert.rejects(() => resolveConnectedProviderCredential({
+    db, env: vaultEnv, principalId: 'owner', providerId: 'anthropic',
+  }), /inactive/i);
 });
