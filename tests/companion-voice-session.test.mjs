@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createVoiceSession,
   validateVoiceSessionEvent,
-  applyVoiceSessionEvent,
+  applyVoiceSessionEvent as applyVoiceSessionEventRaw,
 } from '../functions/lib/companion-voice-session.mjs';
 
 const now = 1795300000000;
@@ -24,6 +24,13 @@ const event = (type, sequence, payload = {}, occurredAt = now + sequence) => ({
   occurredAt,
   payload,
 });
+
+const applyVoiceSessionEvent = (current, inputEvent, context = {}) =>
+  applyVoiceSessionEventRaw(current, inputEvent, {
+    principalId: 'owner-01',
+    clientId: 'browser-01',
+    ...context,
+  });
 
 test('voice sessions are short-lived, owner-bound and start with capture disabled', () => {
   const value = session();
@@ -195,5 +202,17 @@ test('session events reject a mismatched authenticated owner or browser client b
   assert.equal(applyVoiceSessionEvent(initial, start, {
     now, principalId: 'owner-01', clientId: 'different-browser',
     userInitiated: true, captureGranted: true,
+  }).reasonCode, 'SESSION_CLIENT_MISMATCH');
+});
+
+test('session events require both authenticated owner and browser client bindings', () => {
+  const initial = session();
+  const start = event('capture.started', 1, { source: 'push-to-talk' });
+  const shared = { now, userInitiated: true, captureGranted: true };
+
+  assert.equal(applyVoiceSessionEventRaw(initial, start, shared).reasonCode,
+    'SESSION_OWNER_MISMATCH');
+  assert.equal(applyVoiceSessionEventRaw(initial, start, {
+    ...shared, principalId: 'owner-01',
   }).reasonCode, 'SESSION_CLIENT_MISMATCH');
 });
