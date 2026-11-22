@@ -11,8 +11,22 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 | Provider | Runtime selection | Server-side secret/config | Streaming format | Governed tools |
 |---|---|---|---|---|
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
-| Anthropic | AEGIS_MODEL_PROVIDER=anthropic | ANTHROPIC_API_KEY, AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
-| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| Anthropic | AEGIS_MODEL_PROVIDER=anthropic | Active owner vault connection (preferred), otherwise ANTHROPIC_API_KEY; AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
+| Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | Active owner vault connection (preferred), otherwise AEGIS_QWEN_API_KEY; workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+
+## Encrypted provider connection resolution
+
+The authenticated AG-UI gateway now resolves the selected Anthropic or Alibaba Qwen credential from the encrypted provider vault when an active owner connection exists.
+
+- The provider ID is selected only by server-side `AEGIS_MODEL_PROVIDER`; browser request fields cannot select a provider or a vault reference.
+- Resolution is bound to the fixed owner principal, exact provider ID, active non-expired connection and exact `<provider>:inference:chat` scope.
+- The secret is decrypted only in server-side code and passed directly into the selected provider adapter. It is never returned to the browser, inserted into the prompt, or written to audit events.
+- An active vault connection takes precedence over the legacy runtime key. If the connection exists but cannot be resolved or decrypted, the request fails closed; it does not silently fall back to the legacy key.
+- If no provider connection has ever been created, the previous server-side environment-key configuration remains available for compatibility. If a connection record exists but is revoked or expired, legacy environment-key fallback is disabled for that provider; the owner must create a new active vault connection.
+- The credential resolver currently supports only Anthropic and Alibaba Qwen because these are the only adapters present in this branch. Other provider IDs shown in the connection catalogue are securely storable, but are not live inference adapters yet.
+- The vault keyring and active key version must be configured as server-side Worker secrets. A missing or invalid keyring prevents vault resolution.
+
+This integration does not yet connect model requests to the durable usage ledger or automatic provider routing. There is no automatic provider failover, and no provider is selected from browser input.
 
 ## Anthropic Messages adapter
 

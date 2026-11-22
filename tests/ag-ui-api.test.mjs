@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost } from '../functions/api/ag-ui.js';
+import { storeVaultSecret } from '../functions/lib/secret-vault.mjs';
 
 const secret='ag-ui-api-test-session-secret-long-enough';
 const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
@@ -91,7 +92,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\\r?\n\\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -423,4 +424,136 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
     .map(frame => JSON.parse(frame.slice(6)));
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
+});
+
+
+class VaultProviderMemoryD1 {
+  constructor() { this.secrets = new Map(); this.connections = new Map(); }
+  prepare(sql) {
+    const db = this;
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        if (sql.includes('INSERT INTO capability_secrets')) {
+          const [id, principal, provider, version, iv, ciphertext, createdAt] = this.values;
+          db.secrets.set(id, {
+            secret_id: id, principal_id: principal, provider_id: provider,
+            key_version: version, iv_b64: iv, ciphertext_b64: ciphertext,
+            created_at: createdAt, updated_at: createdAt, status: 'active',
+          });
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 1 } };
+      },
+      async first() {
+        if (sql.includes('FROM capability_connections')) {
+          const [principal, provider, now] = this.values;
+          const row = [...db.connections.values()].find(item =>
+            item.principal_id === principal && item.provider_id === provider &&
+            item.status === 'active' && !item.revoked_at &&
+            (!item.expires_at || item.expires_at > now));
+          return row ? { ...row } : null;
+        }
+        if (sql.includes('FROM capability_secrets')) {
+          const [id, principal, provider] = this.values;
+          const row = db.secrets.get(id);
+          return row && row.principal_id === principal && row.provider_id === provider
+            ? { ...row } : null;
+        }
+        return null;
+      },
+      async all() { return { results: [] }; },
+    };
+  }
+}
+
+test('AG-UI uses the active encrypted vault credential for Anthropic instead of the legacy environment key', async () => {
+  const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const keyB64 = btoa(String.fromCharCode(...rawKey));
+  const vaultEnv = {
+    AEGIS_VAULT_KEYRING: JSON.stringify({ v1: keyB64 }),
+    AEGIS_VAULT_ACTIVE_KEY_VERSION: 'v1',
+  };
+  const db = new VaultProviderMemoryD1();
+  const apiKey = 'anthropic-vault-key-secret-value-123';
+  const stored = await storeVaultSecret(db, {
+    principalId: 'owner', providerId: 'anthropic', secret: apiKey,
+  }, vaultEnv);
+  db.connections.set('connection-anthropic', {
+    id: 'connection-anthropic', principal_id: 'owner', provider_id: 'anthropic',
+    secret_ref: stored.secretRef,
+    scopes_json: JSON.stringify(['anthropic:inference:chat']),
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+
+  let authorization;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      ...vaultEnv,
+      AEGIS_DB: db,
+      AEGIS_MODEL_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'legacy-environment-key-must-not-win',
+      AEGIS_ANTHROPIC_MODEL: 'claude-sonnet-4-5',
+    },
+    fetchImpl: async (_url, options) => {
+      authorization = options.headers.Authorization;
+      return new Response(modelSseStream([
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(authorization, 'Bearer ' + apiKey);
+});
+
+
+test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy key is configured', async () => {
+  const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const keyB64 = btoa(String.fromCharCode(...rawKey));
+  const vaultEnv = {
+    AEGIS_VAULT_KEYRING: JSON.stringify({ v1: keyB64 }),
+    AEGIS_VAULT_ACTIVE_KEY_VERSION: 'v1',
+  };
+  const db = new VaultProviderMemoryD1();
+  const apiKey = 'qwen-vault-key-secret-value-123456';
+  const stored = await storeVaultSecret(db, {
+    principalId: 'owner', providerId: 'alibaba-qwen', secret: apiKey,
+  }, vaultEnv);
+  db.connections.set('connection-qwen', {
+    id: 'connection-qwen', principal_id: 'owner', provider_id: 'alibaba-qwen',
+    secret_ref: stored.secretRef,
+    scopes_json: JSON.stringify(['alibaba-qwen:inference:chat']),
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+
+  let authorization;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      ...vaultEnv,
+      AEGIS_DB: db,
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+    },
+    fetchImpl: async (_url, options) => {
+      authorization = options.headers.Authorization;
+      return new Response(modelSseStream([
+        'data: {"choices":[{"delta":{"content":"Vault Qwen works."}}]}\n\n',
+        'data: [DONE]\n\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.equal(authorization, 'Bearer ' + apiKey);
+  assert.match(body, /Vault Qwen works/);
+  assert.doesNotMatch(body, /qwen-vault-key-secret-value/);
 });
