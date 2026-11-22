@@ -31,7 +31,7 @@ function validateEndpoint(endpoint) {
 
 function validateCredentials(apiKey, model) {
   if (typeof apiKey !== 'string' || apiKey.length < 16 || apiKey.length > 4096 ||
-      /[\\r\\n\\u0000]/.test(apiKey)) {
+      /[\r\n\u0000]/.test(apiKey)) {
     throw new TypeError('Invalid OpenAI-compatible provider credential.');
   }
   if (typeof model !== 'string' || !MODEL_ID.test(model) ||
