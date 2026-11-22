@@ -91,7 +91,7 @@ export async function requestPaidInferenceApproval(db, input, now = Date.now()) 
   }
   if (!Number.isFinite(now)) throw new TypeError('Invalid paid inference approval clock');
   const binding = await buildPaidInferenceApprovalBinding(input);
-  const existing = await db.prepare(`
+  const findExisting = () => db.prepare(`
     SELECT * FROM capability_approvals
     WHERE principal_id = ? AND capability_id = ? AND capability_version = ?
       AND action_id = ? AND resource_id = ? AND input_digest = ?
@@ -100,6 +100,7 @@ export async function requestPaidInferenceApproval(db, input, now = Date.now()) 
     binding.principalId, binding.capabilityId, binding.capabilityVersion,
     binding.actionId, binding.resourceId, binding.inputDigest,
   ).first();
+  const existing = await findExisting();
   if (existing) {
     const approval = mapExisting(existing);
     if (Date.parse(approval.expiresAt) <= now && approval.status === 'pending') {
@@ -107,11 +108,22 @@ export async function requestPaidInferenceApproval(db, input, now = Date.now()) 
     }
     return { status: approval.status, approval };
   }
-  const approval = await createApprovalRequest(db, {
-    ...binding,
-    expiresAt: new Date(now + TTL_MS).toISOString(),
-  }, now);
-  return { status: 'pending', approval };
+  try {
+    const approval = await createApprovalRequest(db, {
+      ...binding,
+      expiresAt: new Date(now + TTL_MS).toISOString(),
+    }, now);
+    return { status: 'pending', approval };
+  } catch (error) {
+    // The partial unique index closes the concurrent create race. If another
+    // request won, return its exact record instead of creating a second prompt.
+    const raced = await findExisting();
+    if (raced) {
+      const approval = mapExisting(raced);
+      return { status: approval.status, approval };
+    }
+    throw error;
+  }
 }
 
 /** Consume the owner's decision atomically immediately before paid dispatch. */
