@@ -4,6 +4,7 @@ import {
   extractProviderUsage,
   mergeProviderUsage,
   isCompleteProviderUsage,
+  addProviderUsage,
 } from '../functions/lib/provider-usage.mjs';
 
 test('extracts Anthropic input-token usage from message_start without inventing output usage', () => {
@@ -136,4 +137,22 @@ test('does not mark Anthropic usage complete when cache token fields are omitted
     usage: { output_tokens: 15 },
   });
   assert.equal(isCompleteProviderUsage(mergeProviderUsage(partial, output)), false);
+});
+
+
+test('sums complete usage from separate provider requests without mixing sources', () => {
+  const first = {
+    inputTokens: 100, outputTokens: 20, cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 5, totalTokens: 125, source: 'openai-compatible',
+  };
+  const second = {
+    inputTokens: 200, outputTokens: 30, cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 10, totalTokens: 240, source: 'openai-compatible',
+  };
+  assert.deepEqual(addProviderUsage(first, second), {
+    inputTokens: 300, outputTokens: 50, cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 15, totalTokens: 365, source: 'openai-compatible',
+  });
+  assert.throws(() => addProviderUsage(first, { ...second, source: 'anthropic' }), /source mismatch/i);
+  assert.throws(() => addProviderUsage(first, { ...second, totalTokens: null }), /complete/i);
 });

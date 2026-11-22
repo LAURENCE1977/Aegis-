@@ -163,14 +163,25 @@ export async function reserveUsage({ db, reservation, quotaWindowId, now, maxAge
   throw new Error('Usage quota exhausted or quota window unavailable; no reservation was created');
 }
 
-export async function settleUsage({ db, reservationId, actualUnits, now }) {
+export async function settleUsage({ db, reservationId, actualUnits, now, expectedProviderId, expectedModelId }) {
   requireDb(db);
   requireId(reservationId, 'reservation');
   requireUtc(now, 'settlement time');
-  const row = await db.prepare('SELECT reserved_units, status FROM model_usage_reservations WHERE id = ?')
-    .bind(reservationId).first();
+  if (expectedProviderId !== undefined) requireId(expectedProviderId, 'expected provider');
+  if (expectedModelId !== undefined) requireId(expectedModelId, 'expected model');
+  const row = await db.prepare(`
+    SELECT r.reserved_units, r.status, w.provider_id, w.model_id, w.unit_kind
+    FROM model_usage_reservations r
+    JOIN model_usage_quota_windows w ON w.id = r.quota_window_id
+    WHERE r.id = ?
+  `).bind(reservationId).first();
   if (!row) throw new Error('Usage reservation not found');
   if (row.status !== 'reserved') throw new Error('Usage reservation is not open');
+  if ((expectedProviderId !== undefined && row.provider_id !== expectedProviderId) ||
+      (expectedModelId !== undefined && row.model_id !== expectedModelId) ||
+      (expectedProviderId !== undefined && row.unit_kind !== 'tokens')) {
+    throw new Error('Usage reservation provider, model or unit does not match settlement');
+  }
   const usage = validateUsageSettlement({ reservedUnits: row.reserved_units, actualUnits });
   const update = db.prepare(
     "UPDATE model_usage_reservations SET status = 'settled', actual_units = ?, updated_at = ? WHERE id = ? AND status = 'reserved' AND reserved_units >= ?"
