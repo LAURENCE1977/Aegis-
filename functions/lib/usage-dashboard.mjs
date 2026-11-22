@@ -32,6 +32,8 @@ export function buildUsageDashboard({
   now = new Date().toISOString(),
   paidInferenceApproved = 'false',
   maxTokensPerRun = '',
+  selectedProviderId = 'workers-ai',
+  selectedModelId = null,
   maxVerificationAgeMs = DEFAULT_MAX_VERIFICATION_AGE_MS,
 } = {}) {
   if (!isUtcTimestamp(now)) throw new TypeError('Invalid usage dashboard time');
@@ -88,17 +90,22 @@ export function buildUsageDashboard({
   });
 
   const enabledByDeploymentGate = paidInferenceApproved === 'true';
-  const canAuthorisePaidRun = enabledByDeploymentGate && ceiling !== null &&
-    safeWindows.some((window) =>
-      window.status === 'verified' && window.remainingUnits !== null &&
-      window.remainingUnits >= ceiling
-    );
+  const paidProviderSelected = ['anthropic', 'alibaba-qwen'].includes(selectedProviderId) &&
+    typeof selectedModelId === 'string' && selectedModelId.length > 0;
+  const selectedWindow = safeWindows.find((window) =>
+    window.providerId === selectedProviderId && window.modelId === selectedModelId
+  );
+  const canAuthorisePaidRun = enabledByDeploymentGate && paidProviderSelected &&
+    ceiling !== null && selectedWindow?.status === 'verified' &&
+    selectedWindow.remainingUnits !== null && selectedWindow.remainingUnits >= ceiling;
 
   return Object.freeze({
     checkedAt: now,
     paidInference: Object.freeze({
       enabledByDeploymentGate,
       maxTokensPerRun: ceiling,
+      selectedProviderId,
+      selectedModelId,
       canAuthorisePaidRun,
       note: 'Every paid run still requires separate exact-run owner approval.',
     }),
