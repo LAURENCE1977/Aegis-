@@ -420,7 +420,9 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
           controller.enqueue(encoder.encode(encodeAgUiSse(
             createTextRunFinishEvents({
               threadId, runId, outcome: cancelled ? "cancelled" : undefined,
-              usage: isCompleteProviderUsage(providerUsage) ? providerUsage : undefined,
+              usage: usageAccounting
+                ? (!usageIncomplete && !cancelled && isCompleteProviderUsage(providerUsage) ? providerUsage : undefined)
+                : (isCompleteProviderUsage(providerUsage) ? providerUsage : undefined),
               usageAccountingStatus,
             }),
           )));
