@@ -574,16 +574,16 @@ test('AG-UI includes Qwen provider-reported token usage only when the final usag
     fetchImpl: async (_url, options) => {
       captured = JSON.parse(options.body);
       return new Response(modelSseStream([
-        'data: {"choices":[{"delta":{"content":"Metered Qwen."}}]}\\n\\n',
-        'data: {"choices":[],"usage":{"prompt_tokens":19,"completion_tokens":7,"total_tokens":26}}\\n\\n',
-        'data: [DONE]\\n\\n',
+        'data: {"choices":[{"delta":{"content":"Metered Qwen."}}]}\n\n',
+        'data: {"choices":[],"usage":{"prompt_tokens":19,"completion_tokens":7,"total_tokens":26}}\n\n',
+        'data: [DONE]\n\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
 
   assert.equal(response.status, 200);
   assert.deepEqual(captured.stream_options, { include_usage: true });
-  const events = (await response.text()).trim().split('\\n\\n').map(frame => JSON.parse(frame.slice(6)));
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.deepEqual(events.at(-1).usage, {
     inputTokens: 19,
     outputTokens: 7,
@@ -602,15 +602,15 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
       AEGIS_ANTHROPIC_MODEL: 'claude-sonnet-4-5',
     },
     fetchImpl: async () => new Response(modelSseStream([
-      'event: message_start\\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\\n\\n',
-      'event: content_block_delta\\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Metered Anthropic."}}\\n\\n',
-      'event: message_delta\\ndata: {"type":"message_delta","usage":{"output_tokens":11}}\\n\\n',
-      'event: message_stop\\ndata: {"type":"message_stop"}\\n\\n',
+      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\n\n',
+      'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Metered Anthropic."}}\n\n',
+      'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":11}}\n\n',
+      'event: message_stop\ndata: {"type":"message_stop"}\n\n',
     ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
   });
 
   assert.equal(response.status, 200);
-  const events = (await response.text()).trim().split('\\n\\n').map(frame => JSON.parse(frame.slice(6)));
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.deepEqual(events.at(-1).usage, {
     inputTokens: 31,
     outputTokens: 11,
@@ -629,12 +629,12 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
       AEGIS_ANTHROPIC_MODEL: 'claude-sonnet-4-5',
     },
     fetchImpl: async () => new Response(modelSseStream([
-      'event: message_start\\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\\n\\n',
-      'event: message_stop\\ndata: {"type":"message_stop"}\\n\\n',
+      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\n\n',
+      'event: message_stop\ndata: {"type":"message_stop"}\n\n',
     ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
   });
 
   assert.equal(response.status, 200);
-  const events = (await response.text()).trim().split('\\n\\n').map(frame => JSON.parse(frame.slice(6)));
+  const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.equal(Object.hasOwn(events.at(-1), 'usage'), false);
 });
