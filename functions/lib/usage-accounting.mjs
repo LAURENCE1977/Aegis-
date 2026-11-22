@@ -165,7 +165,8 @@ export async function reserveTokenUsage({
  * Settle only complete, provider-matched actual usage. Missing or partial
  * usage throws and leaves the reservation open for reconciliation.
  */
-export async function settleTokenUsage({ db, reservationId, providerId, usage, now } = {}) {
+export async function settleTokenUsage({ db, reservationId, providerId, modelId, usage, now } = {}) {
   const actualUnits = providerUsageUnits({ providerId, usage });
-  return settleUsage({ db, reservationId, actualUnits, now });
+  requireIdentifier(modelId, 'model identifier');
+  return settleUsage({ db, reservationId, actualUnits, now, expectedProviderId: providerId, expectedModelId: modelId });
 }
