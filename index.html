@@ -126,6 +126,7 @@
         <button class="secondary" id="approvalTab" type="button">Approvals</button>
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
+        <button class="secondary" id="providerTab" type="button">Providers</button>
       </div>
       <section id="chatSection">
       <label class="project-context" for="chatProjectSelect">Chat context
@@ -186,6 +187,22 @@
         <pre id="sentinelInvokeOutput" class="forge-preview" hidden></pre>
         <p class="memory-help">No grants are created by this inventory; the controls above manage them separately. Revoking a grant blocks future Sentinel policy checks.</p>
       </section>
+      <section class="memory-panel" id="providerSection" hidden>
+        <h2>Model Provider Connections</h2>
+        <p class="memory-help">Store provider API keys in the encrypted AEGIS vault. Keys are never shown again, placed in chat history or saved in browser storage. Stored credentials are not yet connected to live model inference.</p>
+        <p class="status" id="providerVaultStatus" role="status" aria-live="polite">Vault storage must be configured on the server before a key can be saved.</p>
+        <form class="memory-form" id="providerForm">
+          <label for="providerSelect">Provider</label>
+          <select id="providerSelect" required>
+            <option value="">Choose a provider</option>
+          </select>
+          <label for="providerApiKey">API key</label>
+          <input id="providerApiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="4096" placeholder="Paste provider API key" required />
+          <button id="saveProviderBtn" type="submit">Store key securely</button>
+        </form>
+        <p class="status" id="providerStatus" role="status" aria-live="polite">No key has been submitted.</p>
+        <div id="providerList" aria-live="polite"></div>
+      </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
         <p class="memory-help">Create private workspaces for projects. Notes and decisions are kept in an owner-only timeline.</p>
@@ -237,6 +254,15 @@
     const approvalTab = document.getElementById('approvalTab');
     const forgeTab = document.getElementById('forgeTab');
     const securityTab = document.getElementById('securityTab');
+    const providerTab = document.getElementById('providerTab');
+    const providerSection = document.getElementById('providerSection');
+    const providerForm = document.getElementById('providerForm');
+    const providerSelect = document.getElementById('providerSelect');
+    const providerApiKey = document.getElementById('providerApiKey');
+    const saveProviderBtn = document.getElementById('saveProviderBtn');
+    const providerStatus = document.getElementById('providerStatus');
+    const providerVaultStatus = document.getElementById('providerVaultStatus');
+    const providerList = document.getElementById('providerList');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
     const moduleList = document.getElementById('moduleList');
@@ -334,6 +360,7 @@
       loginPanel.hidden = false;
       loginStatus.textContent = message || 'Sign in to continue.';
       loginPassword.value = '';
+      providerApiKey.value = '';
       loginPassword.focus();
     }
 
@@ -343,6 +370,7 @@
       logoutBtn.hidden = false;
       chatSection.hidden = false;
       memorySection.hidden = true;
+      providerSection.hidden = true;
       chatBox.replaceChildren();
       loadHistory();
       addMessage('Hello! How can I help you today?');
@@ -632,6 +660,9 @@
       approvalSection.hidden = panel !== 'approvals';
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
+      providerSection.hidden = panel !== 'providers';
+      if (panel !== 'providers') providerApiKey.value = '';
+      if (panel === 'providers') loadProviderConnections();
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
@@ -645,6 +676,29 @@
     approvalTab.addEventListener('click', () => showPanel('approvals'));
     forgeTab.addEventListener('click', () => showPanel('forge'));
     securityTab.addEventListener('click', () => showPanel('security'));
+    providerTab.addEventListener('click', () => showPanel('providers'));
+
+    providerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const providerId = providerSelect.value;
+      const apiKey = providerApiKey.value;
+      if (!providerId || !apiKey) return;
+      saveProviderBtn.disabled = true;
+      providerStatus.textContent = 'Encrypting and storing credential…';
+      try {
+        const data = await controlApi('/api/model-provider-connections', {
+          method: 'POST',
+          body: JSON.stringify({ providerId, apiKey }),
+        });
+        providerApiKey.value = '';
+        providerStatus.textContent = data.message || 'Credential stored securely.';
+        await loadProviderConnections();
+      } catch (error) {
+        providerStatus.textContent = error.message || 'Credential could not be stored.';
+      } finally {
+        saveProviderBtn.disabled = false;
+      }
+    });
 
     async function controlApi(path, options = {}) {
       const res = await fetch(path, {
@@ -660,6 +714,70 @@
       }
       if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
       return data;
+    }
+
+    async function loadProviderConnections() {
+      providerStatus.textContent = 'Loading provider connections…';
+      providerList.replaceChildren();
+      try {
+        const data = await controlApi('/api/model-provider-connections');
+        const providers = Array.isArray(data.providers) ? data.providers : [];
+        const selected = providerSelect.value;
+        providerSelect.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Choose a provider';
+        providerSelect.append(placeholder);
+
+        providers.forEach(provider => {
+          const option = document.createElement('option');
+          option.value = provider.id;
+          option.textContent = provider.name;
+          providerSelect.append(option);
+
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const title = document.createElement('h3');
+          title.textContent = provider.name;
+          const state = document.createElement('p');
+          const configured = provider.connectionStatus === 'stored';
+          state.textContent = configured
+            ? 'Credential stored in encrypted vault · not connected to live inference'
+            : 'No credential stored';
+          item.append(title, state);
+          if (configured) {
+            const actions = document.createElement('div');
+            actions.className = 'workspace-actions';
+            const revoke = memoryButton('Revoke stored key', async () => {
+              revoke.disabled = true;
+              providerStatus.textContent = 'Revoking credential…';
+              try {
+                await controlApi('/api/model-provider-connections', {
+                  method: 'DELETE',
+                  body: JSON.stringify({ providerId: provider.id }),
+                });
+                providerStatus.textContent = 'Credential revoked and encrypted material erased.';
+                await loadProviderConnections();
+              } catch (error) {
+                providerStatus.textContent = error.message || 'Credential could not be revoked.';
+                revoke.disabled = false;
+              }
+            });
+            actions.append(revoke);
+            item.append(actions);
+          }
+          providerList.append(item);
+        });
+        if (providers.some(provider => provider.id === selected)) providerSelect.value = selected;
+        providerVaultStatus.textContent = data.runtimeStatus === 'vault_only'
+          ? 'Vault-only storage: credentials are encrypted, but live model inference does not use these saved connections yet.'
+          : 'Provider connection status loaded.';
+        providerStatus.textContent = providers.length
+          ? 'Provider connection inventory is up to date.'
+          : 'No model providers are available.';
+      } catch (error) {
+        providerStatus.textContent = error.message || 'Provider connection inventory is unavailable.';
+      }
     }
 
     async function loadChatProjects() {
