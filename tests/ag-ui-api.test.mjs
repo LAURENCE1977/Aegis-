@@ -412,6 +412,7 @@ test('AG-UI never offers or executes tools unless the owner explicitly enables s
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -560,6 +561,7 @@ test('AG-UI uses the active encrypted vault credential for Anthropic instead of 
       ...vaultEnv,
       AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'anthropic',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'legacy-environment-key-must-not-win',
@@ -605,6 +607,7 @@ test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy 
       ...vaultEnv,
       AEGIS_DB: new UsageLedgerMemoryD1(db),
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
@@ -635,6 +638,7 @@ test('AG-UI includes Qwen provider-reported token usage only when the final usag
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
@@ -671,6 +675,7 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
@@ -702,6 +707,7 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
     env: {
       ...envBase,
       AEGIS_MODEL_PROVIDER: 'anthropic',
+      AEGIS_DB: new UsageLedgerMemoryD1(),
       AEGIS_PAID_INFERENCE_APPROVED: 'true',
       AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
       ANTHROPIC_API_KEY: 'test-anthropic-api-key-long-enough',
