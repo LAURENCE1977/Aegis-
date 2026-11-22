@@ -26,7 +26,22 @@ The authenticated AG-UI gateway now resolves the selected Anthropic or Alibaba Q
 - The credential resolver currently supports only Anthropic and Alibaba Qwen because these are the only adapters present in this branch. Other provider IDs shown in the connection catalogue are securely storable, but are not live inference adapters yet.
 - The vault keyring and active key version must be configured as server-side Worker secrets. A missing or invalid keyring prevents vault resolution.
 
-This integration does not yet connect model requests to the durable usage ledger or automatic provider routing. There is no automatic provider failover, and no provider is selected from browser input.
+## Paid inference approval and token accounting
+
+The AG-UI gateway now applies a fail-closed paid-inference policy to Anthropic and Alibaba Qwen on the paid-accounting feature branch:
+
+- The owner must explicitly set `AEGIS_PAID_INFERENCE_APPROVED=true`; having an API key is not approval.
+- The owner must configure a finite `AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN` ceiling. The current supported maximum is 100,000 tokens.
+- This is a deployment-level owner approval switch, not yet a per-run approval prompt in the chat UI.
+- AEGIS requires D1 and one fresh, verified, active quota window matching the selected provider and model.
+- It estimates a conservative reservation and reserves quota before the paid provider is contacted. If policy, storage, quota or reservation fails, the provider is not called.
+- Complete, provider-matched usage is settled against the reservation. Qwen tool-round usage is aggregated across the initial and follow-up provider requests.
+- Incomplete, cancelled, mismatched or over-reservation usage is not settled or presented as a complete total; the reservation remains open for reconciliation.
+- A separate retry-safety change assigns each received paid dispatch attempt a distinct opaque reservation identity, preventing a repeated thread/run ID from reusing an earlier open reservation.
+
+Cloudflare Workers AI / Neurons remain on their separate accounting path; their units are not mixed with provider token quotas. These paid-accounting changes are present on draft PR #188 and its draft retry-safety follow-up PR #189. They are not merged to `main` or production-live.
+
+Automatic provider routing and provider failover are not implemented. Provider selection remains server-side through `AEGIS_MODEL_PROVIDER`; browser request fields cannot select a provider.
 
 ## Anthropic Messages adapter
 
