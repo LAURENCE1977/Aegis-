@@ -731,6 +731,50 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
 });
 
 
+test('AG-UI reserves quota again when the same run is retried after incomplete paid usage', async () => {
+  const db = new UsageLedgerMemoryD1();
+  let providerCalls = 0;
+  const env = {
+    ...envBase,
+    AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
+    AEGIS_DB: db,
+    AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+    AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+    AEGIS_QWEN_REGION: 'ap-southeast-1',
+    AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+  };
+  const fetchImpl = async () => {
+    providerCalls += 1;
+    const frames = providerCalls === 1
+      ? ['data: {"choices":[{"delta":{"content":"First attempt."}}]}\n\n', 'data: [DONE]\n\n']
+      : [
+          'data: {"choices":[{"delta":{"content":"Second attempt."}}]}\n\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}\n\n',
+          'data: [DONE]\n\n',
+        ];
+    return new Response(modelSseStream(frames), {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+  };
+
+  const first = await onRequestPost({ request: await request(input()), env, fetchImpl });
+  const firstEvents = (await first.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(firstEvents.at(-1).usageAccountingStatus, 'reconciliation_required');
+  assert.equal(db.reservations.size, 1);
+  assert.equal([...db.reservations.values()][0].status, 'reserved');
+
+  const second = await onRequestPost({ request: await request(input()), env, fetchImpl });
+  const secondEvents = (await second.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(secondEvents.at(-1).usageAccountingStatus, 'settled');
+  assert.equal(providerCalls, 2);
+  assert.equal(db.reservations.size, 2);
+  assert.equal([...db.reservations.values()].filter(row => row.status === 'reserved').length, 1);
+  assert.equal([...db.reservations.values()].filter(row => row.status === 'settled').length, 1);
+});
+
 test('AG-UI blocks a paid Qwen request before network access without explicit owner approval', async () => {
   let providerCalls = 0;
   const response = await onRequestPost({

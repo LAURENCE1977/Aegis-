@@ -71,13 +71,17 @@ export function estimateTokenReservation({
   return reservation;
 }
 
-/** Stable, opaque D1 identifiers derived from a single AG-UI provider run. */
-export async function deriveUsageReservationIds({ threadId, runId, providerId, modelId } = {}) {
+/** Stable, opaque D1 identifiers scoped to one paid dispatch attempt. */
+export async function deriveUsageReservationIds({ threadId, runId, providerId, modelId, attemptId } = {}) {
   requireIdentifier(threadId, 'thread identifier');
   requireIdentifier(runId, 'run identifier');
   requireIdentifier(providerId, 'provider identifier');
   requireIdentifier(modelId, 'model identifier');
-  const source = JSON.stringify({ threadId, runId, providerId, modelId });
+  requireIdentifier(attemptId, 'attempt identifier');
+  // A repeated AG-UI run ID is a new provider dispatch attempt, not a free replay.
+  // Keep retries within this invocation idempotent while reserving quota again for
+  // a separately received request, including retries after an incomplete stream.
+  const source = JSON.stringify({ threadId, runId, providerId, modelId, attemptId });
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
   const hex = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
   return Object.freeze({

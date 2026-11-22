@@ -34,16 +34,19 @@ test('reserves for each potential provider request and includes server tool defi
   assert.ok(two >= one * 2 + 4096 - 128);
 });
 
-test('derives stable, provider-scoped reservation identifiers without exposing run IDs', async () => {
-  const input = { threadId: 'thread-1', runId: 'run-1', providerId: 'alibaba-qwen', modelId: 'qwen3.8-flash' };
+test('derives stable opaque identifiers per dispatch attempt and separates repeated AG-UI attempts', async () => {
+  const input = { threadId: 'thread-1', runId: 'run-1', providerId: 'alibaba-qwen', modelId: 'qwen3.8-flash', attemptId: 'attempt-1' };
   const first = await deriveUsageReservationIds(input);
-  const second = await deriveUsageReservationIds(input);
+  const sameAttempt = await deriveUsageReservationIds(input);
+  const repeatedRun = await deriveUsageReservationIds({ ...input, attemptId: 'attempt-2' });
   const otherProvider = await deriveUsageReservationIds({ ...input, providerId: 'anthropic' });
-  assert.deepEqual(first, second);
+  assert.deepEqual(first, sameAttempt);
+  assert.notEqual(first.idempotencyKey, repeatedRun.idempotencyKey);
+  assert.notEqual(first.reservationId, repeatedRun.reservationId);
   assert.notEqual(first.idempotencyKey, otherProvider.idempotencyKey);
   assert.match(first.idempotencyKey, /^agui-[a-f0-9]{64}$/);
   assert.match(first.reservationId, /^usage-[a-f0-9]{64}$/);
-  assert.doesNotMatch(JSON.stringify(first), /run-1|thread-1/);
+  assert.doesNotMatch(JSON.stringify(first), /run-1|thread-1|attempt-1/);
 });
 
 test('rejects invalid or excessive token reservation inputs', () => {

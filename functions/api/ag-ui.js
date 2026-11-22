@@ -126,7 +126,7 @@ export async function onRequestPost(context) {
         return json({ error: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
       }
       const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
-      const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId });
+      const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId, attemptId: crypto.randomUUID() });
       const reservationTools = selectedProvider === "alibaba-qwen" ? (tools || []) : [];
       const reservationInput = {
         messages: promptMessages, tools: reservationTools, maxOutputTokens: 1024,
