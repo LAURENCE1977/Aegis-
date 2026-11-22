@@ -4,6 +4,7 @@ import {
   estimateTokenReservation,
   providerUsageUnits,
   findActiveTokenQuotaWindow,
+  settleTokenUsage,
 } from '../functions/lib/usage-accounting.mjs';
 
 const now = '2026-11-22T12:00:00.000Z';
@@ -114,4 +115,117 @@ test('fails closed on duplicate active token quota windows', async () => {
   await assert.rejects(findActiveTokenQuotaWindow({
     db, providerId: 'alibaba-qwen', modelId: 'qwen3.8-flash', now,
   }), /duplicate/i);
+});
+
+
+test('settles only provider-reported actual usage against the exact reserved provider and model', async () => {
+  let selectedSql = '';
+  let batchStatements = [];
+  const db = {
+    prepare(sql) {
+      selectedSql = sql;
+      return { bind() { return this; }, async first() {
+        return {
+          reserved_units: 2000,
+          status: 'reserved',
+          provider_id: 'alibaba-qwen',
+          model_id: 'qwen3.8-flash',
+          unit_kind: 'tokens',
+        };
+      } };
+    },
+    async batch(statements) {
+      batchStatements = statements;
+      return [{ meta: { changes: 1 } }, { meta: { changes: 1 } }];
+    },
+  };
+  const result = await settleTokenUsage({
+    db,
+    reservationId: 'usage-run-001',
+    providerId: 'alibaba-qwen',
+    modelId: 'qwen3.8-flash',
+    usage: {
+      inputTokens: 300,
+      outputTokens: 100,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      totalTokens: 400,
+      source: 'openai-compatible',
+    },
+    now,
+  });
+  assert.match(selectedSql, /JOIN model_usage_quota_windows/);
+  assert.deepEqual(result, { reservationId: 'usage-run-001', actualUnits: 400, status: 'settled' });
+  assert.equal(batchStatements.length, 2);
+});
+
+test('does not settle incomplete usage or usage from another provider family', async () => {
+  let databaseTouched = false;
+  const db = {
+    prepare() { databaseTouched = true; throw new Error('must not access ledger'); },
+    batch() { databaseTouched = true; throw new Error('must not access ledger'); },
+  };
+  await assert.rejects(settleTokenUsage({
+    db,
+    reservationId: 'usage-run-001',
+    providerId: 'alibaba-qwen',
+    modelId: 'qwen3.8-flash',
+    usage: {
+      inputTokens: 300,
+      outputTokens: null,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      totalTokens: null,
+      source: 'openai-compatible',
+    },
+    now,
+  }), /incomplete/i);
+  await assert.rejects(settleTokenUsage({
+    db,
+    reservationId: 'usage-run-001',
+    providerId: 'anthropic',
+    modelId: 'claude-model',
+    usage: {
+      inputTokens: 300,
+      outputTokens: 100,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      totalTokens: 400,
+      source: 'openai-compatible',
+    },
+    now,
+  }), /provider/i);
+  assert.equal(databaseTouched, false);
+});
+
+test('rejects settlement when actual provider usage exceeds the reserved amount', async () => {
+  const db = {
+    prepare() {
+      return { bind() { return this; }, async first() {
+        return {
+          reserved_units: 200,
+          status: 'reserved',
+          provider_id: 'alibaba-qwen',
+          model_id: 'qwen3.8-flash',
+          unit_kind: 'tokens',
+        };
+      } };
+    },
+    async batch() { throw new Error('must not update an over-reservation'); },
+  };
+  await assert.rejects(settleTokenUsage({
+    db,
+    reservationId: 'usage-run-001',
+    providerId: 'alibaba-qwen',
+    modelId: 'qwen3.8-flash',
+    usage: {
+      inputTokens: 300,
+      outputTokens: 100,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      totalTokens: 400,
+      source: 'openai-compatible',
+    },
+    now,
+  }), /exceeds the reservation/i);
 });
