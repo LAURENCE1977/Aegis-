@@ -118,6 +118,13 @@ export async function onRequestPost(context) {
         return json({ error: "Verified token quota storage is required before paid inference.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
       }
       const modelId = selectedProvider === "anthropic" ? modelEnv.AEGIS_ANTHROPIC_MODEL : (modelEnv.AEGIS_QWEN_MODEL || "qwen3.8-flash");
+      if (selectedProvider === "anthropic" && (!modelEnv.ANTHROPIC_API_KEY || !modelId)) {
+        return json({ error: "The configured Anthropic provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
+      }
+      if (selectedProvider === "alibaba-qwen" &&
+          (!modelEnv.AEGIS_QWEN_API_KEY || !modelEnv.AEGIS_QWEN_WORKSPACE_ID || !modelEnv.AEGIS_QWEN_REGION)) {
+        return json({ error: "The configured Qwen provider is not ready.", code: "PROVIDER_NOT_READY" }, 503);
+      }
       const policy = resolvePaidInferencePolicy(modelEnv, selectedProvider, modelId);
       const reservationIds = await deriveUsageReservationIds({ threadId: input.threadId, runId: input.runId, providerId: selectedProvider, modelId });
       const reservationTools = selectedProvider === "alibaba-qwen" ? (tools || []) : [];
@@ -129,10 +136,14 @@ export async function onRequestPost(context) {
       if (estimatedUnits > policy.maxTokensPerRun) {
         return json({ error: "The estimated token reservation exceeds the approved per-run ceiling.", code: "PAID_INFERENCE_BUDGET_EXCEEDED" }, 403);
       }
-      await reserveTokenUsage({
-        db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
-        ...reservationInput, now: new Date().toISOString(),
-      });
+      try {
+        await reserveTokenUsage({
+          db: env.AEGIS_DB, ...reservationIds, principalId: "owner", projectId, providerId: selectedProvider, modelId,
+          ...reservationInput, now: new Date().toISOString(),
+        });
+      } catch {
+        return json({ error: "No active verified token quota is available; the paid provider was not contacted.", code: "USAGE_QUOTA_UNAVAILABLE" }, 503);
+      }
       usageAccounting = { db: env.AEGIS_DB, reservationId: reservationIds.reservationId, providerId: selectedProvider, modelId };
     }
     modelStream = await createModelStream({ env: modelEnv, messages: promptMessages, tools, fetchImpl });
