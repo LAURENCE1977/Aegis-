@@ -246,6 +246,7 @@ test('Health Vision is a private, session-only observation workspace with camera
 
 test('Health Vision does not add a server API route or persistent health-data browser store', async () => {
   const script = readFileSync(new URL('../health-vision.js', import.meta.url), 'utf8');
+  assert.doesNotThrow(() => new vm.Script(script.replace(/^import[^\n]*\n/, '')));
   assert.doesNotMatch(script, /localStorage|sessionStorage|indexedDB|fetch\s*\(/);
   assert.match(script, /getUserMedia/);
   assert.match(script, /URL\.createObjectURL/);
