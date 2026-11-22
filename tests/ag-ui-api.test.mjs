@@ -379,12 +379,14 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
           qwenToolDelta({ tool_calls: [{
             index: 0, function: { arguments: '}' },
           }] }),
-          'data: [DONE]\n\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}\\n\\n',
+          'data: [DONE]\\n\\n',
         ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
       }
       return new Response(modelSseStream([
         qwenToolDelta({ content: 'I checked AEGIS and found the module catalogue.' }),
-        'data: [DONE]\n\n',
+        'data: {"choices":[],"usage":{"prompt_tokens":20,"completion_tokens":5,"total_tokens":25}}\\n\\n',
+        'data: [DONE]\\n\\n',
       ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     },
   });
@@ -404,6 +406,8 @@ test('AG-UI runs one server-defined Qwen tool through Sentinel and summarizes th
   assert.deepEqual(calls[1].messages.slice(-2).map(message => message.role), ['assistant', 'tool']);
   assert.match(calls[1].messages.at(-1).content, /"ok":true/);
   assert.equal(db.auditRows.length, 3);
+  assert.equal(events.at(-1).usageAccountingStatus, 'settled');
+  assert.equal(events.at(-1).usage.totalTokens, 38);
 });
 
 test('AG-UI never offers or executes tools unless the owner explicitly enables supported Qwen plus D1', async () => {
@@ -666,6 +670,7 @@ test('AG-UI includes Qwen provider-reported token usage only when the final usag
     totalTokens: 26,
     source: 'openai-compatible',
   });
+  assert.equal(events.at(-1).usageAccountingStatus, 'settled');
 });
 
 test('AG-UI aggregates Anthropic input and output usage events without estimating missing values', async () => {
@@ -698,6 +703,7 @@ test('AG-UI aggregates Anthropic input and output usage events without estimatin
     totalTokens: 42,
     source: 'anthropic',
   });
+  assert.equal(events.at(-1).usageAccountingStatus, 'settled');
 });
 
 test('AG-UI omits usage metadata when a provider does not report complete token counts', async () => {
@@ -721,6 +727,7 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
   assert.equal(response.status, 200);
   const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.equal(Object.hasOwn(events.at(-1), 'usage'), false);
+  assert.equal(events.at(-1).usageAccountingStatus, 'reconciliation_required');
 });
 
 
