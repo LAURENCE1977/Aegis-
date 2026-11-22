@@ -2,7 +2,7 @@ import { loadConnection } from './capability-connections.mjs';
 import { resolveVaultSecret } from './secret-vault.mjs';
 
 const OWNER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const VAULT_BACKED_CHAT_PROVIDERS = new Set(['anthropic', 'alibaba-qwen']);
+const VAULT_BACKED_CHAT_PROVIDERS = new Set(['anthropic', 'alibaba-qwen', 'apinex']);
 
 /**
  * Resolve one owner-owned provider key for the trusted model gateway.
