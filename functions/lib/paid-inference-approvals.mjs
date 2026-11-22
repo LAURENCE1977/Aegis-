@@ -61,7 +61,7 @@ export async function buildPaidInferenceApprovalBinding(input) {
     requestDigest: input.requestDigest.toLowerCase(),
   });
   const inputDigest = await sha256(canonical);
-  const resourceId = 'paid-inference:' + input.providerId + ':' + input.modelId + ':' + input.runId;
+  const resourceId = 'paid-inference:' + inputDigest.slice(7);
   const operationSummary = 'Paid AI run ' + input.runId + ': ' + input.providerId + '/' +
     input.modelId + '; estimated ' + input.estimatedTokens + ' tokens; ceiling ' +
     input.maxTokensPerRun + ' tokens.';
