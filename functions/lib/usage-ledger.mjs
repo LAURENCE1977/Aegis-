@@ -17,6 +17,8 @@ export function validateUsageReservation(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new TypeError('Invalid usage reservation');
   }
+  const allowed = new Set(['id', 'idempotencyKey', 'principalId', 'projectId', 'providerId', 'modelId', 'unitKind', 'reservedUnits', 'windowStart', 'windowEnd']);
+  if (Object.keys(input).some(key => !allowed.has(key))) throw new TypeError('Invalid usage reservation fields');
   for (const key of ['id', 'idempotencyKey', 'principalId', 'providerId', 'modelId']) {
     requireId(input[key], key);
   }
