@@ -1,4 +1,4 @@
-import { createHealthObservation, formatHealthVisionReport } from './health-vision-core.mjs';
+import { createHealthObservation, formatHealthVisionReport, isHealthPreviewRequestCurrent } from './health-vision-core.mjs';
 
 (() => {
   const section = document.getElementById('healthVisionSection');
@@ -29,6 +29,8 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
   let cameraStream = null;
   let previewUrl = null;
   let selectedPhoto = null;
+  let previewRequestVersion = 0;
+  let pageLeaving = false;
 
   observedOn.value = new Date().toISOString().slice(0, 10);
   observedOn.max = observedOn.value;
@@ -45,6 +47,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
   }
 
   function clearPhotoPreview() {
+    previewRequestVersion += 1;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = null;
     selectedPhoto = null;
@@ -105,6 +108,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
 
   async function showPhoto(file) {
     clearPhotoPreview();
+    const requestVersion = previewRequestVersion;
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       status.textContent = 'Choose an image file supported by this browser.';
@@ -117,6 +121,11 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
     let bitmap;
     try {
       bitmap = await createImageBitmap(file);
+      if (!isHealthPreviewRequestCurrent(requestVersion, previewRequestVersion,
+        !pageLeaving && !section.hidden && !appPanel.hidden && !document.hidden)) {
+        bitmap.close();
+        return;
+      }
       if (bitmap.width < 320 || bitmap.height < 240) {
         bitmap.close();
         status.textContent = 'Image resolution is very small. Retake it if you can.';
@@ -124,6 +133,8 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
       }
       bitmap.close();
     } catch {
+      if (!isHealthPreviewRequestCurrent(requestVersion, previewRequestVersion,
+        !pageLeaving && !section.hidden && !appPanel.hidden && !document.hidden)) return;
       status.textContent = 'This browser could not preview that image. Try JPEG, PNG or WebP.';
       return;
     }
@@ -146,7 +157,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
         audio: false,
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
-      if (section.hidden || appPanel.hidden || document.hidden) {
+      if (pageLeaving || section.hidden || appPanel.hidden || document.hidden) {
         stream.getTracks().forEach(track => track.stop());
         status.textContent = 'Camera start cancelled because Health Vision is no longer active.';
         return;
@@ -180,6 +191,7 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
     }
     context.drawImage(cameraVideo, 0, 0);
     canvas.toBlob(async blob => {
+      if (pageLeaving || section.hidden || appPanel.hidden || document.hidden) return;
       if (!blob) {
         status.textContent = 'Could not capture this frame. Please try again.';
         return;
@@ -257,5 +269,8 @@ import { createHealthObservation, formatHealthVisionReport } from './health-visi
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stopCamera();
   });
-  window.addEventListener('pagehide', clearAll, { once: true });
+  window.addEventListener('pagehide', () => {
+    pageLeaving = true;
+    clearAll();
+  }, { once: true });
 })();
