@@ -441,12 +441,15 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 - Remaining activation gate: the deployment owner must deliberately configure the deployment-level paid-inference switch, finite token ceiling, provider credential and fresh verified quota window. No live paid inference is enabled by this code change.
 
 
-## Usage and quota Control Centre — implementation in progress
-- Added owner-authenticated, read-only `GET /api/usage` and a Usage tab to the Control Centre.
-- The panel reports active token quota windows, verification freshness, configured per-run ceiling, settled usage and open reservations. Remaining quota is shown only when the window is active, enabled, freshly verified and its accounting totals are valid.
-- Stale, future-dated, missing or inconsistent quota is reported as unavailable; it is never converted into assumed free capacity. The deployment-level paid-inference gate and finite token ceiling are shown separately from per-run approval.
-- No provider is contacted by the dashboard, no credentials are returned, and each paid run still requires exact-run owner approval.
-- This work is on a draft feature branch stacked on PR #190. It is not merged or deployed; CI verification is pending.
+## Usage and quota Control Centre — PR #191 (22 November 2026)
+- PR #191: https://github.com/LAURENCE1977/Aegis-/pull/191 — open draft stacked on PR #190; head `3ae64c181048552f03d78c1b689f593090810217`.
+- Adds owner-authenticated, read-only `GET /api/usage` and a Usage tab to the Control Centre.
+- The panel reports active token quota windows, verification freshness, selected paid provider/model, finite per-run ceiling, settled usage, open reservations and remaining quota.
+- Readiness is bound to the selected paid provider and exact model, the separate deployment-level gate, the finite per-run ceiling and sufficient fresh verified headroom. Workers AI/non-paid selections cannot be mistaken for paid readiness.
+- Stale, future-dated, missing or inconsistent quota is reported as unavailable; it is never converted into assumed free capacity. The dashboard does not return credentials, reservation IDs or prompt data and does not contact providers.
+- Every paid run still requires exact-run owner approval.
+- GitHub Actions run `45059633962` passed: **533 tests, 533 passed, 0 failed**. Capability, rate-limit, runtime usage-ledger and Forge isolated D1 migration/smoke checks also passed.
+- Draft only; no merge, production deployment, live paid inference or secrets access. Real quota telemetry and deployment bindings remain separate owner configuration tasks.
 
 ## Anthropic provider adapter
 
