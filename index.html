@@ -317,7 +317,7 @@
     const MAX_SAVED = 40;
     let history = [];
     let busy = false;
-    let pendingPaidRun = null;
+    const pendingPaidRuns = new Map();
     const threadId = 'aegis-' + crypto.randomUUID();
 
     function loadHistory() {
@@ -1519,9 +1519,9 @@
                       body: JSON.stringify({ id: approval.id, decision }),
                     });
                     await loadApprovals();
-                    if (decision === 'approved' && pendingPaidRun && pendingPaidRun.approvalId === approval.id) {
-                      const pending = pendingPaidRun;
-                      pendingPaidRun = null;
+                    const pending = pendingPaidRuns.get(approval.id);
+                    if (decision === 'approved' && pending) {
+                      pendingPaidRuns.delete(approval.id);
                       await resumeApprovedPaidRun(pending);
                     }
                   } catch (error) {
@@ -1667,6 +1667,17 @@
         showLogin('Your session has expired. Sign in again.');
         return;
       }
+      if (res.status === 202) {
+        let data = {};
+        try { data = await res.json(); } catch (error) {}
+        if (data.code === 'PAID_INFERENCE_APPROVAL_REQUIRED' && data.approval && typeof data.approval.id === 'string') {
+          pendingPaidRuns.set(data.approval.id, { approvalId: data.approval.id, requestBody: pending.requestBody, text: pending.text });
+          addMessage(data.error + ' ' + data.approval.operationSummary + ' This updated run needs approval again; open the Approvals tab.', 'assistant');
+          status.textContent = 'Waiting for your approval';
+          showPanel('approvals');
+          return;
+        }
+      }
       if (!res.ok) {
         let data = {};
         try { data = await res.json(); } catch (error) {}
@@ -1731,7 +1742,7 @@
           let data = {};
           try { data = await res.json(); } catch (error) {}
           if (data.code === 'PAID_INFERENCE_APPROVAL_REQUIRED' && data.approval && typeof data.approval.id === 'string') {
-            pendingPaidRun = { approvalId: data.approval.id, requestBody: runRequest, text };
+            pendingPaidRuns.set(data.approval.id, { approvalId: data.approval.id, requestBody: runRequest, text });
             addMessage(data.error + ' ' + data.approval.operationSummary + ' Open the Approvals tab and approve it to resume this exact run. No paid provider has been contacted yet.', 'assistant');
             status.textContent = 'Waiting for your approval';
             showPanel('approvals');
