@@ -26,6 +26,8 @@ test('reports remaining quota after settled usage and open reservations', () => 
     now,
     paidInferenceApproved: 'true',
     maxTokensPerRun: '5000',
+    selectedProviderId: 'alibaba-qwen',
+    selectedModelId: 'qwen3.8-flash',
   });
   assert.equal(result.windows[0].remainingUnits, 80000);
   assert.equal(result.windows[0].settledUnits, 12000);
@@ -108,4 +110,17 @@ test('does not mix different providers, models, units or inactive windows', () =
     result.windows.map(window => window.providerId + '/' + window.modelId).sort(),
     ['alibaba-qwen/qwen3.8-flash', 'anthropic/claude-model'],
   );
+});
+
+test('does not claim paid readiness from another provider or model quota', () => {
+  const result = buildUsageDashboard({
+    windows: [windowRow()],
+    reservations: [],
+    now,
+    paidInferenceApproved: 'true',
+    maxTokensPerRun: '5000',
+    selectedProviderId: 'anthropic',
+    selectedModelId: 'claude-sonnet',
+  });
+  assert.equal(result.paidInference.canAuthorisePaidRun, false);
 });
