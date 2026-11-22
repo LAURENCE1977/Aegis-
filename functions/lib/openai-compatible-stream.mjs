@@ -1,7 +1,7 @@
 const MAX_OUTPUT_TOKENS = 1024;
 const REQUEST_TIMEOUT_MS = 60_000;
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,179}$/;
-const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/;
+const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const BLOCKED_SUFFIXES = ['localhost', 'local', 'internal', 'lan', 'home', 'test', 'invalid'];
 
 function validateEndpoint(endpoint) {
