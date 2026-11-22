@@ -1,4 +1,4 @@
-const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct';
+const WORKERS_AI_MODEL = '@cf/zai-org/glm-4.7-flash';
 const QWEN_REGIONS = new Set([
   'ap-southeast-1',
   'us-east-1',
