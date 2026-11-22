@@ -1,5 +1,13 @@
 # AEGIS Intelligence & Token Engine
 
+## Current implementation status (2026-11-22)
+
+- PR #175 strengthens the existing route selector: free-only is the default; unknown-cost models are excluded; paid routes require explicit allow-paid mode and provider approval. The PR is tested but remains unmerged.
+- PR #176 adds the first D1 usage ledger foundation: explicit token-versus-Neuron quota windows, idempotent reservations, bounded settlement/release and append-only events. It is stacked on PR #175 and remains unmerged.
+- The ledger is not yet connected to the live model adapter. No model call is currently governed by these new reservations, and no quota window is active until trusted server-side configuration creates and verifies it.
+- Cloudflare Workers AI Neurons are compute units, not tokens. Never compare or add Neurons and tokens in the same quota bucket.
+
+
 ## Status
 
 The first provider-independent planning slice is implemented in `functions/lib/intelligence-engine.mjs` on PR #33. It is a pure library and is not yet wired into chat, AG-UI, the durable agent queue or a provider adapter. No model calls are routed through it yet.
@@ -22,7 +30,7 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 ## What this does not do yet
 
 - No free-model catalogue ingestion or provider verification.
-- No persistent token ledger, quota reservation, usage reconciliation, spend cap or cross-request budget enforcement.
+- The D1 ledger foundation exists on PR #176, but it is not yet connected to live inference. No live usage is currently reserved, reconciled or enforced across model calls.
 - No automatic retry/failover execution.
 - No new model providers, credentials or API calls.
 - No integration with the existing Workers AI / Qwen streaming adapter.
@@ -31,7 +39,7 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 ## Next implementation stages
 
 1. **Trusted model/provider registry:** versioned provider and model metadata, evidence/provenance, verified context/output limits, licence/terms and last-checked time. External catalogues may suggest candidates but may not define arbitrary endpoints.
-2. **Durable token accounting:** D1 usage ledger with owner/project/provider/model attribution, estimated vs actual usage, idempotency, reservation/reconciliation, daily/monthly ceilings and append-only audit.
+2. **Runtime accounting integration:** connect the D1 quota-window ledger to trusted provider adapters; reconcile actual usage, handle provider errors and establish verified daily/monthly quota windows before enabling enforcement.
 3. **Adapter integration:** route the existing Workers AI and Qwen paths through the policy engine without changing current default behavior until verified.
 4. **Free-tier discovery:** ingest public catalogue data as untrusted candidates, verify each provider against official docs/terms and keep quotas explicitly time-stamped.
 5. **Failover and local inference:** bounded retries, circuit breakers and optional local model adapters where the host/device can support them.
