@@ -440,6 +440,14 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 - No preview deployment has been created for PR #190. PRs #188–#190 remain drafts and are not merged. `main` and production have not been changed. Do not merge or promote without explicit owner approval.
 - Remaining activation gate: the deployment owner must deliberately configure the deployment-level paid-inference switch, finite token ceiling, provider credential and fresh verified quota window. No live paid inference is enabled by this code change.
 
+
+## Usage and quota Control Centre — implementation in progress
+- Added owner-authenticated, read-only `GET /api/usage` and a Usage tab to the Control Centre.
+- The panel reports active token quota windows, verification freshness, configured per-run ceiling, settled usage and open reservations. Remaining quota is shown only when the window is active, enabled, freshly verified and its accounting totals are valid.
+- Stale, future-dated, missing or inconsistent quota is reported as unavailable; it is never converted into assumed free capacity. The deployment-level paid-inference gate and finite token ceiling are shown separately from per-run approval.
+- No provider is contacted by the dashboard, no credentials are returned, and each paid run still requires exact-run owner approval.
+- This work is on a draft feature branch stacked on PR #190. It is not merged or deployed; CI verification is pending.
+
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
