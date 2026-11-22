@@ -21,6 +21,7 @@ test('provider API key entry is a password field and is not persisted in browser
 
 test('provider connection UI uses the authenticated server API and displays vault-only status', () => {
   assert.match(html, /\/api\/model-provider-connections/);
-  assert.match(html, /vault_only/);
+  assert.match(html, /vault_backed_chat/);
+  assert.match(html, /live inference adapter not yet connected/i);
   assert.match(html, /not yet connected to live model inference/i);
 });
