@@ -15,6 +15,7 @@ test('provider API key entry is a password field and is not persisted in browser
   assert.match(html, /id="providerApiKey"[^>]*type="password"/);
   assert.match(html, /id="providerApiKey"[^>]*autocomplete="off"/);
   assert.match(html, /providerApiKey\.value = ''/);
+  assert.match(html, /catch \(error\) \{\s*providerApiKey\.value = '';/);
   assert.doesNotMatch(html, /localStorage\.(?:setItem|getItem)\([^\n]*providerApiKey/);
 });
 
