@@ -442,7 +442,7 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 
 
 ## Usage and quota Control Centre — PR #191 (22 November 2026)
-- PR #191: https://github.com/LAURENCE1977/Aegis-/pull/191 — open draft stacked on PR #190; head `3ae64c181048552f03d78c1b689f593090810217`.
+- PR #191: https://github.com/LAURENCE1977/Aegis-/pull/191 — open draft stacked on PR #190; see GitHub for the live head SHA.
 - Adds owner-authenticated, read-only `GET /api/usage` and a Usage tab to the Control Centre.
 - The panel reports active token quota windows, verification freshness, selected paid provider/model, finite per-run ceiling, settled usage, open reservations and remaining quota.
 - Readiness is bound to the selected paid provider and exact model, the separate deployment-level gate, the finite per-run ceiling and sufficient fresh verified headroom. Workers AI/non-paid selections cannot be mistaken for paid readiness.
