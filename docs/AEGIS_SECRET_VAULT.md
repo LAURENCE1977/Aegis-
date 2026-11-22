@@ -40,4 +40,4 @@ The owner-authenticated `/api/model-provider-connections` GET/POST/DELETE routes
 
 Apply `migrations/capabilities/0004_secret_vault.sql` after the earlier capability migrations, in order, to the intended D1 database. It has not been applied to any environment.
 
-Before provider use, provision and rotate the vault keyring safely, connect the stored credentials to reviewed model adapters, compose provider use with resource-pool reservations and paid-use approval, add redacted invocation audit, and enforce fixed-host egress/redirect/response/deadline controls. Validate all of this in non-production before any production deployment.
+Before broad provider use, connect the remaining stored providers to reviewed adapters, compose all provider requests with resource-pool reservations and explicit paid-use approval, add redacted invocation audit, and enforce fixed-host egress/redirect/response/deadline controls. The current Anthropic/Qwen vault adapter wiring is not yet metered by the durable usage ledger. Validate all of this in non-production before any production deployment.
