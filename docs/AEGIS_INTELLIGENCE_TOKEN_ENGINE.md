@@ -1,5 +1,13 @@
 # AEGIS Intelligence & Token Engine
 
+## Current implementation status (2026-11-22)
+
+- PR #175 strengthens the existing route selector: free-only is the default; unknown-cost models are excluded; paid routes require explicit allow-paid mode and provider approval. The PR is tested but remains unmerged.
+- PR #176 adds the first D1 usage ledger foundation: explicit token-versus-Neuron quota windows, idempotent reservations, bounded settlement/release and append-only events. It is stacked on PR #175 and remains unmerged.
+- The ledger is not yet connected to the live model adapter. No model call is currently governed by these new reservations, and no quota window is active until trusted server-side configuration creates and verifies it.
+- Cloudflare Workers AI Neurons are compute units, not tokens. Never compare or add Neurons and tokens in the same quota bucket.
+
+
 ## Status
 
 The first provider-independent planning slice is implemented in `functions/lib/intelligence-engine.mjs` on PR #33. It is a pure library and is not yet wired into chat, AG-UI, the durable agent queue or a provider adapter. No model calls are routed through it yet.
