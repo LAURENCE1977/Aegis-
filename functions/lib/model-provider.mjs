@@ -105,6 +105,56 @@ function resolveQwenEndpoint(env) {
   };
 }
 
+function resolveApinexConfig(env) {
+  const key = env.APINEX_API_KEY;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
+      /[\r\n\u0000]/.test(key)) {
+    throw new Error('APInex API key is not configured.');
+  }
+  const model = env.AEGIS_APINEX_MODEL;
+  if (typeof model !== 'string' || model.length > 120 ||
+      !/^(?:[A-Za-z0-9][A-Za-z0-9._-]*\/)?[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
+    throw new Error('APInex model is not configured or is invalid.');
+  }
+  return { key, model };
+}
+
+async function createApinexStream({ env, messages, tools, fetchImpl }) {
+  if (tools.length) throw new Error('APInex tool calling is not enabled.');
+  const { key, model } = resolveApinexConfig(env);
+  let response;
+  try {
+    response = await fetchImpl('https://api.apinex.bond/v1/chat/completions', {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new Error('APInex provider request failed.');
+  }
+  if (!response || !response.ok || !response.body ||
+      typeof response.body.getReader !== 'function') {
+    throw new Error('APInex provider request failed.');
+  }
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/event-stream')) {
+    throw new Error('APInex provider returned an unsupported response type.');
+  }
+  return response.body;
+}
+
 function resolveAnthropicConfig(env) {
   const key = env.ANTHROPIC_API_KEY;
   if (typeof key !== 'string' || key.length < 16 || key.length > 4096 ||
@@ -195,6 +245,10 @@ export async function createModelStream({ env, messages, tools, fetchImpl = fetc
 
   if (provider === 'anthropic') {
     return createAnthropicStream({ env, messages, tools: safeTools, fetchImpl });
+  }
+
+  if (provider === 'apinex') {
+    return createApinexStream({ env, messages, tools: safeTools, fetchImpl });
   }
 
   if (provider !== 'alibaba-qwen') {
