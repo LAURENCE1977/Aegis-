@@ -113,7 +113,7 @@ export async function requestPaidInferenceApproval(db, input, now = Date.now()) 
       ...binding,
       expiresAt: new Date(now + TTL_MS).toISOString(),
     }, now);
-    return { status: 'pending', approval };
+    return { status: approval.status, approval };
   } catch (error) {
     // The partial unique index closes the concurrent create race. If another
     // request won, return its exact record instead of creating a second prompt.
