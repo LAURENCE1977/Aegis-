@@ -75,11 +75,16 @@ export function selectModelRoute({
     if (isPaid && costMode !== 'allow-paid') return false;
 
     if (providerState !== undefined || isPaid) {
-      const state = providerState?.[model.providerId];
-      if (!state || state.enabled !== true ||
+      const provider = providerState?.[model.providerId];
+      const state = provider?.models === undefined
+        ? provider
+        : provider.models?.[model.id];
+      if (!provider || provider.enabled !== true || !state ||
+          state.enabled === false ||
           !Number.isSafeInteger(state.remainingTokens) ||
           state.remainingTokens < estimatedInputTokens + requestedOutputTokens) return false;
-      if (isPaid && state.paidFallbackApproved !== true) return false;
+      if (isPaid && provider.paidFallbackApproved !== true &&
+          state.paidFallbackApproved !== true) return false;
     }
     return true;
   });

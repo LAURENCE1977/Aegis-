@@ -119,3 +119,28 @@ test('free-only routing stops at exhausted free quota and never falls through to
     providerState: { 'free-provider': { enabled: true, remainingTokens: 0 }, 'paid-provider': { enabled: true, remainingTokens: 1000, paidFallbackApproved: true } },
   }), /no eligible/i);
 });
+
+
+test('uses model-specific quota when a provider exposes separate model windows', () => {
+  const modelChoices = [
+    { id: 'model-a', providerId: 'shared-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0, outputCost: 0, priority: 1 },
+    { id: 'model-b', providerId: 'shared-provider', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0, outputCost: 0, priority: 2 },
+  ];
+  const route = selectModelRoute({
+    models: modelChoices,
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+    providerState: {
+      'shared-provider': {
+        enabled: true,
+        remainingTokens: 10000,
+        models: {
+          'model-a': { remainingTokens: 0 },
+          'model-b': { remainingTokens: 500 },
+        },
+      },
+    },
+  });
+  assert.equal(route.modelId, 'model-b');
+});
