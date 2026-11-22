@@ -163,7 +163,7 @@ export async function onRequestPost(context) {
     runId: input.runId,
     startEvents,
     usageAccounting,
-    toolContext: toolsEnabled ? {
+    toolContext: toolsEnabled && selectedProvider === "alibaba-qwen" ? {
       env: modelEnv,
       db: env.AEGIS_DB,
       fetchImpl,
@@ -251,7 +251,10 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               let payload;
               try { payload = JSON.parse(data); } catch { return; }
               const usageUpdate = extractProviderUsage(payload);
-              if (usageUpdate) requestUsage = mergeProviderUsage(requestUsage, usageUpdate);
+              if (usageUpdate) {
+                if (usageAccounting) requestUsage = mergeProviderUsage(requestUsage, usageUpdate);
+                else providerUsage = mergeProviderUsage(providerUsage, usageUpdate);
+              }
               if (payload.type === "error") {
                 throw agentStreamError(
                   "PROVIDER_STREAM_ERROR",
