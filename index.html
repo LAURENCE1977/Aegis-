@@ -743,7 +743,9 @@
           const state = document.createElement('p');
           const configured = provider.connectionStatus === 'stored';
           state.textContent = configured
-            ? 'Credential stored in encrypted vault · not connected to live inference'
+            ? provider.inferenceStatus === 'vault_backed_chat'
+              ? 'Credential stored in encrypted vault · available to the server-side chat adapter when selected'
+              : 'Credential stored in encrypted vault · live inference adapter not yet connected'
             : 'No credential stored';
           item.append(title, state);
           if (configured) {
@@ -770,9 +772,9 @@
           providerList.append(item);
         });
         if (providers.some(provider => provider.id === selected)) providerSelect.value = selected;
-        providerVaultStatus.textContent = data.runtimeStatus === 'vault_only'
-          ? 'Vault-only storage: keys are encrypted at rest when the server keyring is configured; live model inference does not use these saved connections yet.'
-          : 'Provider connection status loaded.';
+        providerVaultStatus.textContent = providers.some(provider => provider.inferenceStatus === 'vault_backed_chat')
+          ? 'Anthropic and Alibaba Qwen can use an active encrypted connection when selected by server configuration. Other listed providers remain vault-only.'
+          : 'Vault-only storage: no listed provider currently has a connected live chat adapter.';
         providerStatus.textContent = providers.length
           ? 'Provider connection inventory is up to date.'
           : 'No model providers are available.';
