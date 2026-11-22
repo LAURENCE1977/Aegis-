@@ -13,7 +13,7 @@ It does not interpret images, detect disease, calculate risk, recommend treatmen
 - Basic technical image checks only: supported browser preview, file size and minimum pixel dimensions. These are not clinical image-quality checks.
 - Text-only observation notes with bounded fields and a maximum of 20 entries per browser session.
 - Text-only report export initiated by the user.
-- Images and notes remain in JavaScript memory in the current page session; no localStorage, IndexedDB, cookies, analytics, AI calls, API requests or server persistence.
+- Images and notes remain in JavaScript memory in the current page session; no localStorage, IndexedDB, cookies, analytics, AI calls, API requests or server persistence. This is not encrypted storage and is only appropriate for a trusted, unlocked personal device.
 - Camera stream stops when the panel is closed, the user signs out, or the page is left.
 - Clear controls and visible privacy notice. No image is included in the exported report.
 - Emergency advice is static and UK-specific; it is not an automated triage engine.
@@ -41,6 +41,7 @@ Only after governance and clinical validation: secure clinician sharing, structu
 - No autonomous diagnosis, cancer detection claim, risk score or treatment advice in Stage 1.
 - No silent uploads or model-provider transmission.
 - No storage of raw images in the browser or server.
+- Stage 1 is not encrypted storage; use only on a trusted personal device and treat exported text reports as sensitive unencrypted files.
 - No medical data in general AEGIS memory, chat context, telemetry or logs.
 - No self-approval of integrations, access grants or clinical capabilities.
 - No use as an emergency service. UK emergencies: call 999; for urgent medical help that is not an emergency, use NHS 111.
