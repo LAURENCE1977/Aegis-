@@ -226,3 +226,31 @@ test('Control Centre exposes a read-only usage and quota panel with fail-closed 
   assert.match(html, /Every paid run still requires separate exact-run owner approval|separate approval/);
   assert.match(html, /textContent\s*=\s*window\.providerId/);
 });
+
+test('Health Vision is a private, session-only observation workspace with camera support', () => {
+  for (const id of [
+    'healthVisionTab','healthVisionSection','healthObservationForm','healthKind',
+    'healthBodyArea','healthObservedOn','healthDescription','healthSymptoms',
+    'healthChanges','healthPhotoInput','healthStartCameraBtn','healthCameraVideo',
+    'healthCaptureFrameBtn','healthStopCameraBtn','healthPhotoPreview',
+    'healthObservationList','healthExportBtn','healthClearAllBtn',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing Health Vision UI element: ' + id);
+  }
+  assert.match(html, /nothing is uploaded, sent to an AI model/i);
+  assert.match(html, /does not analyse the image, diagnose, assess cancer risk/i);
+  assert.match(html, /healthVisionSection\.hidden = panel !== 'health'/);
+  assert.match(html, /healthVisionTab\.addEventListener\('click',\s*\(\) => showPanel\('health'\)\)/);
+  assert.match(html, /<script type="module" src="\/health-vision\.js"><\/script>/);
+});
+
+test('Health Vision does not add a server API route or persistent health-data browser store', async () => {
+  const script = readFileSync(new URL('../health-vision.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(script, /localStorage|sessionStorage|indexedDB|fetch\s*\(/);
+  assert.match(script, /getUserMedia/);
+  assert.match(script, /URL\.createObjectURL/);
+  assert.match(script, /pagehide/);
+  assert.match(script, /appPanel\.hidden/);
+  assert.match(script, /formatHealthVisionReport/);
+  assert.doesNotMatch(script, /diagnos|risk score|treatment recommendation/i);
+});
