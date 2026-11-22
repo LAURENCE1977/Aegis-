@@ -3,6 +3,7 @@ import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
+import { extractProviderUsage, mergeProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
   executeAgentToolCall,
   getAgentToolDefinitions,
@@ -150,6 +151,7 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
         let outputLength = 0;
         let cancelled = false;
         let toolRound = 0;
+        let providerUsage = null;
 
         const emitText = (delta) => {
           if (typeof delta !== "string" || !delta || outputLength >= MAX_OUTPUT) return;
@@ -213,6 +215,8 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
               if (data.trim() === "[DONE]") { finished = true; return; }
               let payload;
               try { payload = JSON.parse(data); } catch { return; }
+              const usageUpdate = extractProviderUsage(payload);
+              if (usageUpdate) providerUsage = mergeProviderUsage(providerUsage, usageUpdate);
               if (payload.type === "error") {
                 throw agentStreamError(
                   "PROVIDER_STREAM_ERROR",
@@ -348,7 +352,12 @@ function createStreamingAgUiResponse(modelStream, { threadId, runId, startEvents
           }
 
           controller.enqueue(encoder.encode(encodeAgUiSse(
-            createTextRunFinishEvents({ threadId, runId, outcome: cancelled ? "cancelled" : undefined }),
+            createTextRunFinishEvents({
+              threadId,
+              runId,
+              outcome: cancelled ? "cancelled" : undefined,
+              usage: isCompleteProviderUsage(providerUsage) ? providerUsage : undefined,
+            }),
           )));
           controller.close();
         } catch (error) {
