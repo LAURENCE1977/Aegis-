@@ -30,8 +30,11 @@ function requireUtc(value, label) {
  */
 export function estimateTokenReservation({
   messages,
+  tools = [],
   maxOutputTokens,
   overheadTokens = 256,
+  requestCount = 1,
+  extraPromptBytes = 0,
 } = {}) {
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > 14 ||
       messages.some(message => !message || typeof message !== 'object' ||
@@ -42,19 +45,45 @@ export function estimateTokenReservation({
       maxOutputTokens > MAX_OUTPUT_TOKENS) {
     throw new TypeError('Invalid usage accounting output token limit');
   }
+  if (!Array.isArray(tools) || tools.length > 4) {
+    throw new TypeError('Invalid usage accounting tool payload');
+  }
   if (!Number.isSafeInteger(overheadTokens) || overheadTokens < 0 ||
       overheadTokens > MAX_OVERHEAD_TOKENS) {
     throw new TypeError('Invalid usage accounting overhead');
   }
-  const promptBytes = new TextEncoder().encode(JSON.stringify(messages)).byteLength;
+  if (!Number.isSafeInteger(requestCount) || requestCount < 1 || requestCount > 2) {
+    throw new TypeError('Invalid usage accounting request count');
+  }
+  if (!Number.isSafeInteger(extraPromptBytes) || extraPromptBytes < 0 ||
+      extraPromptBytes > 16 * 1024) {
+    throw new TypeError('Invalid usage accounting extra prompt bound');
+  }
+  const promptBytes = new TextEncoder().encode(JSON.stringify({ messages, tools })).byteLength;
   if (promptBytes < 1 || promptBytes > MAX_PROMPT_BYTES) {
     throw new RangeError('Usage accounting prompt exceeds the reservation bound');
   }
-  const reservation = promptBytes + maxOutputTokens + overheadTokens;
+  const reservation = promptBytes * requestCount +
+    maxOutputTokens * requestCount + overheadTokens + extraPromptBytes;
   if (!Number.isSafeInteger(reservation) || reservation < 1) {
     throw new RangeError('Invalid usage accounting reservation size');
   }
   return reservation;
+}
+
+/** Stable, opaque D1 identifiers derived from a single AG-UI provider run. */
+export async function deriveUsageReservationIds({ threadId, runId, providerId, modelId } = {}) {
+  requireIdentifier(threadId, 'thread identifier');
+  requireIdentifier(runId, 'run identifier');
+  requireIdentifier(providerId, 'provider identifier');
+  requireIdentifier(modelId, 'model identifier');
+  const source = JSON.stringify({ threadId, runId, providerId, modelId });
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+  const hex = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+  return Object.freeze({
+    reservationId: 'usage-' + hex,
+    idempotencyKey: 'agui-' + hex,
+  });
 }
 
 /** Convert validated provider-reported usage into the matching token unit. */
@@ -132,14 +161,19 @@ export async function reserveTokenUsage({
   providerId,
   modelId,
   messages,
+  tools = [],
   maxOutputTokens,
   overheadTokens = 256,
+  requestCount = 1,
+  extraPromptBytes = 0,
   now,
   maxAgeMs = DEFAULT_MAX_VERIFICATION_AGE_MS,
 } = {}) {
   requireIdentifier(reservationId, 'reservation identifier');
   requireIdentifier(idempotencyKey, 'idempotency key');
-  const reservedUnits = estimateTokenReservation({ messages, maxOutputTokens, overheadTokens });
+  const reservedUnits = estimateTokenReservation({
+    messages, tools, maxOutputTokens, overheadTokens, requestCount, extraPromptBytes,
+  });
   const quota = await findActiveTokenQuotaWindow({ db, providerId, modelId, now, maxAgeMs });
   return reserveUsage({
     db,
