@@ -642,3 +642,29 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
   const events = (await response.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.equal(Object.hasOwn(events.at(-1), 'usage'), false);
 });
+
+
+test('AG-UI blocks a paid Qwen request before network access without explicit owner approval', async () => {
+  let providerCalls = 0;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+    },
+    fetchImpl: async () => {
+      providerCalls += 1;
+      return new Response(modelSseStream(['data: [DONE]\\n\\n']), {
+        status: 200, headers: { 'Content-Type': 'text/event-stream' },
+      });
+    },
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(providerCalls, 0);
+  assert.match(await response.text(), /explicitly approved/i);
+});
