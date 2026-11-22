@@ -509,3 +509,51 @@ test('AG-UI uses the active encrypted vault credential for Anthropic instead of 
   assert.equal(response.status, 200);
   assert.equal(authorization, 'Bearer ' + apiKey);
 });
+
+
+test('AG-UI uses the encrypted vault credential for Alibaba Qwen when no legacy key is configured', async () => {
+  const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const keyB64 = btoa(String.fromCharCode(...rawKey));
+  const vaultEnv = {
+    AEGIS_VAULT_KEYRING: JSON.stringify({ v1: keyB64 }),
+    AEGIS_VAULT_ACTIVE_KEY_VERSION: 'v1',
+  };
+  const db = new VaultProviderMemoryD1();
+  const apiKey = 'qwen-vault-key-secret-value-123456';
+  const stored = await storeVaultSecret(db, {
+    principalId: 'owner', providerId: 'alibaba-qwen', secret: apiKey,
+  }, vaultEnv);
+  db.connections.set('connection-qwen', {
+    id: 'connection-qwen', principal_id: 'owner', provider_id: 'alibaba-qwen',
+    secret_ref: stored.secretRef,
+    scopes_json: JSON.stringify(['alibaba-qwen:inference:chat']),
+    status: 'active', revoked_at: null, expires_at: null,
+  });
+
+  let authorization;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      ...vaultEnv,
+      AEGIS_DB: db,
+      AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+      AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+      AEGIS_QWEN_REGION: 'ap-southeast-1',
+      AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+    },
+    fetchImpl: async (_url, options) => {
+      authorization = options.headers.Authorization;
+      return new Response(modelSseStream([
+        'data: {"choices":[{"delta":{"content":"Vault Qwen works."}}]}\\n\\n',
+        'data: [DONE]\\n\\n',
+      ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.equal(authorization, 'Bearer ' + apiKey);
+  assert.match(body, /Vault Qwen works/);
+  assert.doesNotMatch(body, /qwen-vault-key-secret-value/);
+});
