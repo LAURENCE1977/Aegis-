@@ -54,7 +54,9 @@ class MemoryD1 {
         if (sql.includes('INSERT INTO capability_connections')) {
           const [id, principal, provider, secretRef, scopes, createdBy, createdAt, expiresAt] = v;
           if ([...db.connections.values()].some(row => row.principal_id === principal && row.provider_id === provider &&
-              row.status === 'active' && !row.revoked_at)) return { meta: { changes: 0 } };
+              row.status === 'active' && !row.revoked_at)) {
+            throw new Error('UNIQUE constraint failed: capability_connections.principal_id, capability_connections.provider_id');
+          }
           db.connections.set(id, {
             id, principal_id: principal, provider_id: provider, secret_ref: secretRef,
             scopes_json: scopes, created_by: createdBy, created_at: createdAt,
@@ -190,4 +192,65 @@ test('revokes provider connection and erases encrypted credential material', asy
   assert.equal([...db.connections.values()][0].status, 'revoked');
   assert.equal([...db.secrets.values()][0].status, 'revoked');
   assert.equal([...db.secrets.values()][0].ciphertext_b64, null);
+});
+
+
+test('duplicate provider key maps a database uniqueness conflict and erases the rejected key', async () => {
+  const db = new MemoryD1();
+  const first = await onRequestPost({
+    request: await request('/api/model-provider-connections', {
+      method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-first-provider-secret-value-12345' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(first.status, 201);
+
+  const second = await onRequestPost({
+    request: await request('/api/model-provider-connections', {
+      method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-second-provider-secret-value-12345' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(second.status, 409);
+  const secrets = [...db.secrets.values()];
+  assert.equal(secrets.length, 2);
+  assert.equal(secrets[0].status, 'active');
+  assert.equal(secrets[1].status, 'revoked');
+  assert.equal(secrets[1].ciphertext_b64, null);
+});
+
+test('provider list reports the newest active connection after a revoked historical record', async () => {
+  const db = new MemoryD1();
+  const first = await onRequestPost({
+    request: await request('/api/model-provider-connections', {
+      method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-first-provider-secret-value-12345' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(first.status, 201);
+  const oldRow = [...db.connections.values()][0];
+  oldRow.created_at = '2026-01-01T00:00:00.000Z';
+
+  const revoked = await onRequestDelete({
+    request: await request('/api/model-provider-connections', {
+      method: 'DELETE', body: { providerId: 'openrouter' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(revoked.status, 200);
+
+  const second = await onRequestPost({
+    request: await request('/api/model-provider-connections', {
+      method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-second-provider-secret-value-12345' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(second.status, 201);
+
+  const listed = await onRequestGet({
+    request: await request('/api/model-provider-connections'),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  const body = await listed.json();
+  assert.equal(body.providers.find(provider => provider.id === 'openrouter').connectionStatus, 'stored');
 });
