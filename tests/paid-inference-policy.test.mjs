@@ -14,7 +14,6 @@ test('recognises only explicitly supported token-billed providers as paid infere
 
 test('zero-spend lock rejects paid providers by default even when legacy approval and token ceiling are set', () => {
   assert.throws(() => resolvePaidInferencePolicy({
-    AEGIS_ALLOW_PAID_SPEND: 'true',
     AEGIS_PAID_INFERENCE_APPROVED: 'true',
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
     APINEX_API_KEY: 'a-valid-looking-apinex-secret',
@@ -75,6 +74,7 @@ test('treats APInex as a metered external provider requiring owner approval even
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
   }, 'apinex', 'free/deepseek-v4.1-flash'), error => error.code === 'PAID_INFERENCE_NOT_APPROVED');
   const policy = resolvePaidInferencePolicy({
+    AEGIS_ALLOW_PAID_SPEND: 'true',
     AEGIS_PAID_INFERENCE_APPROVED: 'true',
     AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '5000',
   }, 'apinex', 'free/deepseek-v4.1-flash');
