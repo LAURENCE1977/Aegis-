@@ -14,13 +14,69 @@ async function request(body,{authenticated=true,origin='https://aegis.example'}=
 }
 
 class UsageLedgerMemoryD1 {
-  constructor(delegate = null) {
+  constructor(delegate = null, { autoApprovePaid = true } = {}) {
     this.delegate = delegate;
     this.reservations = new Map();
+    this.approvals = new Map();
+    this.autoApprovePaid = autoApprovePaid;
     this.quota = { id: "quota-test-001", window_start: new Date(Date.now() - 60000).toISOString(), window_end: new Date(Date.now() + 86400000).toISOString() };
   }
   prepare(sql) {
     const owner = this;
+    if (sql.includes("INSERT INTO capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; }, async run() {
+        const v = this.values;
+        const approved = owner.autoApprovePaid;
+        owner.approvals.set(v[0], {
+          id: v[0], principal_id: v[1], capability_id: v[2], capability_version: v[3],
+          action_id: v[4], resource_id: v[5], operation_summary: v[6], connection_id: v[7],
+          input_digest: v[8], requested_by: v[9], requested_at: v[10], expires_at: v[11],
+          status: approved ? "approved" : "pending",
+          decided_by: approved ? "owner" : null,
+          decided_at: approved ? new Date(Date.parse(v[10]) + 1000).toISOString() : null,
+          consumed_at: null,
+        });
+        return { meta: { changes: 1 } };
+      } };
+    }
+    if (sql.includes("FROM capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; },
+        async first() {
+          const v = this.values;
+          if (sql.includes("WHERE id = ?")) {
+            const row = owner.approvals.get(v[0]);
+            return row ? { ...row } : null;
+          }
+          if (sql.includes("input_digest = ?")) {
+            const row = [...owner.approvals.values()].find(item =>
+              item.principal_id === v[0] && item.capability_id === v[1] &&
+              item.capability_version === v[2] && item.action_id === v[3] &&
+              item.resource_id === v[4] && item.input_digest === v[5] &&
+              (!sql.includes("status = 'approved'") || item.status === "approved") &&
+              (!sql.includes("expires_at > ?") || item.expires_at > v.at(-1))
+            );
+            return row ? { ...row } : null;
+          }
+          return null;
+        },
+        async run() { return { meta: { changes: 1 } }; }
+      };
+    }
+    if (sql.includes("UPDATE capability_approvals")) {
+      return { values: [], bind(...values) { this.values = values; return this; }, async first() {
+        const v = this.values;
+        const [consumedAt, id, expiresAt, principal, capability, version, action, resource, summary, connection, digest] = v;
+        const row = owner.approvals.get(id);
+        if (!row || row.status !== "approved" || row.consumed_at || row.expires_at <= expiresAt ||
+            row.principal_id !== principal || row.capability_id !== capability ||
+            row.capability_version !== version || row.action_id !== action ||
+            row.resource_id !== resource || row.operation_summary !== summary ||
+            row.connection_id !== connection || row.input_digest !== digest) return null;
+        row.status = "consumed";
+        row.consumed_at = consumedAt;
+        return { ...row };
+      } };
+    }
     if (sql.includes("FROM model_usage_quota_windows") && sql.includes("SELECT id, window_start")) {
       return { bind(...values) { this.values = values; return this; }, async all() {
         return { results: [{ ...owner.quota, provider_id: this.values[0], model_id: this.values[1] }] };
@@ -283,6 +339,50 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
   assert.deepEqual(events.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta),['Qwen ','stream.']);
   assert.equal(captured.url,'https://workspace-123.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions');
   assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
+});
+
+test('AG-UI blocks paid provider access until the owner approves the exact run', async () => {
+  const db = new UsageLedgerMemoryD1(null, { autoApprovePaid: false });
+  let providerCalls = 0;
+  const env = {
+    ...envBase,
+    AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
+    AEGIS_DB: db,
+    AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+    AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+    AEGIS_QWEN_REGION: 'ap-southeast-1',
+    AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+  };
+  const fetchImpl = async () => {
+    providerCalls += 1;
+    return new Response(modelSseStream([
+      'data: {"choices":[{"delta":{"content":"Approved run."}}]}\\n\\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}\\n\\n',
+      'data: [DONE]\\n\\n',
+    ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  };
+  const body = input({ runId: 'run-exact-approval' });
+  const pending = await onRequestPost({ request: await request(body), env, fetchImpl });
+  assert.equal(pending.status, 202);
+  const pendingBody = await pending.json();
+  assert.equal(pendingBody.code, 'PAID_INFERENCE_APPROVAL_REQUIRED');
+  assert.equal(db.approvals.size, 1);
+  assert.equal([...db.approvals.values()][0].status, 'pending');
+  assert.equal(providerCalls, 0);
+  assert.equal(db.reservations.size, 0);
+
+  const approval = [...db.approvals.values()][0];
+  approval.status = 'approved';
+  approval.decided_by = 'owner';
+  approval.decided_at = new Date().toISOString();
+
+  const resumed = await onRequestPost({ request: await request(body), env, fetchImpl });
+  assert.equal(resumed.status, 200);
+  assert.equal(providerCalls, 1);
+  assert.equal(approval.status, 'consumed');
+  assert.equal(db.reservations.size, 1);
 });
 
 test('AG-UI marks a response stopped by the output safety cap as cancelled, not successful',async()=>{
@@ -731,7 +831,7 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
 });
 
 
-test('AG-UI reserves quota again when the same run is retried after incomplete paid usage', async () => {
+test('AG-UI requires a fresh exact-run approval before retrying incomplete paid usage', async () => {
   const db = new UsageLedgerMemoryD1();
   let providerCalls = 0;
   const env = {
@@ -766,7 +866,7 @@ test('AG-UI reserves quota again when the same run is retried after incomplete p
   assert.equal(db.reservations.size, 1);
   assert.equal([...db.reservations.values()][0].status, 'reserved');
 
-  const second = await onRequestPost({ request: await request(input()), env, fetchImpl });
+  const second = await onRequestPost({ request: await request(input({ runId: 'run-124' })), env, fetchImpl });
   const secondEvents = (await second.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.equal(secondEvents.at(-1).usageAccountingStatus, 'settled');
   assert.equal(providerCalls, 2);

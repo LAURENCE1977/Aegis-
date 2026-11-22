@@ -4,6 +4,11 @@ import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
 import { resolveConnectedProviderCredential } from "../lib/model-provider-credentials.mjs";
 import { resolvePaidInferencePolicy, isPaidInferenceProvider } from "../lib/paid-inference-policy.mjs";
+import {
+  digestPaidInferenceRequest,
+  requestPaidInferenceApproval,
+  consumePaidInferenceApproval,
+} from "../lib/paid-inference-approvals.mjs";
 import { reserveTokenUsage, settleTokenUsage, deriveUsageReservationIds, estimateTokenReservation } from "../lib/usage-accounting.mjs";
 import { extractProviderUsage, mergeProviderUsage, addProviderUsage, isCompleteProviderUsage } from "../lib/provider-usage.mjs";
 import {
@@ -135,6 +140,47 @@ export async function onRequestPost(context) {
       const estimatedUnits = estimateTokenReservation(reservationInput);
       if (estimatedUnits > policy.maxTokensPerRun) {
         return json({ error: "The estimated token reservation exceeds the approved per-run ceiling.", code: "PAID_INFERENCE_BUDGET_EXCEEDED" }, 403);
+      }
+      const requestDigest = await digestPaidInferenceRequest(promptMessages, reservationTools);
+      const approvalInput = {
+        threadId: input.threadId,
+        runId: input.runId,
+        providerId: selectedProvider,
+        modelId,
+        estimatedTokens: estimatedUnits,
+        maxTokensPerRun: policy.maxTokensPerRun,
+        requestDigest,
+      };
+      let approvalDecision;
+      try {
+        approvalDecision = await requestPaidInferenceApproval(env.AEGIS_DB, approvalInput);
+      } catch {
+        return json({ error: "The exact-run paid inference approval could not be recorded.", code: "PAID_INFERENCE_APPROVAL_UNAVAILABLE" }, 503);
+      }
+      if (approvalDecision.status === "pending") {
+        return json({
+          error: "This paid AI run needs your approval before the provider can be contacted.",
+          code: "PAID_INFERENCE_APPROVAL_REQUIRED",
+          approval: {
+            id: approvalDecision.approval.id,
+            operationSummary: approvalDecision.approval.operationSummary,
+            expiresAt: approvalDecision.approval.expiresAt,
+            status: approvalDecision.approval.status,
+          },
+        }, 202);
+      }
+      if (approvalDecision.status !== "approved") {
+        const denied = approvalDecision.status === "denied";
+        return json({
+          error: denied
+            ? "You denied this paid AI run. Start a new run if you want to request approval again."
+            : "This paid-run approval is expired, already used, or unavailable. Start a new run to request fresh approval.",
+          code: denied ? "PAID_INFERENCE_APPROVAL_DENIED" : "PAID_INFERENCE_APPROVAL_NOT_AVAILABLE",
+        }, denied ? 403 : 409);
+      }
+      const consumedApproval = await consumePaidInferenceApproval(env.AEGIS_DB, approvalInput);
+      if (!consumedApproval) {
+        return json({ error: "The paid-run approval was already used or expired. Start a new run.", code: "PAID_INFERENCE_APPROVAL_NOT_AVAILABLE" }, 409);
       }
       try {
         await reserveTokenUsage({
