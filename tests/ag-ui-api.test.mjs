@@ -341,6 +341,50 @@ test('AG-UI streams Qwen deltas only when the owner explicitly selects the confi
   assert.equal(captured.options.headers.Authorization,'Bearer test-qwen-api-key-long-enough');
 });
 
+test('AG-UI blocks paid provider access until the owner approves the exact run', async () => {
+  const db = new UsageLedgerMemoryD1(null, { autoApprovePaid: false });
+  let providerCalls = 0;
+  const env = {
+    ...envBase,
+    AEGIS_MODEL_PROVIDER: 'alibaba-qwen',
+    AEGIS_PAID_INFERENCE_APPROVED: 'true',
+    AEGIS_PAID_INFERENCE_MAX_TOKENS_PER_RUN: '100000',
+    AEGIS_DB: db,
+    AEGIS_QWEN_API_KEY: 'test-qwen-api-key-long-enough',
+    AEGIS_QWEN_WORKSPACE_ID: 'workspace-123',
+    AEGIS_QWEN_REGION: 'ap-southeast-1',
+    AEGIS_QWEN_MODEL: 'qwen3.8-flash',
+  };
+  const fetchImpl = async () => {
+    providerCalls += 1;
+    return new Response(modelSseStream([
+      'data: {"choices":[{"delta":{"content":"Approved run."}}]}\\n\\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}\\n\\n',
+      'data: [DONE]\\n\\n',
+    ]), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  };
+  const body = input({ runId: 'run-exact-approval' });
+  const pending = await onRequestPost({ request: await request(body), env, fetchImpl });
+  assert.equal(pending.status, 202);
+  const pendingBody = await pending.json();
+  assert.equal(pendingBody.code, 'PAID_INFERENCE_APPROVAL_REQUIRED');
+  assert.equal(db.approvals.size, 1);
+  assert.equal([...db.approvals.values()][0].status, 'pending');
+  assert.equal(providerCalls, 0);
+  assert.equal(db.reservations.size, 0);
+
+  const approval = [...db.approvals.values()][0];
+  approval.status = 'approved';
+  approval.decided_by = 'owner';
+  approval.decided_at = new Date().toISOString();
+
+  const resumed = await onRequestPost({ request: await request(body), env, fetchImpl });
+  assert.equal(resumed.status, 200);
+  assert.equal(providerCalls, 1);
+  assert.equal(approval.status, 'consumed');
+  assert.equal(db.reservations.size, 1);
+});
+
 test('AG-UI marks a response stopped by the output safety cap as cancelled, not successful',async()=>{
   let cancelled=false;
   const largeStream=new ReadableStream({
@@ -787,7 +831,7 @@ test('AG-UI omits usage metadata when a provider does not report complete token 
 });
 
 
-test('AG-UI reserves quota again when the same run is retried after incomplete paid usage', async () => {
+test('AG-UI requires a fresh exact-run approval before retrying incomplete paid usage', async () => {
   const db = new UsageLedgerMemoryD1();
   let providerCalls = 0;
   const env = {
@@ -822,7 +866,7 @@ test('AG-UI reserves quota again when the same run is retried after incomplete p
   assert.equal(db.reservations.size, 1);
   assert.equal([...db.reservations.values()][0].status, 'reserved');
 
-  const second = await onRequestPost({ request: await request(input()), env, fetchImpl });
+  const second = await onRequestPost({ request: await request(input({ runId: 'run-124' })), env, fetchImpl });
   const secondEvents = (await second.text()).trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
   assert.equal(secondEvents.at(-1).usageAccountingStatus, 'settled');
   assert.equal(providerCalls, 2);
