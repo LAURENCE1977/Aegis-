@@ -60,11 +60,14 @@ export function buildUsageDashboard({
     const remaining = usageKnown ? limitUnits - settledUnits - reservedUnits : null;
     const overdrawn = usageKnown && remaining < 0;
     const verified = status === 'verified' && usageKnown && !overdrawn;
-    const matchingReservations = reservations.filter((reservation) =>
-      reservation?.provider_id === row.provider_id &&
-      reservation?.model_id === row.model_id &&
-      reservation?.status === 'reserved'
-    ).length;
+    const matchingReservations = Number.isSafeInteger(row.outstanding_reservations) &&
+      row.outstanding_reservations >= 0
+      ? row.outstanding_reservations
+      : reservations.filter((reservation) =>
+        reservation?.provider_id === row.provider_id &&
+        reservation?.model_id === row.model_id &&
+        reservation?.status === 'reserved'
+      ).length;
 
     return Object.freeze({
       providerId: row.provider_id,
