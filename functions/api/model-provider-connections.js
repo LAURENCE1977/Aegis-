@@ -29,6 +29,7 @@ const PROVIDERS = Object.freeze([
   { id: "axforge", name: "AxForge" },
 ]);
 const PROVIDER_IDS = new Set(PROVIDERS.map(provider => provider.id));
+const VAULT_BACKED_CHAT_PROVIDERS = new Set(["anthropic", "alibaba-qwen"]);
 
 function databaseAvailable(env) {
   return Boolean(env?.AEGIS_DB && typeof env.AEGIS_DB.prepare === "function");
@@ -55,6 +56,7 @@ export async function onRequestGet({ request, env }) {
       return {
         ...provider,
         connectionStatus: connection?.status === "active" ? "stored" : "not_configured",
+        inferenceStatus: VAULT_BACKED_CHAT_PROVIDERS.has(provider.id) ? "vault_backed_chat" : "vault_only",
         createdAt: connection?.createdAt ?? null,
         expiresAt: connection?.expiresAt ?? null,
       };
@@ -118,8 +120,10 @@ export async function onRequestPost({ request, env }) {
         createdAt: connection.createdAt,
         expiresAt: connection.expiresAt,
       },
-      runtimeStatus: "vault_only",
-      message: "Credential encrypted and stored. It is not yet connected to live model inference.",
+      runtimeStatus: VAULT_BACKED_CHAT_PROVIDERS.has(body.providerId) ? "vault_backed_chat" : "vault_only",
+      message: VAULT_BACKED_CHAT_PROVIDERS.has(body.providerId)
+        ? "Credential encrypted and stored. The server-side chat adapter can use it when this provider is selected."
+        : "Credential encrypted and stored. This provider is not yet connected to live model inference.",
     }, 201);
   } catch (error) {
     try {
