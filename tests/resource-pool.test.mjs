@@ -139,7 +139,7 @@ test('maps token quota windows onto existing server-approved provider state by m
   const mapped = mergeResourcePoolProviderState(snapshot, original);
   assert.equal(mapped.openrouter.models['model-a'].remainingTokens, 7500);
   assert.equal(mapped.openrouter.models['model-a'].quotaWindowId, tokenWindow.quotaWindowId);
-  assert.equal(mapped.cloudflare.models, undefined);
+  assert.deepEqual(mapped.cloudflare.models, {});
   assert.equal(mapped.openrouter.paidFallbackApproved, false);
   assert.equal(original.openrouter.models, undefined);
 });
