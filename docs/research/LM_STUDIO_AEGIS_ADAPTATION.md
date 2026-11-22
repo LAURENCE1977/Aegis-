@@ -94,3 +94,15 @@ The official `lmstudio-ai/lms` README documents server start/stop, model listing
 **Important security finding:** the `lms` README documents an LM Link agentic-use switch. It explicitly warns that connected agents can read and modify files and run commands with the host user's permissions. AEGIS must not enable that broad agentic-use mode as an integration shortcut. It conflicts with AEGIS's narrow capability model, Sentinel approval and no-arbitrary-shell rule. If remote control is ever needed, build a separate, typed, allowlisted companion agent with per-action grants, audit, cancellation and no shell access.
 
 The SDK's browser support does not make a browser-side API token safe. AEGIS must keep any LM Studio API token server-side and provide a private authenticated path to the host; do not embed the token in the web app or browser storage.
+
+
+### Code-level SDK observations
+
+Pinned source inspected at `lmstudio-ai/lmstudio-js` commit `2f8b0782e90bfa3b6760a2f1777a2a30ec7d560d`:
+
+- `packages/lms-client/src/LMStudioClient.ts` uses a WebSocket client transport (`ws:` / `wss:`) and accepts an optional API token. The token is not required unless the LM Studio server is configured to require it.
+- The client exposes distinct namespaces for LLMs, embeddings, decisions, system information, diagnostics, files, repositories, plugins and runtime. That is much broader than AEGIS needs for simple model inference.
+- `packages/lms-client/src/llm/LLMDynamicHandle.ts` exposes streaming prediction fragments, progress callbacks, tool-call lifecycle callbacks and an `AbortSignal` for cancellation. These are useful design cues for AEGIS's generic adapter contract: stream incrementally, support cancellation, and treat tool-call events as proposals rather than executable authority.
+- The SDK is a TypeScript monorepo with internal shared packages and a broad build/test toolchain. Adding it solely for chat would introduce unnecessary coupling and dependency surface.
+
+Decision reinforced: use the small HTTP OpenAI-compatible surface for the first AEGIS adapter; borrow the SDK's cancellation/streaming lifecycle ideas without importing its wider host-control namespaces.
