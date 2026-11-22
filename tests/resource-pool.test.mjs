@@ -121,3 +121,41 @@ test('reads only active enabled windows and returns a redacted snapshot from D1'
   assert.equal(JSON.stringify(snapshot).includes('apiKey'), false);
   assert.equal(JSON.stringify(snapshot).includes('secret'), false);
 });
+
+
+test('maps token quota windows onto existing server-approved provider state by model', async () => {
+  const { mergeResourcePoolProviderState } = await import('../functions/lib/resource-pool.mjs');
+  const snapshot = buildResourcePoolSnapshot({
+    rows: [
+      tokenWindow,
+      { ...tokenWindow, quotaWindowId: 'neurons', providerId: 'cloudflare', modelId: 'workers-ai', unitKind: 'neurons', limitUnits: 900000, usedUnits: 300000 },
+    ],
+    now,
+  });
+  const original = {
+    openrouter: { enabled: true, remainingTokens: 999999, paidFallbackApproved: false },
+    cloudflare: { enabled: true, remainingTokens: 999999 },
+  };
+  const mapped = mergeResourcePoolProviderState(snapshot, original);
+  assert.equal(mapped.openrouter.models['model-a'].remainingTokens, 7500);
+  assert.equal(mapped.openrouter.models['model-a'].quotaWindowId, tokenWindow.quotaWindowId);
+  assert.equal(mapped.cloudflare.models, undefined);
+  assert.equal(mapped.openrouter.paidFallbackApproved, false);
+  assert.equal(original.openrouter.models, undefined);
+});
+
+test('does not enable providers or infer token capacity from neuron quotas', async () => {
+  const { mergeResourcePoolProviderState } = await import('../functions/lib/resource-pool.mjs');
+  const snapshot = buildResourcePoolSnapshot({
+    rows: [
+      { ...tokenWindow, providerId: 'disabled-provider' },
+      { ...tokenWindow, quotaWindowId: 'neurons-only', providerId: 'cloudflare', unitKind: 'neurons' },
+    ],
+    now,
+  });
+  const mapped = mergeResourcePoolProviderState(snapshot, {
+    'disabled-provider': { enabled: false },
+  });
+  assert.equal(mapped['disabled-provider'].models, undefined);
+  assert.equal(mapped.cloudflare, undefined);
+});
