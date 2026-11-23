@@ -36,6 +36,38 @@ Reference:
 - https://ai.google.dev/gemini-api/docs/aistudio-deploying
 - https://codelabs.developers.google.com/codelabs/cloud-run/launch-your-to-do-web-app-with-ai
 
+## Android phone-agent and evaluation candidates
+
+### Open-AutoGLM — execution candidate, isolated adapter only
+
+Repository: https://github.com/zai-org/Open-AutoGLM
+- Apache-2.0 licensed, open phone-agent framework.
+- Uses screenshots and a vision-language model to interpret the phone UI, plan steps and execute Android actions through ADB; also supports HarmonyOS through HDC and documents iOS support separately.
+- Includes sensitive-operation confirmation and manual takeover for login/verification scenarios.
+- Model service is a separate dependency: AutoGLM-Phone model variants can be served locally or accessed through a compatible provider. The README documents a multilingual model variant and API configuration.
+- This is a plausible adapter behind a dedicated phone-control broker, not something to embed directly into the AEGIS control plane.
+
+**Security boundary:** do not expose ADB over the public internet or enable unattended wireless ADB. Keep device pairing local and explicit; use a narrowly scoped broker with per-device identity, allowlisted actions, visible user approval for sensitive actions, session timeouts, audit records and an immediate stop control. Block payments, credential entry, account changes, messages/posts and other external side effects unless the user explicitly approves each operation. Never forward screen contents, notifications or personal data to a model provider without an explicit data-handling decision. Treat model output and screen text as untrusted input.
+
+### AndroidWorld — test bench, not an execution engine
+
+Repository: https://github.com/google-research/android_world
+- Apache-2.0 licensed research environment and benchmark, published at ICLR 2025.
+- Runs agents against a live Android emulator and provides 116 programmatic tasks across 20 apps, with dynamic task parameters and state-based success checks.
+- Supports plugging in a custom agent, making it useful for regression and reliability evaluation of an AEGIS phone-agent adapter.
+- It is not a production phone-control service and should run in a disposable emulator/test environment, not against the owner's daily handset or production accounts.
+- Docker support is described as experimental; verify the current setup and dependency pins before adopting it.
+
+### GLM-Phone — identity needs confirmation
+
+No distinct repository or product named exactly **GLM-Phone** was verified in this intake. The likely related name is **AutoGLM-Phone**, the vision-language model used by Open-AutoGLM. Do not treat these names as interchangeable until the user confirms the intended link. Model hosting/provider, model licence, data retention and inference location must be reviewed independently of the agent framework's Apache-2.0 code licence.
+
+Official references:
+- https://github.com/zai-org/Open-AutoGLM
+- https://github.com/zai-org/Open-AutoGLM/blob/main/README_en.md
+- https://github.com/google-research/android_world
+- https://proceedings.iclr.cc/paper_files/paper/2025/hash/01a83bc2f2732a58e6aa731e659e7101-Abstract-Conference.html
+
 ## Candidate fit and cautions
 
 | Candidate | Fit | Recommendation |
@@ -48,10 +80,13 @@ Reference:
 | Libraries.dev | Agent-oriented React effects and skills | Optional polish; measure bundle/performance |
 | Google Stitch skills | Design-to-code workflow | Pilot on a non-production screen |
 | Google AI Studio | Prototype and Cloud Run publishing | Separate prototype lane; custom URL is under ai.studio |
+| Open-AutoGLM | Android/HarmonyOS phone-agent execution | Strong candidate for isolated adapter; security review first |
+| AndroidWorld | Emulator-based agent evaluation | Strong candidate for isolated CI/test harness |
+| AutoGLM-Phone / "GLM-Phone" | Vision-language model for phone UI | Confirm exact intended model/repository and provider terms |
 
 ## Ambiguous names requiring exact identity
 
-The request also included **Word os** and **gglm**. Search results did not identify a single reliable, clearly intended product or repository for either term. Do not guess, install or add a dependency until the exact URL or spelling is supplied.
+The request also included **Word os** and **gglm**. Search results did not identify a single reliable, clearly intended product or repository for either term. **GLM-Phone** also needs confirmation as a distinct name; AutoGLM-Phone is the likely related model. Do not guess, install or add a dependency until the exact URL or spelling is supplied.
 
 ## Adoption gates
 
@@ -60,4 +95,6 @@ The request also included **Word os** and **gglm**. Search results did not ident
 - Pin versions and review diffs; no automatic unbounded registry imports.
 - Enforce keyboard access, screen-reader semantics, reduced motion, mobile layout and sensible performance budgets.
 - Keep design tools, generated code and live AEGIS runtime credentials separate.
-- No packages installed, secrets added, DNS modified, or production deployments performed by this research note.
+- Keep Android device access behind an explicit local broker; no public ADB listener or unrestricted device-control endpoint.
+- Run phone-agent evaluation only in disposable emulators with synthetic accounts and data.
+- No packages installed, secrets added, DNS modified, devices paired, or production deployments performed by this research note.
