@@ -1,6 +1,6 @@
 # AEGIS Android phone bridge — implementation contract
 
-**Status:** design contract for the next implementation slice; no phone is paired and no Android app is installed.
+**Status:** backend pairing endpoints, D1 registry migration, browser-safe credential handling and the AEGIS Devices screen are implemented in the PR branch. CI Node tests and isolated local D1 migration/smoke checks pass. No real phone is paired, no native Android app is installed and production has not been changed.
 **Parent:** free-first orchestration work in PR #202.
 **Cost policy:** zero paid services, no trials, no billing activation, no automatic upgrade.
 
@@ -15,10 +15,10 @@ First client target: an installable Android PWA for sign-in, task/approval visib
 ## 2. Trust boundaries
 
 - The runtime's `AEGIS_JOB_TOKEN` is an owner/admin credential and must never be copied to a phone.
-- Each enrolled device receives its own high-entropy, revocable credential. Store only a one-way hash server-side; display the raw credential once during pairing.
+- Each enrolled device receives its own high-entropy, revocable credential. Store only a one-way hash server-side. Browser/PWA enrolment sets a Secure, HttpOnly, SameSite=Strict cookie and does not expose the credential to page JavaScript; native enrolment returns the credential once for Android Keystore storage.
 - Pairing is initiated by an authenticated AEGIS owner session, uses a short-lived single-use code/QR, and is rate-limited. The phone confirms the device name and requested permissions before enrolment.
 - Device identity, owner identity, platform, granted capabilities, token version, last-seen time and revocation state are stored in D1. Audit pairing, heartbeat, permission changes, token rotation and revocation without logging credentials.
-- Device requests use HTTPS, bounded JSON, strict origin handling where a browser origin exists, replay-resistant timestamps/nonces where commands are introduced, and per-device rate limits.
+- Device requests use HTTPS, bounded JSON and strict same-origin checks where a browser origin exists. Pairing invitations are limited to five per owner per hour; heartbeats are throttled to one per device per 30 seconds. Replay-resistant timestamps/nonces must be added before command delivery.
 - Revocation takes effect on the next request. Token rotation invalidates the previous token. A lost phone can be revoked from the owner console.
 
 ## 3. Initial capability allowlist
@@ -47,11 +47,11 @@ Any later local capability must have its own exact action schema, scope, expiry,
 2. Owner requests a device pairing invitation. The server creates a random, short-lived, single-use invitation and stores only its hash.
 3. Phone scans the QR or enters the invitation, verifies the displayed AEGIS origin and requested capabilities, and confirms pairing locally.
 4. Server consumes the invitation atomically, creates a device ID and per-device token, stores only the token hash, and returns the raw token once over HTTPS.
-5. Client stores the token in platform-protected storage; never in URL parameters, logs, source code or browser localStorage.
+5. Browser clients receive a Secure, HttpOnly, SameSite=Strict cookie; native clients store the one-time token in Android Keystore. Never place tokens in URLs, logs, source code or browser localStorage.
 6. Client sends a bounded heartbeat. Server verifies the device token hash, revocation state, owner and rate limit, then records last-seen status.
 7. Owner can inspect, rotate or revoke the device from the AEGIS control centre.
 
-The runtime's current bearer-only API does not yet implement this pairing sequence. Do not simulate pairing by sharing `AEGIS_JOB_TOKEN` or a ChatGPT connector credential.
+Implemented Pages API routes in this branch: `POST /api/devices` creates an owner-authenticated invitation; `GET /api/devices` lists safe device metadata; `PATCH /api/devices` revokes an owner device; `POST /api/device-enrol` atomically redeems a single-use invitation; and `POST /api/device-heartbeat` authenticates a device-specific credential. The D1 migration is `migrations/runtime/0004_devices.sql`. The runtime's `AEGIS_JOB_TOKEN` is never issued to a phone. These endpoints still require a verified production `AEGIS_DB` binding and an owner-approved deployment before they are live.
 
 ## 6. Free-first constraints
 
@@ -75,13 +75,13 @@ The runtime's current bearer-only API does not yet implement this pairing sequen
 
 ## 8. Delivery order
 
-1. Add pure registration/invitation/token validators and tests.
-2. Add D1 device and append-only device-event schema.
-3. Add owner-authenticated invitation create/revoke and device enrolment routes.
-4. Add per-device heartbeat, status and token rotation/revocation routes.
-5. Add the minimal Android PWA pairing/status/approval UI.
-6. Add assigned-job delivery only after task schemas, leases, Sentinel policy and approval consumption are connected.
-7. Evaluate a native Android worker for WorkManager-backed sync after PWA limitations are measured.
-8. Add Chromebook as a second client against the same contract.
+1. **Implemented:** pure registration, heartbeat, pairing-code and credential validators with tests.
+2. **Implemented:** D1 device/invitation schema and append-only device-event table; local migration smoke checks pass.
+3. **Implemented:** owner-authenticated invitation create/list/revoke APIs and single-use enrolment API.
+4. **Implemented:** authenticated, throttled heartbeat and revocation; token rotation remains outstanding.
+5. **Implemented:** mobile-friendly AEGIS Devices screen for creating codes, pairing this browser/phone, checking connection and revoking devices.
+6. **Next:** connect assigned-job observation and owner approval inbox to device identity, task leases, Sentinel policy and approval consumption.
+7. **Next:** build a native Android companion for Android Keystore and WorkManager-backed sync; browser PWA remains best-effort only.
+8. **Next:** add Chromebook as a second client against the same contract.
 
-**Current verified state:** AEGIS has an independent runtime source tree and plan-only specialist orchestration, but its runtime resources are not deployed. No Android companion, pairing endpoint, device registration or phone connection is currently verified.
+**Current verified state:** the source-level pairing flow and Devices UI are covered by the AEGIS Node test suite; the `0004_devices.sql` migration and device registry smoke fixture pass against disposable local D1 in CI. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat yet, and device-assigned jobs are not enabled.
