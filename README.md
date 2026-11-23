@@ -124,3 +124,8 @@ AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers A
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Composio integration bridge
+
+AEGIS now includes a server-only Composio connection-status adapter and authenticated read-only `GET /api/integrations` endpoint. It returns only owner-scoped connection IDs, toolkit slugs and statuses; provider credentials are discarded. Tool execution remains disabled until each action is registered and mediated by Sentinel, grants, approvals, rate limits and durable audit. See [docs/COMPOSIO_BRIDGE.md](docs/COMPOSIO_BRIDGE.md).
