@@ -90,7 +90,7 @@ HEALTH_TESTS
           git add -A
           git -c core.hooksPath=/dev/null commit -m "merge: reconcile Health Vision with current integration base"
           node --test tests/*.test.mjs
-          git push --force-with-lease=refs/heads/$TARGET_BRANCH: origin "HEAD:refs/heads/$TARGET_BRANCH" || git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
           {
             echo "## Isolated PR 193 reconciliation"
             echo
