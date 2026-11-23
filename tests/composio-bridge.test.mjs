@@ -22,8 +22,9 @@ test('lists only safe connection metadata for the configured Composio user', asy
     fetchImpl: async (url, init) => {
       calls.push({ url: String(url), init });
       return response({ data: [
-        { id: 'ca-gh', status: 'ACTIVE', toolkit: { slug: 'github' }, state: { val: { access_token: 'never-return-this' } } },
-        { id: 'ca-cf', status: 'INACTIVE', toolkit: { slug: 'cloudflare_api_key' } },
+        { id: 'ca-gh', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'github' }, state: { val: { access_token: 'never-return-this' } } },
+        { id: 'ca-cf', user_id: 'aegis-owner', status: 'INACTIVE', toolkit: { slug: 'cloudflare_api_key' } },
+        { id: 'ca-other', user_id: 'another-user', status: 'ACTIVE', toolkit: { slug: 'github' } },
       ] });
     },
   });
@@ -38,6 +39,25 @@ test('lists only safe connection metadata for the configured Composio user', asy
   assert.match(calls[0].url, /user_ids=aegis-owner/);
   assert.equal(calls[0].init.headers['x-api-key'], 'project-key');
   assert.equal(JSON.stringify(accounts).includes('never-return-this'), false);
+});
+
+test('follows bounded account pagination without losing later connections', async () => {
+  const calls = [];
+  const bridge = createComposioBridge({
+    apiKey: 'project-key',
+    userId: 'aegis-owner',
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return calls.length === 1
+        ? response({ items: [{ id: 'ca-one', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'github' } }], next_cursor: 'page-two' })
+        : response({ items: [{ id: 'ca-two', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'cloudflare_api_key' } }], next_cursor: null });
+    },
+  });
+
+  const accounts = await bridge.listConnectedAccounts();
+  assert.deepEqual(accounts.map((account) => account.id), ['ca-one', 'ca-two']);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].url, /cursor=page-two/);
 });
 
 test('rejects any tool outside the explicit read-only allowlist before network access', async () => {
@@ -63,7 +83,7 @@ test('requires an active matching connection before executing an allowlisted rea
     fetchImpl: async (url, init) => {
       calls.push({ url: String(url), init });
       if (String(url).includes('/connected_accounts')) {
-        return response({ data: [{ id: 'ca-gh', status: 'ACTIVE', toolkit: { slug: 'github' } }] });
+        return response({ data: [{ id: 'ca-gh', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'github' } }] });
       }
       return response({ data: { ok: true } });
     },
@@ -84,7 +104,7 @@ test('executes an allowlisted read-only tool through the fixed Composio origin',
     fetchImpl: async (url, init) => {
       calls.push({ url: String(url), init });
       if (String(url).includes('/connected_accounts')) {
-        return response({ data: [{ id: 'ca-gh', status: 'ACTIVE', toolkit: { slug: 'github' } }] });
+        return response({ data: [{ id: 'ca-gh', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'github' } }] });
       }
       return response({ data: { login: 'LAURENCE1977' } });
     },
@@ -109,7 +129,7 @@ test('normalises provider failures without leaking response bodies', async () =>
     apiKey: 'project-key',
     userId: 'aegis-owner',
     fetchImpl: async (url) => String(url).includes('/connected_accounts')
-      ? response({ data: [{ id: 'ca-gh', status: 'ACTIVE', toolkit: { slug: 'github' } }] })
+      ? response({ data: [{ id: 'ca-gh', user_id: 'aegis-owner', status: 'ACTIVE', toolkit: { slug: 'github' } }] })
       : response({ error: 'private provider diagnostic' }, 500),
   });
 
