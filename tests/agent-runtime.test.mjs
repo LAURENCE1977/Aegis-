@@ -213,14 +213,16 @@ test('agent plan completion rolls back when its audit event cannot be persisted'
   const { run } = await response.json();
   DB.failAuditEventType = 'planned';
 
-  await assert.rejects(() => runtime.queue({
+  let retried = false;
+  await runtime.queue({
     queue: 'aegis-jobs',
     messages: [{
       body: { agentRunId: run.id },
       ack() { assert.fail('a failed audited completion must not be acknowledged'); },
-      retry() {},
+      retry() { retried = true; },
     }],
-  }, env), /agent audit unavailable/);
+  }, env);
+  assert.equal(retried, true);
 
   assert.equal(DB.runs.get(run.id).status, 'queued');
   assert.equal(DB.runs.get(run.id).plan_json, undefined);
