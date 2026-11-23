@@ -16,48 +16,51 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
       nextIndex += 1;
       const pullRequest = openPullRequests[index];
       results[index] = await (async () => {
-    if (!isRecord(pullRequest) ||
-        !Number.isSafeInteger(pullRequest.number) ||
-        !isRecord(pullRequest.base) ||
-        typeof pullRequest.base.ref !== 'string' ||
-        !isRecord(pullRequest.head) ||
-        typeof pullRequest.head.ref !== 'string') {
-      throw new TypeError('Invalid GitHub pull request record');
-    }
+        if (!isRecord(pullRequest) ||
+            !Number.isSafeInteger(pullRequest.number) ||
+            !isRecord(pullRequest.base) ||
+            typeof pullRequest.base.ref !== 'string' ||
+            !isRecord(pullRequest.head) ||
+            typeof pullRequest.head.ref !== 'string') {
+          throw new TypeError('Invalid GitHub pull request record');
+        }
 
-    const [compare, changedFiles, details] = await Promise.all([
-      fetchCompare(pullRequest),
-      fetchFiles(pullRequest),
-      fetchDetails ? fetchDetails(pullRequest) : Promise.resolve(pullRequest),
-    ]);
+        const [compare, changedFiles, details] = await Promise.all([
+          fetchCompare(pullRequest),
+          fetchFiles(pullRequest),
+          fetchDetails ? fetchDetails(pullRequest) : Promise.resolve(pullRequest),
+        ]);
 
-    if (!isRecord(compare) ||
-        !isRecord(details) ||
-        !Number.isSafeInteger(compare.ahead_by) ||
-        !Number.isSafeInteger(compare.behind_by) ||
-        !Array.isArray(changedFiles)) {
-      throw new TypeError('Invalid GitHub compare or changed-file response');
-    }
+        if (!isRecord(compare) ||
+            !isRecord(details) ||
+            !Number.isSafeInteger(compare.ahead_by) ||
+            !Number.isSafeInteger(compare.behind_by) ||
+            !Array.isArray(changedFiles)) {
+          throw new TypeError('Invalid GitHub compare or changed-file response');
+        }
 
-    return {
-      number: pullRequest.number,
-      title: typeof pullRequest.title === 'string' ? pullRequest.title : '',
-      url: typeof pullRequest.html_url === 'string' ? pullRequest.html_url : '',
-      base: pullRequest.base.ref,
-      head: pullRequest.head.ref,
-      // GitHub can return null while it calculates mergeability. Treat that as
-      // not-ready; the analyser's wording distinguishes conflict/unresolved state.
-      mergeable: details.mergeable === true,
-      compare: {
-        status: typeof compare.status === 'string' ? compare.status : 'unknown',
-        aheadBy: compare.ahead_by,
-        behindBy: compare.behind_by,
-        mergeBaseSha: compare.merge_base?.sha ?? null,
-      },
-      files: [...new Set(changedFiles
-        .map(file => file?.filename)
-        .filter(path => typeof path === 'string' && path.length > 0))].sort(),
-    };
+        const mergeable = details.mergeable === true || details.mergeable === false
+          ? details.mergeable
+          : null;
+
+        return {
+          number: pullRequest.number,
+          title: typeof pullRequest.title === 'string' ? pullRequest.title : '',
+          url: typeof pullRequest.html_url === 'string' ? pullRequest.html_url : '',
+          base: pullRequest.base.ref,
+          head: pullRequest.head.ref,
+          // Preserve GitHub's tri-state value: null means still calculating or unknown.
+          mergeable,
+          compare: {
+            status: typeof compare.status === 'string' ? compare.status : 'unknown',
+            aheadBy: compare.ahead_by,
+            behindBy: compare.behind_by,
+            mergeBaseSha: compare.merge_base?.sha ?? null,
+          },
+          files: [...new Set(changedFiles
+            .map(file => file?.filename)
+            .filter(path => typeof path === 'string' && path.length > 0))].sort(),
+        };
       })();
     }
   };
@@ -68,7 +71,8 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
 const inlineCode = value => String(value).replace(/[`\r\n]/g, ' ');
 
 const recommendationLabel = recommendation => ({
-  resolve_github_conflicts: 'inspect GitHub conflict / unresolved mergeability',
+  wait_for_github_mergeability: 'wait for GitHub to finish mergeability calculation',
+  resolve_github_conflicts: 'inspect confirmed GitHub merge conflict',
   rebase_or_update_branch: 'update branch (base drift)',
   review_overlapping_files: 'review overlapping files',
   ready_for_review: 'no merge-readiness warning detected',
@@ -102,15 +106,19 @@ export function renderMergeSummary(analysis) {
   }
 
   const warnings = analysis.pullRequests.filter(item =>
-    item.overlappingPullRequests.length > 0 || item.recommendation === 'resolve_github_conflicts');
+    item.overlappingPullRequests.length > 0 ||
+    item.recommendation === 'resolve_github_conflicts' ||
+    item.recommendation === 'wait_for_github_mergeability');
   if (warnings.length) {
     lines.push('', '### Items needing attention');
     for (const item of warnings) {
-      if (item.recommendation === 'resolve_github_conflicts') {
-        lines.push(`- **#${item.number}:** GitHub reports a conflict or unresolved mergeability state. Inspect the PR before changing it.`);
+      if (item.recommendation === 'wait_for_github_mergeability') {
+        lines.push(`- **#${item.number}:** GitHub has not finished calculating mergeability. Refresh the PR status before treating it as ready or conflicted.`);
+      } else if (item.recommendation === 'resolve_github_conflicts') {
+        lines.push(`- **#${item.number}:** GitHub confirms a merge conflict. Inspect the PR before changing it.`);
       }
       for (const overlap of item.overlappingPullRequests) {
-        lines.push(`- **#${item.number} / #${overlap.number}:** shared paths: ${overlap.files.map(path => `\`${inlineCode(path)}\``).join(', ')}. This is review risk, not proof of a textual conflict.`);
+        lines.push(`- **#${item.number} / #${overlap.number}:** shared paths: ${overlap.files.map(path => \`\`${inlineCode(path)}\`\`).join(', ')}. This is review risk, not proof of a textual conflict.`);
       }
     }
   }
