@@ -132,7 +132,7 @@ export async function onRequestPatch({ request, env }) {
         "UPDATE devices SET status = 'revoked', revoked_at = ?, updated_at = ?, token_version = token_version + 1 WHERE id = ? AND owner_id = ? AND status = 'active'"
       ).bind(now, now, body.deviceId, OWNER_ID),
       env.AEGIS_DB.prepare(
-        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'revoked', '{}', ? FROM devices WHERE id = ? AND owner_id = ? AND status = 'revoked' AND revoked_at = ? AND updated_at = ?"
+        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'revoked', '{}', ? FROM devices WHERE changes() = 1 AND id = ? AND owner_id = ? AND status = 'revoked' AND revoked_at = ? AND updated_at = ?"
       ).bind(eventId, now, body.deviceId, OWNER_ID, now, now),
     ]);
     const updated = results[0];
