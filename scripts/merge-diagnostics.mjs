@@ -80,7 +80,12 @@ const currentPullRequest = openPullRequests.find(item => item.number === event.p
 if (!currentPullRequest) throw new Error('The triggering pull request was not present in the open-PR inventory');
 const defaultBranch = event.repository?.default_branch || 'main';
 const relatedPullRequests = selectMergeStack(openPullRequests, currentPullRequest, defaultBranch);
-const snapshot = await collectMergeSnapshot(relatedPullRequests, fetchCompare, fetchChangedFiles);
+const snapshot = await collectMergeSnapshot(
+  relatedPullRequests,
+  fetchCompare,
+  fetchChangedFiles,
+  pullRequest => githubJson(`/pulls/${pullRequest.number}`),
+);
 const analysis = analyzeMergeReadiness(snapshot);
 const report = renderMergeSummary(analysis) +
   `\n\n_Scope: ${relatedPullRequests.length} connected pull request(s) from ${openPullRequests.length} open repository pull request(s); unrelated branches rooted at ${defaultBranch} are excluded._`;
