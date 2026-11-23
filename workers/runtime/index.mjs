@@ -97,6 +97,18 @@ async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypt
   ).bind(eventId, runId, eventType, JSON.stringify(detail), new Date().toISOString()).run();
 }
 
+async function transitionAgentRun(env, updateSql, updateValues, {
+  runId, status, updatedAt, eventType, detail = {}, eventId = crypto.randomUUID(),
+}) {
+  const [updated] = await env.DB.batch([
+    env.DB.prepare(updateSql).bind(...updateValues),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, ?, ?, ? FROM agent_runs WHERE changes() = 1 AND id = ? AND status = ? AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, eventType, JSON.stringify(detail), updatedAt, runId, status, updatedAt),
+  ]);
+  return Boolean(updated?.meta?.changes);
+}
+
 async function dispatchAgentRuns(env, limit = 25) {
   if (!agentRunsEnabled(env)) return 0;
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
@@ -204,10 +216,13 @@ async function processAgentRun(message, env) {
   try {
     const specialists = JSON.parse(row.specialists_json);
     const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
-    const saved = await env.DB.prepare(
-      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-    ).bind(JSON.stringify(plan), new Date().toISOString(), runId, attempt).run();
-    if (saved.meta?.changes) await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    const completedAt = new Date().toISOString();
+    await transitionAgentRun(env,
+      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+      [JSON.stringify(plan), completedAt, runId, attempt],
+      { runId, status: 'planned', updatedAt: completedAt, eventType: 'planned',
+        detail: { steps: plan.steps.length, execution: 'plan-only' } },
+    );
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
