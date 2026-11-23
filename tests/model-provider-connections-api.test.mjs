@@ -115,7 +115,7 @@ async function request(path, { method = 'GET', body, origin = 'https://aegis.exa
 test('model provider connection list rejects unauthenticated access before D1', async () => {
   const response = await onRequestGet({
     request: new Request('https://aegis.example/api/model-provider-connections'),
-    env: { ...envBase, AEGIS_DB: { prepare() { throw new Error('must not access D1'); } } },
+    env: { ...envBase, CAPABILITY_DB: { prepare() { throw new Error('must not access D1'); } } },
   });
   assert.equal(response.status, 401);
 });
@@ -123,7 +123,7 @@ test('model provider connection list rejects unauthenticated access before D1', 
 test('owner can list supported providers without receiving credentials or vault references', async () => {
   const response = await onRequestGet({
     request: await request('/api/model-provider-connections'),
-    env: { ...envBase, AEGIS_DB: new MemoryD1() },
+    env: { ...envBase, CAPABILITY_DB: new MemoryD1() },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -142,7 +142,7 @@ test('provider key storage rejects cross-origin writes and unknown providers', a
     request: await request('/api/model-provider-connections', {
       method: 'POST', origin: 'https://attacker.example', body: { providerId: 'openrouter', apiKey: 'sk-example-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(crossOrigin.status, 403);
 
@@ -150,7 +150,7 @@ test('provider key storage rejects cross-origin writes and unknown providers', a
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'unknown-provider', apiKey: 'sk-example-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(unknown.status, 400);
   assert.equal(db.secrets.size, 0);
@@ -163,7 +163,7 @@ test('stores provider keys encrypted and returns only safe connection metadata',
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 201);
   const body = await response.json();
@@ -182,14 +182,14 @@ test('revokes provider connection and erases encrypted credential material', asy
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-example-provider-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(created.status, 201);
   const response = await onRequestDelete({
     request: await request('/api/model-provider-connections', {
       method: 'DELETE', body: { providerId: 'openrouter' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 200);
   assert.equal([...db.connections.values()][0].status, 'revoked');
@@ -204,7 +204,7 @@ test('duplicate provider key maps a database uniqueness conflict and erases the 
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-first-provider-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(first.status, 201);
 
@@ -212,7 +212,7 @@ test('duplicate provider key maps a database uniqueness conflict and erases the 
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-second-provider-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(second.status, 409);
   const secrets = [...db.secrets.values()];
@@ -228,7 +228,7 @@ test('provider list reports the newest active connection after a revoked histori
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-first-provider-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(first.status, 201);
   const oldRow = [...db.connections.values()][0];
@@ -238,7 +238,7 @@ test('provider list reports the newest active connection after a revoked histori
     request: await request('/api/model-provider-connections', {
       method: 'DELETE', body: { providerId: 'openrouter' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(revoked.status, 200);
 
@@ -246,13 +246,13 @@ test('provider list reports the newest active connection after a revoked histori
     request: await request('/api/model-provider-connections', {
       method: 'POST', body: { providerId: 'openrouter', apiKey: 'sk-second-provider-secret-value-12345' },
     }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(second.status, 201);
 
   const listed = await onRequestGet({
     request: await request('/api/model-provider-connections'),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   const body = await listed.json();
   assert.equal(body.providers.find(provider => provider.id === 'openrouter').connectionStatus, 'stored');
