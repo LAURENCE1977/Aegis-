@@ -14,9 +14,12 @@ class MemoryD1 {
       for (const statement of statements) {
         if (statement.sql.includes('RETURNING attempts')) {
           const claim = await statement.first();
+          db.lastBatchChanges = claim ? 1 : 0;
           results.push({ results: claim ? [claim] : [], meta: { changes: claim ? 1 : 0 } });
         } else {
-          results.push(await statement.run());
+          const result = await statement.run();
+          db.lastBatchChanges = result?.meta?.changes || 0;
+          results.push(result);
         }
       }
       return results;
@@ -72,6 +75,7 @@ class MemoryD1 {
         if (sql.includes('INSERT INTO job_events')) {
           if (db.failAuditInsert) throw new Error('audit unavailable');
           if (sql.includes('SELECT')) {
+            if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
             const row = db.jobs.get(v[2]);
             if (!row || row.status !== 'running' || row.updated_at !== v[3]) return { meta: { changes: 0 } };
             if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
