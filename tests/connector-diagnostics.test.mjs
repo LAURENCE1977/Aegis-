@@ -94,6 +94,16 @@ test('expired and revoked connections are not treated as active', () => {
   assert.equal(revoked.status, CONNECTOR_STATUS.EXPIRED_OR_REVOKED);
 });
 
+test('malformed expiry metadata fails closed as a configuration error', () => {
+  const result = evaluateConnectorStatus('github', {
+    connected: true,
+    expiresAt: 'not-a-date',
+    grantedCapabilities: ['identity.read', 'repository.read'],
+  }, now);
+  assert.equal(result.status, CONNECTOR_STATUS.CONFIGURATION_ERROR);
+  assert.equal(result.readEnabled, false);
+});
+
 test('diagnostics never return credential-shaped input or enable writes', () => {
   const result = evaluateConnectorStatus('krystal', {
     connected: true,
