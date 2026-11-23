@@ -703,3 +703,13 @@ Every step remains test-first for behavioural changes, branch-isolated, evidence
 - Latest code commit `34a8ba41530f4b983d531d3749bcce77b24480a5`: the full Node.js suite passed, including the same-origin device-plan endpoint tests; all isolated D1 capability/runtime/device/Forge migrations and smoke checks passed; merge diagnostics passed. Documentation follow-ups are at `bd24525a48f2769c4864e32b1f1d76f811b72fa0` and `3b550cbbdcc895cb5350b6da2e1ca0cfacdecee0`. The Mergiraf sandbox was still running at the last check. A Cloudflare Pages branch preview on an earlier verified code commit reported success; this is not production.
 - This does not activate a device, execute an agent step, consume an approval, provision infrastructure or deploy production. PR #202 remains draft and unmerged.
 
+## H. Follow-on research and implementation — AEGIS NEURAL (2026-11-23)
+
+- Owner selected parallel development of a software intent engine and non-invasive EEG research.
+- Added `workers/runtime/intent-engine.mjs`: strict consent-gated normalisation for voice, touch, gaze, accessibility switch and EEG observations; allowlisted intent labels; bounded confidence/quality; freshness checks; cross-modal agreement; ambiguous fallback.
+- Initial EEG confidence ceiling is 0.65 against a default 0.75 proposal threshold. EEG alone therefore cannot create a candidate under the default policy.
+- Every output is proposal-only, unauthorised, non-executable and requires explicit user confirmation. It cannot grant a capability or consume a Sentinel approval.
+- Added `tests/intent-engine.test.mjs` test-first. The first CI run failed as expected because the new module did not yet exist; implementation followed. Full green verification for the latest head is pending.
+- Added `docs/AEGIS_NEURAL_INTENT_AND_BCI.md` with the software/EEG parallel roadmap, privacy and consent invariants, no-raw-signal default, BrainFlow adapter research and OpenBCI hardware reference.
+- BrainFlow is a candidate only: no package dependency, device purchase, hardware connection, raw neural data collection or cloud upload has been introduced.
+- This is not wired into the live UI, voice pipeline, ODIN runtime, Sentinel or phone companion yet. No medical/diagnostic capability is claimed.
