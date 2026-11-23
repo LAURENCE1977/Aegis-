@@ -18,16 +18,30 @@ if (!event.pull_request || !Number.isSafeInteger(event.pull_request.number)) {
 
 const apiRoot = `https://api.github.com/repos/${repository}`;
 async function githubJson(path) {
-  const response = await fetch(`${apiRoot}${path}`, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
+  const url = `${apiRoot}${path}`;
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  let response = await fetch(url, {
+    headers: { ...headers, Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(20000),
   });
+
+  if (response.status === 403) {
+    const errorBody = await response.text();
+    // A fork PR may be visible publicly while the event-scoped token cannot
+    // inspect its file list. Fall back only for this explicit permission case.
+    if (/resource not accessible by integration/i.test(errorBody)) {
+      response = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
+    } else {
+      throw new Error(`GitHub API request failed (403) for ${path}: ${errorBody.slice(0, 240)}`);
+    }
+  }
+
   if (!response.ok) {
-    throw new Error(`GitHub API request failed (${response.status}) for ${path}`);
+    const errorBody = await response.text();
+    throw new Error(`GitHub API request failed (${response.status}) for ${path}: ${errorBody.slice(0, 240)}`);
   }
   return response.json();
 }
