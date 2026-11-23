@@ -85,7 +85,7 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 7. **Next:** build a native Android companion for Android Keystore and WorkManager-backed sync; browser PWA remains best-effort only.
 8. **Next:** add Chromebook as a second client against the same contract.
 
-**Current verified state:** the source-level pairing flow and Devices UI are covered by the AEGIS Node test suite; the `0004_devices.sql` migration and device registry smoke fixture pass against disposable local D1 in CI. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat yet, and device-assigned jobs are not enabled.
+**Current verified state (2026-11-23):** the source-level pairing flow, Devices UI, owner-facing planned-run inventory and one-time assignment guard are implemented on PR #202. The latest PR head `634b387f23531a3c8f1f76dbb427e14bf8d3839e` has successful GitHub Actions runs for AEGIS tests, merge diagnostics and the Mergiraf sandbox. Earlier full-suite evidence recorded 608 passed / 0 failed at implementation head `71dedc244d912e4c6903c6d2be07cc6a4c2f3cbb`; do not treat that historical count as a fresh count for every later commit. The assignment and device-observation paths are source-level only and remain read-only; they are not live until an owner-approved deployment with verified shared D1 bindings. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat, and no device-side task execution or approval consumption is enabled.
 
 ## 9. Owner-facing planned-run inventory (2026-11-23)
 
