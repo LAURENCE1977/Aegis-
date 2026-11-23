@@ -89,6 +89,22 @@ class AgentMemoryD1 {
           db.events.push({ event_id: v[0], agent_run_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
         }
+        if (sql.includes("SET status = 'failed'") && sql.includes('AGENT_PLAN_FAILED')) {
+          const row = db.runs.get(v[1]);
+          if (row && row.status === 'running' && row.attempts === v[2]) {
+            row.status = 'failed'; row.error_code = 'AGENT_PLAN_FAILED'; row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
+        if (sql.includes("SET status = 'queued'") && sql.includes('AGENT_PLAN_RETRY')) {
+          const row = db.runs.get(v[1]);
+          if (row && row.status === 'running' && row.attempts === v[2]) {
+            row.status = 'queued'; row.error_code = 'AGENT_PLAN_RETRY'; row.lease_until = null; row.updated_at = v[0];
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
         if (sql.includes("SET status = 'failed'") && sql.includes('AGENT_DELIVERY_EXHAUSTED')) {
           const row = db.runs.get(v[1]);
           const now = v[2];
