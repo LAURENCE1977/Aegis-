@@ -49,6 +49,7 @@ test('connector diagnostics returns a read-only baseline when connection storage
   assert.equal(body.storageConfigured, false);
   assert.equal(body.liveChecksEnabled, false);
   assert.equal(body.writesEnabled, false);
+  assert.equal(body.executionEnabled, false);
   assert.ok(body.connectors.length >= 7);
   assert.ok(body.connectors.every(item => item.status === 'not_connected'));
 });
@@ -79,6 +80,8 @@ test('vault-only provider metadata is not misreported as a verified live connect
   assert.equal(instagram.credentialStored, true);
   assert.equal(instagram.readEnabled, false);
   assert.equal(instagram.writeEnabled, false);
+  assert.equal(instagram.verificationState, 'pending');
+  assert.equal(instagram.lastErrorCode, 'INVALID_CONFIGURATION');
   assert.equal(JSON.stringify(body).includes('vault://'), false);
 });
 
