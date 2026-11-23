@@ -60,7 +60,7 @@ class DeviceRuntimeD1 {
 async function makeEnv(status, capabilities) {
   const DB = new DeviceRuntimeD1(status, capabilities);
   DB.device.token_hash = await hashDeviceToken(TOKEN);
-  return { DB };
+  return { DB, AGENT_RUNS_ENABLED: 'true' };
 }
 
 function request(deviceId = DEVICE_ID, authorization = 'Device ' + TOKEN) {
