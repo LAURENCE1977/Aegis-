@@ -20,8 +20,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Set up stable Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Verify runner Rust toolchain
+        run: |
+          rustc --version
+          cargo --version
       - name: Install pinned Mergiraf release
         run: cargo install --locked --version 0.20.0 mergiraf
       - name: Verify isolated conflict resolution
