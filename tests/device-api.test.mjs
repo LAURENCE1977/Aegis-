@@ -26,6 +26,11 @@ class DeviceD1 {
         if (sql.includes('SELECT COUNT(*) AS count FROM device_pairing_invites')) {
           return { count: [...db.invites.values()].filter((invite) => invite.created_at > v[1]).length };
         }
+        if (sql.includes('SELECT id FROM device_pairing_invites WHERE code_hash')) {
+          const invite = [...db.invites.values()].find((item) =>
+            item.code_hash === v[0] && !item.consumed_at && !item.revoked_at && item.expires_at > v[1]);
+          return invite ? { id: invite.id } : null;
+        }
         if (sql.includes('SELECT id FROM devices WHERE id = ? AND token_hash = ? AND status')) {
           const row = db.devices.get(v[0]);
           return row && row.token_hash === v[1] && row.status === 'active' ? { id: row.id } : null;
