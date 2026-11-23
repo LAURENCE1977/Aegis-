@@ -1,50 +1,38 @@
-# Krystal → Composio connector
+# Krystal ↔ Composio integration assessment
 
-## Status
+## Verified account/API credential type
 
-Source implementation is on the feature branch `feature/krystal-composio-mcp-connector-2026-11-23`. It is not production deployed or registered as a Composio toolkit yet.
+The Krystal Client Area page at `/client/app#/account/apikeys` labels the generated key under **Domain Reseller Module**. Krystal's official help article explains that this credential is for the Krystal WHMCS Domain Reseller module: the module uses the API username and API secret to provision, transfer and renew domain names. The same article says domain provisioning may charge the payment card or account credit balance, and cancelled domain registrations are not refundable.
 
-## Architecture
+This is not evidence that the key grants general Krystal hosting, Katapult cloud, DNS-zone or DNS-record API access. Do not send it to a Katapult API endpoint or configure it as a generic bearer token.
 
-Composio connects to the AEGIS remote MCP endpoint:
+Official documentation:
+- https://help.krystal.io/whmcs/setting-up-whmcs-domain-provisioning-using-the-krystal-domain-reseller-module
+- https://github.com/krystal/katapult-php (a separate Katapult Core/Public API client; its token model is not proof that the Domain Reseller credential works with it)
 
-`POST https://<AEGIS-Pages-host>/mcp/krystal`
+## Security incident / credential handling
 
-Composio's custom toolkit API-key auth scheme injects the user's Krystal API token as an `Authorization: Bearer <token>` header. The connector forwards that bearer credential only to the fixed Krystal Katapult API origin (`https://api.katapult.io/core/v1`). It does not persist the token, put it in a URL, or write it to logs.
+A newly generated API secret was visible in the authenticated Krystal browser page content during integration inspection. Treat that specific key as compromised and revoke/delete it in Krystal. Do not reuse it in Composio, AEGIS, WHMCS, scripts or another service. Generate a replacement only if Krystal confirms the intended API and after the integration has a verified authentication design. Never paste API secrets into ChatGPT or commit them to Git.
 
-## Exposed tools
+## Integration decision
 
-Only three read-only tools are exposed:
+No Krystal connector endpoint is implemented in this change. The previous draft endpoint assumed the Katapult Core API, bearer authentication and DNS endpoints without confirming that the visible Domain Reseller key supported those operations; that draft has been removed rather than risk sending the wrong credential to the wrong API.
 
-- `krystal_list_organizations` — `GET /organizations` (requires `organizations:read`)
-- `krystal_list_dns_zones` — `GET /organizations/organization/dns_zones` (requires `dns:read`)
-- `krystal_list_dns_records` — `GET /dns_zones/dns_zone/records` (requires `dns:read`)
+Before implementation, ask Krystal support to confirm:
+1. Which API product the account is entitled to use for the user's actual goal (hosting management, DNS management, or domain reseller provisioning).
+2. The official API base URL, version, authentication method, endpoint documentation/OpenAPI specification and rate limits.
+3. Whether a separate API token is available with read-only DNS/hosting scopes.
+4. Whether API calls can incur domain-registration, transfer, renewal, hosting or other charges; how to disable write/provisioning operations.
 
-There are no create, update, delete, deployment, billing, server provisioning or arbitrary-URL tools. Requests are pinned to the official API origin, use GET only, validate identifiers and pagination, and return sanitised upstream errors.
+Support request should explicitly say: **read-only DNS zone and record discovery for an existing domain; no domain registration, transfer, renewal, hosting changes or paid actions.**
 
-## Composio custom toolkit registration
+## Composio integration route
 
-After the AEGIS endpoint has been deployed to a public HTTPS URL, create a Composio custom toolkit using the current v3.1 Custom MCP API:
+Composio's Custom MCP toolkit API is a potential route once the correct API and authentication scheme are confirmed. AEGIS already has an initial MCP Bridge at `POST /mcp`, but it does not yet implement an outbound API connector manager. A separate, narrowly scoped MCP endpoint can be added after the official Krystal API details are confirmed.
 
-- `name`: `Krystal (AEGIS read-only)`
-- `mcp_url`: the final HTTPS URL ending in `/mcp/krystal` (no redirects)
-- `auth_schemes`: `[{"mode":"API_KEY","headers":{"Authorization":"Bearer {{generic_api_key}}"}}]`
-- `user_id`: `all` (shared toolkit; the API-key connection remains per user)
-
-The custom toolkit create call requires the Composio project API key in the `x-api-key` header. Do not put that project key in this repository or in chat. Composio's custom-toolkit API returns the toolkit slug. The first connected API-key account triggers tool sync.
-
-## Krystal credential setup
-
-Create a Krystal API token with only the read scopes required for the tools:
-
-- `organizations:read`
-- `dns:read`
-
-Add that token through Composio's custom toolkit connection flow, not in ChatGPT chat, GitHub, source code or a URL. Never grant write scopes for this initial connector.
-
-## Verification and limitations
-
-- Unit tests mock `fetch`; they do not contact Krystal or require a real token.
-- Live verification requires a user-provided Krystal API token with the read scopes above, entered through Composio.
-- AEGIS preview/production deployment and Composio toolkit registration are separate steps.
-- The existing AEGIS MCP Bridge and its authentication remain unchanged.
+Required future safeguards:
+- Per-user credentials entered only in Composio's secure connection flow or a verified encrypted secret store.
+- Read-only allowlisted GET endpoints only; fixed official API host; no arbitrary URLs.
+- No write, billing, registration, transfer, renewal or provisioning tools.
+- Tests with mocked HTTP responses, then an owner-approved live read-only test.
+- Feature branch, CI and preview verification; no production deployment until reviewed.
