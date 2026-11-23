@@ -251,3 +251,13 @@ test('Control Centre exposes a secure device pairing and revocation surface', ()
   assert.match(html, /method:\s*'PATCH'/);
   assert.match(html, /aegis_device_id/);
 });
+
+test('Devices Control Centre exposes a read-only agent-run inventory and Sentinel-gated assignment action', () => {
+  for (const id of ['agentRunList','agentRunStatus','refreshAgentRunsBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing agent-run UI element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/agent-runs'/);
+  assert.match(html, /controlApi\('\/api\/device-assign-run'/);
+  assert.match(html, /method:\s*'POST'/);
+  assert.match(html, /Only planned runs can be assigned/);
+});
