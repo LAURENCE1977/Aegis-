@@ -68,3 +68,14 @@ Draft review PR #198: https://github.com/LAURENCE1977/Aegis-/pull/198
 Verification: https://github.com/LAURENCE1977/Aegis-/actions/runs/45134592047 — **559 tests passed, 0 failed**; capability, runtime and Forge isolated D1 migrations and all corresponding smoke/constraint checks passed.
 
 PR #193 and the integration base were not modified. PR #198 remains draft and unmerged. The reconciliation branch is a review artifact only. PRs #194 and #195 remain 12 commits behind the integration base but GitHub currently reports both as mergeable; they have not been rebased or modified. No merge bot, automatic conflict resolution or production deployment was enabled.
+
+
+## GitHub mergeability is tri-state
+
+The merge diagnostics preserve GitHub's `mergeable` value as `true`, `false` or `null`:
+
+- `true`: GitHub currently reports the PR as mergeable.
+- `false`: GitHub reports a merge conflict; inspect the actual diff before resolving.
+- `null` (or an unavailable value): GitHub has not completed or supplied its mergeability calculation. The report says to wait and refresh; it must not be converted into a confirmed conflict or a ready state.
+
+The analyser emits `wait_for_github_mergeability` for the pending state. This remains advisory and never changes a branch or merges a PR.
