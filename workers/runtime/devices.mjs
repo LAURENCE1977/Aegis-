@@ -106,3 +106,20 @@ export async function hashPairingCode(code, cryptoProvider = globalThis.crypto) 
   const digest = await cryptoProvider.subtle.digest('SHA-256', new TextEncoder().encode(code));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+
+export function validatePairingRedemption(input) {
+  if (!isPlainObject(input)) throw new TypeError('Pairing redemption must be an object.');
+  if (Object.keys(input).some((key) => key !== 'code')) {
+    throw new TypeError('Unexpected pairing redemption fields.');
+  }
+  if (typeof input.code !== 'string' || !/^aegis_pair_[A-Za-z0-9_-]{43}$/.test(input.code)) {
+    throw new TypeError('Invalid pairing code.');
+  }
+  return Object.freeze({ code: input.code });
+}
+
+export function parseDeviceAuthorization(header) {
+  if (typeof header !== 'string') return null;
+  const match = /^Device\s+(aegis_dev_[A-Za-z0-9_-]{43})$/i.exec(header.trim());
+  return match ? match[1] : null;
+}
