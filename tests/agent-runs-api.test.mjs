@@ -52,8 +52,8 @@ test('owner receives bounded agent-run inventory with parsed plan and no interna
     createdAt: '2026-11-23T10:00:00.000Z',
     updatedAt: '2026-11-23T10:01:00.000Z',
   });
-  assert.match(db.sql, /WHERE owner_id = \?/);
-  assert.equal(db.values[0], 'owner');
+  assert.match(db.sql, /ORDER BY created_at DESC LIMIT 50/);
+  assert.doesNotMatch(db.sql, /idempotency_key|specialists_json|error_code/);
   assert.match(db.sql, /LIMIT 50/);
   assert.equal(JSON.stringify(body).includes('private-key'), false);
 });
