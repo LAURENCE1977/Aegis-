@@ -29,7 +29,7 @@ function safeEqual(left, right) {
 function isAuthorized(request, env) {
   const expected = env?.AEGIS_JOB_TOKEN;
   if (typeof expected !== 'string' || expected.length < 32) return false;
-  const match = /^Bearer\\s+([^\\s]+)$/i.exec(request.headers.get('Authorization') || '');
+  const match = /^Bearer\s+([^\s]+)$/i.exec(request.headers.get('Authorization') || '');
   return Boolean(match && safeEqual(match[1], expected));
 }
 
@@ -169,7 +169,7 @@ async function dispatchAgentRuns(env, limit = 25) {
 async function submitAgentRun(request, env) {
   if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
@@ -218,7 +218,7 @@ async function submitCapabilityProposal(request, env, runId) {
   if (typeof principalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(principalId)) {
     return json({ error: 'Trusted principal context is not configured.' }, 503);
   }
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const raw = await request.text();
@@ -375,7 +375,7 @@ async function dispatchPending(env, limit = 25) {
 
 async function submitJob(request, env) {
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
@@ -478,7 +478,7 @@ async function getDeviceAgentRuns(request, env, deviceId) {
 
 export async function handleRuntimeFetch(request, env) {
   const url = new URL(request.url);
-  const deviceAgentRuns = /^\\/v1\\/devices\\/([^/]+)\\/agent-runs$/.exec(url.pathname);
+  const deviceAgentRuns = /^\/v1\/devices\/([^/]+)\/agent-runs$/.exec(url.pathname);
   if (request.method === 'GET' && deviceAgentRuns) {
     if (!originAllowed(request)) return json({ error: 'Origin is not allowed.' }, 403);
     return getDeviceAgentRuns(request, env, deviceAgentRuns[1]);
@@ -493,7 +493,7 @@ export async function handleRuntimeFetch(request, env) {
 
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
-  const proposalRoute = /^\\/v1\\/agent-runs\\/([^/]+)\\/capability-proposals$/.exec(url.pathname);
+  const proposalRoute = /^\/v1\/agent-runs\/([^/]+)\/capability-proposals$/.exec(url.pathname);
   if (proposalRoute && request.method === 'POST') return submitCapabilityProposal(request, env, proposalRoute[1]);
   if (proposalRoute && request.method === 'GET') {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
