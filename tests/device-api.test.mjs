@@ -101,12 +101,12 @@ class DeviceD1 {
         results.push({ meta: { changes: eligible ? 1 : 0 } });
       } else if (sql.includes("INSERT INTO device_events") && sql.includes("SELECT ?, id, 'heartbeat'")) {
         const row = this.devices.get(v[3]);
-        const eligible = row && row.token_hash === v[4] && row.status === 'active' && row.last_seen_at === v[5] && row.updated_at === v[6];
+        const eligible = results[0]?.meta?.changes === 1 && row && row.token_hash === v[4] && row.status === 'active' && row.last_seen_at === v[5] && row.updated_at === v[6];
         if (eligible) this.events.push({ event_id: v[0], device_id: row.id, event_type: 'heartbeat', detail_json: v[1], created_at: v[2] });
         results.push({ meta: { changes: eligible ? 1 : 0 } });
       } else if (sql.includes("INSERT INTO device_events") && sql.includes("SELECT ?, id, 'revoked'")) {
         const row = this.devices.get(v[2]);
-        const eligible = row && row.owner_id === v[3] && row.status === 'revoked' && row.revoked_at === v[4] && row.updated_at === v[5];
+        const eligible = results[0]?.meta?.changes === 1 && row && row.owner_id === v[3] && row.status === 'revoked' && row.revoked_at === v[4] && row.updated_at === v[5];
         if (eligible) this.events.push({ event_id: v[0], device_id: row.id, event_type: 'revoked', detail_json: '{}', created_at: v[1] });
         results.push({ meta: { changes: eligible ? 1 : 0 } });
       } else if (sql.includes('INSERT INTO devices')) {
@@ -128,8 +128,9 @@ class DeviceD1 {
           results.push({ meta: { changes: 1 } });
         } else results.push({ meta: { changes: 0 } });
       } else if (sql.includes('INSERT INTO device_events')) {
-        this.events.push({ event_id: v[0], device_id: v[2], event_type: 'paired', created_at: v[1] });
-        results.push({ meta: { changes: 1 } });
+        const inserted = results.at(-1)?.meta?.changes === 1;
+        if (inserted) this.events.push({ event_id: v[0], device_id: v[2], event_type: 'paired', created_at: v[1] });
+        results.push({ meta: { changes: inserted ? 1 : 0 } });
       } else {
         results.push({ meta: { changes: 0 } });
       }
