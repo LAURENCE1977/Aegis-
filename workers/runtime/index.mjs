@@ -195,7 +195,7 @@ async function processAgentRun(message, env) {
       "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
     ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId),
     env.DB.prepare(
-      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM agent_runs WHERE id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM agent_runs WHERE changes() = 1 AND id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
     ).bind(eventId, startedAt, runId, startedAt),
   ]);
   const claim = claimResult?.results?.[0] || null;
@@ -440,7 +440,7 @@ async function processJob(message, env) {
       "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
     ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId),
     env.DB.prepare(
-      "INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM jobs WHERE id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+      "INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM jobs WHERE changes() = 1 AND id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
     ).bind(eventId, startedAt, jobId, startedAt),
   ]);
   const claim = claimResult?.results?.[0] || null;
