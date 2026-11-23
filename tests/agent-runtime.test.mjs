@@ -5,10 +5,31 @@ import runtime, { handleRuntimeFetch } from '../workers/runtime/index.mjs';
 const token = 'agent-runtime-test-token-with-at-least-32-characters';
 
 class AgentMemoryD1 {
-  constructor() { this.runs = new Map(); this.events = []; }
+  constructor() { this.runs = new Map(); this.events = []; this.failAuditInsert = false; }
+  async batch(statements) {
+    const runsSnapshot = new Map([...this.runs].map(([id, row]) => [id, { ...row }]));
+    const eventsSnapshot = [...this.events];
+    try {
+      const results = [];
+      for (const statement of statements) {
+        if (statement.sql.includes('RETURNING attempts')) {
+          const claim = await statement.first();
+          results.push({ results: claim ? [claim] : [], meta: { changes: claim ? 1 : 0 } });
+        } else {
+          results.push(await statement.run());
+        }
+      }
+      return results;
+    } catch (error) {
+      this.runs = runsSnapshot;
+      this.events = eventsSnapshot;
+      throw error;
+    }
+  }
   prepare(sql) {
     const db = this;
     return {
+      sql,
       values: [],
       bind(...values) { this.values = values; return this; },
       async first() {
@@ -43,6 +64,14 @@ class AgentMemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO agent_run_events')) {
+          if (db.failAuditInsert) throw new Error('agent audit unavailable');
+          if (sql.includes('SELECT')) {
+            const row = db.runs.get(v[2]);
+            if (!row || row.status !== 'running' || row.updated_at !== v[3]) return { meta: { changes: 0 } };
+            if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
+            db.events.push({ event_id: v[0], agent_run_id: row.id, event_type: 'running', detail_json: JSON.stringify({ attempt: row.attempts }), created_at: v[1] });
+            return { meta: { changes: 1 } };
+          }
           if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], agent_run_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
@@ -126,6 +155,26 @@ test('rejects unknown fields and unsafe specialist roles before persistence', as
   assert.equal(DB.runs.size, 0);
   const second = await handleRuntimeFetch(postRun({ objective: 'Review runtime', specialists: ['shell'] }), env);
   assert.equal(second.status, 400);
+});
+
+test('an agent run claim rolls back when its audit event cannot be persisted', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({ objective: 'Protect audited agent claims' }), env);
+  const { run } = await response.json();
+  DB.failAuditInsert = true;
+
+  await assert.rejects(() => runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { agentRunId: run.id },
+      ack() { assert.fail('a failed audited claim must not be acknowledged'); },
+      retry() {},
+    }],
+  }, env), /agent audit unavailable/);
+
+  assert.equal(DB.runs.get(run.id).status, 'queued');
+  assert.equal(DB.runs.get(run.id).attempts, 0);
+  assert.equal(DB.events.some((event) => event.event_type === 'running'), false);
 });
 
 test('queue consumer creates a plan-only result and never invokes tools', async () => {
