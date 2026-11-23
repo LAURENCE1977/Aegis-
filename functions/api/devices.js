@@ -126,19 +126,23 @@ export async function onRequestPatch({ request, env }) {
 
   const now = new Date().toISOString();
   try {
-    const updated = await env.AEGIS_DB.prepare(
-      "UPDATE devices SET status = 'revoked', revoked_at = ?, updated_at = ?, token_version = token_version + 1 WHERE id = ? AND owner_id = ? AND status = 'active'"
-    ).bind(now, now, body.deviceId, OWNER_ID).run();
-    if (!updated.meta?.changes) {
+    const eventId = crypto.randomUUID();
+    const results = await env.AEGIS_DB.batch([
+      env.AEGIS_DB.prepare(
+        "UPDATE devices SET status = 'revoked', revoked_at = ?, updated_at = ?, token_version = token_version + 1 WHERE id = ? AND owner_id = ? AND status = 'active'"
+      ).bind(now, now, body.deviceId, OWNER_ID),
+      env.AEGIS_DB.prepare(
+        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'revoked', '{}', ? FROM devices WHERE id = ? AND owner_id = ? AND status = 'revoked' AND revoked_at = ? AND updated_at = ?"
+      ).bind(eventId, now, body.deviceId, OWNER_ID, now, now),
+    ]);
+    const updated = results[0];
+    if (!updated?.meta?.changes) {
       const existing = await env.AEGIS_DB.prepare(
         'SELECT id, status FROM devices WHERE id = ? AND owner_id = ?'
       ).bind(body.deviceId, OWNER_ID).first();
       if (!existing) return jsonResponse({ error: 'Device not found.' }, 404);
       return jsonResponse({ device: { id: existing.id, status: existing.status } });
     }
-    await env.AEGIS_DB.prepare(
-      "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) VALUES (?, ?, 'revoked', '{}', ?)"
-    ).bind(crypto.randomUUID(), body.deviceId, now).run();
     return jsonResponse({ device: { id: body.deviceId, status: 'revoked', revokedAt: now } });
   } catch {
     return jsonResponse({ error: 'Could not revoke this device.' }, 503);
