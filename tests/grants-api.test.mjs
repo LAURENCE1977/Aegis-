@@ -92,7 +92,7 @@ const grantBody = () => ({
 test('grant history rejects unauthenticated reads before touching D1', async () => {
   const response = await onRequestGet({
     request: await request('/api/grants', { authenticated: false }),
-    env: { ...envBase, AEGIS_DB: { prepare() { throw new Error('must not access D1'); } } },
+    env: { ...envBase, CAPABILITY_DB: { prepare() { throw new Error('must not access D1'); } } },
   });
   assert.equal(response.status, 401);
 });
@@ -118,7 +118,7 @@ test('grant history returns only owner-scoped safe metadata', async () => {
   });
   const response = await onRequestGet({
     request: await request('/api/grants'),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -133,7 +133,7 @@ test('grant creation rejects missing and hostile origins without writing', async
     const db = new MemoryD1();
     const response = await onRequestPost({
       request: await request('/api/grants', { method: 'POST', origin, body: grantBody() }),
-      env: { ...envBase, AEGIS_DB: db },
+      env: { ...envBase, CAPABILITY_DB: db },
     });
     assert.equal(response.status, 403);
     assert.equal(db.rows.size, 0);
@@ -144,7 +144,7 @@ test('grant creation derives owner, version and scopes from the approved registr
   const db = new MemoryD1();
   const response = await onRequestPost({
     request: await request('/api/grants', { method: 'POST', body: grantBody() }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 201);
   const body = await response.json();
@@ -166,7 +166,7 @@ test('grant creation rejects unregistered capabilities, actions and caller-suppl
     const db = new MemoryD1();
     const response = await onRequestPost({
       request: await request('/api/grants', { method: 'POST', body }),
-      env: { ...envBase, AEGIS_DB: db },
+      env: { ...envBase, CAPABILITY_DB: db },
     });
     assert.equal(response.status, 400);
     assert.equal(db.rows.size, 0);
@@ -186,14 +186,14 @@ test('grant revocation is owner-authenticated, same-origin and scoped to the own
   });
   const denied = await onRequestDelete({
     request: await request('/api/grants', { method: 'DELETE', origin: 'https://attacker.example', body: { id: grant.id } }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(denied.status, 403);
   assert.equal(db.rows.get(grant.id).status, 'active');
 
   const response = await onRequestDelete({
     request: await request('/api/grants', { method: 'DELETE', body: { id: grant.id } }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 200);
   assert.equal(db.rows.get(grant.id).status, 'revoked');
@@ -209,11 +209,11 @@ test('grant endpoints reject malformed JSON, extra fields and oversized bodies',
     },
     body: '{',
   });
-  assert.equal((await onRequestPost({ request: malformed, env: { ...envBase, AEGIS_DB: new MemoryD1() } })).status, 400);
+  assert.equal((await onRequestPost({ request: malformed, env: { ...envBase, CAPABILITY_DB: new MemoryD1() } })).status, 400);
 
   const oversized = await onRequestPost({
     request: await request('/api/grants', { method: 'POST', body: 'x'.repeat(3000) }),
-    env: { ...envBase, AEGIS_DB: new MemoryD1() },
+    env: { ...envBase, CAPABILITY_DB: new MemoryD1() },
   });
   assert.equal(oversized.status, 413);
 });
