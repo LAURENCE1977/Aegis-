@@ -246,6 +246,11 @@
           <button class="secondary" id="refreshDevicesBtn" type="button">Refresh devices</button>
         </div>
         <div id="deviceList" aria-live="polite"></div>
+        <h3>Planned agent runs</h3>
+        <p class="memory-help">Review plans created by AEGIS. Assigning a plan grants observation only; devices cannot execute it.</p>
+        <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent-run inventory has not been loaded.</p>
+        <div class="workspace-actions"><button class="secondary" id="refreshAgentRunsBtn" type="button">Refresh agent runs</button></div>
+        <div id="agentRunList" aria-live="polite"></div>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -342,6 +347,9 @@
     const checkDeviceConnectionBtn = document.getElementById('checkDeviceConnectionBtn');
     const refreshDevicesBtn = document.getElementById('refreshDevicesBtn');
     const deviceList = document.getElementById('deviceList');
+    const agentRunList = document.getElementById('agentRunList');
+    const agentRunStatus = document.getElementById('agentRunStatus');
+    const refreshAgentRunsBtn = document.getElementById('refreshAgentRunsBtn');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
     const moduleList = document.getElementById('moduleList');
@@ -748,7 +756,7 @@
       if (panel !== 'providers') providerApiKey.value = '';
       if (panel === 'providers') loadProviderConnections();
       if (panel === 'integrations') loadComposioIntegrations();
-      if (panel === 'devices') loadDevices();
+      if (panel === 'devices') { loadDevices(); loadAgentRuns(); }
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
@@ -770,6 +778,7 @@
     refreshIntegrationsBtn.addEventListener('click', loadComposioIntegrations);
     deviceTab.addEventListener('click', () => showPanel('devices'));
     refreshDevicesBtn.addEventListener('click', loadDevices);
+    refreshAgentRunsBtn.addEventListener('click', loadAgentRuns);
     checkDeviceConnectionBtn.addEventListener('click', checkCurrentDeviceConnection);
 
     devicePairForm.addEventListener('submit', async (event) => {
@@ -987,6 +996,92 @@
         deviceStatus.textContent = error.message || 'Device registry is unavailable.';
       } finally {
         refreshDevicesBtn.disabled = false;
+      }
+    }
+
+    async function loadAgentRuns() {
+      agentRunStatus.textContent = 'Loading planned agent runs…';
+      agentRunList.replaceChildren();
+      refreshAgentRunsBtn.disabled = true;
+      try {
+        const [data, deviceData] = await Promise.all([
+          controlApi('/api/agent-runs'),
+          controlApi('/api/devices'),
+        ]);
+        const runs = Array.isArray(data.agentRuns) ? data.agentRuns : [];
+        const devices = Array.isArray(deviceData.devices) ? deviceData.devices : [];
+        const eligibleDevices = devices.filter(device =>
+          device.status === 'active' &&
+          Array.isArray(device.capabilities) &&
+          device.capabilities.includes('aegis.jobs.observe')
+        );
+        if (!runs.length) {
+          agentRunList.textContent = 'No agent runs have been recorded yet.';
+          agentRunList.className = 'memory-empty';
+        } else {
+          agentRunList.className = '';
+          runs.forEach(run => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h3');
+            title.textContent = run.objective || 'Untitled agent run';
+            const details = document.createElement('p');
+            details.textContent = 'Status: ' + run.status +
+              ' · Created: ' + (run.createdAt || 'Unknown') +
+              ' · Device: ' + (run.assignedDeviceId || 'Not assigned');
+            card.append(title, details);
+            if (run.status === 'planned' && !run.assignedDeviceId) {
+              const select = document.createElement('select');
+              select.setAttribute('aria-label', 'Choose an active observation device');
+              const placeholder = document.createElement('option');
+              placeholder.value = '';
+              placeholder.textContent = 'Choose active device';
+              select.append(placeholder);
+              eligibleDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.id;
+                option.textContent = device.displayName + ' · ' + device.platform;
+                select.append(option);
+              });
+              const assign = memoryButton('Assign for read-only observation', async () => {
+                if (!select.value) {
+                  agentRunStatus.textContent = 'Choose an active device with observation permission first.';
+                  return;
+                }
+                assign.disabled = true;
+                try {
+                  await controlApi('/api/device-assign-run', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId: select.value, agentRunId: run.id }),
+                  });
+                  agentRunStatus.textContent = 'Plan assigned for read-only observation.';
+                  await loadAgentRuns();
+                } catch (error) {
+                  agentRunStatus.textContent = error.message || 'Could not assign this plan.';
+                  assign.disabled = false;
+                }
+              });
+              if (!eligibleDevices.length) {
+                select.disabled = true;
+                assign.disabled = true;
+              }
+              const actions = document.createElement('div');
+              actions.className = 'workspace-actions';
+              actions.append(select, assign);
+              card.append(actions);
+            } else if (run.status === 'planned') {
+              const note = document.createElement('p');
+              note.textContent = 'Only planned runs can be assigned. This plan is already assigned.';
+              card.append(note);
+            }
+            agentRunList.append(card);
+          });
+        }
+        agentRunStatus.textContent = runs.length + ' agent run(s) · plans are read-only and require separate approval before execution.';
+      } catch (error) {
+        agentRunStatus.textContent = error.message || 'Agent-run inventory is unavailable.';
+      } finally {
+        refreshAgentRunsBtn.disabled = false;
       }
     }
 
