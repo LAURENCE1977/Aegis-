@@ -24,6 +24,17 @@ The composition root must:
 - A timeout or uncertain adapter result must not automatically replay a consumed approval.
 - Every adapter response is untrusted input; redact secrets and bound its size before returning it to an agent.
 
+## Runtime database boundary
+
+The standalone runtime worker uses two distinct D1 bindings:
+
+- `DB`: durable jobs, agent runs, device registry and runtime usage ledger; apply only `migrations/runtime` here.
+- `CAPABILITY_DB`: Sentinel grants, provider connection metadata, approvals, invocation audit and invocation rate limits; apply only `migrations/capabilities` here.
+
+The example worker configuration declares both bindings with placeholder database IDs. Creating either database, applying remote migrations, or setting production secrets is a separate owner-approved deployment step. Never alias the runtime `DB` to `CAPABILITY_DB` merely to make a missing binding appear configured.
+
+The runtime's current agent queue remains plan-only. Declaring `CAPABILITY_DB` is infrastructure preparation, not permission to execute agent-proposed actions. A later execution slice must compose `createSentinelDependencies({ db: env.CAPABILITY_DB, adapters: createBuiltinAdapterRegistry() })` inside trusted server code, derive the principal from authenticated persisted ownership, and add an explicit, bounded action-request lifecycle with approval, cancellation, idempotency and audit tests before any adapter is reachable.
+
 ## Deployment gate
 
 This document and the Sentinel library are source-level foundations only. Before enabling execution, add and test the D1 composition, digest helper, secret resolution, audit writer, adapter allowlist, SSRF/egress controls, revocation checks, idempotency and stop/revoke path. Apply migrations and provision production resources only after an explicit owner-approved deployment plan.
