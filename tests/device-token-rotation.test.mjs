@@ -23,14 +23,6 @@ class RotationD1 {
       sql,
       values: [],
       bind(...values) { this.values = values; return this; },
-      async first() {
-        if (sql.includes('SELECT id, status FROM devices')) {
-          return this.values[0] === DEVICE_ID
-            ? { id: this.values[0], status: this.values[1] || 'active' }
-            : null;
-        }
-        return null;
-      },
     };
   }
 
@@ -46,16 +38,17 @@ class RotationD1 {
       this.device.token_hash === oldHash && this.device.status === 'active';
     if (!eligible) return [{ meta: { changes: 0 } }, { meta: { changes: 0 } }];
 
+    const previous = { ...this.device };
     const nextVersion = this.device.token_version + 1;
     this.device.token_hash = nextHash;
     this.device.token_version = nextVersion;
     this.device.updated_at = now;
-    const [eventId, eventAt, eventDeviceId, eventHash, eventVersion] = event.values;
-    if (eventDeviceId === deviceId && eventHash === nextHash &&
-        eventVersion === nextVersion && eventAt === now) {
+    const [eventId, eventAt, eventDeviceId, eventHash] = event.values;
+    if (eventDeviceId === deviceId && eventHash === nextHash && eventAt === now) {
       this.events.push({ event_id: eventId, device_id: deviceId, event_type: 'token_rotated', token_version: nextVersion });
       return [{ meta: { changes: 1 } }, { meta: { changes: 1 } }];
     }
+    this.device = previous;
     throw new Error('audit event did not match rotation');
   }
 }
