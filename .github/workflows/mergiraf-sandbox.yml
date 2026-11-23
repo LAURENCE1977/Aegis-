@@ -1,0 +1,28 @@
+name: AEGIS Mergiraf sandbox
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aegis-mergiraf-sandbox-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-merge:
+    name: Pinned Mergiraf conflict-resolution smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up stable Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install pinned Mergiraf release
+        run: cargo install --locked --version 0.20.0 mergiraf
+      - name: Verify isolated conflict resolution
+        run: bash scripts/mergiraf-sandbox.sh
