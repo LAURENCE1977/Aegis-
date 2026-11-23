@@ -1,4 +1,5 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { hashDeviceToken, readDeviceToken } from './devices.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -331,7 +332,56 @@ async function getJob(request, env, id) {
   return json({ job: parseJob(row) });
 }
 
+async function getDeviceAgentRuns(request, env, deviceId) {
+  if (!isJobId(deviceId)) return json({ error: 'Invalid device identifier.' }, 400);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') {
+    return json({ error: 'Runtime database is not configured.' }, 503);
+  }
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+
+  const token = readDeviceToken(request);
+  if (!token) return json({ error: 'Device authentication required.' }, 401);
+  try {
+    const tokenHash = await hashDeviceToken(token);
+    const device = await env.DB.prepare(
+      "SELECT id, capabilities_json FROM devices WHERE id = ? AND token_hash = ? AND status = 'active'"
+    ).bind(deviceId, tokenHash).first();
+    if (!device) return json({ error: 'Device credential is invalid or revoked.' }, 401);
+
+    let capabilities = [];
+    try { capabilities = JSON.parse(device.capabilities_json); } catch { capabilities = []; }
+    if (!Array.isArray(capabilities) || !capabilities.includes('aegis.jobs.observe')) {
+      return json({ error: 'Device is not authorised to observe agent plans.' }, 403);
+    }
+
+    const result = await env.DB.prepare(
+      'SELECT id, objective, status, plan_json, created_at, updated_at FROM agent_runs WHERE assigned_device_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).bind(deviceId).all();
+    const agentRuns = (result.results || []).map((row) => {
+      let plan = null;
+      try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
+      return {
+        id: row.id,
+        objective: row.objective,
+        status: row.status,
+        plan,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
+    return json({ agentRuns });
+  } catch {
+    return json({ error: 'Assigned agent plans are temporarily unavailable.' }, 503);
+  }
+}
+
 export async function handleRuntimeFetch(request, env) {
+  const url = new URL(request.url);
+  const deviceAgentRuns = /^\\/v1\\/devices\\/([^/]+)\\/agent-runs$/.exec(url.pathname);
+  if (request.method === 'GET' && deviceAgentRuns) {
+    if (!originAllowed(request)) return json({ error: 'Origin is not allowed.' }, 403);
+    return getDeviceAgentRuns(request, env, deviceAgentRuns[1]);
+  }
   if (!env || typeof env.AEGIS_JOB_TOKEN !== 'string' || env.AEGIS_JOB_TOKEN.length < 32) {
     return json({ error: 'Runtime authentication is not configured.' }, 503);
   }
@@ -340,7 +390,6 @@ export async function handleRuntimeFetch(request, env) {
     return json({ error: 'Authentication required.' }, 401, { 'WWW-Authenticate': 'Bearer' });
   }
 
-  const url = new URL(request.url);
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
