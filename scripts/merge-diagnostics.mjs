@@ -1,5 +1,5 @@
 import { readFile, appendFile } from 'node:fs/promises';
-import { collectMergeSnapshot, renderMergeSummary } from '../functions/lib/merge-diagnostics.mjs';
+import { collectMergeSnapshot, renderMergeSummary, selectMergeStack } from '../functions/lib/merge-diagnostics.mjs';
 import { analyzeMergeReadiness } from '../functions/lib/merge-intelligence.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
@@ -76,8 +76,13 @@ async function fetchChangedFiles(pullRequest) {
 }
 
 const openPullRequests = await listOpenPullRequests();
-const snapshot = await collectMergeSnapshot(openPullRequests, fetchCompare, fetchChangedFiles);
+const currentPullRequest = openPullRequests.find(item => item.number === event.pull_request.number);
+if (!currentPullRequest) throw new Error('The triggering pull request was not present in the open-PR inventory');
+const defaultBranch = event.repository?.default_branch || 'main';
+const relatedPullRequests = selectMergeStack(openPullRequests, currentPullRequest, defaultBranch);
+const snapshot = await collectMergeSnapshot(relatedPullRequests, fetchCompare, fetchChangedFiles);
 const analysis = analyzeMergeReadiness(snapshot);
-const report = renderMergeSummary(analysis);
+const report = renderMergeSummary(analysis) +
+  `\n\n_Scope: ${relatedPullRequests.length} connected pull request(s) from ${openPullRequests.length} open repository pull request(s); unrelated branches rooted at ${defaultBranch} are excluded._`;
 await appendFile(summaryPath, `${report}\n`, 'utf8');
 console.log(report);
