@@ -88,3 +88,22 @@ test('renders a compact pull-request summary with drift and overlap warnings', (
 test('renders a safe empty-state summary when there are no open pull requests', () => {
   assert.match(renderMergeSummary({ pullRequests: [], mergeOrder: [] }), /No open pull requests/);
 });
+
+test('limits concurrent GitHub metadata requests to protect API rate limits', async () => {
+  const pullRequests = Array.from({ length: 12 }, (_, index) => openPr({
+    number: 400 + index,
+    base: { ref: 'main', sha: 'base-sha' },
+    head: { ref: `feature/${index}`, label: `owner:feature/${index}`, sha: 'head-sha' },
+  }));
+  let active = 0;
+  let maximum = 0;
+  const fetch = async () => {
+    active += 1;
+    maximum = Math.max(maximum, active);
+    await new Promise(resolve => setTimeout(resolve, 2));
+    active -= 1;
+    return { status: 'ahead', ahead_by: 1, behind_by: 0, merge_base: { sha: 'base' } };
+  };
+  await collectMergeSnapshot(pullRequests, fetch, async () => []);
+  assert.ok(maximum <= 4, `expected at most four concurrent requests, saw ${maximum}`);
+});
