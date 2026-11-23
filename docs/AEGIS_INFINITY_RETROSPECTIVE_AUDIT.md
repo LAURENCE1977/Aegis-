@@ -44,7 +44,7 @@ PRs #1–#97 contain the early foundation and several merged milestones. PRs #98
 - #201 — Meta and infrastructure connector isolation
 - #202 — free-first orchestration and device bridge
 
-PR #202 is open, draft and unmerged. It has 107 commits and 40 changed files at the recorded head `12bf43671baf99b3d51b658cde61ea3d8803282a`. It is stacked on #201. Do not describe the whole stack as production-live.
+PR #202 is open, draft and unmerged. At the initial audit snapshot it had 107 commits and 40 changed files at head `12bf43671baf99b3d51b658cde61ea3d8803282a`; this audit document then added two documentation commits. The current PR head is `2502763889d2ac1b46b6c05c634d5decd26fda34`, with 109 commits and 41 changed files. It is stacked on #201. Do not describe the whole stack as production-live.
 
 ### 2.2 Merged foundation milestones
 
