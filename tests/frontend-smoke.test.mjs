@@ -261,3 +261,16 @@ test('Devices Control Centre exposes a read-only agent-run inventory and Sentine
   assert.match(html, /method:\s*'POST'/);
   assert.match(html, /Only planned runs can be assigned/);
 });
+
+
+test('paired device view loads only its assigned plans using the HttpOnly device cookie', () => {
+  for (const id of ['deviceAssignedRunList','deviceAssignedRunStatus','refreshDeviceAssignedRunsBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing assigned-device plan UI element: ' + id);
+  }
+  assert.match(html, /fetch\('\/api\/device-agent-runs\?deviceId='/);
+  assert.match(html, /credentials:\s*'same-origin'/);
+  assert.match(html, /deviceAssignedRunList\.textContent\s*=\s*run\.objective/);
+  assert.match(html, /deviceAssignedRunList\.textContent\s*=\s*JSON\.stringify\(run\.plan/);
+  assert.match(html, /localStorage\.getItem\('aegis_device_id'\)/);
+  assert.doesNotMatch(html, /localStorage\.setItem\(['"]aegis_device_token/);
+});
