@@ -1,6 +1,6 @@
-import { authorizeOwner, jsonResponse } from '../../../lib/owner-api.mjs';
-import { listConnections } from '../../../lib/capability-connections.mjs';
-import { buildConnectorDiagnostics } from '../../../lib/connector-diagnostics.mjs';
+import { authorizeOwner, jsonResponse } from '../../lib/owner-api.mjs';
+import { listConnections } from '../../lib/capability-connections.mjs';
+import { buildConnectorDiagnostics } from '../../lib/connector-diagnostics.mjs';
 
 const OWNER_ID = 'owner';
 const REGISTRY_PROVIDER_IDS = Object.freeze({
