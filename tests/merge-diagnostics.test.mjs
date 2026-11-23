@@ -82,7 +82,7 @@ test('renders a compact pull-request summary with drift and overlap warnings', (
   assert.match(markdown, /4 commits behind/);
   assert.match(markdown, /#302/);
   assert.match(markdown, /index\.html/);
-  assert.match(markdown, /review order: #301 → #302/);
+  assert.match(markdown, /Dependency review order:\*\* #301 → #302/);
 });
 
 test('renders a safe empty-state summary when there are no open pull requests', () => {
