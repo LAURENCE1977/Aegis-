@@ -482,3 +482,209 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 - Repository mentions from chat or authorised social posts enter one deduplicated Forge research workflow. Social posts are untrusted leads only; canonical upstream repositories, immutable revisions, licence evidence, security/maintenance signals and applicability must be checked independently.
 - This is a documentation/specification milestone only. No social API credentials were created, no account was connected, no background polling was enabled, no new runtime or production resource was deployed, and no upstream code is installed or executed.
 - Next implementation slices: owner-scoped repository watchlist persistence; provider-neutral read-only social connection inventory; then separately authorised TikTok and Instagram adapters; finally scoped shared access for ChatGPT and AEGIS with separate identities, grants, revocation and audit.
+
+
+---
+
+# AEGIS INFINITY — historical architecture map and repository reconciliation
+
+**Reconciled:** 23 November 2026  
+**Purpose:** Preserve the complete direction developed across the AEGIS/ODIN conversations and map it to repository evidence. This appendix supplements the earlier blueprint; it does not replace the original architecture or imply that every workstream is production-ready.
+
+## A. How the project evolved
+
+### A1. Original AEGIS + ODIN split — 14 November 2026
+
+The initial combined-system decision established two complementary responsibilities:
+
+- **AEGIS** is the governed operating environment: user interface, identity, sessions, permissions, integrations, delivery, security and operational control.
+- **ODIN** is the intelligence/workspace engine: reasoning, model selection, provider routing, memory, research, coding, creation and specialist agents.
+
+The accepted direction was to integrate the two while preserving the existing AEGIS repository, ODIN architecture and development history. This was an integration, not a greenfield rewrite. **Agent Aiden Forge** was accepted as a working identity/name direction for the existing ODIN project; it is not authorisation to rename or replace the repository or deployment.
+
+### A2. AEGIS platform foundation — 14–16 November
+
+The project moved from a mobile AI workspace toward a governed agent operating platform. The foundational workstreams became:
+
+- authenticated application and mobile-first Control Centre;
+- native engineering skills and source provenance;
+- MCP Bridge and controlled ChatGPT/client interoperability;
+- durable job runtime and recovery;
+- portable client/platform architecture;
+- specialist-agent definitions and orchestration;
+- governed capabilities, connections, grants and exact-operation approvals;
+- Sentinel enforcement, encrypted secrets and append-only audit;
+- Project Spaces, persistent memory and handover context;
+- Forge and Knowledge Forge for safe research and adaptation;
+- Free-Tier Ledger and provider/token intelligence.
+
+### A3. AEGIS INFINITY expansion — 17–23 November
+
+The Infinity direction broadened the architecture into a coordinated operating environment with distinct but connected divisions: **Core, Intelligence, Agent Forge, AEGIS Forge, Sentinel, Defence, Operations, Knowledge Forge, Control Centre, Device Bridge, Experimental/Virtual Lab, Media Studio and Voice Companion**. Later work added Infinity Zero, Universal Resource Pool, Build/Merge Intelligence, Automation Engine, browser/computer-use policy, companion presence and optional Health Vision.
+
+These are architectural divisions and workstreams, not a claim that every division already exists as a deployed service.
+
+## B. Canonical AEGIS INFINITY section catalogue
+
+The following is the full working map. Components should remain modular, but share identity, policy, event, task, provenance and audit contracts.
+
+1. **AEGIS Core / Kernel** — application lifecycle, configuration, identity context, event contracts, shared data boundaries and composition roots. It coordinates the system but does not bypass Sentinel.
+2. **ODIN Intelligence** — intent understanding, reasoning, planning, task translation, workload accounting, model selection and result synthesis.
+3. **Agent Forge / Agent Operations** — specialist role registry, skills, team planning, workflow definitions, run envelopes, dependency ordering, checkpoints, evidence requirements and owner review. Candidate roles include researcher, planner, engineer, security reviewer and independent reviewer. Agent definitions never grant permissions.
+4. **Sentinel** — independent policy authority for every protected capability invocation. It checks principal, exact capability/version/action/resource, grants, connection, risk, operation digest, approval freshness/replay, rate limits and audit. Agents cannot approve themselves or self-grant.
+5. **Defence / Security Centre** — authentication, session security, encrypted secret vault, connection isolation, audit lineage, threat/advisory intelligence, revocation, rate limits, safe failure and incident containment.
+6. **AEGIS Forge** — safe software transformation workflow: discover, inspect, compare, analyse, evaluate, plan, adapt, implement, test, review and maintain repositories, APIs, MCP servers, SDKs, packages and authorised interfaces. Initial GitHub work is read-only and pinned to immutable source identities.
+7. **Knowledge Forge / Engineering Intelligence** — sourced technical knowledge from repositories, documentation, standards, API specifications, MCP manifests, SDKs, benchmarks, research and engineering methods. Preserve source/version, licence, provenance, evidence grade, freshness, applicability, caveats and conflicts.
+8. **Infinity Memory / Project Spaces** — owner-scoped project context, persistent memories, typed activity history, summaries, handover briefs, retrieval, expiry and correction. Project data must not leak across owners or sensitivity boundaries.
+9. **Intelligence & Model Gateway** — replaceable provider adapters, server-side model catalogue, task compatibility, context limits, token estimates, usage telemetry, quota reservation/settlement and deterministic routing. Unknown prices remain unknown; paid inference remains disabled under the zero-cost policy.
+10. **MCP / API / Integration Bridge** — inbound ChatGPT/client compatibility and outbound provider integrations. Separate provider definitions, integration definitions, account connections, credentials, capabilities, grants, approvals, adapters, invocations and health. Every action remains Sentinel-gated.
+11. **Control Centre / Home** — responsive mobile-first operator UI for chat, projects, tasks, agent runs, approvals, devices, providers, usage, resource pool, logs, health, build progress and companion presence. Every control must be functional and permission-aware.
+12. **Operations / Durable Runtime** — canonical task IDs and state, D1 persistence, queue dispatch, worker leases, idempotency, retries, dead-letter recovery, checkpoints, scheduled/event triggers, notifications and resumability. The runtime must continue independently of a ChatGPT session.
+13. **Device Bridge** — owner-approved Android and Chromebook enrolment, device identity, short-lived pairing, per-device credentials, heartbeat, capability scopes, revocation and assigned-plan observation. Devices are optional workers; an offline device must not block cloud-side work.
+14. **Computer Use / Browser Operations** — isolated browser or desktop workers with exact-host navigation policy, structured bounded actions, scoped sessions, screenshots/evidence, prompt-injection resistance and Sentinel review. Screen observation is not authority to act.
+15. **Automation Engine** — versioned, bounded automation definitions with manual, interval, daily, weekly and internal-event triggers; allowlisted steps, budgets, retries, approvals and audit.
+16. **Experimental Lab / Virtual Lab** — isolated evaluation of untrusted repositories, generated clients, document parsers, browser fixtures, models and agents. Requires disposable execution environments, default-deny network, no production credentials/host paths, resource ceilings, output quarantine and independent destroy verification.
+17. **Infinity Zero / Free-First Resource Policy** — prefer deterministic work, then user-owned/local compute, then verified no-charge allowances. Stop or pause on unknown pricing, quota exhaustion or uncertain plan status. Zero direct spend is the objective; compute is not literally cost-free.
+18. **Universal Resource Pool** — consolidated, read-only view of eligible compute, model/provider availability, verified quotas, reservations, usage and health. It does not create capacity or authorise spend.
+19. **Voice Companion** — short-lived, provider-neutral voice sessions, speech input/output, bounded event sequencing, expiry and explicit permissions.
+20. **Companion / Presence** — Home companion surface, procedural renderer, presentation settings and transactional model/resource lifecycle. Optional model resources must be budget-gated and cannot destabilise the active companion.
+21. **Media Studio** — future modular image, video, audio and creative production workflows, with separate asset permissions, licensing and resource budgets.
+22. **Health Vision (optional isolated workspace)** — Stage 1 is a private, non-diagnostic browser workspace with temporary session-only photo preview and text observations. It must not send images/notes to general memory, telemetry or model providers. It is not a medical diagnosis or triage service.
+23. **Build & Merge Intelligence** — read-only PR dependency, branch-drift, mergeability, changed-file overlap and CI diagnostics. Pending GitHub mergeability must remain unknown, not be misreported as a conflict. Diagnostics never approve, merge or deploy.
+24. **Research / Social Intake** — owner-controlled intake of repository leads mentioned in chat or surfaced through explicitly authorised social sources. Social posts are untrusted leads; independently verify canonical source, immutable revision, licence, maintenance and security. No DMs, contacts, publishing or upstream writes by default.
+
+## C. Repository workstreams and evidence map
+
+### C1. Foundation and governed access
+
+- **PR #1:** authenticated sessions, same-origin checks and ten AEGIS-native engineering skills. This is the early security/skills foundation.
+- **PR #3:** initial authenticated stateless MCP Bridge, read-only status/modules/skills.
+- **PR #9–#24 and clean-stack successors:** capability lifecycle, manifest registry, exact-operation approvals, owner approval inbox and Sentinel invocation gate.
+- **PR #30–#37 and #44–#65:** owner-scoped connections/grants, AES-GCM vault, append-only audit, token/model planning, persistent stores and Sentinel composition.
+- **PR #64 onward:** owner-controlled grant management, restricted invocation paths, rate limits and Security Centre surfaces.
+- **PR #87:** minimal owner Security Centre for grants and Sentinel.
+- **PR #122–#130:** integration control-plane model, metadata-only connection inventory, append-only connection audit, exact-tool preflight and Sentinel integration routing. Composio adapter work is a foundation, not proof of a live authorised Composio execution path.
+
+### C2. Runtime, agents and automation
+
+- **PR #4 and #8 / #43:** durable job runtime source, D1/Queue/Cron recovery, attempt fencing and dead-letter handling. The runtime source is distinct from a deployed production Worker.
+- **PR #28–#29 and #60–#61:** durable specialist-agent planning/orchestration foundations. The current safe slice is plan-only; it does not mean autonomous LLM agents are already executing tasks.
+- **PR #131:** versioned Automation Engine definition contract; triggers and steps are bounded and allowlisted.
+- **PR #151–#158:** Sentinel-gated agent workflow definitions, immutable run envelopes, durable checkpoints, operation requests and owner review ledger/inbox. Contracts and storage are not equivalent to a fully isolated autonomous executor.
+- **PR #173:** deterministic Sentinel-gated browser task policy. A policy contract is not a running browser worker.
+- **PR #202:** free-first orchestration/device bridge design and the first device registry, pairing, heartbeat, revocation and assigned-plan observation slice.
+
+### C3. Forge, knowledge and research
+
+- **PR #25 / #48:** metadata-only MCP Forge catalogue.
+- **PR #67–#68 and #76–#84:** bounded, authenticated, read-only public GitHub discovery and immutable tree/blob inspection, with exact-grant Sentinel access and owner-reviewed candidate records.
+- **PR #81 / #83:** owner-reviewed Forge candidate storage and licence gates.
+- **PR #95:** owner repository review and safe reuse decisions.
+- **PR #110:** T3 Code, Ghost/Phantom and optional text-to-CAD integration assessment.
+- **PR #132–#150:** Code Mode research/hand-off contracts; immutable experiment evidence; safe software-intelligence discovery and source attestations; OSV-shaped advisory normalisation and conservative inventory matching; HMAC source attestations and replay protection.
+- **PR #160:** mass experimental audit and source inventory. Research leads are not approved dependencies.
+- **PR #192:** provider-neutral API/MCP integration intelligence sandbox/ranker.
+- **PR #194:** architecture assessment of LibreChat, LlamaIndex and SereneDB, including a private-LLM architecture direction.
+
+### C4. Memory, workspace and operator interface
+
+- **PR #22 / #27 and clean-stack successors #39 / #41 / #46:** Project Spaces, owner-scoped memory substrate, activity timeline, agent UI/AG-UI subset and handover context.
+- **PR #75:** bounded Project Space handover briefs.
+- **PR #89–#94:** AG-UI streaming, model-provider adapter boundary and opt-in Sentinel-mediated model tool calling.
+- **PR #96:** Control Centre and installable PWA restoration.
+- **PR #106:** evidence-backed build progress dashboard.
+- **PR #191:** owner usage/quota Control Centre.
+- **PR #193:** private Health Vision Stage 1 workspace, explicitly non-diagnostic and temporary/session-only.
+- **PR #103–#109:** companion Home/renderer, stale-viseme regression, transactional companion resource lifecycle and opt-in budget-gated model adapter.
+
+### C5. Provider intelligence, Infinity Zero and resources
+
+- **PR #33 / #37 and clean-stack successors:** native Intelligence & Token Engine foundation.
+- **PR #97:** Anthropic Messages streaming adapter documented in the repository's current README; any provider use still requires verified configuration and cost policy.
+- **PR #112–#123:** bounded model context, follow-up headroom, provider adapter allowlists, evidence/freshness and registry-gated routing.
+- **PR #163–#168:** Infinity Zero cost policy, deterministic route selection, verified result reuse, task translator and workload accountant.
+- **PR #169–#180:** research/prototype adapters for AxForge, OpenRouter, BitNet.cpp, Ollama, Magnitude and LM Studio; voice research/session contract; shared OpenAI-compatible streaming transport. These are not blanket permission to use remote or paid inference.
+- **PR #175–#176:** deterministic free-first model routing and durable free-tier usage/quota ledger.
+- **PR #182–#191:** resource-pool snapshot, encrypted provider connection manager, provider-reported usage, token reservations/settlement, explicit paid-inference gates and usage dashboard. The project-wide zero-cost rule takes precedence: paid-provider pathways must remain disabled unless the user changes that policy explicitly.
+- **PR #195:** APInex provider adapter proposal; provider key and service availability must be independently verified before any use.
+
+### C6. Device, browser, social and connector work
+
+- **PR #6:** cross-platform architecture: Chromebook/iPhone/iPad browser/PWA first, then Android/desktop extensions where validated.
+- **PR #15:** CoreDeck assessed as optional Android QA tooling, not AEGIS core.
+- **PR #125:** Simular Agent S computer-use evaluation; the intended integration is isolated and Sentinel-gated, not direct in-process control.
+- **PR #177–#178:** Hey Jev voice-pattern research and fail-closed voice-session contract.
+- **PR #196:** Krystal credential-scope and Composio integration blocker documented; a domain-reseller credential must not be repurposed as a general API key.
+- **PR #200–#201:** owner-controlled social/repository intake and independent connector-auth isolation/diagnostics for Instagram, Facebook Pages, GitHub, Cloudflare, Composio, Krystal.io and Oracle Cloud.
+- **PR #202:** Android/Chromebook device registration and assigned-plan bridge. No native Android app, Chromebook worker or paired device should be claimed unless separately verified.
+
+### C7. Experimental Lab and defensive research
+
+- **PR #159:** deny-by-default lab profile contract.
+- **PR #160–#162:** mass experimental audit, immutable execution envelope and disposable VM provider qualification contract.
+- **Important boundary:** these define policy and provider interfaces. They do not by themselves create a VM, microVM, container sandbox, network namespace or proven escape-resistant execution environment. A real disposable runner, independent isolation/escape testing and verified destruction remain prerequisites before untrusted code can be run.
+- Security research also includes malware-analysis sandbox and defensive telemetry candidates (for example CAPEv2, DRAKVUF, YARA, Zeek, Suricata and Wazuh). Treat them as research/isolated-lab candidates, not installed production components.
+
+## D. Current build-state distinctions — 23 November 2026
+
+Use these status labels consistently:
+
+- **Implemented on main:** present in the default branch and documented by the current README/source.
+- **Implemented on a draft branch:** code/tests exist on a PR branch but are not merged.
+- **Contract/research only:** schema, policy, design or assessment exists; no operational executor/service is implied.
+- **Not deployed/connected:** source may exist, but no live production resource, credential, account connection or device pairing has been verified.
+- **Not built:** no implementation evidence found.
+
+### D1. Main-branch foundation described by README
+
+The README describes a mobile-friendly Pages application, authenticated sessions, Workers AI chat, optional KV notes, ten native engineering skills, authenticated module/skills endpoints, Forge/Engineering Intelligence validators and read-only GitHub discovery. It also describes the initial MCP Bridge, durable runtime source, Project Spaces, capability/grant/vault/audit foundations, restricted Sentinel invocation, AG-UI streaming and Anthropic adapter. Read the actual current main source and live deployment before assuming any secret, binding or route is active.
+
+### D2. Current Infinity draft branch — PR #202
+
+PR #202, **Define AEGIS Infinity free-first orchestration and device bridge**, is a draft on `feature/aegis-infinity-free-first-orchestration-2026-11-23`, stacked on PR #201. Its source includes:
+- runtime migration `0004_devices.sql`;
+- owner-scoped device invitations/registry, token hashes and append-only device events;
+- Android/Chromebook enrolment and heartbeat endpoints;
+- owner list/create/revoke API and mobile Devices screen;
+- assignment of a planned agent run to an eligible device;
+- device-authenticated, read-only retrieval of only the plans explicitly assigned to that device;
+- free-first orchestration/device architecture documentation.
+
+The plan-observation bridge is not a general device command channel and does not execute arbitrary work. The branch's implementation head `71dedc244d912e4c6903c6d2be07cc6a4c2f3cbb` passed 608 Node tests and isolated D1 migration/smoke checks. The later documentation head recorded in the project handover is `c7d98d4cb3214d0295cc50ebfe89be17c667e0ee`; re-check the live PR checks before relying on current status. PR #202 remains unmerged and no production deployment, remote migration or device pairing is implied.
+
+### D3. Important not-yet-complete capabilities
+
+Do not describe these as finished merely because related policies/contracts or adapters exist:
+- general-purpose autonomous coding/execution agent;
+- fully operational specialist-agent workforce and task execution;
+- production-ready disposable VM/microVM sandbox and escape certification;
+- general-purpose outbound MCP/API connector manager with fully configured OAuth/client lifecycle;
+- live Composio, Krystal and Oracle Cloud execution with verified least-privilege credentials;
+- paired Android companion and Chromebook worker;
+- real browser/desktop computer-use worker;
+- always-on voice agent;
+- production model router with verified free inference availability across providers;
+- fully deployed 24/7 AEGIS runtime with all required D1/Queue/Cron resources and alerting;
+- production Media Studio and model-backed companion;
+- broad self-improvement or automatic code modification/merge/deployment.
+
+## E. External research candidates are not core dependencies
+
+The conversations and PR research have considered many projects, including Superpowers, Agency Agents, Mercury Agent, Google Modern Web Guidance, Addy Osmani agent skills, CoreDeck, Vercel agent-browser, Code Review Graph, FlashML, 9Router, Xiryn, DevToys, mcptoon, OpenDots, Firecrawl, n8n, Activepieces, Temporal, Hatchet, Trigger.dev, Inngest, Kestra, Windmill, Airflow, LoopForge, Headroom, Pixie, Kiwix, Liquid AI, Colibri, AgentShepard, Ajax, Simular Agent S, Hey Jev, LibreChat, LlamaIndex and SereneDB.
+
+These are research inputs, not a dependency list. Each must pass source pinning, licence/provenance, security, platform/hardware, free-tier and isolated-test gates before adaptation. No upstream project may replace AEGIS Core, Sentinel, canonical task state or audit.
+
+## F. Build order from the current foundation
+
+1. Reconcile the complete PR stack and branch ancestry; retain one canonical implementation per capability and close/mark duplicates only after verifying their changes are represented.
+2. Finish the owner-facing Control Centre path for planned runs and device assignment; show assigned device, plan status, heartbeat and revocation without adding arbitrary remote commands.
+3. Complete safe runtime execution lifecycle on the existing durable queue: task allowlist, claim/lease, evidence, result, retry, checkpoint, approval pause and recovery. Do not create a second queue.
+4. Connect the workflow/Agent Operations Inbox to real, narrowly scoped operations through Sentinel; keep model/agent approval separate from owner approval.
+5. Qualify a real disposable execution provider in the Experimental Lab and prove isolation, network policy, credential absence, output quarantine and destruction before enabling untrusted-code execution.
+6. Complete provider/integration inventory and exact-tool preflight; connect only services with independently verified free access and least-privilege credentials.
+7. Add the isolated browser worker and then device workers as optional execution adapters.
+8. Add voice and companion interfaces over the same task/approval model, not a separate authority system.
+9. Expand Knowledge Forge and Infinity Memory with source freshness, citations, access controls and correction workflows.
+10. Keep zero-cost routing, usage accounting, quota pause and audit as system-wide invariants.
+
+Every step remains test-first for behavioural changes, branch-isolated, evidence-backed and subject to explicit owner approval for production, billing, secrets, permissions, external writes and destructive operations.
