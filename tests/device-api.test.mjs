@@ -86,7 +86,30 @@ class DeviceD1 {
     for (const statement of statements) {
       const sql = statement.sql;
       const v = statement.values;
-      if (sql.includes('INSERT INTO devices')) {
+      if (sql.includes("UPDATE devices SET last_seen_at")) {
+        const row = this.devices.get(v[4]);
+        const eligible = row && row.token_hash === v[5] && row.status === 'active' &&
+          (!row.last_seen_at || row.last_seen_at <= v[6]);
+        if (eligible) {
+          row.last_seen_at = v[0]; row.app_version = v[1]; row.connectivity = v[2]; row.updated_at = v[3];
+        }
+        results.push({ meta: { changes: eligible ? 1 : 0 } });
+      } else if (sql.includes("UPDATE devices SET status = 'revoked'")) {
+        const row = this.devices.get(v[2]);
+        const eligible = row && row.owner_id === v[3] && row.status === 'active';
+        if (eligible) { row.status = 'revoked'; row.revoked_at = v[0]; row.updated_at = v[1]; row.token_version += 1; }
+        results.push({ meta: { changes: eligible ? 1 : 0 } });
+      } else if (sql.includes("INSERT INTO device_events") && sql.includes("SELECT ?, id, 'heartbeat'")) {
+        const row = this.devices.get(v[3]);
+        const eligible = row && row.token_hash === v[4] && row.status === 'active' && row.last_seen_at === v[5] && row.updated_at === v[6];
+        if (eligible) this.events.push({ event_id: v[0], device_id: row.id, event_type: 'heartbeat', detail_json: v[1], created_at: v[2] });
+        results.push({ meta: { changes: eligible ? 1 : 0 } });
+      } else if (sql.includes("INSERT INTO device_events") && sql.includes("SELECT ?, id, 'revoked'")) {
+        const row = this.devices.get(v[2]);
+        const eligible = row && row.owner_id === v[3] && row.status === 'revoked' && row.revoked_at === v[4] && row.updated_at === v[5];
+        if (eligible) this.events.push({ event_id: v[0], device_id: row.id, event_type: 'revoked', detail_json: '{}', created_at: v[1] });
+        results.push({ meta: { changes: eligible ? 1 : 0 } });
+      } else if (sql.includes('INSERT INTO devices')) {
         const invite = [...this.invites.values()].find((item) =>
           item.code_hash === v[4] && !item.consumed_at && !item.revoked_at && item.expires_at > v[5]);
         if (!invite) { results.push({ meta: { changes: 0 } }); continue; }
