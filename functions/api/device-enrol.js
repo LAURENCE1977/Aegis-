@@ -31,10 +31,15 @@ export async function onRequestPost({ request, env }) {
 
   try {
     const codeHash = await hashPairingCode(redemption.code);
+    const now = new Date().toISOString();
+    const invitation = await env.AEGIS_DB.prepare(
+      'SELECT id FROM device_pairing_invites WHERE code_hash = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?'
+    ).bind(codeHash, now).first();
+    if (!invitation) return jsonResponse({ error: 'Pairing code is invalid, expired, already used or revoked.' }, 410);
+
     const deviceId = crypto.randomUUID();
     const token = createDeviceToken();
     const tokenHash = await hashDeviceToken(token);
-    const now = new Date().toISOString();
 
     const results = await env.AEGIS_DB.batch([
       env.AEGIS_DB.prepare(
