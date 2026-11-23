@@ -89,3 +89,19 @@ test('issues a high-entropy per-device token and stores only a stable SHA-256 di
   assert.equal(await hashDeviceToken(token), digest);
   assert.notEqual(await hashDeviceToken(createDeviceToken()), digest);
 });
+
+test('creates a separate short-lived pairing code and hashes it before storage', async () => {
+  const { createPairingCode, hashPairingCode } = await import('../workers/runtime/devices.mjs');
+  const code = createPairingCode();
+  assert.match(code, /^aegis_pair_[A-Za-z0-9_-]{43}$/);
+  const digest = await hashPairingCode(code);
+  assert.match(digest, /^[a-f0-9]{64}$/);
+  assert.notEqual(digest, code);
+  assert.equal(await hashPairingCode(code), digest);
+  assert.notEqual(await hashPairingCode(createPairingCode()), digest);
+});
+
+test('rejects malformed pairing codes before hashing', async () => {
+  const { hashPairingCode } = await import('../workers/runtime/devices.mjs');
+  await assert.rejects(() => hashPairingCode('aegis_dev_not-a-pairing-code'), /pairing code/i);
+});
