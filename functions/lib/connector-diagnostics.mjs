@@ -121,9 +121,11 @@ export function evaluateConnectorStatus(providerId, observation = null, now = Da
       status = STATUS.PROVIDER_UNAVAILABLE;
     } else if (source.configurationValid === false) {
       status = STATUS.CONFIGURATION_ERROR;
+    } else if (source.expiresAt !== undefined && source.expiresAt !== null &&
+      (typeof source.expiresAt !== 'string' || !Number.isFinite(Date.parse(source.expiresAt)))) {
+      status = STATUS.CONFIGURATION_ERROR;
     } else if (source.revoked === true || source.status === 'revoked' ||
-      (source.expiresAt && Number.isFinite(Date.parse(source.expiresAt)) &&
-        Date.parse(source.expiresAt) <= now)) {
+      (source.expiresAt && Date.parse(source.expiresAt) <= now)) {
       status = STATUS.EXPIRED_OR_REVOKED;
     } else if (connected && connector.accountTypes &&
       !connector.accountTypes.includes(String(source.accountType || '').toLowerCase())) {
