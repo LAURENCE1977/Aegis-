@@ -199,3 +199,33 @@ test('device heartbeat authenticates the per-device credential and enforces a co
   assert.equal(denied.status, 401);
   assert.equal(db.events.filter((event) => event.event_type === 'heartbeat').length, 1);
 });
+
+test('browser enrolment keeps the credential out of JavaScript in a Secure HttpOnly cookie', async () => {
+  const db = new DeviceD1();
+  const inviteResponse = await ownerRequest(db, {
+    platform: 'android',
+    displayName: 'Browser paired phone',
+    capabilities: ['device.status.read'],
+  });
+  const { invitation } = await inviteResponse.json();
+  const response = await enrolDevice({
+    request: new Request('https://aegis.example/api/device-enrol', {
+      method: 'POST',
+      headers: {
+        Origin: 'https://aegis.example',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code: invitation.code }),
+    }),
+    env: { AEGIS_DB: db },
+  });
+  assert.equal(response.status, 201);
+  const cookie = response.headers.get('Set-Cookie');
+  assert.match(cookie, /__Host-aegis_device=/);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Strict/);
+  const body = await response.json();
+  assert.equal(body.credential, undefined);
+  assert.equal(body.credentialStoredInHttpOnlyCookie, true);
+});
