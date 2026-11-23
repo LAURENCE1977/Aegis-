@@ -56,8 +56,20 @@ class DeviceD1 {
           row.last_seen_at = v[0]; row.app_version = v[1]; row.connectivity = v[2]; row.updated_at = v[3];
           return { meta: { changes: 1 } };
         }
+        if (sql.includes("UPDATE devices SET status = 'revoked'")) {
+          const row = db.devices.get(v[2]);
+          if (!row || row.owner_id !== v[3] || row.status !== 'active') return { meta: { changes: 0 } };
+          row.status = 'revoked'; row.revoked_at = v[0]; row.updated_at = v[1]; row.token_version += 1;
+          return { meta: { changes: 1 } };
+        }
         if (sql.includes('INSERT INTO device_events')) {
-          db.events.push({ event_id: v[0], device_id: v[1], event_type: sql.includes("'heartbeat'") ? 'heartbeat' : 'revoked', detail_json: v[2], created_at: v[3] });
+          const heartbeat = sql.includes("'heartbeat'");
+          db.events.push({
+            event_id: v[0], device_id: v[1],
+            event_type: heartbeat ? 'heartbeat' : 'revoked',
+            detail_json: heartbeat ? v[2] : '{}',
+            created_at: heartbeat ? v[3] : v[2],
+          });
           return { meta: { changes: 1 } };
         }
         return { meta: { changes: 0 } };
