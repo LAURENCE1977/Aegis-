@@ -119,9 +119,9 @@ It does **not** create credentials, bypass Meta account requirements, make an un
 
 ## 7. Implementation and safety status
 
-This document is the isolated connection design. It does not initiate social OAuth, create API keys, alter account permissions, change DNS/nameservers/email, modify Oracle resources, enable Composio execution, deploy production or expose phone-control access.
+This document is the isolated connection design. It does not configure AEGIS-side social OAuth, create API keys, alter account permissions, change DNS/nameservers/email, modify Oracle resources, enable Composio execution, deploy production or expose phone-control access.
 
-The next implementation step is a tested, read-only connection-diagnostics model and isolated Meta connection status endpoints. Actual Instagram/Facebook OAuth should be started as two separate user-authorised connections; provider tokens remain server-side and are never shared between ChatGPT and AEGIS.
+Two separate **ChatGPT-side Composio** authorisation flows have now been initiated for Instagram and Facebook Pages. They are pending user completion and are labelled separately. These are not AEGIS runtime connections and do not grant hosted AEGIS access. The next implementation step is a tested, read-only connection-diagnostics model and isolated Meta connection status endpoints. Any AEGIS-side OAuth must be separately configured; provider tokens remain server-side and are never shared between ChatGPT and AEGIS.
 
 ## 8. Acceptance criteria
 
