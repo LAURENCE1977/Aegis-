@@ -45,7 +45,6 @@ test('merge intelligence separates confirmed Git conflicts from overlapping-file
 
   assert.deepEqual(result.overlaps, [
     { pullRequests: [201, 202], files: ['index.html'] },
-    { pullRequests: [201, 203], files: [] },
     { pullRequests: [202, 203], files: ['functions/api/chat.js'] },
   ]);
   assert.equal(result.pullRequests.find(item => item.number === 203).recommendation, 'resolve_github_conflicts');
