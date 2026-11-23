@@ -37,7 +37,12 @@ The runtime's current agent queue remains plan-only. Declaring `CAPABILITY_DB` i
 
 ## Cloudflare Pages API binding boundary
 
-The Pages Functions API currently uses the binding name `AEGIS_DB` for Sentinel invocation and approval routes. In the Pages project settings, that binding must point to the dedicated capability D1 database (the same logical store represented by the runtime worker's `CAPABILITY_DB` binding), not the runtime jobs database. Binding names are environment-specific; the underlying database boundary is not. Keep the worker's `DB` and Pages' capability-store binding on separate D1 resources. Do not change bindings or apply remote migrations until the owner has reviewed and approved the deployment plan.
+The Pages project needs two separate D1 bindings because its API routes serve both the runtime/device data model and the Sentinel policy store:
+
+- `AEGIS_DB` remains the runtime/device database. It must point to the same D1 database ID as the standalone runtime Worker's `DB`, because pairing records, devices, agent runs and device assignments are shared.
+- `CAPABILITY_DB` is the dedicated capability database. The Pages routes for grants, approvals, provider connections/secrets and Sentinel invocations use this binding. It must point to the same D1 database ID as the standalone runtime Worker's `CAPABILITY_DB`.
+
+The two logical databases must remain separate: Pages `AEGIS_DB` / Worker `DB` are the runtime store; Pages `CAPABILITY_DB` / Worker `CAPABILITY_DB` are the policy and approval store. Do not point both Pages bindings at one database, and do not point either capability binding at the runtime database. The Pages project settings and worker example configuration must be reviewed together before deployment. No remote binding change, database creation or migration is authorized by this source change.
 
 ## Deployment gate
 
