@@ -32,7 +32,7 @@ const PROVIDER_IDS = new Set(PROVIDERS.map(provider => provider.id));
 const VAULT_BACKED_CHAT_PROVIDERS = new Set(["anthropic", "alibaba-qwen"]);
 
 function databaseAvailable(env) {
-  return Boolean(env?.AEGIS_DB && typeof env.AEGIS_DB.prepare === "function");
+  return Boolean(env?.CAPABILITY_DB && typeof env.CAPABILITY_DB.prepare === "function");
 }
 
 export async function onRequestGet({ request, env }) {
@@ -43,7 +43,7 @@ export async function onRequestGet({ request, env }) {
   }
 
   try {
-    const saved = await listConnections(env.AEGIS_DB, OWNER_ID, 100);
+    const saved = await listConnections(env.CAPABILITY_DB, OWNER_ID, 100);
     const byProvider = new Map();
     // listConnections is newest-first; keep the first record for each provider.
     for (const connection of saved) {
@@ -95,7 +95,7 @@ export async function onRequestPost({ request, env }) {
 
   let stored;
   try {
-    stored = await storeVaultSecret(env.AEGIS_DB, {
+    stored = await storeVaultSecret(env.CAPABILITY_DB, {
       principalId: OWNER_ID,
       providerId: body.providerId,
       secret: body.apiKey,
@@ -105,7 +105,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const connection = await createConnection(env.AEGIS_DB, {
+    const connection = await createConnection(env.CAPABILITY_DB, {
       principalId: OWNER_ID,
       providerId: body.providerId,
       secretRef: stored.secretRef,
@@ -127,7 +127,7 @@ export async function onRequestPost({ request, env }) {
     }, 201);
   } catch (error) {
     try {
-      await revokeVaultSecret(env.AEGIS_DB, {
+      await revokeVaultSecret(env.CAPABILITY_DB, {
         principalId: OWNER_ID,
         providerId: body.providerId,
         secretRef: stored.secretRef,
@@ -162,19 +162,19 @@ export async function onRequestDelete({ request, env }) {
   }
 
   try {
-    const connection = await loadConnection(env.AEGIS_DB, {
+    const connection = await loadConnection(env.CAPABILITY_DB, {
       principalId: OWNER_ID,
       providerId: body.providerId,
     });
     if (!connection) return jsonResponse({ error: "Provider connection not found." }, 404);
 
     // Erase the encrypted credential before retiring its metadata reference.
-    await revokeVaultSecret(env.AEGIS_DB, {
+    await revokeVaultSecret(env.CAPABILITY_DB, {
       principalId: OWNER_ID,
       providerId: body.providerId,
       secretRef: connection.secretRef,
     });
-    const revoked = await revokeConnection(env.AEGIS_DB, connection.id, OWNER_ID);
+    const revoked = await revokeConnection(env.CAPABILITY_DB, connection.id, OWNER_ID);
     if (!revoked) return jsonResponse({ error: "Provider connection changed before revocation." }, 409);
     return jsonResponse({ revoked: true, providerId: body.providerId });
   } catch {

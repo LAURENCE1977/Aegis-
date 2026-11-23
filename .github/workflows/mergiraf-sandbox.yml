@@ -9,7 +9,9 @@ permissions:
 
 concurrency:
   group: aegis-mergiraf-sandbox-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Let the pinned Rust install/sandbox finish; superseding commits should queue
+  # rather than cancel the only independent merge-conflict verification.
+  cancel-in-progress: false
 
 jobs:
   isolated-merge:

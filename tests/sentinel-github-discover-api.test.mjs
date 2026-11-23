@@ -87,7 +87,7 @@ test('GitHub discovery rejects unauthenticated requests before touching D1', asy
   const db = new MemoryD1(activeGrant());
   const response = await onRequestPost({
     request: await request(undefined, { authenticated: false }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async () => { throw new Error('must not fetch'); },
   });
   assert.equal(response.status, 401);
@@ -99,7 +99,7 @@ test('GitHub discovery rejects cross-origin and malformed repository URLs before
   const db = new MemoryD1(activeGrant());
   const crossOrigin = await onRequestPost({
     request: await request(undefined, { origin: 'https://attacker.example' }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async () => { fetchCalls += 1; throw new Error('must not fetch'); },
   });
   assert.equal(crossOrigin.status, 403);
@@ -111,7 +111,7 @@ test('GitHub discovery rejects cross-origin and malformed repository URLs before
   ]) {
     const response = await onRequestPost({
       request: await request({ sourceUrl }),
-      env: { ...envBase, AEGIS_DB: db },
+      env: { ...envBase, CAPABILITY_DB: db },
       fetchImpl: async () => { fetchCalls += 1; throw new Error('must not fetch'); },
     });
     assert.equal(response.status, 400);
@@ -124,7 +124,7 @@ test('GitHub discovery requires an exact repository grant before external fetch'
   let fetchCalls = 0;
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async () => { fetchCalls += 1; throw new Error('must not fetch'); },
   });
   assert.equal(response.status, 403);
@@ -139,7 +139,7 @@ test('GitHub discovery enforces the atomic rate limit before external fetch', as
   let fetchCalls = 0;
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async () => { fetchCalls += 1; throw new Error('must not fetch'); },
   });
   assert.equal(response.status, 429);
@@ -154,7 +154,7 @@ test('GitHub discovery executes only the fixed public metadata adapter and audit
   let requestedOptions;
   const response = await onRequestPost({
     request: await request({ sourceUrl: 'https://github.com/Example/Repo.git' }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async (url, options) => {
       requestedUrl = url;
       requestedOptions = options;
@@ -178,7 +178,7 @@ test('GitHub discovery rejects private repository metadata and records execution
   const db = new MemoryD1(activeGrant());
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
     fetchImpl: async () => githubResponse({ private: true }),
   });
   assert.equal(response.status, 502);

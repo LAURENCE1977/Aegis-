@@ -29,12 +29,12 @@ function exactKeys(value, allowed) {
 export async function onRequestGet({ request, env }) {
   const denied = await authorizeOwner(request, env);
   if (denied) return denied;
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Grant storage is not configured.' }, 503);
   }
 
   try {
-    const grants = await listCapabilityGrants(env.AEGIS_DB, OWNER_ID, 100);
+    const grants = await listCapabilityGrants(env.CAPABILITY_DB, OWNER_ID, 100);
     return jsonResponse({ grants: grants.map(publicGrant), total: grants.length });
   } catch {
     return jsonResponse({ error: 'Grant history is temporarily unavailable.' }, 503);
@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: 'Invalid request origin.' }, 403);
   }
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Grant storage is not configured.' }, 503);
   }
 
@@ -82,7 +82,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const grant = await createCapabilityGrant(env.AEGIS_DB, {
+    const grant = await createCapabilityGrant(env.CAPABILITY_DB, {
       principalId: OWNER_ID,
       capabilityId: manifest.id,
       capabilityVersion: manifest.version,
@@ -109,7 +109,7 @@ export async function onRequestDelete({ request, env }) {
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: 'Invalid request origin.' }, 403);
   }
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Grant storage is not configured.' }, 503);
   }
 
@@ -122,7 +122,7 @@ export async function onRequestDelete({ request, env }) {
   }
 
   try {
-    const revoked = await revokeCapabilityGrant(env.AEGIS_DB, body.id, OWNER_ID);
+    const revoked = await revokeCapabilityGrant(env.CAPABILITY_DB, body.id, OWNER_ID);
     if (!revoked) return jsonResponse({ error: 'Active grant was not found.' }, 404);
     return jsonResponse({ revoked: true, id: body.id });
   } catch {

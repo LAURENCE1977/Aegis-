@@ -38,7 +38,7 @@ export async function onRequestPost({ request, env }) {
   if (!isSameOriginRequest(request)) {
     return jsonResponse({ error: 'Cross-origin request rejected.' }, 403);
   }
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== 'function') {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== 'function') {
     return jsonResponse({ error: 'Sentinel storage is not configured.' }, 503);
   }
 
@@ -74,7 +74,7 @@ export async function onRequestPost({ request, env }) {
       input: body.input,
       now,
     }, createSentinelDependencies({
-      db: env.AEGIS_DB,
+      db: env.CAPABILITY_DB,
       adapters: createBuiltinAdapterRegistry(),
     }));
 

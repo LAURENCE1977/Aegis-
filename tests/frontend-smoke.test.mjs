@@ -236,3 +236,41 @@ test('Control Centre exposes a read-only Composio integrations inventory', () =>
   assert.match(html, /executionEnabled/);
   assert.match(html, /Composio connection inventory/);
 });
+
+test('Control Centre exposes a secure device pairing and revocation surface', () => {
+  for (const id of [
+    'deviceTab','deviceSection','deviceStatus','devicePairForm','devicePlatform',
+    'deviceDisplayName','devicePairingCode','deviceRedeemForm','deviceInvitation',
+    'deviceList','createDeviceInviteBtn','redeemDeviceBtn',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing device control element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/devices'/);
+  assert.match(html, /controlApi\('\/api\/device-enrol'/);
+  assert.match(html, /controlApi\('\/api\/device-heartbeat'/);
+  assert.match(html, /method:\s*'PATCH'/);
+  assert.match(html, /aegis_device_id/);
+});
+
+test('Devices Control Centre exposes a read-only agent-run inventory and Sentinel-gated assignment action', () => {
+  for (const id of ['agentRunList','agentRunStatus','refreshAgentRunsBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing agent-run UI element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/agent-runs'/);
+  assert.match(html, /controlApi\('\/api\/device-assign-run'/);
+  assert.match(html, /method:\s*'POST'/);
+  assert.match(html, /Only planned runs can be assigned/);
+});
+
+
+test('paired device view loads only its assigned plans using the HttpOnly device cookie', () => {
+  for (const id of ['deviceAssignedRunList','deviceAssignedRunStatus','refreshDeviceAssignedRunsBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing assigned-device plan UI element: ' + id);
+  }
+  assert.match(html, /fetch\('\/api\/device-agent-runs\?deviceId='/);
+  assert.match(html, /credentials:\s*'same-origin'/);
+  assert.match(html, /title\.textContent\s*=\s*run\.objective/);
+  assert.match(html, /plan\.textContent\s*=\s*JSON\.stringify\(run\.plan/);
+  assert.match(html, /localStorage\.getItem\('aegis_device_id'\)/);
+  assert.doesNotMatch(html, /localStorage\.setItem\(['"]aegis_device_token/);
+});

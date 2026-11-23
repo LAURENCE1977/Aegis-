@@ -30,12 +30,12 @@ function publicApproval(approval, now = Date.now()) {
 export async function onRequestGet({ request, env }) {
   const denied = await authorizeOwner(request, env);
   if (denied) return denied;
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== "function") {
     return jsonResponse({ error: "Approval storage is not configured." }, 503);
   }
 
   try {
-    const approvals = await listPendingApprovals(env.AEGIS_DB, 50);
+    const approvals = await listPendingApprovals(env.CAPABILITY_DB, 50);
     const now = Date.now();
     return jsonResponse({
       approvals: approvals.map((approval) => publicApproval(approval, now)),
@@ -52,7 +52,7 @@ export async function onRequestPost({ request, env }) {
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: "Invalid request origin." }, 403);
   }
-  if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
+  if (!env.CAPABILITY_DB || typeof env.CAPABILITY_DB.prepare !== "function") {
     return jsonResponse({ error: "Approval storage is not configured." }, 503);
   }
 
@@ -69,7 +69,7 @@ export async function onRequestPost({ request, env }) {
   try {
     // The authenticated session is the single deployment owner. Never accept
     // the decision actor or operation binding from the browser.
-    const approval = await decideApprovalRequest(env.AEGIS_DB, {
+    const approval = await decideApprovalRequest(env.CAPABILITY_DB, {
       id: body.id,
       decision: body.decision,
       decidedBy: "owner",

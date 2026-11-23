@@ -5,10 +5,35 @@ import runtime, { handleRuntimeFetch } from '../workers/runtime/index.mjs';
 const token = 'runtime-integration-token-with-at-least-32-characters';
 
 class MemoryD1 {
-  constructor() { this.jobs = new Map(); this.events = []; }
+  constructor() { this.jobs = new Map(); this.events = []; this.failAuditInsert = false; }
+  async batch(statements) {
+    const db = this;
+    const jobsSnapshot = new Map([...this.jobs].map(([id, row]) => [id, { ...row }]));
+    const eventsSnapshot = [...this.events];
+    try {
+      const results = [];
+      for (const statement of statements) {
+        if (statement.sql.includes('RETURNING attempts')) {
+          const claim = await statement.first();
+          db.lastBatchChanges = claim ? 1 : 0;
+          results.push({ results: claim ? [claim] : [], meta: { changes: claim ? 1 : 0 } });
+        } else {
+          const result = await statement.run();
+          db.lastBatchChanges = result?.meta?.changes || 0;
+          results.push(result);
+        }
+      }
+      return results;
+    } catch (error) {
+      this.jobs = jobsSnapshot;
+      this.events = eventsSnapshot;
+      throw error;
+    }
+  }
   prepare(sql) {
     const db = this;
     return {
+      sql,
       values: [],
       bind(...values) { this.values = values; return this; },
       async first() {
@@ -49,6 +74,15 @@ class MemoryD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO job_events')) {
+          if (db.failAuditInsert) throw new Error('audit unavailable');
+          if (sql.includes('SELECT')) {
+            if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
+            const row = db.jobs.get(v[2]);
+            if (!row || row.status !== 'running' || row.updated_at !== v[3]) return { meta: { changes: 0 } };
+            if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
+            db.events.push({ event_id: v[0], job_id: row.id, event_type: 'running', detail_json: JSON.stringify({ attempt: row.attempts }), created_at: v[1] });
+            return { meta: { changes: 1 } };
+          }
           if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
@@ -182,6 +216,25 @@ test('queue consumer executes only the persisted health-check job and acknowledg
   assert.equal(retried, false);
 });
 
+
+test('a job claim is not committed when its audit event cannot be persisted', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postJob({ type: 'aegis.health_check', payload: {} }), env);
+  const { job } = await response.json();
+  DB.failAuditInsert = true;
+
+  await assert.rejects(() => runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { jobId: job.id },
+      ack() { assert.fail('a failed audited claim must not be acknowledged'); },
+      retry() {},
+    }],
+  }, env), /audit unavailable/);
+
+  assert.equal(DB.jobs.get(job.id).status, 'queued');
+  assert.equal(DB.events.some((event) => event.event_type === 'running'), false);
+});
 
 test('a failed queue dispatch remains durable and the scheduled outbox sweep recovers it', async () => {
   const { env, DB } = makeEnv();

@@ -129,6 +129,7 @@
         <button class="secondary" id="securityTab" type="button">Security</button>
         <button class="secondary" id="providerTab" type="button">Providers</button>
         <button class="secondary" id="integrationTab" type="button">Connections</button>
+        <button class="secondary" id="deviceTab" type="button">Devices</button>
       </div>
       <section id="chatSection">
       <label class="project-context" for="chatProjectSelect">Chat context
@@ -212,6 +213,49 @@
         <div id="integrationList" aria-live="polite"></div>
         <div class="workspace-actions"><button class="secondary" id="refreshIntegrationsBtn" type="button">Refresh connections</button></div>
       </section>
+      <section class="memory-panel" id="deviceSection" hidden>
+        <h2>Devices &amp; phone bridge</h2>
+        <p class="memory-help">Pair this Android phone or a Chromebook with AEGIS. Each device gets its own revocable credential. The browser credential is kept in a Secure, HttpOnly cookie; it is never saved in browser storage or shown to page scripts.</p>
+        <p class="status" id="deviceStatus" role="status" aria-live="polite">Device registry has not been loaded.</p>
+        <form class="memory-form" id="devicePairForm">
+          <label for="devicePlatform">Device type</label>
+          <select id="devicePlatform" required>
+            <option value="android">Android phone</option>
+            <option value="chromebook">Chromebook</option>
+          </select>
+          <label for="deviceDisplayName">Device name</label>
+          <input id="deviceDisplayName" maxlength="48" placeholder="e.g. My Android phone" required />
+          <label><input type="checkbox" name="deviceCapability" value="device.status.read" checked /> Device status</label>
+          <label><input type="checkbox" name="deviceCapability" value="aegis.jobs.observe" checked /> Assigned job status (read-only)</label>
+          <button id="createDeviceInviteBtn" type="submit">Create one-time pairing code</button>
+        </form>
+        <div id="deviceInvitation" class="workspace-card" hidden>
+          <h3>One-time pairing code</h3>
+          <p>It expires in 10 minutes. Open AEGIS on the target device, sign in as the owner, open Devices and enter this code.</p>
+          <p id="deviceInvitationCode" class="forge-preview"></p>
+          <p id="deviceInvitationExpiry" class="memory-meta"></p>
+        </div>
+        <form class="memory-form" id="deviceRedeemForm">
+          <label for="devicePairingCode">Pair this browser / phone using a code</label>
+          <input id="devicePairingCode" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="aegis_pair_…" required />
+          <button id="redeemDeviceBtn" type="submit">Pair this device</button>
+        </form>
+        <div class="workspace-actions">
+          <button class="secondary" id="checkDeviceConnectionBtn" type="button">Check this device connection</button>
+          <button class="secondary" id="refreshDevicesBtn" type="button">Refresh devices</button>
+        </div>
+        <div id="deviceList" aria-live="polite"></div>
+        <h3>Planned agent runs</h3>
+        <p class="memory-help">Review plans created by AEGIS. Assigning a plan grants observation only; devices cannot execute it.</p>
+        <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent-run inventory has not been loaded.</p>
+        <div class="workspace-actions"><button class="secondary" id="refreshAgentRunsBtn" type="button">Refresh agent runs</button></div>
+        <div id="agentRunList" aria-live="polite"></div>
+        <h3>This device's assigned plans</h3>
+        <p class="memory-help">This view uses this browser's device-only HttpOnly credential. It shows only plans assigned to this device and cannot run them.</p>
+        <p class="status" id="deviceAssignedRunStatus" role="status" aria-live="polite">No device plans loaded.</p>
+        <div class="workspace-actions"><button class="secondary" id="refreshDeviceAssignedRunsBtn" type="button">Refresh this device's plans</button></div>
+        <div id="deviceAssignedRunList" aria-live="polite"></div>
+      </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
         <p class="memory-help">Create private workspaces for projects. Notes and decisions are kept in an owner-only timeline.</p>
@@ -291,6 +335,28 @@
     const integrationStatus = document.getElementById('integrationStatus');
     const integrationList = document.getElementById('integrationList');
     const refreshIntegrationsBtn = document.getElementById('refreshIntegrationsBtn');
+    const deviceTab = document.getElementById('deviceTab');
+    const deviceSection = document.getElementById('deviceSection');
+    const deviceStatus = document.getElementById('deviceStatus');
+    const devicePairForm = document.getElementById('devicePairForm');
+    const devicePlatform = document.getElementById('devicePlatform');
+    const deviceDisplayName = document.getElementById('deviceDisplayName');
+    const deviceInvitation = document.getElementById('deviceInvitation');
+    const deviceInvitationCode = document.getElementById('deviceInvitationCode');
+    const deviceInvitationExpiry = document.getElementById('deviceInvitationExpiry');
+    const deviceRedeemForm = document.getElementById('deviceRedeemForm');
+    const devicePairingCode = document.getElementById('devicePairingCode');
+    const createDeviceInviteBtn = document.getElementById('createDeviceInviteBtn');
+    const redeemDeviceBtn = document.getElementById('redeemDeviceBtn');
+    const checkDeviceConnectionBtn = document.getElementById('checkDeviceConnectionBtn');
+    const refreshDevicesBtn = document.getElementById('refreshDevicesBtn');
+    const deviceList = document.getElementById('deviceList');
+    const agentRunList = document.getElementById('agentRunList');
+    const agentRunStatus = document.getElementById('agentRunStatus');
+    const refreshAgentRunsBtn = document.getElementById('refreshAgentRunsBtn');
+    const deviceAssignedRunList = document.getElementById('deviceAssignedRunList');
+    const deviceAssignedRunStatus = document.getElementById('deviceAssignedRunStatus');
+    const refreshDeviceAssignedRunsBtn = document.getElementById('refreshDeviceAssignedRunsBtn');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
     const moduleList = document.getElementById('moduleList');
@@ -693,9 +759,11 @@
       securitySection.hidden = panel !== 'security';
       providerSection.hidden = panel !== 'providers';
       integrationSection.hidden = panel !== 'integrations';
+      deviceSection.hidden = panel !== 'devices';
       if (panel !== 'providers') providerApiKey.value = '';
       if (panel === 'providers') loadProviderConnections();
       if (panel === 'integrations') loadComposioIntegrations();
+      if (panel === 'devices') { loadDevices(); loadAgentRuns(); loadDeviceAssignedRuns(); }
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
@@ -715,6 +783,71 @@
     providerTab.addEventListener('click', () => showPanel('providers'));
     integrationTab.addEventListener('click', () => showPanel('integrations'));
     refreshIntegrationsBtn.addEventListener('click', loadComposioIntegrations);
+    deviceTab.addEventListener('click', () => showPanel('devices'));
+    refreshDevicesBtn.addEventListener('click', loadDevices);
+    refreshAgentRunsBtn.addEventListener('click', loadAgentRuns);
+    refreshDeviceAssignedRunsBtn.addEventListener('click', loadDeviceAssignedRuns);
+    checkDeviceConnectionBtn.addEventListener('click', checkCurrentDeviceConnection);
+
+    devicePairForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const capabilities = [...devicePairForm.querySelectorAll('input[name="deviceCapability"]:checked')].map(input => input.value);
+      if (!capabilities.length) {
+        deviceStatus.textContent = 'Select at least one device capability.';
+        return;
+      }
+      createDeviceInviteBtn.disabled = true;
+      deviceStatus.textContent = 'Creating a one-time pairing code…';
+      deviceInvitation.hidden = true;
+      try {
+        const data = await controlApi('/api/devices', {
+          method: 'POST',
+          body: JSON.stringify({
+            platform: devicePlatform.value,
+            displayName: deviceDisplayName.value.trim(),
+            capabilities,
+          }),
+        });
+        devicePairingCode.value = data.invitation.code;
+        deviceInvitationCode.textContent = data.invitation.code;
+        deviceInvitationExpiry.textContent = 'Expires: ' + data.invitation.expiresAt;
+        deviceInvitation.hidden = false;
+        deviceStatus.textContent = 'Pairing code created. It is shown once and expires in 10 minutes.';
+      } catch (error) {
+        deviceStatus.textContent = error.message || 'Could not create pairing code.';
+      } finally {
+        createDeviceInviteBtn.disabled = false;
+      }
+    });
+
+    deviceRedeemForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const code = devicePairingCode.value.trim();
+      if (!/^aegis_pair_[A-Za-z0-9_-]{43}$/.test(code)) {
+        deviceStatus.textContent = 'Enter a valid AEGIS pairing code.';
+        return;
+      }
+      redeemDeviceBtn.disabled = true;
+      deviceStatus.textContent = 'Pairing this device securely…';
+      try {
+        const data = await controlApi('/api/device-enrol', {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        });
+        localStorage.setItem('aegis_device_id', data.device.id);
+        devicePairingCode.value = '';
+        deviceStatus.textContent = data.credentialStoredInHttpOnlyCookie
+          ? 'This browser is paired. Its device credential is protected in an HttpOnly cookie.'
+          : 'Device paired. Store the one-time credential in Android Keystore.';
+        await checkCurrentDeviceConnection();
+        await loadDeviceAssignedRuns();
+        await loadDevices();
+      } catch (error) {
+        deviceStatus.textContent = error.message || 'Device pairing failed.';
+      } finally {
+        redeemDeviceBtn.disabled = false;
+      }
+    });
 
     providerForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -818,6 +951,235 @@
           : 'No model providers are available.';
       } catch (error) {
         providerStatus.textContent = error.message || 'Provider connection inventory is unavailable.';
+      }
+    }
+
+    async function loadDevices() {
+      deviceStatus.textContent = 'Loading enrolled devices…';
+      deviceList.replaceChildren();
+      refreshDevicesBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/devices');
+        const devices = Array.isArray(data.devices) ? data.devices : [];
+        if (!devices.length) {
+          deviceList.textContent = 'No devices are paired yet. Create a one-time code above to begin.';
+          deviceList.className = 'memory-empty';
+        } else {
+          deviceList.className = '';
+          devices.forEach(device => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h3');
+            title.textContent = device.displayName + ' · ' + device.platform;
+            const details = document.createElement('p');
+            details.textContent = 'Status: ' + device.status +
+              ' · Last seen: ' + (device.lastSeenAt || 'Not connected yet') +
+              ' · Capabilities: ' + (Array.isArray(device.capabilities) ? device.capabilities.join(', ') : 'None');
+            card.append(title, details);
+            if (device.status === 'active') {
+              const actions = document.createElement('div');
+              actions.className = 'workspace-actions';
+              actions.append(memoryButton('Revoke device', async () => {
+                if (!confirm('Revoke ' + device.displayName + '? It will no longer be able to connect.')) return;
+                try {
+                  await controlApi('/api/devices', {
+                    method: 'PATCH',
+                    body: JSON.stringify({ deviceId: device.id, action: 'revoke' }),
+                  });
+                  if (localStorage.getItem('aegis_device_id') === device.id) {
+                    localStorage.removeItem('aegis_device_id');
+                  }
+                  deviceStatus.textContent = 'Device revoked.';
+                  await loadDevices();
+                } catch (error) {
+                  deviceStatus.textContent = error.message || 'Could not revoke device.';
+                }
+              }));
+              card.append(actions);
+            }
+            deviceList.append(card);
+          });
+        }
+        deviceStatus.textContent = devices.length + ' enrolled device(s) · credentials are never displayed in this list.';
+      } catch (error) {
+        deviceStatus.textContent = error.message || 'Device registry is unavailable.';
+      } finally {
+        refreshDevicesBtn.disabled = false;
+      }
+    }
+
+    async function loadAgentRuns() {
+      agentRunStatus.textContent = 'Loading planned agent runs…';
+      agentRunList.replaceChildren();
+      refreshAgentRunsBtn.disabled = true;
+      try {
+        const [data, deviceData] = await Promise.all([
+          controlApi('/api/agent-runs'),
+          controlApi('/api/devices'),
+        ]);
+        const runs = Array.isArray(data.agentRuns) ? data.agentRuns : [];
+        const devices = Array.isArray(deviceData.devices) ? deviceData.devices : [];
+        const eligibleDevices = devices.filter(device =>
+          device.status === 'active' &&
+          Array.isArray(device.capabilities) &&
+          device.capabilities.includes('aegis.jobs.observe')
+        );
+        if (!runs.length) {
+          agentRunList.textContent = 'No agent runs have been recorded yet.';
+          agentRunList.className = 'memory-empty';
+        } else {
+          agentRunList.className = '';
+          runs.forEach(run => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h3');
+            title.textContent = run.objective || 'Untitled agent run';
+            const details = document.createElement('p');
+            details.textContent = 'Status: ' + run.status +
+              ' · Created: ' + (run.createdAt || 'Unknown') +
+              ' · Device: ' + (run.assignedDeviceId || 'Not assigned');
+            card.append(title, details);
+            if (run.status === 'planned' && !run.assignedDeviceId) {
+              const select = document.createElement('select');
+              select.setAttribute('aria-label', 'Choose an active observation device');
+              const placeholder = document.createElement('option');
+              placeholder.value = '';
+              placeholder.textContent = 'Choose active device';
+              select.append(placeholder);
+              eligibleDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.id;
+                option.textContent = device.displayName + ' · ' + device.platform;
+                select.append(option);
+              });
+              const assign = memoryButton('Assign for read-only observation', async () => {
+                if (!select.value) {
+                  agentRunStatus.textContent = 'Choose an active device with observation permission first.';
+                  return;
+                }
+                assign.disabled = true;
+                try {
+                  await controlApi('/api/device-assign-run', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId: select.value, agentRunId: run.id }),
+                  });
+                  agentRunStatus.textContent = 'Plan assigned for read-only observation.';
+                  await loadAgentRuns();
+                } catch (error) {
+                  agentRunStatus.textContent = error.message || 'Could not assign this plan.';
+                  assign.disabled = false;
+                }
+              });
+              if (!eligibleDevices.length) {
+                select.disabled = true;
+                assign.disabled = true;
+              }
+              const actions = document.createElement('div');
+              actions.className = 'workspace-actions';
+              actions.append(select, assign);
+              card.append(actions);
+            } else if (run.status === 'planned') {
+              const note = document.createElement('p');
+              note.textContent = 'Only planned runs can be assigned. This plan is already assigned.';
+              card.append(note);
+            }
+            agentRunList.append(card);
+          });
+        }
+        agentRunStatus.textContent = runs.length + ' agent run(s) · plans are read-only and require separate approval before execution.';
+      } catch (error) {
+        agentRunStatus.textContent = error.message || 'Agent-run inventory is unavailable.';
+      } finally {
+        refreshAgentRunsBtn.disabled = false;
+      }
+    }
+
+    async function loadDeviceAssignedRuns() {
+      const deviceId = localStorage.getItem('aegis_device_id');
+      deviceAssignedRunList.replaceChildren();
+      refreshDeviceAssignedRunsBtn.disabled = true;
+      if (!deviceId) {
+        deviceAssignedRunList.className = 'memory-empty';
+        deviceAssignedRunStatus.textContent = 'Pair this browser as a device to see plans assigned specifically to it.';
+        refreshDeviceAssignedRunsBtn.disabled = false;
+        return;
+      }
+
+      deviceAssignedRunStatus.textContent = 'Loading plans assigned to this device…';
+      try {
+        const response = await fetch('/api/device-agent-runs?deviceId=' + encodeURIComponent(deviceId), {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        let data = {};
+        try { data = await response.json(); } catch (error) {}
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('This device credential is missing, invalid or revoked. Pair this browser again.');
+          }
+          if (response.status === 403) {
+            throw new Error('This device does not have read-only plan observation permission.');
+          }
+          throw new Error(data.error || ('Device plan service error ' + response.status));
+        }
+
+        const runs = Array.isArray(data.agentRuns) ? data.agentRuns : [];
+        if (!runs.length) {
+          deviceAssignedRunList.className = 'memory-empty';
+          deviceAssignedRunList.textContent = 'No plans have been assigned to this device yet.';
+        } else {
+          deviceAssignedRunList.className = '';
+          runs.forEach(run => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h4');
+            title.textContent = run.objective || 'Untitled assigned plan';
+            const details = document.createElement('p');
+            details.textContent = 'Status: ' + (run.status || 'unknown') +
+              ' · Updated: ' + (run.updatedAt || 'Unknown');
+            card.append(title, details);
+            if (run.plan && typeof run.plan === 'object') {
+              const plan = document.createElement('pre');
+              plan.className = 'forge-preview';
+              plan.textContent = JSON.stringify(run.plan, null, 2).slice(0, 8000);
+              card.append(plan);
+            }
+            deviceAssignedRunList.append(card);
+          });
+        }
+        deviceAssignedRunStatus.textContent = runs.length +
+          ' plan(s) assigned to this device · read-only; execution remains disabled.';
+      } catch (error) {
+        deviceAssignedRunList.className = 'memory-empty';
+        deviceAssignedRunStatus.textContent = error.message || 'Assigned device plans are unavailable.';
+      } finally {
+        refreshDeviceAssignedRunsBtn.disabled = false;
+      }
+    }
+
+    async function checkCurrentDeviceConnection() {
+      const deviceId = localStorage.getItem('aegis_device_id');
+      if (!deviceId) {
+        deviceStatus.textContent = 'This browser has no paired device ID yet.';
+        return;
+      }
+      checkDeviceConnectionBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/device-heartbeat', {
+          method: 'POST',
+          body: JSON.stringify({
+            deviceId,
+            appVersion: '0.1.0',
+            connectivity: navigator.onLine ? 'online' : 'offline',
+          }),
+        });
+        deviceStatus.textContent = 'This device is connected. Last seen: ' + data.device.lastSeenAt;
+      } catch (error) {
+        deviceStatus.textContent = error.message || 'This device has not checked in.';
+      } finally {
+        checkDeviceConnectionBtn.disabled = false;
       }
     }
 

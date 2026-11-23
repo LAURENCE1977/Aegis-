@@ -1,4 +1,5 @@
 import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { hashDeviceToken, readDeviceToken } from './devices.mjs';
 import {
   buildHealthCheckResult,
   isJobId,
@@ -96,6 +97,18 @@ async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypt
   ).bind(eventId, runId, eventType, JSON.stringify(detail), new Date().toISOString()).run();
 }
 
+async function transitionAgentRun(env, updateSql, updateValues, {
+  runId, status, updatedAt, eventType, detail = {}, eventId = crypto.randomUUID(),
+}) {
+  const [updated] = await env.DB.batch([
+    env.DB.prepare(updateSql).bind(...updateValues),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, ?, ?, ? FROM agent_runs WHERE changes() = 1 AND id = ? AND status = ? AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, eventType, JSON.stringify(detail), updatedAt, runId, status, updatedAt),
+  ]);
+  return Boolean(updated?.meta?.changes);
+}
+
 async function dispatchAgentRuns(env, limit = 25) {
   if (!agentRunsEnabled(env)) return 0;
   if (!bindingsReady(env)) throw new Error('Runtime bindings are not configured.');
@@ -188,33 +201,47 @@ async function processAgentRun(message, env) {
   if (!row || ['planned', 'failed', 'running'].includes(row.status) ||
       !['queued', 'pending_dispatch'].includes(row.status)) { message.ack(); return; }
   const startedAt = new Date().toISOString();
-  const claim = await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
-  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId).first();
+  const eventId = crypto.randomUUID();
+  const [claimResult] = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
+    ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM agent_runs WHERE changes() = 1 AND id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, startedAt, runId, startedAt),
+  ]);
+  const claim = claimResult?.results?.[0] || null;
   if (!claim) { message.ack(); return; }
   const attempt = Number(claim.attempts);
-  await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
     const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
-    const saved = await env.DB.prepare(
-      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-    ).bind(JSON.stringify(plan), new Date().toISOString(), runId, attempt).run();
-    if (saved.meta?.changes) await auditAgentRun(env, runId, 'planned', { steps: plan.steps.length, execution: 'plan-only' });
+    const completedAt = new Date().toISOString();
+    await transitionAgentRun(env,
+      "UPDATE agent_runs SET status = 'planned', plan_json = ?, error_code = NULL, lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+      [JSON.stringify(plan), completedAt, runId, attempt],
+      { runId, status: 'planned', updatedAt: completedAt, eventType: 'planned',
+        detail: { steps: plan.steps.length, execution: 'plan-only' } },
+    );
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
-      const failed = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-      ).bind(new Date().toISOString(), runId, attempt).run();
-      if (failed.meta?.changes) await auditAgentRun(env, runId, 'failed', { code: 'AGENT_PLAN_FAILED', attempt });
+      const failedAt = new Date().toISOString();
+      await transitionAgentRun(env,
+        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+        [failedAt, runId, attempt],
+        { runId, status: 'failed', updatedAt: failedAt, eventType: 'failed',
+          detail: { code: 'AGENT_PLAN_FAILED', attempt } },
+      );
       message.ack();
     } else {
-      const retry = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-      ).bind(new Date().toISOString(), runId, attempt).run();
-      if (!retry.meta?.changes) { message.ack(); return; }
-      await auditAgentRun(env, runId, 'retry_scheduled', { attempt });
+      const retryAt = new Date().toISOString();
+      const transitioned = await transitionAgentRun(env,
+        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+        [retryAt, runId, attempt],
+        { runId, status: 'queued', updatedAt: retryAt, eventType: 'retry_scheduled', detail: { attempt } },
+      );
+      if (!transitioned) { message.ack(); return; }
       message.retry({ delaySeconds: Math.min(300, 2 ** attempt * 5) });
     }
   }
@@ -224,16 +251,12 @@ async function processAgentDeadLetter(message, env) {
   const runId = message?.body?.agentRunId;
   if (!isJobId(runId)) { message.ack(); return; }
   const now = new Date().toISOString();
-  await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))"
-  ).bind(now, runId, now).run();
-  const row = await env.DB.prepare(
-    'SELECT status, error_code FROM agent_runs WHERE id = ?'
-  ).bind(runId).first();
-  if (row?.status === 'failed' && row.error_code === 'AGENT_DELIVERY_EXHAUSTED') {
-    await auditAgentRun(env, runId, 'delivery_exhausted',
-      { code: 'AGENT_DELIVERY_EXHAUSTED' }, 'delivery-exhausted:' + runId);
-  }
+  await transitionAgentRun(env,
+    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))",
+    [now, runId, now],
+    { runId, status: 'failed', updatedAt: now, eventType: 'delivery_exhausted',
+      detail: { code: 'AGENT_DELIVERY_EXHAUSTED' }, eventId: 'delivery-exhausted:' + runId },
+  );
   message.ack();
 }
 
@@ -331,7 +354,56 @@ async function getJob(request, env, id) {
   return json({ job: parseJob(row) });
 }
 
+async function getDeviceAgentRuns(request, env, deviceId) {
+  if (!isJobId(deviceId)) return json({ error: 'Invalid device identifier.' }, 400);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') {
+    return json({ error: 'Runtime database is not configured.' }, 503);
+  }
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+
+  const token = readDeviceToken(request);
+  if (!token) return json({ error: 'Device authentication required.' }, 401);
+  try {
+    const tokenHash = await hashDeviceToken(token);
+    const device = await env.DB.prepare(
+      "SELECT id, capabilities_json FROM devices WHERE id = ? AND token_hash = ? AND status = 'active'"
+    ).bind(deviceId, tokenHash).first();
+    if (!device) return json({ error: 'Device credential is invalid or revoked.' }, 401);
+
+    let capabilities = [];
+    try { capabilities = JSON.parse(device.capabilities_json); } catch { capabilities = []; }
+    if (!Array.isArray(capabilities) || !capabilities.includes('aegis.jobs.observe')) {
+      return json({ error: 'Device is not authorised to observe agent plans.' }, 403);
+    }
+
+    const result = await env.DB.prepare(
+      'SELECT id, objective, status, plan_json, created_at, updated_at FROM agent_runs WHERE assigned_device_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).bind(deviceId).all();
+    const agentRuns = (result.results || []).map((row) => {
+      let plan = null;
+      try { plan = row.plan_json ? JSON.parse(row.plan_json) : null; } catch { plan = null; }
+      return {
+        id: row.id,
+        objective: row.objective,
+        status: row.status,
+        plan,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
+    return json({ agentRuns });
+  } catch {
+    return json({ error: 'Assigned agent plans are temporarily unavailable.' }, 503);
+  }
+}
+
 export async function handleRuntimeFetch(request, env) {
+  const url = new URL(request.url);
+  const deviceAgentRuns = /^\/v1\/devices\/([^/]+)\/agent-runs$/.exec(url.pathname);
+  if (request.method === 'GET' && deviceAgentRuns) {
+    if (!originAllowed(request)) return json({ error: 'Origin is not allowed.' }, 403);
+    return getDeviceAgentRuns(request, env, deviceAgentRuns[1]);
+  }
   if (!env || typeof env.AEGIS_JOB_TOKEN !== 'string' || env.AEGIS_JOB_TOKEN.length < 32) {
     return json({ error: 'Runtime authentication is not configured.' }, 503);
   }
@@ -340,7 +412,6 @@ export async function handleRuntimeFetch(request, env) {
     return json({ error: 'Authentication required.' }, 401, { 'WWW-Authenticate': 'Bearer' });
   }
 
-  const url = new URL(request.url);
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
@@ -379,15 +450,21 @@ async function processJob(message, env) {
   // Capture the attempt number from the same atomic claim statement.
   // A later SELECT could observe a newer consumer's attempt after lease recovery,
   // allowing this stale worker to impersonate that newer attempt.
-  const claim = await env.DB.prepare(
-    "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
-  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId).first();
+  const eventId = crypto.randomUUID();
+  const [claimResult] = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
+    ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId),
+    env.DB.prepare(
+      "INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM jobs WHERE changes() = 1 AND id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, startedAt, jobId, startedAt),
+  ]);
+  const claim = claimResult?.results?.[0] || null;
   if (!claim) {
     message.ack();
     return;
   }
   const attempt = Number(claim.attempts);
-  await audit(env, jobId, 'running', { attempt });
 
   try {
     if (row.type !== 'aegis.health_check') throw new Error('Unsupported persisted job type.');

@@ -75,6 +75,24 @@ jobs:
             exit 1
           fi
 
+      - name: Verify owner-scoped device registry and append-only events
+        shell: bash
+        run: |
+          output=$(wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --file scripts/runtime-d1-devices.sql --json)
+          echo "$output"
+          if ! echo "$output" | grep -q '"PASS"'; then
+            echo "Expected the device registry fixture to satisfy its ownership and pairing constraints."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "UPDATE device_events SET event_type = 'revoked' WHERE event_id = 'device-event-smoke'"; then
+            echo "Expected append-only device event trigger to reject mutation."
+            exit 1
+          fi
+          if wrangler d1 execute aegis-runtime-test --local --config wrangler.runtime-d1-test.toml --persist-to .wrangler/test-runtime-d1 --command "DELETE FROM device_events WHERE event_id = 'device-event-smoke'"; then
+            echo "Expected append-only device event trigger to reject deletion."
+            exit 1
+          fi
+
       - name: Apply Forge migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1
       - name: Verify Forge licence gates, immutable source identity and append-only review events
