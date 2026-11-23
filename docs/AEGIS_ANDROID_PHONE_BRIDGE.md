@@ -27,7 +27,7 @@ Initial enrolled-device capabilities are observational only:
 
 - `device.status.read` — report app version, platform and coarse connectivity state.
 - `aegis.jobs.observe` — list only jobs explicitly assigned to that device and read their safe status.
-- `aegis.approvals.review` — display an approval request and relay the owner's explicit decision; it cannot approve on the owner's behalf.
+- Approval-inbox access is deliberately withheld: no device approval-review endpoint or decision-relay workflow is implemented yet. It must not be offered as a granted capability until that path has its own Sentinel policy, owner confirmation, replay protection and audit coverage.
 
 Not enabled in the first slice: shell/ADB, arbitrary process launch, arbitrary URL fetch, accessibility automation, screen capture, microphone/camera, contact/message access, purchases, account changes, unrestricted file reads/writes, or background keystrokes.
 
@@ -92,5 +92,5 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 - The current AEGIS runtime is single-owner; the endpoint relies on the existing owner session and does not claim multi-tenant row isolation.
 - The Devices panel now displays the planned-run inventory and offers assignment only for runs in `planned` state and active devices carrying `aegis.jobs.observe`.
 - Assignment reuses the existing owner-authenticated `POST /api/device-assign-run` route. It grants read-only observation, not execution, shell access, approval consumption or permission escalation.
-- The endpoint, frontend and regression tests are committed to the PR #202 feature branch. The latest commits do not yet have a visible fresh GitHub Actions run; do not treat this slice as CI-verified until the full Node suite and D1 smoke workflow complete.
+- The endpoint, frontend and regression tests are committed to the PR #202 feature branch. The latest verified CI run on `be92e55` completed the Node suite and all isolated D1 migration/smoke checks successfully; the subsequent capability-tightening change must pass a fresh run before it is treated as verified.
 - No production deployment, database migration, device pairing or device-side execution has been performed.
