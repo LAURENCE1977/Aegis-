@@ -35,6 +35,12 @@ The example worker configuration declares both bindings with placeholder databas
 
 The runtime's current agent queue remains plan-only. Declaring `CAPABILITY_DB` is infrastructure preparation, not permission to execute agent-proposed actions. A later execution slice must compose `createSentinelDependencies({ db: env.CAPABILITY_DB, adapters: createBuiltinAdapterRegistry() })` inside trusted server code, derive the principal from authenticated persisted ownership, and add an explicit, bounded action-request lifecycle with approval, cancellation, idempotency and audit tests before any adapter is reachable.
 
+## Metadata-only capability proposals
+
+The runtime now exposes `createAgentCapabilityProposal` as a first bridge contract between a persisted agent run and the trusted Sentinel registry. It accepts only the exact capability/action/resource/input shape and a separately supplied trusted run/principal context. It rejects wildcard or traversal resources, unknown or disabled capabilities, non-read actions and input that cannot be canonicalised within the manifest's byte limit.
+
+A successful result contains the registry-derived capability version, required scopes, effect, risk and approval policy plus a server-derived SHA-256 input digest. It deliberately omits the raw input and is marked `status: proposed` and `execution: disabled`. It does not persist a proposal, load a grant, consume an approval, enqueue work, resolve a secret, call an adapter or execute an action. This keeps the current queue plan-only while establishing a typed, auditable hand-off contract for a later separately reviewed persistence and approval lifecycle.
+
 ## Cloudflare Pages API binding boundary
 
 The Pages project needs two separate D1 bindings because its API routes serve both the runtime/device data model and the Sentinel policy store:
