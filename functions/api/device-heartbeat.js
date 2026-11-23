@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
         "SELECT id FROM devices WHERE id = ? AND token_hash = ? AND status = 'active'"
       ).bind(body.deviceId, tokenHash).first();
       if (!active) return jsonResponse({ error: 'Device credential is invalid or revoked.' }, 401);
-      return jsonResponse({ error: 'Heartbeat rate limit exceeded.' }, 429, { 'Retry-After': '30' });
+      return jsonResponse({ error: 'Heartbeat rate limit exceeded. Retry after 30 seconds.' }, 429);
     }
 
     await env.AEGIS_DB.prepare(
