@@ -57,11 +57,25 @@ export async function onRequestPost({ request, env }) {
       return jsonResponse({ error: 'Pairing code is invalid, expired, already used or revoked.' }, 410);
     }
 
-    return jsonResponse({
+    const browserClient = Boolean(request.headers.get('Origin'));
+    const responseBody = {
       device: { id: deviceId, status: 'active' },
-      credential: token,
-      warning: 'Store this device credential securely. It is shown once and cannot be recovered.',
-    }, 201);
+      credentialStoredInHttpOnlyCookie: browserClient,
+      warning: browserClient
+        ? 'The device credential is held in a Secure, HttpOnly, SameSite=Strict cookie and is not exposed to page JavaScript.'
+        : 'Store this device credential in Android Keystore. It is shown once and cannot be recovered.',
+    };
+    if (browserClient) {
+      return new Response(JSON.stringify(responseBody), {
+        status: 201,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Set-Cookie': '__Host-aegis_device=' + token + '; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Strict',
+        },
+      });
+    }
+    return jsonResponse({ ...responseBody, credential: token }, 201);
   } catch {
     return jsonResponse({ error: 'Device enrolment failed. The pairing code may have expired or already been used.' }, 410);
   }
