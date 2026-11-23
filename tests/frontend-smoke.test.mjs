@@ -236,3 +236,18 @@ test('Control Centre exposes a read-only Composio integrations inventory', () =>
   assert.match(html, /executionEnabled/);
   assert.match(html, /Composio connection inventory/);
 });
+
+test('Control Centre exposes a secure device pairing and revocation surface', () => {
+  for (const id of [
+    'deviceTab','deviceSection','deviceStatus','devicePairForm','devicePlatform',
+    'deviceDisplayName','devicePairingCode','deviceRedeemForm','deviceInvitation',
+    'deviceList','createDeviceInviteBtn','redeemDeviceBtn',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing device control element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/devices'/);
+  assert.match(html, /controlApi\('\/api\/device-enrol'/);
+  assert.match(html, /controlApi\('\/api\/device-heartbeat'/);
+  assert.match(html, /method:\s*'PATCH'/);
+  assert.match(html, /aegis_device_id/);
+});
