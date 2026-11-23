@@ -454,3 +454,17 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Merge intelligence and isolated conflict-resolution tooling — PR #197 (23 November 2026)
+
+- PR #197: https://github.com/LAURENCE1977/Aegis-/pull/197 — open draft, not merged. It remains based on `feature/aegis-universal-integration-sandbox-2026-11-22`.
+- Added a deterministic merge-readiness analyser, connected-stack selection, bounded GitHub API collection, and an advisory Markdown report. The pull-request workflow has read-only `contents` and `pull-requests` permissions; it does not write to GitHub.
+- The connected-stack scan deliberately does not use the default branch as a graph bridge, preventing unrelated PRs rooted at `main` from being swept into the current feature stack.
+- Verified diagnostic run: https://github.com/LAURENCE1977/Aegis-/actions/runs/45133649077 — passed. It analysed 17 connected PRs from 104 open repository PRs. In the latest verified snapshot, #193 was reported by GitHub as conflict/unresolved-mergeability; #194 and #195 were each 12 commits behind the current integration base. The analyser does not claim shared files prove a textual conflict.
+- Added a disposable Mergiraf integration lab. CI installs the pinned Mergiraf 0.20.0 crate, creates a temporary Git repository, reproduces a documented YAML structural conflict, invokes `mergiraf solve`, checks the exact expected merged file, and deletes the sandbox.
+- Verified Mergiraf run: https://github.com/LAURENCE1977/Aegis-/actions/runs/45133649067 — passed. The fixture conflict was reproduced and Mergiraf reported that it solved all conflicts. This validates the pinned tool and sandbox only; it does not mean any live AEGIS PR was modified or resolved.
+- Full Node.js suite and isolated capability, runtime and Forge D1 migration checks passed: https://github.com/LAURENCE1977/Aegis-/actions/runs/45133649029 — **565 tests passed, 0 failed**; all D1 verification steps passed.
+- `docs/MERGE_TOOLKIT.md` records the roles and safety boundaries for Mergify, Kodiak, Mergiraf, delta and git-filter-repo.
+- No GitHub merge bot was installed or enabled. No tracked/global Mergiraf merge driver was registered. No live branch was rebased, retargeted, force-pushed or merged; no production deployment or Cloudflare resource was changed.
+- Next safe engineering step: inspect the actual #193 conflict and reconcile the #190–#195 stack in a disposable work branch, run the full suite, then present the resulting patch for owner approval. Do not rewrite or update live branches without explicit approval.
