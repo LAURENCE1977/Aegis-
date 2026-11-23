@@ -31,6 +31,7 @@ function registryObservations(connections, now) {
       // Vault storage is not proof of a provider health check. Keep it pending
       // until a provider-specific adapter verifies identity, role and scopes.
       configurationValid: connection.status === 'active' && !expired ? false : undefined,
+      lastErrorCode: connection.status === 'active' && !expired ? 'INVALID_CONFIGURATION' : null,
     });
   }
   return Object.fromEntries(byProvider);
