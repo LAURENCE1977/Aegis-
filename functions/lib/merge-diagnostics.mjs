@@ -7,7 +7,14 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
     throw new TypeError('Invalid merge diagnostics inputs');
   }
 
-  return Promise.all(openPullRequests.map(async pullRequest => {
+  const results = new Array(openPullRequests.length);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < openPullRequests.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const pullRequest = openPullRequests[index];
+      results[index] = await (async () => {
     if (!isRecord(pullRequest) ||
         !Number.isSafeInteger(pullRequest.number) ||
         !isRecord(pullRequest.base) ||
@@ -48,7 +55,11 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
         .map(file => file?.filename)
         .filter(path => typeof path === 'string' && path.length > 0))].sort(),
     };
-  }));
+      })();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, openPullRequests.length) }, worker));
+  return results;
 }
 
 const inlineCode = value => String(value).replace(/[`\r\n]/g, ' ');
