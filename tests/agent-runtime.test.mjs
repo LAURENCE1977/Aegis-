@@ -7,6 +7,7 @@ const token = 'agent-runtime-test-token-with-at-least-32-characters';
 class AgentMemoryD1 {
   constructor() { this.runs = new Map(); this.events = []; this.failAuditInsert = false; }
   async batch(statements) {
+    const db = this;
     const runsSnapshot = new Map([...this.runs].map(([id, row]) => [id, { ...row }]));
     const eventsSnapshot = [...this.events];
     try {
