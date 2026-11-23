@@ -1,4 +1,4 @@
-import { createAgentPlan, validateAgentRunSubmission } from './agents.mjs';
+import { createAgentPlan, validateAgentRunSubmission, createAgentCapabilityProposal } from './agents.mjs';
 import { hashDeviceToken, readDeviceToken } from './devices.mjs';
 import {
   buildHealthCheckResult,
@@ -29,7 +29,7 @@ function safeEqual(left, right) {
 function isAuthorized(request, env) {
   const expected = env?.AEGIS_JOB_TOKEN;
   if (typeof expected !== 'string' || expected.length < 32) return false;
-  const match = /^Bearer\s+([^\s]+)$/i.exec(request.headers.get('Authorization') || '');
+  const match = /^Bearer\\s+([^\\s]+)$/i.exec(request.headers.get('Authorization') || '');
   return Boolean(match && safeEqual(match[1], expected));
 }
 
@@ -91,6 +91,29 @@ function parseAgentRun(row) {
   };
 }
 
+function parseCapabilityProposal(row) {
+  if (!row) return null;
+  let requiredScopes = [];
+  try { requiredScopes = JSON.parse(row.required_scopes_json); } catch { requiredScopes = []; }
+  return {
+    id: row.proposal_id,
+    runId: row.agent_run_id,
+    principalId: row.principal_id,
+    capabilityId: row.capability_id,
+    capabilityVersion: row.capability_version,
+    actionId: row.action_id,
+    resourceId: row.resource_id,
+    inputDigest: row.input_digest,
+    requiredScopes,
+    effect: row.effect,
+    risk: row.risk,
+    approval: row.approval,
+    status: row.status,
+    execution: row.execution,
+    createdAt: row.created_at,
+  };
+}
+
 async function auditAgentRun(env, runId, eventType, detail = {}, eventId = crypto.randomUUID()) {
   await env.DB.prepare(
     'INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(event_id) DO NOTHING'
@@ -146,7 +169,7 @@ async function dispatchAgentRuns(env, limit = 25) {
 async function submitAgentRun(request, env) {
   if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
@@ -185,6 +208,62 @@ async function submitAgentRun(request, env) {
   }
   const current = await env.DB.prepare('SELECT * FROM agent_runs WHERE id = ?').bind(row.id).first();
   return json({ run: parseAgentRun(current) }, current?.status === 'pending_dispatch' ? 202 : 201);
+}
+
+async function submitCapabilityProposal(request, env, runId) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Runtime database is not configured.' }, 503);
+  if (!isJobId(runId)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  const principalId = env.AEGIS_PRINCIPAL_ID;
+  if (typeof principalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(principalId)) {
+    return json({ error: 'Trusted principal context is not configured.' }, 503);
+  }
+  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: 'Request body is too large.' }, 413);
+  let input;
+  try { input = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  const run = await env.DB.prepare('SELECT id, status FROM agent_runs WHERE id = ?').bind(runId).first();
+  if (!run) return json({ error: 'Agent run not found.' }, 404);
+  if (run.status !== 'planned') return json({ error: 'Capability proposals require a completed plan.' }, 409);
+
+  let proposal;
+  try {
+    proposal = await createAgentCapabilityProposal(input, { runId, principalId });
+  } catch (error) {
+    return json({ error: error.message }, 400);
+  }
+  const createdAt = proposal.createdAt;
+  const eventId = crypto.randomUUID();
+  const [inserted] = await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO agent_capability_proposals (proposal_id, agent_run_id, principal_id, capability_id, capability_version, action_id, resource_id, input_digest, required_scopes_json, effect, risk, approval, status, execution, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', 'disabled', ?) ON CONFLICT(agent_run_id, capability_id, action_id, resource_id, input_digest) DO NOTHING"
+    ).bind(
+      proposal.proposalId, proposal.runId, proposal.principalId, proposal.capabilityId,
+      proposal.capabilityVersion, proposal.actionId, proposal.resourceId, proposal.inputDigest,
+      JSON.stringify(proposal.requiredScopes), proposal.effect, proposal.risk, proposal.approval, createdAt,
+    ),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, ?, 'capability_proposal_created', json_object('capabilityId', ?, 'actionId', ?, 'inputDigest', ?), ? WHERE changes() = 1 ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, runId, proposal.capabilityId, proposal.actionId, proposal.inputDigest, createdAt),
+  ]);
+  const saved = await env.DB.prepare(
+    'SELECT * FROM agent_capability_proposals WHERE agent_run_id = ? AND capability_id = ? AND action_id = ? AND resource_id = ? AND input_digest = ?'
+  ).bind(runId, proposal.capabilityId, proposal.actionId, proposal.resourceId, proposal.inputDigest).first();
+  if (!saved) return json({ error: 'Capability proposal could not be persisted.' }, 500);
+  return json({ proposal: parseCapabilityProposal(saved) }, inserted?.meta?.changes ? 201 : 200);
+}
+
+async function getCapabilityProposals(env, runId) {
+  if (!isJobId(runId)) return json({ error: 'Invalid agent run identifier.' }, 400);
+  const run = await env.DB.prepare('SELECT id FROM agent_runs WHERE id = ?').bind(runId).first();
+  if (!run) return json({ error: 'Agent run not found.' }, 404);
+  const result = await env.DB.prepare(
+    'SELECT * FROM agent_capability_proposals WHERE agent_run_id = ? ORDER BY created_at ASC LIMIT 100'
+  ).bind(runId).all();
+  return json({ proposals: (result.results || []).map(parseCapabilityProposal) });
 }
 
 async function getAgentRun(env, id) {
@@ -296,7 +375,7 @@ async function dispatchPending(env, limit = 25) {
 
 async function submitJob(request, env) {
   if (!bindingsReady(env)) return json({ error: 'Runtime is not configured.' }, 503);
-  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+  if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
     return json({ error: 'Content-Type must be application/json.' }, 415);
   }
   const length = Number(request.headers.get('Content-Length') || 0);
@@ -399,7 +478,7 @@ async function getDeviceAgentRuns(request, env, deviceId) {
 
 export async function handleRuntimeFetch(request, env) {
   const url = new URL(request.url);
-  const deviceAgentRuns = /^\/v1\/devices\/([^/]+)\/agent-runs$/.exec(url.pathname);
+  const deviceAgentRuns = /^\\/v1\\/devices\\/([^/]+)\\/agent-runs$/.exec(url.pathname);
   if (request.method === 'GET' && deviceAgentRuns) {
     if (!originAllowed(request)) return json({ error: 'Origin is not allowed.' }, 403);
     return getDeviceAgentRuns(request, env, deviceAgentRuns[1]);
@@ -414,6 +493,13 @@ export async function handleRuntimeFetch(request, env) {
 
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
+  const proposalRoute = /^\\/v1\\/agent-runs\\/([^/]+)\\/capability-proposals$/.exec(url.pathname);
+  if (proposalRoute && request.method === 'POST') return submitCapabilityProposal(request, env, proposalRoute[1]);
+  if (proposalRoute && request.method === 'GET') {
+    if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+    if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
+    return getCapabilityProposals(env, proposalRoute[1]);
+  }
   if (request.method === 'GET' && url.pathname.startsWith('/v1/agent-runs/')) {
     if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
     if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Database is not configured.' }, 503);
