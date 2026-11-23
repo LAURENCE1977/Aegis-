@@ -71,8 +71,8 @@ class AgentMemoryD1 {
           if (db.failAuditInsert) throw new Error('agent audit unavailable');
           if (sql.includes('SELECT ?, id, ?, ?, ?')) {
             if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
-            const row = db.runs.get(v[5]);
-            if (!row || row.status !== v[6] || row.updated_at !== v[7]) return { meta: { changes: 0 } };
+            const row = db.runs.get(v[4]);
+            if (!row || row.status !== v[5] || row.updated_at !== v[6]) return { meta: { changes: 0 } };
             if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
             db.events.push({ event_id: v[0], agent_run_id: row.id, event_type: v[1], detail_json: v[2], created_at: v[3] });
             return { meta: { changes: 1 } };
