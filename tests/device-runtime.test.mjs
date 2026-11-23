@@ -42,7 +42,7 @@ class DeviceRuntimeD1 {
       async first() {
         if (sql.includes('FROM devices WHERE id = ? AND token_hash = ?')) {
           const [id, tokenHash] = this.values;
-          return db.device.id === id && db.device.token_hash === tokenHash ? db.device : null;
+          return db.device.id === id && db.device.token_hash === tokenHash && db.device.status === 'active' ? db.device : null;
         }
         return null;
       },
