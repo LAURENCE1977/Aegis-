@@ -43,7 +43,7 @@ test('collects compare metadata and changed paths for each open pull request', a
   }]);
 });
 
-test('keeps GitHub pending mergeability fail-closed and normalizes missing file lists', async () => {
+test('preserves GitHub pending mergeability and normalizes missing file lists', async () => {
   const result = await collectMergeSnapshot(
     [openPr({ mergeable: null })],
     async () => ({
@@ -55,7 +55,7 @@ test('keeps GitHub pending mergeability fail-closed and normalizes missing file 
     async () => [],
   );
 
-  assert.equal(result[0].mergeable, false);
+  assert.equal(result[0].mergeable, null);
   assert.deepEqual(result[0].files, []);
 });
 
