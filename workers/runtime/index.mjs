@@ -428,15 +428,21 @@ async function processJob(message, env) {
   // Capture the attempt number from the same atomic claim statement.
   // A later SELECT could observe a newer consumer's attempt after lease recovery,
   // allowing this stale worker to impersonate that newer attempt.
-  const claim = await env.DB.prepare(
-    "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
-  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId).first();
+  const eventId = crypto.randomUUID();
+  const [claimResult] = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE jobs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
+    ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, jobId),
+    env.DB.prepare(
+      "INSERT INTO job_events (event_id, job_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM jobs WHERE id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, startedAt, jobId, startedAt),
+  ]);
+  const claim = claimResult?.results?.[0] || null;
   if (!claim) {
     message.ack();
     return;
   }
   const attempt = Number(claim.attempts);
-  await audit(env, jobId, 'running', { attempt });
 
   try {
     if (row.type !== 'aegis.health_check') throw new Error('Unsupported persisted job type.');
