@@ -1,6 +1,9 @@
 name: AEGIS PR 193 merge-base audit
 
 on:
+  push:
+    branches:
+      - feature/aegis-merge-intelligence-2026-11-23
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
