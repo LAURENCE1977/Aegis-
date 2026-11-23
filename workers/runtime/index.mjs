@@ -377,7 +377,7 @@ async function getDeviceAgentRuns(request, env, deviceId) {
 
 export async function handleRuntimeFetch(request, env) {
   const url = new URL(request.url);
-  const deviceAgentRuns = /^\\/v1\\/devices\\/([^/]+)\\/agent-runs$/.exec(url.pathname);
+  const deviceAgentRuns = /^\/v1\/devices\/([^/]+)\/agent-runs$/.exec(url.pathname);
   if (request.method === 'GET' && deviceAgentRuns) {
     if (!originAllowed(request)) return json({ error: 'Origin is not allowed.' }, 403);
     return getDeviceAgentRuns(request, env, deviceAgentRuns[1]);
