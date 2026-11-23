@@ -105,3 +105,24 @@ test('rejects malformed pairing codes before hashing', async () => {
   const { hashPairingCode } = await import('../workers/runtime/devices.mjs');
   await assert.rejects(() => hashPairingCode('aegis_dev_not-a-pairing-code'), /pairing code/i);
 });
+
+test('accepts only a single pairing code field for device enrolment', async () => {
+  const { validatePairingRedemption } = await import('../workers/runtime/devices.mjs');
+  assert.deepEqual(validatePairingRedemption({
+    code: 'aegis_pair_' + 'A'.repeat(43),
+  }), { code: 'aegis_pair_' + 'A'.repeat(43) });
+  assert.throws(() => validatePairingRedemption({
+    code: 'aegis_pair_' + 'A'.repeat(43),
+    ownerId: 'attacker',
+  }), /unexpected/i);
+  assert.throws(() => validatePairingRedemption({ code: 'expired-or-malformed' }), /pairing code/i);
+});
+
+test('parses only the dedicated Device authorization scheme', async () => {
+  const { parseDeviceAuthorization } = await import('../workers/runtime/devices.mjs');
+  const token = 'aegis_dev_' + 'B'.repeat(43);
+  assert.equal(parseDeviceAuthorization('Device ' + token), token);
+  assert.equal(parseDeviceAuthorization('Bearer ' + token), null);
+  assert.equal(parseDeviceAuthorization('Device ' + 'short'), null);
+  assert.equal(parseDeviceAuthorization(null), null);
+});
