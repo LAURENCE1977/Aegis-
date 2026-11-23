@@ -152,6 +152,10 @@ export function evaluateConnectorStatus(providerId, observation = null, now = Da
     authMethod: connector.authMethod,
     status,
     accountAlias: safeAlias(source.accountAlias),
+    credentialStored: source.credentialStored === true,
+    verificationState: status === STATUS.ACTIVE ? 'verified' :
+      (status === STATUS.EXPIRED_OR_REVOKED && source.credentialStored === true ? 'expired' :
+        source.credentialStored === true ? 'pending' : 'not_checked'),
     requiredCapabilities: [...connector.requiredCapabilities],
     grantedCapabilities,
     lastCheckedAt: safeTimestamp(source.lastCheckedAt),
