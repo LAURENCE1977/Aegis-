@@ -254,7 +254,7 @@ This is the recoverable candidate inventory from the source register, PR patches
 
 ### 4.7 Owner-controlled repositories
 
-The linked GitHub account inventory returned eight repositories:
+The linked GitHub account inventory returned nine repositories:
 
 - `LAURENCE1977/Aegis-` — canonical AEGIS project.
 - `LAURENCE1977/openclaw` — owner-held OpenClaw repository/fork.
@@ -266,7 +266,7 @@ The linked GitHub account inventory returned eight repositories:
 - `LAURENCE1977/storie-audio-lab-store-checker` — root HTML only at the recorded sweep.
 - `LAURENCE1977/storied-gecko-09ca7c` — root HTML and GitHub Actions folder at the recorded sweep.
 
-The account inventory response contained eight repositories; the list above has nine names because the historical owner-repository sweep also included the AEGIS canonical repo. Reconcile the exact count on the next live inventory refresh.
+The account inventory response contained nine repositories, including the AEGIS canonical repo. Reconcile this list on the next live inventory refresh.
 
 ## 5. Overlap and consolidation decisions
 
