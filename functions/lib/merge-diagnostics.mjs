@@ -1,9 +1,10 @@
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetchFiles) {
+export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetchFiles, fetchDetails) {
   if (!Array.isArray(openPullRequests) ||
       typeof fetchCompare !== 'function' ||
-      typeof fetchFiles !== 'function') {
+      typeof fetchFiles !== 'function' ||
+      (fetchDetails !== undefined && typeof fetchDetails !== 'function')) {
     throw new TypeError('Invalid merge diagnostics inputs');
   }
 
@@ -30,6 +31,7 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
     ]);
 
     if (!isRecord(compare) ||
+        !isRecord(details) ||
         !Number.isSafeInteger(compare.ahead_by) ||
         !Number.isSafeInteger(compare.behind_by) ||
         !Array.isArray(changedFiles)) {
@@ -44,7 +46,7 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
       head: pullRequest.head.ref,
       // GitHub can return null while it calculates mergeability. Treat that as
       // not-ready; the analyser's wording distinguishes conflict/unresolved state.
-      mergeable: pullRequest.mergeable === true,
+      mergeable: details.mergeable === true,
       compare: {
         status: typeof compare.status === 'string' ? compare.status : 'unknown',
         aheadBy: compare.ahead_by,
