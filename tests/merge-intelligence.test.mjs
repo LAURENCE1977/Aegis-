@@ -71,6 +71,16 @@ test('merge intelligence does not invent file conflicts when file lists are miss
   assert.equal(result.pullRequests.every(item => item.recommendation === 'ready_for_review'), true);
 });
 
+test('merge intelligence waits when GitHub has not calculated mergeability yet', () => {
+  const result = analyzeMergeReadiness([
+    pr({ mergeable: null }),
+  ]);
+
+  assert.equal(result.pullRequests[0].mergeable, null);
+  assert.equal(result.pullRequests[0].recommendation, 'wait_for_github_mergeability');
+});
+
 test('merge intelligence rejects malformed pull request metadata', () => {
   assert.throws(() => analyzeMergeReadiness([{ number: 1 }]), /pull request metadata/i);
+  assert.throws(() => analyzeMergeReadiness([pr({ mergeable: 'unknown' })]), /pull request metadata/i);
 });

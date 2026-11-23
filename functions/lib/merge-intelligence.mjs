@@ -5,7 +5,7 @@ function validatePullRequest(item) {
   if (!isRecord(item) ||
       !Number.isSafeInteger(item.number) || item.number < 1 ||
       !cleanString(item.base) || !cleanString(item.head) ||
-      typeof item.mergeable !== 'boolean' ||
+      (item.mergeable !== true && item.mergeable !== false && item.mergeable !== null) ||
       !isRecord(item.compare) ||
       !Number.isSafeInteger(item.compare.aheadBy) || item.compare.aheadBy < 0 ||
       !Number.isSafeInteger(item.compare.behindBy) || item.compare.behindBy < 0 ||
@@ -22,7 +22,6 @@ function intersection(left, right) {
 }
 
 function buildMergeOrder(items, dependencies) {
-  const byNumber = new Map(items.map(item => [item.number, item]));
   const remaining = new Set(items.map(item => item.number));
   const order = [];
 
@@ -49,8 +48,8 @@ function buildMergeOrder(items, dependencies) {
 
 /**
  * Analyse GitHub PR metadata without changing branches or claiming that shared
- * files are definite conflicts. GitHub's mergeable=false is the conflict signal;
- * shared paths between PRs are only a review-risk signal.
+ * files are definite conflicts. A null mergeable value means GitHub is still
+ * calculating; it is neither a confirmed conflict nor evidence of readiness.
  */
 export function analyzeMergeReadiness(input) {
   if (!Array.isArray(input)) throw new TypeError('Pull request metadata must be an array');
@@ -96,7 +95,8 @@ export function analyzeMergeReadiness(input) {
         overlap.pullRequests.includes(item.number));
       const behindBy = item.compare.behindBy;
       let recommendation = 'ready_for_review';
-      if (item.mergeable === false) recommendation = 'resolve_github_conflicts';
+      if (item.mergeable === null) recommendation = 'wait_for_github_mergeability';
+      else if (item.mergeable === false) recommendation = 'resolve_github_conflicts';
       else if (behindBy > 0) recommendation = 'rebase_or_update_branch';
       else if (relatedOverlaps.length) recommendation = 'review_overlapping_files';
 
@@ -126,7 +126,8 @@ export function analyzeMergeReadiness(input) {
     overlaps,
     mergeOrder: buildMergeOrder(items, dependencies),
     semantics: {
-      mergeableFalse: 'GitHub reports a merge conflict or unresolved mergeability state; inspect the PR before changing it.',
+      mergeableNull: 'GitHub is still calculating mergeability; wait and refresh before assessing conflicts or readiness.',
+      mergeableFalse: 'GitHub reports a merge conflict; inspect the PR before changing it.',
       sharedFiles: 'Overlapping changed paths are a review risk, not proof of a textual merge conflict.',
       baseDrift: 'behindBy counts commits in the current base that are not in the PR head history.',
     },
