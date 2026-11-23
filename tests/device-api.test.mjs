@@ -229,3 +229,52 @@ test('browser enrolment keeps the credential out of JavaScript in a Secure HttpO
   assert.equal(body.credential, undefined);
   assert.equal(body.credentialStoredInHttpOnlyCookie, true);
 });
+
+test('owner can revoke an enrolled device and its credential stops authenticating', async () => {
+  const { onRequestPatch: revokeDevice } = await import('../functions/api/devices.js');
+  const db = new DeviceD1();
+  const inviteResponse = await ownerRequest(db, {
+    platform: 'android',
+    displayName: 'Revocable phone',
+    capabilities: ['device.status.read'],
+  });
+  const { invitation } = await inviteResponse.json();
+  const enrolResponse = await enrolDevice({
+    request: new Request('https://aegis.example/api/device-enrol', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: invitation.code }),
+    }),
+    env: { AEGIS_DB: db },
+  });
+  const enrolled = await enrolResponse.json();
+  const session = await createSessionToken(OWNER_SECRET);
+  const revoked = await revokeDevice({
+    request: new Request('https://aegis.example/api/devices', {
+      method: 'PATCH',
+      headers: {
+        Cookie: '__Host-aegis_session=' + session,
+        Origin: 'https://aegis.example',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deviceId: enrolled.device.id, action: 'revoke' }),
+    }),
+    env: { AEGIS_PASSWORD: 'owner-password-long-enough', AEGIS_SESSION_SECRET: OWNER_SECRET, AEGIS_DB: db },
+  });
+  assert.equal(revoked.status, 200);
+  assert.equal(db.devices.get(enrolled.device.id).status, 'revoked');
+  assert.equal(db.events.filter((event) => event.event_type === 'revoked').length, 1);
+
+  const heartbeat = await heartbeatDevice({
+    request: new Request('https://aegis.example/api/device-heartbeat', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Device ' + enrolled.credential,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deviceId: enrolled.device.id, appVersion: '0.1.0', connectivity: 'online' }),
+    }),
+    env: { AEGIS_DB: db },
+  });
+  assert.equal(heartbeat.status, 401);
+});
