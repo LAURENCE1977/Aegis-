@@ -238,7 +238,7 @@ test('device heartbeat authenticates the per-device credential and enforces a co
   assert.equal(throttled.status, 429);
   const denied = await makeRequest('Bearer ' + enrolled.credential);
   assert.equal(denied.status, 401);
-  assert.equal(db.events.filter((event) => event.event_type === 'heartbeat').length, 1);
+  assert.equal(db.events.filter((event) => event.event_type === 'heartbeat').length, 1, JSON.stringify(db.events));
 });
 
 test('browser enrolment keeps the credential out of JavaScript in a Secure HttpOnly cookie', async () => {
