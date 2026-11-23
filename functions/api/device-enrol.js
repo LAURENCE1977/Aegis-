@@ -49,7 +49,7 @@ export async function onRequestPost({ request, env }) {
         'UPDATE device_pairing_invites SET consumed_at = ? WHERE code_hash = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ? AND EXISTS (SELECT 1 FROM devices d WHERE d.invite_id = device_pairing_invites.id AND d.id = ?)'
       ).bind(now, codeHash, now, deviceId),
       env.AEGIS_DB.prepare(
-        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'paired', json_object('platform', platform), ? FROM devices WHERE id = ?"
+        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'paired', json_object('platform', platform), ? FROM devices WHERE changes() = 1 AND id = ?"
       ).bind(crypto.randomUUID(), now, deviceId),
     ]);
 
