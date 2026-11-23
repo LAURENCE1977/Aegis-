@@ -226,3 +226,13 @@ test('Control Centre exposes a read-only usage and quota panel with fail-closed 
   assert.match(html, /Every paid run still requires separate exact-run owner approval|separate approval/);
   assert.match(html, /textContent\s*=\s*window\.providerId/);
 });
+
+
+test('Control Centre exposes a read-only Composio integrations inventory', () => {
+  for (const id of ['integrationTab','integrationSection','integrationStatus','integrationList','refreshIntegrationsBtn']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing integration control element: ' + id);
+  }
+  assert.match(html, /controlApi\('\/api\/integrations'/);
+  assert.match(html, /executionEnabled/);
+  assert.match(html, /Composio connection inventory/);
+});
