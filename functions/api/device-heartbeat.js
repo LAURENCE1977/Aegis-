@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
         "UPDATE devices SET last_seen_at = ?, app_version = ?, connectivity = ?, updated_at = ? WHERE id = ? AND token_hash = ? AND status = 'active' AND (last_seen_at IS NULL OR last_seen_at <= ?)"
       ).bind(nowIso, heartbeat.appVersion, heartbeat.connectivity, nowIso, body.deviceId, tokenHash, cutoff),
       env.AEGIS_DB.prepare(
-        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'heartbeat', ?, ? FROM devices WHERE id = ? AND token_hash = ? AND status = 'active' AND last_seen_at = ? AND updated_at = ?"
+        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'heartbeat', ?, ? FROM devices WHERE changes() = 1 AND id = ? AND token_hash = ? AND status = 'active' AND last_seen_at = ? AND updated_at = ?"
       ).bind(eventId, JSON.stringify(heartbeat), nowIso, body.deviceId, tokenHash, nowIso, nowIso),
     ]);
     const updated = results[0];
