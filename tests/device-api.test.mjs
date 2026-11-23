@@ -13,6 +13,8 @@ class DeviceD1 {
     this.invites = new Map();
     this.devices = new Map();
     this.events = [];
+    this.batchCalls = 0;
+    this.failNextBatch = false;
   }
 
   prepare(sql) {
@@ -78,6 +80,8 @@ class DeviceD1 {
   }
 
   async batch(statements) {
+    this.batchCalls += 1;
+    if (this.failNextBatch) { this.failNextBatch = false; throw new Error('simulated atomic batch failure'); }
     const results = [];
     for (const statement of statements) {
       const sql = statement.sql;
@@ -203,8 +207,10 @@ test('device heartbeat authenticates the per-device credential and enforces a co
     env: { AEGIS_DB: db },
   });
 
+  db.batchCalls = 0;
   const success = await makeRequest('Device ' + enrolled.credential);
   assert.equal(success.status, 200);
+  assert.equal(db.batchCalls, 1, 'heartbeat update and audit event must share one atomic D1 batch');
   const throttled = await makeRequest('Device ' + enrolled.credential);
   assert.equal(throttled.status, 429);
   const denied = await makeRequest('Bearer ' + enrolled.credential);
@@ -261,6 +267,7 @@ test('owner can revoke an enrolled device and its credential stops authenticatin
   });
   const enrolled = await enrolResponse.json();
   const session = await createSessionToken(OWNER_SECRET);
+  db.batchCalls = 0;
   const revoked = await revokeDevice({
     request: new Request('https://aegis.example/api/devices', {
       method: 'PATCH',
@@ -274,6 +281,7 @@ test('owner can revoke an enrolled device and its credential stops authenticatin
     env: { AEGIS_PASSWORD: 'owner-password-long-enough', AEGIS_SESSION_SECRET: OWNER_SECRET, AEGIS_DB: db },
   });
   assert.equal(revoked.status, 200);
+  assert.equal(db.batchCalls, 1, 'device revocation and audit event must share one atomic D1 batch');
   assert.equal(db.devices.get(enrolled.device.id).status, 'revoked');
   assert.equal(db.events.filter((event) => event.event_type === 'revoked').length, 1);
 
@@ -289,4 +297,33 @@ test('owner can revoke an enrolled device and its credential stops authenticatin
     env: { AEGIS_DB: db },
   });
   assert.equal(heartbeat.status, 401);
+});
+
+
+test('failed atomic heartbeat batch leaves both device state and audit log unchanged', async () => {
+  const db = new DeviceD1();
+  const inviteResponse = await ownerRequest(db, { platform: 'android', displayName: 'Atomic phone', capabilities: ['device.status.read'] });
+  const { invitation } = await inviteResponse.json();
+  const enrolledResponse = await enrolDevice({ request: new Request('https://aegis.example/api/device-enrol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: invitation.code }) }), env: { AEGIS_DB: db } });
+  const enrolled = await enrolledResponse.json();
+  db.failNextBatch = true;
+  const response = await heartbeatDevice({ request: new Request('https://aegis.example/api/device-heartbeat', { method: 'POST', headers: { Authorization: 'Device ' + enrolled.credential, 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: enrolled.device.id, appVersion: '0.1.0', connectivity: 'online' }) }), env: { AEGIS_DB: db } });
+  assert.equal(response.status, 503);
+  assert.equal(db.devices.get(enrolled.device.id).last_seen_at, null);
+  assert.equal(db.events.filter((event) => event.event_type === 'heartbeat').length, 0);
+});
+
+test('failed atomic revocation batch leaves device active and creates no audit event', async () => {
+  const { onRequestPatch: revokeDevice } = await import('../functions/api/devices.js');
+  const db = new DeviceD1();
+  const inviteResponse = await ownerRequest(db, { platform: 'android', displayName: 'Atomic revoke phone', capabilities: ['device.status.read'] });
+  const { invitation } = await inviteResponse.json();
+  const enrolledResponse = await enrolDevice({ request: new Request('https://aegis.example/api/device-enrol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: invitation.code }) }), env: { AEGIS_DB: db } });
+  const enrolled = await enrolledResponse.json();
+  const session = await createSessionToken(OWNER_SECRET);
+  db.failNextBatch = true;
+  const response = await revokeDevice({ request: new Request('https://aegis.example/api/devices', { method: 'PATCH', headers: { Cookie: '__Host-aegis_session=' + session, Origin: 'https://aegis.example', 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: enrolled.device.id, action: 'revoke' }) }), env: { AEGIS_PASSWORD: 'owner-password-long-enough', AEGIS_SESSION_SECRET: OWNER_SECRET, AEGIS_DB: db } });
+  assert.equal(response.status, 503);
+  assert.equal(db.devices.get(enrolled.device.id).status, 'active');
+  assert.equal(db.events.filter((event) => event.event_type === 'revoked').length, 0);
 });
