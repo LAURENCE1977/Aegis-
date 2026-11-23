@@ -6,9 +6,30 @@ const token = 'runtime-integration-token-with-at-least-32-characters';
 
 class MemoryD1 {
   constructor() { this.jobs = new Map(); this.events = []; this.failAuditInsert = false; }
+  async batch(statements) {
+    const jobsSnapshot = new Map([...this.jobs].map(([id, row]) => [id, { ...row }]));
+    const eventsSnapshot = [...this.events];
+    try {
+      const results = [];
+      for (const statement of statements) {
+        if (statement.sql.includes('RETURNING attempts')) {
+          const claim = await statement.first();
+          results.push({ results: claim ? [claim] : [], meta: { changes: claim ? 1 : 0 } });
+        } else {
+          results.push(await statement.run());
+        }
+      }
+      return results;
+    } catch (error) {
+      this.jobs = jobsSnapshot;
+      this.events = eventsSnapshot;
+      throw error;
+    }
+  }
   prepare(sql) {
     const db = this;
     return {
+      sql,
       values: [],
       bind(...values) { this.values = values; return this; },
       async first() {
@@ -50,6 +71,13 @@ class MemoryD1 {
         }
         if (sql.includes('INSERT INTO job_events')) {
           if (db.failAuditInsert) throw new Error('audit unavailable');
+          if (sql.includes('SELECT')) {
+            const row = db.jobs.get(v[2]);
+            if (!row || row.status !== 'running' || row.updated_at !== v[3]) return { meta: { changes: 0 } };
+            if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
+            db.events.push({ event_id: v[0], job_id: row.id, event_type: 'running', detail_json: JSON.stringify({ attempt: row.attempts }), created_at: v[1] });
+            return { meta: { changes: 1 } };
+          }
           if (db.events.some((event) => event.event_id === v[0])) return { meta: { changes: 0 } };
           db.events.push({ event_id: v[0], job_id: v[1], event_type: v[2], detail_json: v[3], created_at: v[4] });
           return { meta: { changes: 1 } };
