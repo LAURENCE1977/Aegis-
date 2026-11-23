@@ -37,3 +37,15 @@ Kodiak requires a .kodiak.toml and GitHub branch protection. Its default label-g
 For local diff inspection, delta supports side-by-side diffs, line numbers and improved conflict display. For local structural merges, follow Mergiraf's upstream installation and registration instructions and pin a reviewed version.
 
 git-filter-repo --analyze can help inspect repository history, but even analysis output should be run on a disposable clone. Actual filtering rewrites commit IDs and can invalidate branches and references; it is not appropriate for the current PR base-drift problem.
+
+
+## Implemented read-only diagnostics and Mergiraf lab
+
+The merge-intelligence branch now includes two isolated CI workflows:
+
+- `.github/workflows/merge-diagnostics.yml` runs on pull-request updates. It reads open PR metadata, narrows the scan to the connected feature/repair branch stack, compares each base/head pair, collects changed paths, and writes an advisory review summary. The repository default branch is deliberately excluded as a graph bridge so unrelated PRs are not swept into one giant stack. The workflow uses read-only GitHub permissions and never writes PRs or branches.
+- `.github/workflows/mergiraf-sandbox.yml` installs the pinned Mergiraf **0.20.0** release and runs `scripts/mergiraf-sandbox.sh`. The script creates a disposable temporary Git repository, reproduces a YAML structural conflict, invokes `mergiraf solve`, verifies the exact expected result and removes the temporary repository. It never checks out, modifies or commits AEGIS project files.
+
+The repository does **not** register Mergiraf as a global or tracked `.gitattributes` merge driver. The CI smoke test proves the pinned tool can resolve a known fixture; it does not claim that it has resolved any live AEGIS PR conflict. Any future real-branch use must happen in a disposable worktree, with the proposed patch reviewed and the complete test suite run before a human-approved branch update.
+
+The diagnostics report treats changed-file overlap as a review warning only. GitHub's mergeability state remains a separate signal and may mean a confirmed conflict or an unresolved calculation; it must be inspected before action.
