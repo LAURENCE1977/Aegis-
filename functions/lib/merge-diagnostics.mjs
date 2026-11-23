@@ -25,9 +25,10 @@ export async function collectMergeSnapshot(openPullRequests, fetchCompare, fetch
       throw new TypeError('Invalid GitHub pull request record');
     }
 
-    const [compare, changedFiles] = await Promise.all([
+    const [compare, changedFiles, details] = await Promise.all([
       fetchCompare(pullRequest),
       fetchFiles(pullRequest),
+      fetchDetails ? fetchDetails(pullRequest) : Promise.resolve(pullRequest),
     ]);
 
     if (!isRecord(compare) ||
