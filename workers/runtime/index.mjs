@@ -226,17 +226,22 @@ async function processAgentRun(message, env) {
     message.ack();
   } catch {
     if (attempt >= MAX_ATTEMPTS) {
-      const failed = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-      ).bind(new Date().toISOString(), runId, attempt).run();
-      if (failed.meta?.changes) await auditAgentRun(env, runId, 'failed', { code: 'AGENT_PLAN_FAILED', attempt });
+      const failedAt = new Date().toISOString();
+      await transitionAgentRun(env,
+        "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_PLAN_FAILED', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+        [failedAt, runId, attempt],
+        { runId, status: 'failed', updatedAt: failedAt, eventType: 'failed',
+          detail: { code: 'AGENT_PLAN_FAILED', attempt } },
+      );
       message.ack();
     } else {
-      const retry = await env.DB.prepare(
-        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?"
-      ).bind(new Date().toISOString(), runId, attempt).run();
-      if (!retry.meta?.changes) { message.ack(); return; }
-      await auditAgentRun(env, runId, 'retry_scheduled', { attempt });
+      const retryAt = new Date().toISOString();
+      const transitioned = await transitionAgentRun(env,
+        "UPDATE agent_runs SET status = 'queued', error_code = 'AGENT_PLAN_RETRY', lease_until = NULL, updated_at = ? WHERE id = ? AND status = 'running' AND attempts = ?",
+        [retryAt, runId, attempt],
+        { runId, status: 'queued', updatedAt: retryAt, eventType: 'retry_scheduled', detail: { attempt } },
+      );
+      if (!transitioned) { message.ack(); return; }
       message.retry({ delaySeconds: Math.min(300, 2 ** attempt * 5) });
     }
   }
@@ -246,16 +251,12 @@ async function processAgentDeadLetter(message, env) {
   const runId = message?.body?.agentRunId;
   if (!isJobId(runId)) { message.ack(); return; }
   const now = new Date().toISOString();
-  await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))"
-  ).bind(now, runId, now).run();
-  const row = await env.DB.prepare(
-    'SELECT status, error_code FROM agent_runs WHERE id = ?'
-  ).bind(runId).first();
-  if (row?.status === 'failed' && row.error_code === 'AGENT_DELIVERY_EXHAUSTED') {
-    await auditAgentRun(env, runId, 'delivery_exhausted',
-      { code: 'AGENT_DELIVERY_EXHAUSTED' }, 'delivery-exhausted:' + runId);
-  }
+  await transitionAgentRun(env,
+    "UPDATE agent_runs SET status = 'failed', error_code = 'AGENT_DELIVERY_EXHAUSTED', lease_until = NULL, updated_at = ? WHERE id = ? AND (status IN ('queued', 'pending_dispatch') OR (status = 'running' AND (lease_until IS NULL OR lease_until <= ?)))",
+    [now, runId, now],
+    { runId, status: 'failed', updatedAt: now, eventType: 'delivery_exhausted',
+      detail: { code: 'AGENT_DELIVERY_EXHAUSTED' }, eventId: 'delivery-exhausted:' + runId },
+  );
   message.ack();
 }
 
