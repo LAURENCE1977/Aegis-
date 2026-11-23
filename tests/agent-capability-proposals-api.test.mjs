@@ -34,6 +34,11 @@ class ProposalD1 {
         return { results: [] };
       },
       async run() {
+        if (sql.includes('INSERT INTO agent_run_events')) {
+          const v = this.values;
+          db.events.push({ event_id: v[0], agent_run_id: v[1], event_type: 'capability_proposal_created', detail: { capabilityId: v[2], actionId: v[3], inputDigest: v[4] }, created_at: v[5] });
+          return { meta: { changes: 1 } };
+        }
         if (!sql.includes('INSERT INTO agent_capability_proposals')) return { meta: { changes: 1 } };
         const v = this.values;
         const existing = [...db.proposals.values()].find((row) =>
@@ -100,7 +105,8 @@ test('persists a metadata-only proposal for a completed agent plan', async () =>
   assert.match(proposal.inputDigest, /^sha256:[a-f0-9]{64}$/);
   assert.equal('input' in proposal, false);
   assert.equal(runtimeEnv.DB.proposals.size, 1);
-  assert.equal(runtimeEnv.DB.events.length, 0);
+  assert.equal(runtimeEnv.DB.events.length, 1);
+  assert.equal(runtimeEnv.DB.events[0].event_type, 'capability_proposal_created');
 });
 
 test('returns the existing proposal for an identical retry', async () => {
