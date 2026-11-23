@@ -44,7 +44,7 @@ class DeviceD1 {
           db.invites.set(v[0], {
             id: v[0], owner_id: v[1], code_hash: v[2], platform: v[3],
             display_name: v[4], capabilities_json: v[5], expires_at: v[6],
-            consumed_at: v[7], revoked_at: v[8], created_by: v[9], created_at: v[10],
+            consumed_at: null, revoked_at: null, created_by: v[7], created_at: v[8],
           });
           return { meta: { changes: 1 } };
         }
