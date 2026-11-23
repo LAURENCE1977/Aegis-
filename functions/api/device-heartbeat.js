@@ -45,21 +45,24 @@ export async function onRequestPost({ request, env }) {
     const now = new Date();
     const nowIso = now.toISOString();
     const cutoff = new Date(now.getTime() - MIN_HEARTBEAT_INTERVAL_MS).toISOString();
-    const updated = await env.AEGIS_DB.prepare(
-      "UPDATE devices SET last_seen_at = ?, app_version = ?, connectivity = ?, updated_at = ? WHERE id = ? AND token_hash = ? AND status = 'active' AND (last_seen_at IS NULL OR last_seen_at <= ?)"
-    ).bind(nowIso, heartbeat.appVersion, heartbeat.connectivity, nowIso, body.deviceId, tokenHash, cutoff).run();
+    const eventId = crypto.randomUUID();
+    const results = await env.AEGIS_DB.batch([
+      env.AEGIS_DB.prepare(
+        "UPDATE devices SET last_seen_at = ?, app_version = ?, connectivity = ?, updated_at = ? WHERE id = ? AND token_hash = ? AND status = 'active' AND (last_seen_at IS NULL OR last_seen_at <= ?)"
+      ).bind(nowIso, heartbeat.appVersion, heartbeat.connectivity, nowIso, body.deviceId, tokenHash, cutoff),
+      env.AEGIS_DB.prepare(
+        "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) SELECT ?, id, 'heartbeat', ?, ? FROM devices WHERE id = ? AND token_hash = ? AND status = 'active' AND last_seen_at = ? AND updated_at = ?"
+      ).bind(eventId, JSON.stringify(heartbeat), nowIso, body.deviceId, tokenHash, nowIso, nowIso),
+    ]);
+    const updated = results[0];
 
-    if (!updated.meta?.changes) {
+    if (!updated?.meta?.changes) {
       const active = await env.AEGIS_DB.prepare(
         "SELECT id FROM devices WHERE id = ? AND token_hash = ? AND status = 'active'"
       ).bind(body.deviceId, tokenHash).first();
       if (!active) return jsonResponse({ error: 'Device credential is invalid or revoked.' }, 401);
       return jsonResponse({ error: 'Heartbeat rate limit exceeded. Retry after 30 seconds.' }, 429);
     }
-
-    await env.AEGIS_DB.prepare(
-      "INSERT INTO device_events (event_id, device_id, event_type, detail_json, created_at) VALUES (?, ?, 'heartbeat', ?, ?)"
-    ).bind(crypto.randomUUID(), body.deviceId, JSON.stringify(heartbeat), nowIso).run();
 
     return jsonResponse({ device: { id: body.deviceId, status: 'active', lastSeenAt: nowIso, ...heartbeat } });
   } catch {
