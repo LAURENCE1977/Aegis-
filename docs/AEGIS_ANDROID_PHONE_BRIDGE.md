@@ -1,6 +1,6 @@
 # AEGIS Android phone bridge — implementation contract
 
-**Status:** backend pairing endpoints, D1 registry migration, browser-safe credential handling and the AEGIS Devices screen are implemented in the PR branch. CI Node tests and isolated local D1 migration/smoke checks pass. No real phone is paired, no native Android app is installed and production has not been changed.
+**Status:** backend pairing endpoints, D1 registry migration, browser-safe credential handling, the AEGIS Devices screen, owner-approved agent-plan assignment and device-authenticated read-only plan observation are implemented in the PR branch. CI Node tests and isolated local D1 migration/smoke checks pass. No real phone is paired, no native Android app is installed and production has not been changed.
 **Parent:** free-first orchestration work in PR #202.
 **Cost policy:** zero paid services, no trials, no billing activation, no automatic upgrade.
 
@@ -51,7 +51,7 @@ Any later local capability must have its own exact action schema, scope, expiry,
 6. Client sends a bounded heartbeat. Server verifies the device token hash, revocation state, owner and rate limit, then records last-seen status.
 7. Owner can inspect, rotate or revoke the device from the AEGIS control centre.
 
-Implemented Pages API routes in this branch: `POST /api/devices` creates an owner-authenticated invitation; `GET /api/devices` lists safe device metadata; `PATCH /api/devices` revokes an owner device; `POST /api/device-enrol` atomically redeems a single-use invitation; and `POST /api/device-heartbeat` authenticates a device-specific credential. The D1 migration is `migrations/runtime/0004_devices.sql`. The runtime's `AEGIS_JOB_TOKEN` is never issued to a phone. These endpoints still require a verified production `AEGIS_DB` binding and an owner-approved deployment before they are live.
+Implemented Pages API routes in this branch: `POST /api/devices` creates an owner-authenticated invitation; `GET /api/devices` lists safe device metadata; `PATCH /api/devices` revokes an owner device; `POST /api/device-enrol` atomically redeems a single-use invitation; `POST /api/device-heartbeat` authenticates a device-specific credential; and `POST /api/device-assign-run` assigns a planned agent run to an active owner device with `aegis.jobs.observe`. The runtime exposes `GET /v1/devices/{deviceId}/agent-runs`, authenticated with that device's own credential, and returns only plans explicitly assigned to that device. The assignment column/index is added by `migrations/runtime/0005_device_agent_run_assignments.sql`. This is read-only observation, not remote task execution. The runtime's `AEGIS_JOB_TOKEN` is never issued to a phone. These endpoints still require a verified production `AEGIS_DB`/runtime D1 binding and an owner-approved deployment before they are live.
 
 ## 6. Free-first constraints
 
@@ -80,7 +80,7 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 3. **Implemented:** owner-authenticated invitation create/list/revoke APIs and single-use enrolment API.
 4. **Implemented:** authenticated, throttled heartbeat and revocation; token rotation remains outstanding.
 5. **Implemented:** mobile-friendly AEGIS Devices screen for creating codes, pairing this browser/phone, checking connection and revoking devices.
-6. **Next:** connect assigned-job observation and owner approval inbox to device identity, task leases, Sentinel policy and approval consumption.
+6. **Implemented:** owner-approved assignment of planned agent runs to an active device with the observation capability; device-authenticated `GET /v1/devices/{deviceId}/agent-runs` returns only that device's assigned plans. This first slice is read-only; no device execution or approval consumption is enabled.
 7. **Next:** build a native Android companion for Android Keystore and WorkManager-backed sync; browser PWA remains best-effort only.
 8. **Next:** add Chromebook as a second client against the same contract.
 
