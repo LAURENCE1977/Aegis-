@@ -7,6 +7,7 @@ const token = 'runtime-integration-token-with-at-least-32-characters';
 class MemoryD1 {
   constructor() { this.jobs = new Map(); this.events = []; this.failAuditInsert = false; }
   async batch(statements) {
+    const db = this;
     const jobsSnapshot = new Map([...this.jobs].map(([id, row]) => [id, { ...row }]));
     const eventsSnapshot = [...this.events];
     try {
