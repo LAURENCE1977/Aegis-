@@ -117,7 +117,8 @@ README states the project is an early Cloudflare Pages prototype. It lists:
 - password sign-in and signed expiring browser sessions;
 - ten adapted engineering skills with contextual guidance;
 - authenticated module/skills endpoints;
-- Forge capability declarations and engineering-intelligence record validators;- authenticated read-only public GitHub repository discovery.
+- Forge capability declarations and engineering-intelligence record validators;
+- authenticated read-only public GitHub repository discovery.
 
 README explicitly says the full autonomous task runner, provider router, durable engineering knowledge store, general MCP/API connector manager, voice engine and production Forge sandbox are **not yet present**.
 
@@ -236,7 +237,8 @@ A new feature branch `feature/aegis-runtime-dlq-recovery` ports the previously d
 
 ## 11. Required workflow for every code change
 
-1. Load the installed test-driven-development skill before implementation.2. Inspect current code and define acceptance criteria.
+1. Load the installed test-driven-development skill before implementation.
+2. Inspect current code and define acceptance criteria.
 3. Write regression tests first (red).
 4. Implement the smallest change (green), then refactor.
 5. Run relevant tests and report exact results.
@@ -355,6 +357,7 @@ Project Spaces provide owner-scoped durable project context and an append-only t
 
 
 ## Sentinel invocation gate — source integration
+
 The Sentinel mediation primitive is being ported onto the clean Project Spaces branch as `functions/lib/sentinel.mjs`, with focused tests. Its intended sequence is trusted policy-context loading, exact-manifest policy evaluation, redacted audit, atomic consumption of any one-time human approval, then adapter invocation. It is deliberately not exposed through a public API or agent runtime yet. A complete execution boundary still requires persistent grants and connections, encrypted secret resolution, concrete durable audit, payload digest derivation, isolated adapters and egress enforcement. Source integration is not deployment; no D1 migration or production resource is enabled by this step.
 
 
