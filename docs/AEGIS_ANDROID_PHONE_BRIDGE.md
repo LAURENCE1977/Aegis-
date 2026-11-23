@@ -84,10 +84,12 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 4. **Implemented:** authenticated, throttled heartbeat, revocation and per-device token rotation; rotation has focused regression tests for success, replay rejection, revoked-device rejection and transaction failure.
 5. **Implemented:** mobile-friendly AEGIS Devices screen for creating codes, pairing this browser/phone, checking connection and revoking devices.
 6. **Implemented:** owner-approved assignment of planned agent runs to an active device with the observation capability; device-authenticated `GET /v1/devices/{deviceId}/agent-runs` returns only that device's assigned plans. This first slice is read-only; no device execution or approval consumption is enabled.
-7. **Next:** build a native Android companion for Android Keystore and WorkManager-backed sync; browser PWA remains best-effort only.
+7. **Implemented:** the paired-browser PWA now displays only plans assigned to its own device through `GET /api/device-agent-runs`, using the Secure, HttpOnly device cookie. It does not persist the device credential in browser storage, and it renders plan content as text.
+8. **Next:** build a native Android companion for Android Keystore and WorkManager-backed sync; browser PWA remains best-effort only.
+9. **Next:** add Chromebook as a second client against the same contract.
 8. **Next:** add Chromebook as a second client against the same contract.
 
-**Current verified state (2026-11-23):** the source-level pairing flow, Devices UI, owner-facing planned-run inventory, one-time assignment guard and credential-rotation endpoint are implemented on PR #202. The current token-rotation change is undergoing the full Node test suite and isolated D1 migration/smoke checks. Historical full-suite evidence recorded 608 passed / 0 failed at implementation head `71dedc244d912e4c6903c6d2be07cc6a4c2f3cbb`; do not treat that historical count as a fresh count for every later commit. The assignment and device-observation paths are source-level only and remain read-only; they are not live until an owner-approved deployment with verified shared D1 bindings. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat, and no device-side task execution or approval consumption is enabled.
+**Current verified state (2026-11-23):** the source-level pairing flow, Devices UI, owner-facing planned-run inventory, one-time assignment guard, device-specific assigned-plan view and credential-rotation endpoint are implemented on PR #202. At head `223d16e387d4c5786ce38f0854810240dfe3abcd`, the full Node.js test suite and isolated capability, runtime and Forge D1 migration/smoke checks passed; merge diagnostics also passed. Mergiraf validation is tracked separately. Historical full-suite evidence recorded 608 passed / 0 failed at implementation head `71dedc244d912e4c6903c6d2be07cc6a4c2f3cbb`; do not treat that historical count as a fresh count for every later commit. The assignment and device-observation paths are source-level only and remain read-only; they are not live until an owner-approved deployment with verified shared D1 bindings. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat, and no device-side task execution or approval consumption is enabled.
 
 ## 9. Owner-facing planned-run inventory (2026-11-23)
 
@@ -97,3 +99,14 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 - Assignment reuses the existing owner-authenticated `POST /api/device-assign-run` route. It grants read-only observation, not execution, shell access, approval consumption or permission escalation. A planned run can only be assigned once; silent reassignment is rejected so the original device's assignment cannot be overwritten.
 - The endpoint, frontend and regression tests are committed to the PR #202 feature branch. The follow-on capability-tightening and single-assignment guard are covered by fresh regression tests; CI for the latest head is running. Treat the change as verified only after the full Node suite and isolated D1 checks complete.
 - No production deployment, database migration, device pairing or device-side execution has been performed.
+
+
+## 10. Paired-browser assigned-plan view (2026-11-23)
+
+- Added a separate phone/browser view for plans assigned to the currently paired device. It calls the same-origin `GET /api/device-agent-runs?deviceId=...` route and relies on the browser's Secure, HttpOnly device cookie.
+- The browser stores only the non-secret device ID in local storage; it never stores the device credential there. The API request uses same-origin credentials and `cache: no-store`.
+- The UI handles missing, invalid, revoked and under-permissioned device credentials without treating device-authentication failures as owner-session failures.
+- Plan objectives and structured plan content are rendered with `textContent`; no plan data is inserted as HTML. The displayed plan is truncated to a bounded 8,000-character preview.
+- The view lists only plans assigned to that device and is explicitly read-only. It cannot execute plans, access unassigned runs, consume approvals or grant capabilities.
+- Regression coverage verifies the UI elements, endpoint path, same-origin cookie use, safe text rendering and absence of device-token storage.
+- The latest full Node.js suite and isolated D1 migration/smoke checks passed at commit `223d16e387d4c5786ce38f0854810240dfe3abcd`. No live deployment or actual device pairing has been performed.
