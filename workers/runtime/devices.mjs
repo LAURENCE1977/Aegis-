@@ -84,3 +84,25 @@ export async function hashDeviceToken(token, cryptoProvider = globalThis.crypto)
   const digest = await cryptoProvider.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+
+export function createPairingCode(cryptoProvider = globalThis.crypto) {
+  if (!cryptoProvider || typeof cryptoProvider.getRandomValues !== 'function') {
+    throw new TypeError('Secure random number generation is unavailable.');
+  }
+  const bytes = cryptoProvider.getRandomValues(new Uint8Array(32));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return 'aegis_pair_' + encoded;
+}
+
+export async function hashPairingCode(code, cryptoProvider = globalThis.crypto) {
+  if (typeof code !== 'string' || !/^aegis_pair_[A-Za-z0-9_-]{43}$/.test(code)) {
+    throw new TypeError('Invalid pairing code.');
+  }
+  if (!cryptoProvider?.subtle || typeof cryptoProvider.subtle.digest !== 'function') {
+    throw new TypeError('Secure token hashing is unavailable.');
+  }
+  const digest = await cryptoProvider.subtle.digest('SHA-256', new TextEncoder().encode(code));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
