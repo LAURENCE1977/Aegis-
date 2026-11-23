@@ -35,6 +35,10 @@ The example worker configuration declares both bindings with placeholder databas
 
 The runtime's current agent queue remains plan-only. Declaring `CAPABILITY_DB` is infrastructure preparation, not permission to execute agent-proposed actions. A later execution slice must compose `createSentinelDependencies({ db: env.CAPABILITY_DB, adapters: createBuiltinAdapterRegistry() })` inside trusted server code, derive the principal from authenticated persisted ownership, and add an explicit, bounded action-request lifecycle with approval, cancellation, idempotency and audit tests before any adapter is reachable.
 
+## Cloudflare Pages API binding boundary
+
+The Pages Functions API currently uses the binding name `AEGIS_DB` for Sentinel invocation and approval routes. In the Pages project settings, that binding must point to the dedicated capability D1 database (the same logical store represented by the runtime worker's `CAPABILITY_DB` binding), not the runtime jobs database. Binding names are environment-specific; the underlying database boundary is not. Keep the worker's `DB` and Pages' capability-store binding on separate D1 resources. Do not change bindings or apply remote migrations until the owner has reviewed and approved the deployment plan.
+
 ## Deployment gate
 
 This document and the Sentinel library are source-level foundations only. Before enabling execution, add and test the D1 composition, digest helper, secret resolution, audit writer, adapter allowlist, SSRF/egress controls, revocation checks, idempotency and stop/revoke path. Apply migrations and provision production resources only after an explicit owner-approved deployment plan.
