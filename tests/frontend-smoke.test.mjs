@@ -269,8 +269,8 @@ test('paired device view loads only its assigned plans using the HttpOnly device
   }
   assert.match(html, /fetch\('\/api\/device-agent-runs\?deviceId='/);
   assert.match(html, /credentials:\s*'same-origin'/);
-  assert.match(html, /deviceAssignedRunList\.textContent\s*=\s*run\.objective/);
-  assert.match(html, /deviceAssignedRunList\.textContent\s*=\s*JSON\.stringify\(run\.plan/);
+  assert.match(html, /title\.textContent\s*=\s*run\.objective/);
+  assert.match(html, /pre\.textContent\s*=\s*JSON\.stringify\(run\.plan/);
   assert.match(html, /localStorage\.getItem\('aegis_device_id'\)/);
   assert.doesNotMatch(html, /localStorage\.setItem\(['"]aegis_device_token/);
 });
