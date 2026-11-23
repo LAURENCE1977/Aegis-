@@ -2,6 +2,7 @@ const API_ORIGIN = 'https://backend.composio.dev';
 const ACCOUNT_PATH = '/api/v3/connected_accounts';
 const EXECUTE_PATH = '/api/v3.1/tools/execute/';
 const MAX_RESPONSE_BYTES = 256 * 1024;
+const MAX_ACCOUNT_PAGES = 5;
 
 const READ_ONLY_TOOLS = Object.freeze({
   GITHUB_GET_THE_AUTHENTICATED_USER: Object.freeze({
@@ -47,10 +48,34 @@ async function readJson(response) {
   if (declaredLength > MAX_RESPONSE_BYTES) {
     throw safeError('COMPOSIO_RESPONSE_TOO_LARGE', 'Composio response exceeded the size limit.');
   }
-  const text = await response.text();
-  if (text.length > MAX_RESPONSE_BYTES) {
-    throw safeError('COMPOSIO_RESPONSE_TOO_LARGE', 'Composio response exceeded the size limit.');
+
+  let text = '';
+  if (response.body?.getReader) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw safeError('COMPOSIO_RESPONSE_TOO_LARGE', 'Composio response exceeded the size limit.');
+        }
+        text += decoder.decode(value, { stream: true });
+      }
+      text += decoder.decode();
+    } finally {
+      reader.releaseLock();
+    }
+  } else {
+    text = await response.text();
+    if (new TextEncoder().encode(text).byteLength > MAX_RESPONSE_BYTES) {
+      throw safeError('COMPOSIO_RESPONSE_TOO_LARGE', 'Composio response exceeded the size limit.');
+    }
   }
+
   try {
     return JSON.parse(text);
   } catch {
@@ -65,11 +90,12 @@ function connectionItems(payload) {
   return [];
 }
 
-function safeConnection(account) {
+function safeConnection(account, expectedUserId) {
   const id = account?.id;
   const toolkit = account?.toolkit?.slug ?? account?.toolkit_slug;
   const status = account?.status;
-  if (!validText(id, 160) || !validText(toolkit, 100) || !validText(status, 40)) return null;
+  if (account?.user_id !== expectedUserId ||
+      !validText(id, 160) || !validText(toolkit, 100) || !validText(status, 40)) return null;
   return { id, toolkit, status };
 }
 
@@ -102,14 +128,26 @@ export function createComposioBridge({ apiKey, userId, fetchImpl = fetch } = {})
   }
 
   async function listConnectedAccounts() {
-    const url = new URL(ACCOUNT_PATH, API_ORIGIN);
-    url.searchParams.set('user_ids', userId);
-    url.searchParams.set('limit', '100');
-    const payload = await request(url, {
-      method: 'GET',
-      headers: { 'x-api-key': apiKey, Accept: 'application/json' },
-    });
-    return connectionItems(payload).map(safeConnection).filter(Boolean);
+    const accounts = [];
+    let cursor = null;
+
+    for (let page = 0; page < MAX_ACCOUNT_PAGES; page += 1) {
+      const url = new URL(ACCOUNT_PATH, API_ORIGIN);
+      url.searchParams.set('user_ids', userId);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const payload = await request(url, {
+        method: 'GET',
+        headers: { 'x-api-key': apiKey, Accept: 'application/json' },
+      });
+      accounts.push(...connectionItems(payload).map((account) => safeConnection(account, userId)).filter(Boolean));
+      cursor = typeof payload?.next_cursor === 'string' && payload.next_cursor.length <= 512
+        ? payload.next_cursor : null;
+      if (!cursor) return accounts;
+    }
+
+    throw safeError('COMPOSIO_ACCOUNT_PAGE_LIMIT', 'Composio connection listing exceeded the page limit.');
   }
 
   async function executeReadOnlyTool({ toolSlug, connectedAccountId, arguments: args = {} } = {}) {
@@ -132,7 +170,7 @@ export function createComposioBridge({ apiKey, userId, fetchImpl = fetch } = {})
     }
 
     const url = new URL(EXECUTE_PATH + encodeURIComponent(toolSlug), API_ORIGIN);
-    const payload = await request(url, {
+    return request(url, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
@@ -146,7 +184,6 @@ export function createComposioBridge({ apiKey, userId, fetchImpl = fetch } = {})
         arguments: args,
       }),
     });
-    return payload;
   }
 
   return Object.freeze({ listConnectedAccounts, executeReadOnlyTool });
