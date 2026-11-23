@@ -123,3 +123,16 @@ export function parseDeviceAuthorization(header) {
   const match = /^Device\s+(aegis_dev_[A-Za-z0-9_-]{43})$/i.exec(header.trim());
   return match ? match[1] : null;
 }
+
+export function readDeviceToken(request) {
+  const headerToken = parseDeviceAuthorization(request?.headers?.get?.('Authorization'));
+  if (headerToken) return headerToken;
+  const cookieHeader = request?.headers?.get?.('Cookie') || '';
+  for (const part of cookieHeader.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0 || part.slice(0, separator).trim() !== '__Host-aegis_device') continue;
+    const token = part.slice(separator + 1).trim();
+    return TOKEN_PATTERN.test(token) ? token : null;
+  }
+  return null;
+}
