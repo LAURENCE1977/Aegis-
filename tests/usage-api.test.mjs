@@ -20,16 +20,17 @@ class UsageDashboardD1 {
       },
       async all() {
         if (sql.includes('FROM model_usage_quota_windows')) {
+          const now = Date.now();
           return { results: [{
             id: 'quota-1',
             provider_id: 'alibaba-qwen',
             model_id: 'qwen3.8-flash',
             unit_kind: 'tokens',
-            window_start: '2026-11-22T00:00:00.000Z',
-            window_end: '2026-11-23T00:00:00.000Z',
+            window_start: new Date(now - 60 * 60 * 1000).toISOString(),
+            window_end: new Date(now + 60 * 60 * 1000).toISOString(),
             limit_units: 100000,
             source_url: 'https://provider.example/quota',
-            verified_at: '2026-11-22T18:30:00.000Z',
+            verified_at: new Date(now - 60 * 60 * 1000).toISOString(),
             status: 'enabled',
             settled_units: 1000,
             reserved_units: 2000,

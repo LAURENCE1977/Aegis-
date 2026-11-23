@@ -128,6 +128,7 @@
         <button class="secondary" id="forgeTab" type="button">Forge</button>
         <button class="secondary" id="securityTab" type="button">Security</button>
         <button class="secondary" id="providerTab" type="button">Providers</button>
+        <button class="secondary" id="integrationTab" type="button">Connections</button>
       </div>
       <section id="chatSection">
       <label class="project-context" for="chatProjectSelect">Chat context
@@ -204,6 +205,13 @@
         <p class="status" id="providerStatus" role="status" aria-live="polite">No key has been submitted.</p>
         <div id="providerList" aria-live="polite"></div>
       </section>
+      <section class="memory-panel" id="integrationSection" hidden>
+        <h2>Connected services</h2>
+        <p class="memory-help">Composio is the connection hub for AEGIS. This panel reads your linked toolkit accounts and shows only connection IDs, toolkit names and statuses. It never displays provider credentials. Tool execution remains disabled until Sentinel grants, approvals and audit are connected.</p>
+        <p class="status" id="integrationStatus" role="status" aria-live="polite">Connections have not been checked.</p>
+        <div id="integrationList" aria-live="polite"></div>
+        <div class="workspace-actions"><button class="secondary" id="refreshIntegrationsBtn" type="button">Refresh connections</button></div>
+      </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
         <p class="memory-help">Create private workspaces for projects. Notes and decisions are kept in an owner-only timeline.</p>
@@ -278,6 +286,11 @@
     const providerStatus = document.getElementById('providerStatus');
     const providerVaultStatus = document.getElementById('providerVaultStatus');
     const providerList = document.getElementById('providerList');
+    const integrationTab = document.getElementById('integrationTab');
+    const integrationSection = document.getElementById('integrationSection');
+    const integrationStatus = document.getElementById('integrationStatus');
+    const integrationList = document.getElementById('integrationList');
+    const refreshIntegrationsBtn = document.getElementById('refreshIntegrationsBtn');
     const securitySection = document.getElementById('securitySection');
     const securityStatus = document.getElementById('securityStatus');
     const moduleList = document.getElementById('moduleList');
@@ -387,6 +400,7 @@
       chatSection.hidden = false;
       memorySection.hidden = true;
       providerSection.hidden = true;
+      integrationSection.hidden = true;
       chatBox.replaceChildren();
       loadHistory();
       addMessage('Hello! How can I help you today?');
@@ -678,8 +692,10 @@
       forgeSection.hidden = panel !== 'forge';
       securitySection.hidden = panel !== 'security';
       providerSection.hidden = panel !== 'providers';
+      integrationSection.hidden = panel !== 'integrations';
       if (panel !== 'providers') providerApiKey.value = '';
       if (panel === 'providers') loadProviderConnections();
+      if (panel === 'integrations') loadComposioIntegrations();
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
@@ -697,6 +713,8 @@
     forgeTab.addEventListener('click', () => showPanel('forge'));
     securityTab.addEventListener('click', () => showPanel('security'));
     providerTab.addEventListener('click', () => showPanel('providers'));
+    integrationTab.addEventListener('click', () => showPanel('integrations'));
+    refreshIntegrationsBtn.addEventListener('click', loadComposioIntegrations);
 
     providerForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -800,6 +818,45 @@
           : 'No model providers are available.';
       } catch (error) {
         providerStatus.textContent = error.message || 'Provider connection inventory is unavailable.';
+      }
+    }
+
+    async function loadComposioIntegrations() {
+      integrationStatus.textContent = 'Checking Composio connections…';
+      integrationList.replaceChildren();
+      refreshIntegrationsBtn.disabled = true;
+      try {
+        const data = await controlApi('/api/integrations');
+        const connections = Array.isArray(data.connections) ? data.connections : [];
+        if (!connections.length) {
+          integrationList.textContent = 'No connected toolkit accounts were found for the configured AEGIS Composio identity.';
+          integrationList.className = 'memory-empty';
+        } else {
+          integrationList.className = '';
+          connections.forEach(connection => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h3');
+            title.textContent = connection.toolkit;
+            const details = document.createElement('p');
+            details.textContent = 'Connection: ' + connection.id + ' · Status: ' + connection.status;
+            card.append(title, details);
+            integrationList.append(card);
+          });
+        }
+        integrationStatus.textContent = data.total + ' Composio connection(s) found · Composio connection inventory is read-only';
+        const boundary = document.createElement('p');
+        boundary.className = 'memory-help';
+        boundary.textContent = data.executionEnabled === true
+          ? 'Tool execution is enabled by server policy.'
+          : 'Tool execution is disabled until each action is registered and mediated by Sentinel grants, approvals, rate limits and durable audit.';
+        integrationList.append(boundary);
+      } catch (error) {
+        integrationStatus.textContent = error.message.includes('503')
+          ? 'Composio is not configured for this AEGIS environment yet. Add the project API key and owner user ID as encrypted Preview secrets.'
+          : error.message || 'Composio connection inventory is unavailable.';
+      } finally {
+        refreshIntegrationsBtn.disabled = false;
       }
     }
 
