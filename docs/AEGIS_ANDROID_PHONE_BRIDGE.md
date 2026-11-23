@@ -85,3 +85,12 @@ Implemented Pages API routes in this branch: `POST /api/devices` creates an owne
 8. **Next:** add Chromebook as a second client against the same contract.
 
 **Current verified state:** the source-level pairing flow and Devices UI are covered by the AEGIS Node test suite; the `0004_devices.sql` migration and device registry smoke fixture pass against disposable local D1 in CI. No production D1 migration or Pages deployment has been performed. No actual phone has completed pairing or heartbeat yet, and device-assigned jobs are not enabled.
+
+## 9. Owner-facing planned-run inventory (2026-11-23)
+
+- Added owner-session-authenticated `GET /api/agent-runs`, returning a maximum of 50 recent runs with a deliberately small projection: ID, objective, status, parsed plan, assigned device ID and timestamps. Internal idempotency keys, specialist storage, error internals and credentials are not returned.
+- The current AEGIS runtime is single-owner; the endpoint relies on the existing owner session and does not claim multi-tenant row isolation.
+- The Devices panel now displays the planned-run inventory and offers assignment only for runs in `planned` state and active devices carrying `aegis.jobs.observe`.
+- Assignment reuses the existing owner-authenticated `POST /api/device-assign-run` route. It grants read-only observation, not execution, shell access, approval consumption or permission escalation.
+- The endpoint, frontend and regression tests are committed to the PR #202 feature branch. The latest commits do not yet have a visible fresh GitHub Actions run; do not treat this slice as CI-verified until the full Node suite and D1 smoke workflow complete.
+- No production deployment, database migration, device pairing or device-side execution has been performed.
