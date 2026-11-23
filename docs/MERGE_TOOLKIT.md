@@ -49,3 +49,22 @@ The merge-intelligence branch now includes two isolated CI workflows:
 The repository does **not** register Mergiraf as a global or tracked `.gitattributes` merge driver. The CI smoke test proves the pinned tool can resolve a known fixture; it does not claim that it has resolved any live AEGIS PR conflict. Any future real-branch use must happen in a disposable worktree, with the proposed patch reviewed and the complete test suite run before a human-approved branch update.
 
 The diagnostics report treats changed-file overlap as a review warning only. GitHub's mergeability state remains a separate signal and may mean a confirmed conflict or an unresolved calculation; it must be inspected before action.
+
+
+## Live PR #193 conflict reproduction and isolated reconciliation
+
+On 23 November 2026, a read-only Git merge-tree reproduction compared the current integration base with the exact PR #193 head:
+
+- Audit run: https://github.com/LAURENCE1977/Aegis-/actions/runs/45134199954
+- Common ancestor: `77a87764eb94af28d6bb396ad2a8bbaa125e345f`
+- Current integration base: `3db32598e05c8efde94411242343915a3a000b5a`
+- PR #193 head: `9843ea1c0b920fc517346383a192999b8d15dbdb`
+- Git reproduced exactly one content conflict: `tests/frontend-smoke.test.mjs`. `index.html` auto-merged cleanly.
+
+The conflict was resolved on a disposable two-parent merge branch, `audit/pr193-reconciled-2026-11-23`, commit `a1af248138eac880468863bfd3686b7c5c30f4e8`. The merged test file retains the Composio test from the current base and both independent Health Vision tests from PR #193. All Health Vision source, documentation and dedicated tests were retained.
+
+Draft review PR #198: https://github.com/LAURENCE1977/Aegis-/pull/198
+
+Verification: https://github.com/LAURENCE1977/Aegis-/actions/runs/45134592047 — **559 tests passed, 0 failed**; capability, runtime and Forge isolated D1 migrations and all corresponding smoke/constraint checks passed.
+
+PR #193 and the integration base were not modified. PR #198 remains draft and unmerged. The reconciliation branch is a review artifact only. PRs #194 and #195 remain 12 commits behind the integration base but GitHub currently reports both as mergeable; they have not been rebased or modified. No merge bot, automatic conflict resolution or production deployment was enabled.
