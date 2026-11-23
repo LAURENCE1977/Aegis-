@@ -126,3 +126,13 @@ test('parses only the dedicated Device authorization scheme', async () => {
   assert.equal(parseDeviceAuthorization('Device ' + 'short'), null);
   assert.equal(parseDeviceAuthorization(null), null);
 });
+
+test('reads a browser device credential only from the HttpOnly cookie fallback', async () => {
+  const { readDeviceToken } = await import('../workers/runtime/devices.mjs');
+  const token = 'aegis_dev_' + 'C'.repeat(43);
+  const request = new Request('https://aegis.example/api/device-heartbeat', {
+    headers: { Cookie: '__Host-aegis_device=' + token },
+  });
+  assert.equal(readDeviceToken(request), token);
+  assert.equal(readDeviceToken(new Request('https://aegis.example/api/device-heartbeat')), null);
+});
