@@ -1,7 +1,7 @@
 import { jsonResponse, readJsonRequest } from '../lib/owner-api.mjs';
 import {
   hashDeviceToken,
-  parseDeviceAuthorization,
+  readDeviceToken,
   validateDeviceHeartbeat,
 } from '../../workers/runtime/devices.mjs';
 
@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
   if (!originAllowed(request)) return jsonResponse({ error: 'Origin is not allowed.' }, 403);
   if (!databaseReady(env)) return jsonResponse({ error: 'Device registry is not configured.' }, 503);
 
-  const token = parseDeviceAuthorization(request.headers.get('Authorization'));
+  const token = readDeviceToken(request);
   if (!token) return jsonResponse({ error: 'Device authentication required.' }, 401);
 
   const parsed = await readJsonRequest(request, MAX_BODY_BYTES);
