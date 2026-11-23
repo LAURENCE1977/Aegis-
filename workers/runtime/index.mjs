@@ -189,12 +189,18 @@ async function processAgentRun(message, env) {
   if (!row || ['planned', 'failed', 'running'].includes(row.status) ||
       !['queued', 'pending_dispatch'].includes(row.status)) { message.ack(); return; }
   const startedAt = new Date().toISOString();
-  const claim = await env.DB.prepare(
-    "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
-  ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId).first();
+  const eventId = crypto.randomUUID();
+  const [claimResult] = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE agent_runs SET status = 'running', attempts = attempts + 1, lease_until = ?, updated_at = ? WHERE id = ? AND status IN ('queued', 'pending_dispatch') RETURNING attempts"
+    ).bind(new Date(Date.now() + 120_000).toISOString(), startedAt, runId),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'running', json_object('attempt', attempts), ? FROM agent_runs WHERE id = ? AND status = 'running' AND updated_at = ? ON CONFLICT(event_id) DO NOTHING"
+    ).bind(eventId, startedAt, runId, startedAt),
+  ]);
+  const claim = claimResult?.results?.[0] || null;
   if (!claim) { message.ack(); return; }
   const attempt = Number(claim.attempts);
-  await auditAgentRun(env, runId, 'running', { attempt });
   try {
     const specialists = JSON.parse(row.specialists_json);
     const plan = createAgentPlan({ objective: row.objective, specialists }, { runId, createdAt: row.created_at });
