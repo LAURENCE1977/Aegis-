@@ -472,3 +472,13 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 - Reconciled-tree verification: https://github.com/LAURENCE1977/Aegis-/actions/runs/45134592047 — **559 tests passed, 0 failed**, and all capability, runtime and Forge isolated D1 migration/smoke/constraint checks passed.
 - PRs #194 and #195 are 12 commits behind but currently GitHub-mergeable; neither branch was changed. No merge bot was activated, no live branch rewritten, and no production deployment or Cloudflare resource changed.
 - Next: review PR #198 and its CI results before deciding whether to merge. Keep PRs #194/#195 separate for review; do not rewrite their branches automatically.
+
+## Social and repository research intake — scoped foundation (23 November 2026)
+
+- Added `docs/AEGIS_SOCIAL_REPOSITORY_RESEARCH.md` on `feature/aegis-social-repo-intake-2026-11-23`, stacked on PR #199. It defines a provider-neutral, read-only research intake for owner-mentioned repositories and relevant leads from explicitly authorised social accounts.
+- First-priority social sources are Instagram/Reels and TikTok. Other providers are adapter candidates only when an owner-owned account is actually connected and its read scopes are verified.
+- Live ChatGPT-side Metricool inspection on 23 November 2026 returned one brand, `laurencecolborne`, with TikTok account `laurencecolborne`. No Instagram network was present in that returned brand record. This does not establish AEGIS-side access; ChatGPT connector credentials are not transferred to AEGIS.
+- The scope keeps personal music accounts separate unless the owner explicitly authorises the exact account and purpose. It excludes DMs, inboxes, contacts, likes, follows, comments, reposts, publishing and upstream repository writes.
+- Repository mentions from chat or authorised social posts enter one deduplicated Forge research workflow. Social posts are untrusted leads only; canonical upstream repositories, immutable revisions, licence evidence, security/maintenance signals and applicability must be checked independently.
+- This is a documentation/specification milestone only. No social API credentials were created, no account was connected, no background polling was enabled, no new runtime or production resource was deployed, and no upstream code is installed or executed.
+- Next implementation slices: owner-scoped repository watchlist persistence; provider-neutral read-only social connection inventory; then separately authorised TikTok and Instagram adapters; finally scoped shared access for ChatGPT and AEGIS with separate identities, grants, revocation and audit.
