@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectMergeSnapshot, renderMergeSummary } from '../functions/lib/merge-diagnostics.mjs';
+import { collectMergeSnapshot, renderMergeSummary, selectMergeStack } from '../functions/lib/merge-diagnostics.mjs';
 
 const openPr = (overrides = {}) => ({
   number: 301,
@@ -106,4 +106,29 @@ test('limits concurrent GitHub metadata requests to protect API rate limits', as
   };
   await collectMergeSnapshot(pullRequests, fetch, async () => []);
   assert.ok(maximum <= 4, `expected at most four concurrent requests, saw ${maximum}`);
+});
+
+test('selects the connected feature stack without pulling in unrelated main-branch PRs', async () => {
+  const pullRequests = [
+    openPr({ number: 501, base: { ref: 'feature/parent', sha: 'a' }, head: { ref: 'feature/current', label: 'owner:feature/current', sha: 'b' } }),
+    openPr({ number: 502, base: { ref: 'feature/parent', sha: 'a' }, head: { ref: 'feature/sibling', label: 'owner:feature/sibling', sha: 'c' } }),
+    openPr({ number: 503, base: { ref: 'main', sha: 'm' }, head: { ref: 'feature/unrelated', label: 'owner:feature/unrelated', sha: 'd' } }),
+    openPr({ number: 504, base: { ref: 'feature/sibling', sha: 'c' }, head: { ref: 'feature/child', label: 'owner:feature/child', sha: 'e' } }),
+  ];
+  const selected = selectMergeStack(pullRequests, pullRequests[0], 'main');
+  assert.deepEqual(selected.map(item => item.number), [501, 502, 504]);
+});
+
+test('does not use the default branch as a graph bridge between unrelated pull requests', () => {
+  const current = openPr({
+    number: 510,
+    base: { ref: 'main', sha: 'main-sha' },
+    head: { ref: 'feature/current', label: 'owner:feature/current', sha: 'head-sha' },
+  });
+  const unrelated = openPr({
+    number: 511,
+    base: { ref: 'main', sha: 'main-sha' },
+    head: { ref: 'feature/other', label: 'owner:feature/other', sha: 'other-sha' },
+  });
+  assert.deepEqual(selectMergeStack([current, unrelated], current, 'main').map(item => item.number), [510]);
 });
