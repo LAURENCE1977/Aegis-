@@ -18,6 +18,7 @@ class DeviceD1 {
   prepare(sql) {
     const db = this;
     return {
+      sql,
       values: [],
       bind(...values) { this.values = values; return this; },
       async first() {
