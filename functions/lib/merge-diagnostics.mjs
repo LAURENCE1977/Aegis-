@@ -118,7 +118,7 @@ export function renderMergeSummary(analysis) {
         lines.push(`- **#${item.number}:** GitHub confirms a merge conflict. Inspect the PR before changing it.`);
       }
       for (const overlap of item.overlappingPullRequests) {
-        lines.push(`- **#${item.number} / #${overlap.number}:** shared paths: ${overlap.files.map(path => \`\`${inlineCode(path)}\`\`).join(', ')}. This is review risk, not proof of a textual conflict.`);
+        lines.push(`- **#${item.number} / #${overlap.number}:** shared paths: ${overlap.files.map(path => '\u0060' + inlineCode(path) + '\u0060').join(', ')}. This is review risk, not proof of a textual conflict.`);
       }
     }
   }
