@@ -250,6 +250,11 @@
         <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent-run inventory has not been loaded.</p>
         <div class="workspace-actions"><button class="secondary" id="refreshAgentRunsBtn" type="button">Refresh agent runs</button></div>
         <div id="agentRunList" aria-live="polite"></div>
+        <h3>This device's assigned plans</h3>
+        <p class="memory-help">This view uses this browser's device-only HttpOnly credential. It shows only plans assigned to this device and cannot run them.</p>
+        <p class="status" id="deviceAssignedRunStatus" role="status" aria-live="polite">No device plans loaded.</p>
+        <div class="workspace-actions"><button class="secondary" id="refreshDeviceAssignedRunsBtn" type="button">Refresh this device's plans</button></div>
+        <div id="deviceAssignedRunList" aria-live="polite"></div>
       </section>
       <section class="memory-panel" id="workspaceSection" hidden>
         <h2>Project Spaces</h2>
@@ -755,7 +760,7 @@
       if (panel !== 'providers') providerApiKey.value = '';
       if (panel === 'providers') loadProviderConnections();
       if (panel === 'integrations') loadComposioIntegrations();
-      if (panel === 'devices') { loadDevices(); loadAgentRuns(); }
+      if (panel === 'devices') { loadDevices(); loadAgentRuns(); loadDeviceAssignedRuns(); }
       if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
       if (panel === 'security') loadSecurityCentre();
       if (panel === 'chat') userInput.focus();
@@ -778,6 +783,7 @@
     deviceTab.addEventListener('click', () => showPanel('devices'));
     refreshDevicesBtn.addEventListener('click', loadDevices);
     refreshAgentRunsBtn.addEventListener('click', loadAgentRuns);
+    refreshDeviceAssignedRunsBtn.addEventListener('click', loadDeviceAssignedRuns);
     checkDeviceConnectionBtn.addEventListener('click', checkCurrentDeviceConnection);
 
     devicePairForm.addEventListener('submit', async (event) => {
@@ -831,6 +837,7 @@
           ? 'This browser is paired. Its device credential is protected in an HttpOnly cookie.'
           : 'Device paired. Store the one-time credential in Android Keystore.';
         await checkCurrentDeviceConnection();
+        await loadDeviceAssignedRuns();
         await loadDevices();
       } catch (error) {
         deviceStatus.textContent = error.message || 'Device pairing failed.';
@@ -1081,6 +1088,71 @@
         agentRunStatus.textContent = error.message || 'Agent-run inventory is unavailable.';
       } finally {
         refreshAgentRunsBtn.disabled = false;
+      }
+    }
+
+    async function loadDeviceAssignedRuns() {
+      const deviceId = localStorage.getItem('aegis_device_id');
+      deviceAssignedRunList.replaceChildren();
+      refreshDeviceAssignedRunsBtn.disabled = true;
+      if (!deviceId) {
+        deviceAssignedRunList.className = 'memory-empty';
+        deviceAssignedRunStatus.textContent = 'Pair this browser as a device to see plans assigned specifically to it.';
+        refreshDeviceAssignedRunsBtn.disabled = false;
+        return;
+      }
+
+      deviceAssignedRunStatus.textContent = 'Loading plans assigned to this device…';
+      try {
+        const response = await fetch('/api/device-agent-runs?deviceId=' + encodeURIComponent(deviceId), {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        let data = {};
+        try { data = await response.json(); } catch (error) {}
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('This device credential is missing, invalid or revoked. Pair this browser again.');
+          }
+          if (response.status === 403) {
+            throw new Error('This device does not have read-only plan observation permission.');
+          }
+          throw new Error(data.error || ('Device plan service error ' + response.status));
+        }
+
+        const runs = Array.isArray(data.agentRuns) ? data.agentRuns : [];
+        if (!runs.length) {
+          deviceAssignedRunList.className = 'memory-empty';
+          deviceAssignedRunList.textContent = 'No plans have been assigned to this device yet.';
+        } else {
+          deviceAssignedRunList.className = '';
+          runs.forEach(run => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            const title = document.createElement('h4');
+            title.textContent = run.objective || 'Untitled assigned plan';
+            const details = document.createElement('p');
+            details.textContent = 'Status: ' + (run.status || 'unknown') +
+              ' · Updated: ' + (run.updatedAt || 'Unknown');
+            card.append(title, details);
+            if (run.plan && typeof run.plan === 'object') {
+              const plan = document.createElement('pre');
+              plan.className = 'forge-preview';
+              plan.textContent = JSON.stringify(run.plan, null, 2).slice(0, 8000);
+              card.append(plan);
+            }
+            deviceAssignedRunList.append(card);
+          });
+        }
+        deviceAssignedRunStatus.textContent = runs.length +
+          ' plan(s) assigned to this device · read-only; execution remains disabled.';
+      } catch (error) {
+        deviceAssignedRunList.className = 'memory-empty';
+        deviceAssignedRunStatus.textContent = error.message || 'Assigned device plans are unavailable.';
+      } finally {
+        refreshDeviceAssignedRunsBtn.disabled = false;
       }
     }
 
