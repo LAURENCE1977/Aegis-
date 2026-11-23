@@ -70,6 +70,7 @@ class AgentMemoryD1 {
         if (sql.includes('INSERT INTO agent_run_events')) {
           if (db.failAuditInsert) throw new Error('agent audit unavailable');
           if (sql.includes('SELECT ?, id, ?, ?, ?')) {
+            if (db.failAuditInsert || db.failAuditEventType === v[1]) throw new Error('agent audit unavailable');
             if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
             const row = db.runs.get(v[4]);
             if (!row || row.status !== v[5] || row.updated_at !== v[6]) return { meta: { changes: 0 } };
@@ -210,7 +211,7 @@ test('agent plan completion rolls back when its audit event cannot be persisted'
   const { env, DB } = makeEnv();
   const response = await handleRuntimeFetch(postRun({ objective: 'Protect audited plan completion' }), env);
   const { run } = await response.json();
-  DB.failAuditInsert = true;
+  DB.failAuditEventType = 'planned';
 
   await assert.rejects(() => runtime.queue({
     queue: 'aegis-jobs',
@@ -221,9 +222,10 @@ test('agent plan completion rolls back when its audit event cannot be persisted'
     }],
   }, env), /agent audit unavailable/);
 
-  assert.equal(DB.runs.get(run.id).status, 'running');
+  assert.equal(DB.runs.get(run.id).status, 'queued');
   assert.equal(DB.runs.get(run.id).plan_json, undefined);
   assert.equal(DB.events.some((event) => event.event_type === 'planned'), false);
+  assert.equal(DB.events.some((event) => event.event_type === 'retry_scheduled'), true);
 });
 
 test('queue consumer creates a plan-only result and never invokes tools', async () => {
