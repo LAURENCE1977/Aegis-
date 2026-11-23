@@ -22,8 +22,12 @@ test('accepts only a bounded Android or Chromebook registration with explicit ca
   assert.deepEqual(DEVICE_CAPABILITIES, [
     'device.status.read',
     'aegis.jobs.observe',
-    'aegis.approvals.review',
   ]);
+  assert.throws(() => validateDeviceRegistration({
+    platform: 'android',
+    displayName: 'Phone',
+    capabilities: ['aegis.approvals.review'],
+  }), /capabilit/i);
 });
 
 test('rejects unknown platforms, unapproved capabilities and extra registration fields', () => {
