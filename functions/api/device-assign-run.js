@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
   try {
     const results = await env.AEGIS_DB.batch([
       env.AEGIS_DB.prepare(
-        "UPDATE agent_runs SET assigned_device_id = ?, updated_at = ? WHERE id = ? AND status = 'planned' AND EXISTS (SELECT 1 FROM devices d WHERE d.id = ? AND d.owner_id = ? AND d.status = 'active' AND EXISTS (SELECT 1 FROM json_each(d.capabilities_json) WHERE value = 'aegis.jobs.observe'))"
+        "UPDATE agent_runs SET assigned_device_id = ?, updated_at = ? WHERE id = ? AND status = 'planned' AND assigned_device_id IS NULL AND EXISTS (SELECT 1 FROM devices d WHERE d.id = ? AND d.owner_id = ? AND d.status = 'active' AND EXISTS (SELECT 1 FROM json_each(d.capabilities_json) WHERE value = 'aegis.jobs.observe'))"
       ).bind(body.deviceId, now, body.agentRunId, body.deviceId, OWNER_ID),
       env.AEGIS_DB.prepare(
         "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, id, 'device_assigned', json_object('deviceId', ?), ? FROM agent_runs WHERE id = ? AND assigned_device_id = ? AND updated_at = ? AND status = 'planned' ON CONFLICT(event_id) DO NOTHING"
