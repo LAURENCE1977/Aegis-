@@ -356,3 +356,29 @@ These four names were added after the main inventory. The classifications below 
 
 ### Consolidated decision
 Of these four, BLA has the clearest potential value as an optional release-security check, while Freebuff is useful as an external benchmark/workbench only after privacy review. Abacus is ruled out by the zero-spend rule. Hellboy remains unclassified until its exact source is confirmed. None should be merged into the AEGIS control plane or granted execution authority.
+
+## 4.9 Secure access and Android phone-control candidates — 23 November 2026
+
+- **Google ARTEMIS** — https://github.com/google/artemis. Apache-2.0 Android automation toolkit with a Python 3.12+ host, ADB-connected Android phone or emulator, web console, CLI and native MCP server. Supports natural-language cross-app workflows, screen/accessibility inspection, screenshots, traces and diagnostics; the repository describes Flash and Pro execution profiles. This is a genuine phone-control engine, unlike a VPN or remote-access gateway. It can potentially drive the user's Android phone once installed on a compatible host and explicitly paired over USB debugging. **Host requirement is the main practical blocker:** the project documents macOS/Linux and Windows startup paths; it does not document ChromeOS as a supported host. A Chromebook Linux development environment might work, but USB ADB passthrough, Python/uv, ADB and scrcpy compatibility must be verified non-destructively first. Do not assume it works directly inside the ChatGPT Android app or that the assistant has live phone access. Decision: **top Android-control pilot**, starting with read-only device state/screenshots, then harmless allowlisted UI tasks.
+
+  - AEGIS integration boundary: ARTEMIS MCP must run as a separately authenticated device worker behind the AEGIS device bridge. Treat its MCP methods as privileged capabilities, not as direct model tools. ODIN proposes an exact task; Sentinel validates enrolled device, app/action allowlist, owner approval, expiry, task/input digest and audit before dispatch. Start with observation; require confirmation for sending messages, purchases, account/security settings, deletion, payments, or other external effects. Never expose ADB, ARTEMIS MCP or its local web console directly to the public internet. Disable USB debugging/revoke the host authorisation when the pilot is finished if ongoing use is not needed.
+
+- **Pangolin** — https://github.com/fosrl/pangolin. WireGuard-based zero-trust access platform combining private-resource access, reverse proxy and identity-aware AI gateway. Community Edition is self-hostable and AGPL-3.0; Pangolin Cloud Basic is advertised as free, with paid cloud/team tiers. It is a secure connectivity/access layer, **not a phone automation engine**: it cannot itself inspect or tap Android screens. Potential AEGIS use: private access to an ARTEMIS host/UI or AEGIS admin endpoints without exposing them publicly, and optionally an identity-aware route to model services. Pangolin requires a reachable control-plane deployment or hosted account plus connector/host infrastructure; a free software licence does not make the hosting compute/domain free. The free Cloud Basic feature set, resource limits, account terms, data path and exact routing requirements must be checked before relying on it. Decision: **promising optional secure-access layer**, only if it fits the free-tier budget and does not duplicate existing Cloudflare access controls.
+
+### Recommended ARTEMIS + Pangolin topology
+
+1. Android phone — enrolled by the user; USB debugging/ADB to one trusted host during the first pilot.
+2. ARTEMIS host — runs on a compatible Chromebook Linux environment or another user-controlled host; no assumption of Chromebook USB passthrough until tested.
+3. AEGIS device bridge — device identity, heartbeat, revocation and task assignment; no generic shell.
+4. Sentinel — authorises each bounded action and records the audit event; ARTEMIS does not become a policy authority.
+5. Pangolin (optional) — protects private access to the ARTEMIS host and AEGIS services; never publishes raw ADB or an unauthenticated MCP endpoint.
+
+### Pilot sequence and stop conditions
+
+- First confirm the exact host can see the phone via ADB without changing phone security settings beyond user-approved USB debugging.
+- Run ARTEMIS device status and screenshot/read-only observation only; inspect exactly what the helper/accessibility service installs and what data leaves the phone.
+- Test a harmless UI task (for example, open Settings and read battery level) with the user watching.
+- Only then design the AEGIS adapter and Sentinel policy; no unattended broad app control.
+- Stop if the host requires paid hosting, an unknown binary, public ADB, broad accessibility permissions without a clear purpose, or a security-policy bypass.
+
+Official sources: https://github.com/google/artemis ; https://github.com/fosrl/pangolin ; https://pangolin.net/faq
