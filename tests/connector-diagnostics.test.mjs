@@ -116,6 +116,7 @@ test('unknown providers and malformed diagnostic clocks fail closed', () => {
 test('diagnostic account aliases and error codes are bounded and sanitised', () => {
   const result = evaluateConnectorStatus('oracle_cloud', {
     connected: false,
+    authorisationRequired: true,
     accountAlias: '  OCI\nproduction\u0000 ',
     lastErrorCode: 'provider supplied private response',
   }, now);
