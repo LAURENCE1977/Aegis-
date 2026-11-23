@@ -1,7 +1,6 @@
 export const DEVICE_CAPABILITIES = Object.freeze([
   'device.status.read',
   'aegis.jobs.observe',
-  'aegis.approvals.review',
 ]);
 
 const DEVICE_PLATFORMS = Object.freeze(['android', 'chromebook']);
