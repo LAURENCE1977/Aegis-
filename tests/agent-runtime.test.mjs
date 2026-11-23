@@ -69,6 +69,14 @@ class AgentMemoryD1 {
         }
         if (sql.includes('INSERT INTO agent_run_events')) {
           if (db.failAuditInsert) throw new Error('agent audit unavailable');
+          if (sql.includes('SELECT ?, id, ?, ?, ?')) {
+            if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
+            const row = db.runs.get(v[5]);
+            if (!row || row.status !== v[6] || row.updated_at !== v[7]) return { meta: { changes: 0 } };
+            if (db.events.some(event => event.event_id === v[0])) return { meta: { changes: 0 } };
+            db.events.push({ event_id: v[0], agent_run_id: row.id, event_type: v[1], detail_json: v[2], created_at: v[3] });
+            return { meta: { changes: 1 } };
+          }
           if (sql.includes('SELECT')) {
             if (db.lastBatchChanges !== 1) return { meta: { changes: 0 } };
             const row = db.runs.get(v[2]);
@@ -180,6 +188,26 @@ test('an agent run claim rolls back when its audit event cannot be persisted', a
   assert.equal(DB.runs.get(run.id).status, 'queued');
   assert.equal(DB.runs.get(run.id).attempts, 0);
   assert.equal(DB.events.some((event) => event.event_type === 'running'), false);
+});
+
+test('agent plan completion rolls back when its audit event cannot be persisted', async () => {
+  const { env, DB } = makeEnv();
+  const response = await handleRuntimeFetch(postRun({ objective: 'Protect audited plan completion' }), env);
+  const { run } = await response.json();
+  DB.failAuditInsert = true;
+
+  await assert.rejects(() => runtime.queue({
+    queue: 'aegis-jobs',
+    messages: [{
+      body: { agentRunId: run.id },
+      ack() { assert.fail('a failed audited completion must not be acknowledged'); },
+      retry() {},
+    }],
+  }, env), /agent audit unavailable/);
+
+  assert.equal(DB.runs.get(run.id).status, 'running');
+  assert.equal(DB.runs.get(run.id).plan_json, undefined);
+  assert.equal(DB.events.some((event) => event.event_type === 'planned'), false);
 });
 
 test('queue consumer creates a plan-only result and never invokes tools', async () => {
