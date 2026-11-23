@@ -132,3 +132,13 @@ test('does not use the default branch as a graph bridge between unrelated pull r
   });
   assert.deepEqual(selectMergeStack([current, unrelated], current, 'main').map(item => item.number), [510]);
 });
+
+test('uses full pull-request details for mergeability instead of list-response omissions', async () => {
+  const result = await collectMergeSnapshot(
+    [openPr({ mergeable: undefined })],
+    async () => ({ status: 'ahead', ahead_by: 1, behind_by: 0, merge_base: { sha: 'base' } }),
+    async () => [],
+    async () => ({ mergeable: true }),
+  );
+  assert.equal(result[0].mergeable, true);
+});
