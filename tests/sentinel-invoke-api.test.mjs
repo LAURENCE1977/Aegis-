@@ -77,7 +77,7 @@ test('Sentinel invocation rejects unauthenticated requests before touching D1', 
   const db = new MemoryD1();
   const response = await onRequestPost({
     request: await request(undefined, { authenticated: false }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 401);
   assert.equal(db.prepareCalls, 0);
@@ -86,7 +86,7 @@ test('Sentinel invocation rejects unauthenticated requests before touching D1', 
 test('Sentinel invocation fails closed when authentication or D1 is unavailable', async () => {
   const unauthenticatedConfig = await onRequestPost({
     request: await request(),
-    env: { AEGIS_DB: new MemoryD1() },
+    env: { CAPABILITY_DB: new MemoryD1() },
   });
   assert.equal(unauthenticatedConfig.status, 503);
 
@@ -97,11 +97,19 @@ test('Sentinel invocation fails closed when authentication or D1 is unavailable'
   assert.equal(missingDb.status, 503);
 });
 
+test('Sentinel invocation does not fall back to the runtime database', async () => {
+  const response = await onRequestPost({
+    request: await request(),
+    env: { ...envBase, AEGIS_DB: new MemoryD1(activeGrant()) },
+  });
+  assert.equal(response.status, 503);
+});
+
 test('Sentinel invocation rejects cross-origin requests before touching D1', async () => {
   const db = new MemoryD1(activeGrant());
   const response = await onRequestPost({
     request: await request(undefined, { origin: 'https://attacker.example' }),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 403);
   assert.equal(db.prepareCalls, 0);
@@ -118,7 +126,7 @@ test('Sentinel invocation exposes only the fixed read-only module action and emp
     const db = new MemoryD1(activeGrant());
     const response = await onRequestPost({
       request: await request(body),
-      env: { ...envBase, AEGIS_DB: db },
+      env: { ...envBase, CAPABILITY_DB: db },
     });
     assert.equal(response.status, 400);
     assert.equal(db.auditRows.length, 0);
@@ -129,7 +137,7 @@ test('Sentinel invocation denies missing grants and records a redacted denial au
   const db = new MemoryD1();
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 403);
   const body = await response.json();
@@ -142,7 +150,7 @@ test('Sentinel invokes only the granted read-only module adapter and records the
   const db = new MemoryD1(activeGrant());
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -157,7 +165,7 @@ test('Sentinel returns 429 and records a denial when the action budget is exhaus
   const db = new MemoryD1(activeGrant(), null);
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 429);
   const body = await response.json();
@@ -170,7 +178,7 @@ test('Sentinel fails closed with 503 when rate-limit storage is unavailable', as
   db.failRateLimit = true;
   const response = await onRequestPost({
     request: await request(),
-    env: { ...envBase, AEGIS_DB: db },
+    env: { ...envBase, CAPABILITY_DB: db },
   });
   assert.equal(response.status, 503);
   const body = await response.json();
