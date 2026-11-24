@@ -35,6 +35,12 @@ The example worker configuration declares both bindings with placeholder databas
 
 The runtime's current agent queue remains plan-only. Declaring `CAPABILITY_DB` is infrastructure preparation, not permission to execute agent-proposed actions. A later execution slice must compose `createSentinelDependencies({ db: env.CAPABILITY_DB, adapters: createBuiltinAdapterRegistry() })` inside trusted server code, derive the principal from authenticated persisted ownership, and add an explicit, bounded action-request lifecycle with approval, cancellation, idempotency and audit tests before any adapter is reachable.
 
+## Metadata-only capability proposals
+
+The runtime now exposes `createAgentCapabilityProposal` as a first bridge contract between a persisted agent run and the trusted Sentinel registry. It accepts only the exact capability/action/resource/input shape and a separately supplied trusted run/principal context. It rejects wildcard or traversal resources, unknown or disabled capabilities, non-read actions and input that cannot be canonicalised within the manifest's byte limit.
+
+A successful result contains the registry-derived capability version, required scopes, effect, risk and approval policy plus a server-derived SHA-256 input digest. It deliberately omits the raw input and is marked `status: proposed` and `execution: disabled`. It does not persist a proposal, load a grant, consume an approval, enqueue work, resolve a secret, call an adapter or execute an action. This keeps the current queue plan-only while establishing a typed, auditable hand-off contract for a later separately reviewed persistence and approval lifecycle.
+
 ## Cloudflare Pages API binding boundary
 
 The Pages project needs two separate D1 bindings because its API routes serve both the runtime/device data model and the Sentinel policy store:
@@ -43,6 +49,17 @@ The Pages project needs two separate D1 bindings because its API routes serve bo
 - `CAPABILITY_DB` is the dedicated capability database. The Pages routes for grants, approvals, provider connections/secrets and Sentinel invocations use this binding. It must point to the same D1 database ID as the standalone runtime Worker's `CAPABILITY_DB`.
 
 The two logical databases must remain separate: Pages `AEGIS_DB` / Worker `DB` are the runtime store; Pages `CAPABILITY_DB` / Worker `CAPABILITY_DB` are the policy and approval store. Do not point both Pages bindings at one database, and do not point either capability binding at the runtime database. The Pages project settings and worker example configuration must be reviewed together before deployment. No remote binding change, database creation or migration is authorized by this source change.
+
+
+The runtime exposes this proposal lifecycle behind its existing bearer-token authentication:
+
+- `POST /v1/agent-runs/:runId/capability-proposals` accepts the strict proposal request shape only after the durable run reaches `planned`.
+- `GET /v1/agent-runs/:runId/capability-proposals` returns the persisted metadata for that run.
+- The server derives the principal from the `AEGIS_PRINCIPAL_ID` runtime binding; callers cannot choose or override it.
+- `migrations/runtime/0003_agent_capability_proposals.sql` creates an immutable, idempotently keyed proposal table and prevents updates/deletes at the database layer.
+- Proposal creation and its redacted `capability_proposal_created` agent-run event are committed in one D1 batch. Repeating an identical request returns the existing proposal rather than creating a duplicate.
+
+This lifecycle is still proposal-only. It intentionally does not create grants, approvals or adapter invocations, and the execution field is constrained to `disabled`. The runtime database migration must be applied before using these endpoints; the trusted `AEGIS_PRINCIPAL_ID` binding must be configured by the deployment owner. No production migration or configuration change is performed by this source change.
 
 ## Deployment gate
 

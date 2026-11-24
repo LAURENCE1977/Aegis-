@@ -62,3 +62,4 @@ export function createAgentPlan(submission, metadata = {}) {
 export const AGENT_SPECIALISTS = ALLOWED_SPECIALISTS;
 
 export { runAgentCapabilityRequest } from './agent-capability-bridge.mjs';
+export { createAgentCapabilityProposal } from './agent-capability-proposals.mjs';
