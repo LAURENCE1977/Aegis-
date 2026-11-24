@@ -36,6 +36,14 @@ const MODULES = [
     permissions: [],
   },
   {
+    id: 'free-cloud-forge',
+    name: 'AEGIS Free Cloud Forge',
+    description: 'Free-first cloud infrastructure planning with strict OCI Always Free quota and paid-resource guardrails.',
+    status: 'planned',
+    capabilities: ['cloud.plan', 'cloud.validate', 'cloud.inspect'],
+    permissions: [],
+  },
+  {
     id: 'connections',
     name: 'AEGIS Connections',
     description: 'Explicitly authorised integrations with external services.',
