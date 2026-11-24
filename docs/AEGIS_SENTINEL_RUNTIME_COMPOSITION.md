@@ -64,3 +64,16 @@ This lifecycle is still proposal-only. It intentionally does not create grants, 
 ## Deployment gate
 
 This document and the Sentinel library are source-level foundations only. Before enabling execution, add and test the D1 composition, digest helper, secret resolution, audit writer, adapter allowlist, SSRF/egress controls, revocation checks, idempotency and stop/revoke path. Apply migrations and provision production resources only after an explicit owner-approved deployment plan.
+
+
+## Owner decision records for agent capability proposals
+
+The runtime now supports a separate owner decision record for a persisted proposal:
+
+- `POST /v1/agent-runs/:runId/capability-proposals/:proposalId/decision` accepts only `approved` or `rejected`, plus an optional reason capped at 500 characters.
+- The runtime derives the principal from the trusted `AEGIS_PRINCIPAL_ID` binding and verifies that the proposal belongs to that principal and the requested run.
+- `migrations/runtime/0004_agent_capability_proposal_decisions.sql` stores one immutable decision per proposal. Database triggers reject updates and deletes.
+- Decision creation and its redacted agent-run audit event are committed together. A second decision attempt returns conflict rather than overwriting the first.
+- Proposal listing includes the decision metadata when present.
+
+**An approval is not an execution grant.** The response and proposal continue to report `execution: disabled`. This lifecycle does not create a Sentinel capability grant, consume a separate action approval, enqueue work, resolve secrets, call adapters or execute actions. Production migration and binding changes remain outside this source-only change.
