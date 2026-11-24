@@ -246,7 +246,22 @@
         </div>
         <div id="deviceList" aria-live="polite"></div>
         <h3>Planned agent runs</h3>
-        <p class="memory-help">Review plans created by AEGIS. Assigning a plan grants observation only; devices cannot execute it.</p>
+        <p class="memory-help">Submit a task for ODIN to plan. This first workflow is plan-only: it does not execute tools or change external systems.</p>
+        <form class="memory-form" id="agentRunCreateForm">
+          <label for="agentRunObjective">What would you like AEGIS to work on?</label>
+          <textarea id="agentRunObjective" maxlength="2000" rows="3" placeholder="Describe one task for AEGIS…" required></textarea>
+          <fieldset class="memory-form">
+            <legend>Specialists</legend>
+            <label><input type="checkbox" name="agentSpecialist" value="researcher" checked /> Researcher</label>
+            <label><input type="checkbox" name="agentSpecialist" value="planner" /> Planner</label>
+            <label><input type="checkbox" name="agentSpecialist" value="engineer" checked /> Engineer</label>
+            <label><input type="checkbox" name="agentSpecialist" value="security" /> Security</label>
+            <label><input type="checkbox" name="agentSpecialist" value="reviewer" checked /> Reviewer</label>
+          </fieldset>
+          <button id="createAgentRunBtn" type="submit">Create plan</button>
+        </form>
+        <p class="status" id="agentRunCreateStatus" role="status" aria-live="polite">New tasks are submitted to the plan-only runtime.</p>
+        <p class="memory-help">Assigning a plan to a device grants observation only; devices cannot execute it. The current execution mode is plan-only.</p>
         <p class="status" id="agentRunStatus" role="status" aria-live="polite">Agent-run inventory has not been loaded.</p>
         <div class="workspace-actions"><button class="secondary" id="refreshAgentRunsBtn" type="button">Refresh agent runs</button></div>
         <div id="agentRunList" aria-live="polite"></div>
@@ -354,6 +369,11 @@
     const agentRunList = document.getElementById('agentRunList');
     const agentRunStatus = document.getElementById('agentRunStatus');
     const refreshAgentRunsBtn = document.getElementById('refreshAgentRunsBtn');
+    const agentRunCreateForm = document.getElementById('agentRunCreateForm');
+    const agentRunObjective = document.getElementById('agentRunObjective');
+    const createAgentRunBtn = document.getElementById('createAgentRunBtn');
+    const agentRunCreateStatus = document.getElementById('agentRunCreateStatus');
+    let pendingAgentRunIdempotencyKey = null;
     const deviceAssignedRunList = document.getElementById('deviceAssignedRunList');
     const deviceAssignedRunStatus = document.getElementById('deviceAssignedRunStatus');
     const refreshDeviceAssignedRunsBtn = document.getElementById('refreshDeviceAssignedRunsBtn');
@@ -786,6 +806,44 @@
     deviceTab.addEventListener('click', () => showPanel('devices'));
     refreshDevicesBtn.addEventListener('click', loadDevices);
     refreshAgentRunsBtn.addEventListener('click', loadAgentRuns);
+    agentRunObjective.addEventListener('input', () => { pendingAgentRunIdempotencyKey = null; });
+    agentRunCreateForm.querySelectorAll('input[name="agentSpecialist"]').forEach(input => {
+      input.addEventListener('change', () => { pendingAgentRunIdempotencyKey = null; });
+    });
+    agentRunCreateForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const objective = agentRunObjective.value.trim();
+      const specialists = [...agentRunCreateForm.querySelectorAll('input[name="agentSpecialist"]:checked')]
+        .map(input => input.value);
+      if (!objective) {
+        agentRunCreateStatus.textContent = 'Enter a task for AEGIS.';
+        return;
+      }
+      if (!specialists.length) {
+        agentRunCreateStatus.textContent = 'Choose at least one specialist.';
+        return;
+      }
+      if (!pendingAgentRunIdempotencyKey) pendingAgentRunIdempotencyKey = 'aegis-' + crypto.randomUUID();
+      createAgentRunBtn.disabled = true;
+      agentRunCreateStatus.textContent = 'Sending your task to ODIN…';
+      try {
+        const data = await controlApi('/api/agent-runs', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': pendingAgentRunIdempotencyKey },
+          body: JSON.stringify({ objective, specialists }),
+        });
+        agentRunCreateStatus.textContent = data.run?.status === 'pending_dispatch'
+          ? 'Your task is safely recorded and waiting for the runtime queue.'
+          : 'Your task has been accepted. AEGIS is preparing a plan-only run.';
+        pendingAgentRunIdempotencyKey = null;
+        agentRunObjective.value = '';
+        await loadAgentRuns();
+      } catch (error) {
+        agentRunCreateStatus.textContent = error.message || 'AEGIS could not accept the task. You can safely retry.';
+      } finally {
+        createAgentRunBtn.disabled = false;
+      }
+    });
     refreshDeviceAssignedRunsBtn.addEventListener('click', loadDeviceAssignedRuns);
     checkDeviceConnectionBtn.addEventListener('click', checkCurrentDeviceConnection);
 
