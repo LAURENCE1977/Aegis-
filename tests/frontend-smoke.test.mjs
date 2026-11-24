@@ -274,3 +274,17 @@ test('paired device view loads only its assigned plans using the HttpOnly device
   assert.match(html, /localStorage\.getItem\('aegis_device_id'\)/);
   assert.doesNotMatch(html, /localStorage\.setItem\(['"]aegis_device_token/);
 });
+
+
+test('Devices panel can submit an owner task to the plan-only AEGIS runtime', () => {
+  for (const id of [
+    'agentRunCreateForm','agentRunObjective','createAgentRunBtn','agentRunCreateStatus',
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing agent task control: ' + id);
+  }
+  assert.match(html, /name="agentSpecialist"/);
+  assert.match(html, /agentRunCreateForm\.addEventListener\('submit'/);
+  assert.match(html, /controlApi\('\/api\/agent-runs'/);
+  assert.match(html, /'Idempotency-Key'/);
+  assert.match(html, /execution:\s*'plan-only'/);
+});
