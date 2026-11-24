@@ -6,7 +6,7 @@
 
 Free Cloud Forge is the provider-neutral infrastructure layer for AEGIS. It is intended to let AEGIS evaluate, plan and eventually provision its own infrastructure without silently moving the owner onto paid resources. Oracle Cloud Infrastructure (OCI) Always Free is the first provider target; additional providers must pass the same evidence, quota, billing and portability checks.
 
-The initial implementation is deliberately a local, deterministic policy validator. It is not an OCI API client, pricing engine or guarantee against charges on an account.
+The initial implementation is deliberately a local, deterministic policy validator exposed through the authenticated, same-origin `POST /api/free-cloud/plan` endpoint. The endpoint evaluates a supplied plan and returns allow/deny reasons only; it is not an OCI API client, pricing engine or guarantee against charges on an account.
 
 ## First OCI profile
 
@@ -59,7 +59,7 @@ Unknown, stale or incompatible licensing is a hold, not permission to copy. All 
 
 ## Next implementation stages
 
-1. Add a provider-neutral resource-plan schema and a read-only OCI tenancy/quota inspector.
+1. Add a provider-neutral resource-plan schema and a read-only OCI tenancy/quota inspector. The current authenticated plan-validation endpoint is not a tenancy inspector.
 2. Add a deterministic Terraform plan renderer with an explicit allowlist and generated-plan review; no `apply` operation.
 3. Add bounded capacity detection/retry with cancellation and no quota expansion.
 4. Add an owner-approved provisioning boundary and auditable dry-run/apply workflow only after account identity, cost exposure and rollback have been reviewed.
