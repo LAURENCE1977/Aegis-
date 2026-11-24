@@ -50,6 +50,17 @@ The Pages project needs two separate D1 bindings because its API routes serve bo
 
 The two logical databases must remain separate: Pages `AEGIS_DB` / Worker `DB` are the runtime store; Pages `CAPABILITY_DB` / Worker `CAPABILITY_DB` are the policy and approval store. Do not point both Pages bindings at one database, and do not point either capability binding at the runtime database. The Pages project settings and worker example configuration must be reviewed together before deployment. No remote binding change, database creation or migration is authorized by this source change.
 
+
+The runtime exposes this proposal lifecycle behind its existing bearer-token authentication:
+
+- `POST /v1/agent-runs/:runId/capability-proposals` accepts the strict proposal request shape only after the durable run reaches `planned`.
+- `GET /v1/agent-runs/:runId/capability-proposals` returns the persisted metadata for that run.
+- The server derives the principal from the `AEGIS_PRINCIPAL_ID` runtime binding; callers cannot choose or override it.
+- `migrations/runtime/0003_agent_capability_proposals.sql` creates an immutable, idempotently keyed proposal table and prevents updates/deletes at the database layer.
+- Proposal creation and its redacted `capability_proposal_created` agent-run event are committed in one D1 batch. Repeating an identical request returns the existing proposal rather than creating a duplicate.
+
+This lifecycle is still proposal-only. It intentionally does not create grants, approvals or adapter invocations, and the execution field is constrained to `disabled`. The runtime database migration must be applied before using these endpoints; the trusted `AEGIS_PRINCIPAL_ID` binding must be configured by the deployment owner. No production migration or configuration change is performed by this source change.
+
 ## Deployment gate
 
 This document and the Sentinel library are source-level foundations only. Before enabling execution, add and test the D1 composition, digest helper, secret resolution, audit writer, adapter allowlist, SSRF/egress controls, revocation checks, idempotency and stop/revoke path. Apply migrations and provision production resources only after an explicit owner-approved deployment plan.
