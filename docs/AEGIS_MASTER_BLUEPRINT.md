@@ -713,3 +713,13 @@ Every step remains test-first for behavioural changes, branch-isolated, evidence
 - Added `docs/AEGIS_NEURAL_INTENT_AND_BCI.md` with the software/EEG parallel roadmap, privacy and consent invariants, no-raw-signal default, BrainFlow adapter research and OpenBCI hardware reference.
 - BrainFlow is a candidate only: no package dependency, device purchase, hardware connection, raw neural data collection or cloud upload has been introduced.
 - This is not wired into the live UI, voice pipeline, ODIN runtime, Sentinel or phone companion yet. No medical/diagnostic capability is claimed.
+
+
+## I. Follow-on implementation — AEGIS Free Cloud Forge (2026-11-24)
+
+- Added a provider-neutral Free Cloud Forge module declaration to the module catalogue. It has planning/validation/inspection capabilities only and no permissions or execution grant.
+- Added `functions/lib/oci-free-cloud-forge.mjs`, a deterministic fail-closed policy validator for a conservative OCI A1 Always Free profile: aggregate 2 OCPUs, 12 GB memory, 200 GB combined boot/block storage, A1 Flex only, and no more than two instances in this initial profile.
+- Paid fallback, non-Always-Free billing mode, unsupported shapes, NAT Gateways, load balancers, unknown network fields and malformed plans are rejected.
+- Added focused regression tests, module-catalogue tests and `docs/AEGIS_FREE_CLOUD_FORGE.md`, including evaluation of the eight owner-supplied OCI repositories and reuse/licence decisions. No upstream repository code was copied or executed.
+- Nextcloud is deferred to keep the first host focused on AEGIS itself. Docker versus Podman remains a later, evidence-based choice; they are alternatives rather than a combined runtime.
+- This is policy/planning only. It does not connect an OCI tenancy, hold OCI credentials, generate/apply Terraform, create resources, guarantee zero account charges or deploy AEGIS to Oracle. The OCI adapter and live account/capacity/cost preflight remain future gated work.
