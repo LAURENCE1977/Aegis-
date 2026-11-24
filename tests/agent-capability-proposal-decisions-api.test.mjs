@@ -25,7 +25,7 @@ class DecisionD1 {
       async first() {
         const v = this.values;
         if (sql.includes('SELECT id FROM agent_runs')) return db.run?.id === v[0] ? db.run : null;
-        if (sql.includes('SELECT * FROM agent_capability_proposals')) {
+        if (sql.includes('FROM agent_capability_proposals') && sql.includes('proposal_id = ?')) {
           return db.proposal?.proposal_id === v[0] && db.proposal.agent_run_id === v[1]
             ? db.proposal : null;
         }
