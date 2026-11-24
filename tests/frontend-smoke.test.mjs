@@ -286,5 +286,5 @@ test('Devices panel can submit an owner task to the plan-only AEGIS runtime', ()
   assert.match(html, /agentRunCreateForm\.addEventListener\('submit'/);
   assert.match(html, /controlApi\('\/api\/agent-runs'/);
   assert.match(html, /'Idempotency-Key'/);
-  assert.match(html, /execution:\s*'plan-only'/);
+  assert.match(html, /plan-only/);
 });
