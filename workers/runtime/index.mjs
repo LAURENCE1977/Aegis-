@@ -111,6 +111,7 @@ function parseCapabilityProposal(row) {
     status: row.status,
     execution: row.execution,
     createdAt: row.created_at,
+    decision: row.decision ? { decision: row.decision, principalId: row.decision_principal_id, reason: row.decision_reason || null, createdAt: row.decision_created_at } : null,
   };
 }
 
@@ -261,9 +262,59 @@ async function getCapabilityProposals(env, runId) {
   const run = await env.DB.prepare('SELECT id FROM agent_runs WHERE id = ?').bind(runId).first();
   if (!run) return json({ error: 'Agent run not found.' }, 404);
   const result = await env.DB.prepare(
-    'SELECT * FROM agent_capability_proposals WHERE agent_run_id = ? ORDER BY created_at ASC LIMIT 100'
+    'SELECT p.*, d.decision, d.principal_id AS decision_principal_id, d.reason AS decision_reason, d.created_at AS decision_created_at FROM agent_capability_proposals p LEFT JOIN agent_capability_proposal_decisions d ON d.proposal_id = p.proposal_id WHERE p.agent_run_id = ? ORDER BY p.created_at ASC LIMIT 100'
   ).bind(runId).all();
   return json({ proposals: (result.results || []).map(parseCapabilityProposal) });
+}
+
+async function decideCapabilityProposal(request, env, runId, proposalId) {
+  if (!agentRunsEnabled(env)) return json({ error: 'Agent orchestration is not enabled.' }, 503);
+  if (!env?.DB || typeof env.DB.prepare !== 'function') return json({ error: 'Runtime database is not configured.' }, 503);
+  if (!isJobId(runId) || !isJobId(proposalId)) return json({ error: 'Invalid proposal identifier.' }, 400);
+  const principalId = env.AEGIS_PRINCIPAL_ID;
+  if (typeof principalId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(principalId)) {
+    return json({ error: 'Trusted principal context is not configured.' }, 503);
+  }
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) {
+    return json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > 1024) return json({ error: 'Request body is too large.' }, 413);
+  let input;
+  try { input = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON.' }, 400); }
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      Object.keys(input).some((key) => !['decision', 'reason'].includes(key)) ||
+      !['approved', 'rejected'].includes(input.decision) ||
+      (input.reason !== undefined && (typeof input.reason !== 'string' || input.reason.length > 500))) {
+    return json({ error: 'Invalid proposal decision.' }, 400);
+  }
+  const proposal = await env.DB.prepare(
+    'SELECT proposal_id FROM agent_capability_proposals WHERE proposal_id = ? AND agent_run_id = ? AND principal_id = ?'
+  ).bind(proposalId, runId, principalId).first();
+  if (!proposal) return json({ error: 'Capability proposal not found.' }, 404);
+
+  const createdAt = new Date().toISOString();
+  const decisionId = crypto.randomUUID();
+  const eventType = input.decision === 'approved'
+    ? 'capability_proposal_approved' : 'capability_proposal_rejected';
+  const [inserted] = await env.DB.batch([
+    env.DB.prepare(
+      'INSERT INTO agent_capability_proposal_decisions (decision_id, proposal_id, principal_id, decision, reason, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(proposal_id) DO NOTHING'
+    ).bind(decisionId, proposalId, principalId, input.decision, input.reason || null, createdAt),
+    env.DB.prepare(
+      "INSERT INTO agent_run_events (event_id, agent_run_id, event_type, detail_json, created_at) SELECT ?, ?, ?, json_object('proposalId', ?), ? WHERE changes() = 1 ON CONFLICT(event_id) DO NOTHING"
+    ).bind(crypto.randomUUID(), runId, eventType, proposalId, createdAt),
+  ]);
+  const saved = await env.DB.prepare(
+    'SELECT * FROM agent_capability_proposal_decisions WHERE proposal_id = ?'
+  ).bind(proposalId).first();
+  if (!saved) return json({ error: 'Proposal decision could not be persisted.' }, 500);
+  if (!inserted?.meta?.changes) return json({ error: 'This proposal already has a final decision.' }, 409);
+  return json({
+    decision: { id: saved.decision_id, proposalId: saved.proposal_id, principalId: saved.principal_id,
+      decision: saved.decision, reason: saved.reason, createdAt: saved.created_at },
+    execution: 'disabled',
+  }, 201);
 }
 
 async function getAgentRun(env, id) {
@@ -493,6 +544,10 @@ export async function handleRuntimeFetch(request, env) {
 
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
+  const decisionRoute = /^\\/v1\\/agent-runs\\/([^/]+)\\/capability-proposals\\/([^/]+)\\/decision$/.exec(url.pathname);
+  if (decisionRoute && request.method === 'POST') {
+    return decideCapabilityProposal(request, env, decisionRoute[1], decisionRoute[2]);
+  }
   const proposalRoute = /^\/v1\/agent-runs\/([^/]+)\/capability-proposals$/.exec(url.pathname);
   if (proposalRoute && request.method === 'POST') return submitCapabilityProposal(request, env, proposalRoute[1]);
   if (proposalRoute && request.method === 'GET') {
