@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionToken } from '../functions/lib/auth.mjs';
-import { onRequestGet } from '../functions/api/agent-runs.js';
+import { onRequestGet, onRequestPost } from '../functions/api/agent-runs.js';
 
 const OWNER_SECRET = 'owner-session-secret-that-is-at-least-thirty-two-characters';
 
@@ -81,4 +81,97 @@ test('malformed stored plans are returned as null rather than breaking the inven
   const response = await getRuns(db);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).agentRuns[0].plan, null);
+});
+
+
+const JOB_TOKEN = 'runtime-job-token-that-is-at-least-thirty-two-characters';
+const IDEMPOTENCY_KEY = 'owner-task-00000001';
+
+async function postRun(input, { authenticated = true, origin = 'https://aegis.example', runtime, token = JOB_TOKEN } = {}) {
+  const session = await createSessionToken(OWNER_SECRET);
+  return onRequestPost({
+    request: new Request('https://aegis.example/api/agent-runs', {
+      method: 'POST',
+      headers: {
+        ...(authenticated ? { Cookie: '__Host-aegis_session=' + session } : {}),
+        ...(origin ? { Origin: origin } : {}),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': IDEMPOTENCY_KEY,
+      },
+      body: JSON.stringify(input),
+    }),
+    env: {
+      AEGIS_PASSWORD: 'owner-password-long-enough',
+      AEGIS_SESSION_SECRET: OWNER_SECRET,
+      AEGIS_JOB_TOKEN: token,
+      AEGIS_RUNTIME: runtime,
+    },
+  });
+}
+
+test('owner can submit a bounded plan-only agent run through the private runtime binding', async () => {
+  let forwarded;
+  const runtime = {
+    async fetch(request) {
+      forwarded = request;
+      return new Response(JSON.stringify({
+        run: {
+          id: '00000000-0000-4000-8000-000000000020',
+          objective: 'Review the AEGIS runtime',
+          specialists: ['researcher', 'engineer', 'reviewer'],
+          status: 'queued',
+          attempts: 0,
+          createdAt: '2026-11-24T10:00:00.000Z',
+          updatedAt: '2026-11-24T10:00:00.000Z',
+          plan: null,
+          errorCode: null,
+        },
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    },
+  };
+
+  const response = await postRun({ objective: '  Review the AEGIS runtime  ' }, { runtime });
+  assert.equal(response.status, 201);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  const body = await response.json();
+  assert.equal(body.run.objective, 'Review the AEGIS runtime');
+  assert.equal(body.run.status, 'queued');
+  assert.equal(forwarded.method, 'POST');
+  assert.equal(new URL(forwarded.url).pathname, '/v1/agent-runs');
+  assert.equal(forwarded.headers.get('Authorization'), 'Bearer ' + JOB_TOKEN);
+  assert.equal(forwarded.headers.get('Idempotency-Key'), IDEMPOTENCY_KEY);
+  assert.deepEqual(await forwarded.json(), {
+    objective: 'Review the AEGIS runtime',
+    specialists: ['researcher', 'engineer', 'reviewer'],
+  });
+});
+
+test('agent-run submission requires an authenticated owner session and same-origin request', async () => {
+  let calls = 0;
+  const runtime = { async fetch() { calls += 1; return Response.json({ run: {} }, { status: 201 }); } };
+  assert.equal((await postRun({ objective: 'Review safely' }, { runtime, authenticated: false })).status, 401);
+  assert.equal((await postRun({ objective: 'Review safely' }, { runtime, origin: 'https://attacker.example' })).status, 403);
+  assert.equal(calls, 0);
+});
+
+test('agent-run submission fails closed when runtime binding or server token is missing', async () => {
+  const missingBinding = await postRun({ objective: 'Review safely' }, { runtime: undefined });
+  assert.equal(missingBinding.status, 503);
+  const missingToken = await postRun({ objective: 'Review safely' }, { runtime: { async fetch() { assert.fail('must not call runtime'); } }, token: '' });
+  assert.equal(missingToken.status, 503);
+});
+
+test('agent-run submission rejects malformed or over-privileged input before contacting runtime', async () => {
+  let calls = 0;
+  const runtime = { async fetch() { calls += 1; return Response.json({ run: {} }, { status: 201 }); } };
+  assert.equal((await postRun({ objective: 'Review safely', execute: true }, { runtime })).status, 400);
+  assert.equal((await postRun({ objective: '   ' }, { runtime })).status, 400);
+  assert.equal(calls, 0);
+});
+
+test('agent-run submission maps an unavailable runtime to a safe service error', async () => {
+  const runtime = { async fetch() { throw new Error('private runtime detail'); } };
+  const response = await postRun({ objective: 'Review safely' }, { runtime });
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(await response.text(), /private runtime detail/);
 });
