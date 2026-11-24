@@ -87,3 +87,16 @@ test('engineering intelligence is a separate planned capability with no permissi
   }
   assert.deepEqual(module.permissions, []);
 });
+
+
+test('Free Cloud Forge is discoverable but declares no execution permissions', () => {
+  const module = getModule('free-cloud-forge');
+  assert.ok(module);
+  assert.equal(module.name, 'AEGIS Free Cloud Forge');
+  assert.equal(module.status, 'planned');
+  for (const capability of ['cloud.plan', 'cloud.validate', 'cloud.inspect']) {
+    assert.ok(module.capabilities.includes(capability));
+    assert.equal(isCapabilityAllowed(module.id, capability), false);
+  }
+  assert.deepEqual(module.permissions, []);
+});
