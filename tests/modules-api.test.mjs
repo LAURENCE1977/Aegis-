@@ -43,6 +43,7 @@ test('module API returns the catalogue to an authenticated session without grant
   const body = await response.json();
   assert.equal(body.total, body.modules.length);
   assert.ok(body.modules.length > 0);
+  assert.ok(body.modules.some((module) => module.id === 'free-cloud-forge'));
   for (const module of body.modules) {
     assert.ok(['available', 'planned'].includes(module.status));
     assert.ok(Array.isArray(module.capabilities));
