@@ -52,6 +52,10 @@ The first AEGIS Bridge slice exposes the current stateless MCP Streamable HTTP p
 
 The first skills library is based on [obra/superpowers](https://github.com/obra/superpowers) (MIT). AEGIS adapts ten high-value engineering skills into its own registry and selects up to four relevant guidance entries per chat request. It does not install upstream plugins, scripts, hooks or telemetry, and imported skills receive no tool permissions. See [docs/SUPERPOWERS.md](docs/SUPERPOWERS.md).
 
+## AEGIS Free Cloud Forge
+
+The first Free Cloud Forge policy slice is being developed to plan AEGIS hosting under strict free-only constraints. Its initial OCI profile validates aggregate Always Free compute/storage limits and rejects paid fallbacks and disallowed network resources. It is policy/planning source only: no OCI account is connected and no infrastructure is provisioned. See [docs/AEGIS_FREE_CLOUD_FORGE.md](docs/AEGIS_FREE_CLOUD_FORGE.md).
+
 ## Data and provider notes
 
 The source code is open for inspection and modification. Hosting, storage, and model inference may have separate provider limits or costs. Requests sent to an external AI provider are processed under that provider's terms; open-source application code does not by itself make model inference private or free.
