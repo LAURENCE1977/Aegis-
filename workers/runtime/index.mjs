@@ -544,7 +544,7 @@ export async function handleRuntimeFetch(request, env) {
 
   if (url.pathname === '/v1/jobs' && request.method === 'POST') return submitJob(request, env);
   if (url.pathname === '/v1/agent-runs' && request.method === 'POST') return submitAgentRun(request, env);
-  const decisionRoute = /^\\/v1\\/agent-runs\\/([^/]+)\\/capability-proposals\\/([^/]+)\\/decision$/.exec(url.pathname);
+  const decisionRoute = /^\/v1\/agent-runs\/([^/]+)\/capability-proposals\/([^/]+)\/decision$/.exec(url.pathname);
   if (decisionRoute && request.method === 'POST') {
     return decideCapabilityProposal(request, env, decisionRoute[1], decisionRoute[2]);
   }
