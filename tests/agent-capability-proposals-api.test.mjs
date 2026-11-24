@@ -19,7 +19,7 @@ class ProposalD1 {
       bind(...values) { this.values = values; return this; },
       async first() {
         const v = this.values;
-        if (sql.includes('SELECT id, status FROM agent_runs')) return db.run?.id === v[0] ? db.run : null;
+        if (sql.includes('SELECT id, status FROM agent_runs') || sql.includes('SELECT id FROM agent_runs')) return db.run?.id === v[0] ? db.run : null;
         if (sql.includes('SELECT * FROM agent_capability_proposals WHERE agent_run_id')) {
           return [...db.proposals.values()].find((row) =>
             row.agent_run_id === v[0] && row.capability_id === v[1] &&
