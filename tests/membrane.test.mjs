@@ -190,3 +190,16 @@ test('route registry validates login, memories and ask contracts', () => {
   assert.deepEqual(ROUTE_POLICIES.map((p) => p.path), ['/api/login', '/api/memories', '/api/ask']);
   assert.deepEqual(ROUTE_POLICIES.find((p) => p.path === '/api/memories').methods, ['GET', 'POST']);
 });
+
+
+test('migrated API paths reject unsupported methods inside the membrane', async () => {
+  for (const [path, method] of [['/api/memories', 'DELETE'], ['/api/ask', 'GET']]) {
+    let reached = false;
+    const response = await onRequest[0]({
+      request: new Request('https://aegis.test' + path, { method }),
+      next: async () => { reached = true; return new Response('unsafe'); },
+    });
+    assert.equal(response.status, 405, method + ' ' + path);
+    assert.equal(reached, false);
+  }
+});

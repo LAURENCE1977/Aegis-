@@ -17,8 +17,8 @@ export const onRequest = [async (context) => {
   // Explicitly migrate only audited endpoint/method pairs.
   const protectedRoute =
     (classification.path === '/api/login' && context.request.method === 'POST') ||
-    (classification.path === '/api/memories' && ['GET', 'POST'].includes(context.request.method)) ||
-    (classification.path === '/api/ask' && context.request.method === 'POST');
+    classification.path === '/api/memories' ||
+    classification.path === '/api/ask';
   if (protectedRoute) return withAegisImmunePipeline(context);
   return context.next();
 }];
