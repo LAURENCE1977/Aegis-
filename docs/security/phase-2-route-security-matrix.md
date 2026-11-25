@@ -38,8 +38,8 @@ This is the baseline route inventory and existing test map, not a claim that eve
 | 2.1 | API security test matrix | Inventory route families, authentication boundaries and regression coverage | Completed |
 | 2.2 | Revocable server-side sessions | HMAC-signed session IDs backed by D1 expiry and revocation records | Completed |
 | 2.3 | Login-attempt throttling | D1-backed rolling window; five attempts per client IP, sixth attempt locks for 15 minutes; HMAC-keyed IP identity; generic failure response | Implemented; 441 tests passed and all 10 production migrations applied successfully to isolated local D1 in GitHub Actions |
-| 2.4 | Fail-closed PII and secret scrubbing | Central redaction at log/audit/persistence boundaries; detect credentials, tokens, common API-key formats and configured PII; reject or quarantine payloads when scrubber cannot classify safely | Planned |
-| 2.5 | OWASP ASI06 memory-poisoning write guards | Validate provenance, trust labels, schema and policy before state/memory writes; distinguish untrusted retrieved content from instructions; prevent untrusted content from changing trusted system state | Planned |
+| 2.4 | Fail-closed PII and secret scrubbing | Shared bounded scrubber redacts bearer/API-key/private-key patterns, email and phone PII, plus configured owner PII values; rejects unsupported/cyclic/oversized object graphs. Applied to structured memory ingestion. Log and all audit/D1 sinks still require a route-by-route inventory before sign-off | In progress |
+| 2.5 | OWASP ASI06 memory-poisoning write guards | Memory ingestion accepts only user/external provenance classes, assigns untrusted server-side, and stores new records as candidate; owner review is required before normal retrieval. Trusted system state and capability policy are not writable through this memory route | In progress |
 | 2.6 | Canary tripwires | Non-credential decoy markers and controlled probe surfaces; detect access without exposing real secrets; alert and invoke a bounded, owner-approved containment policy | Planned |
 
 ### Step 2.3 policy notes
@@ -51,3 +51,17 @@ This is the baseline route inventory and existing test map, not a claim that eve
 - Incorrect-password and throttled responses are identical (`401`, same body).
 - Successful login clears the corresponding attempt bucket.
 - This is per-client-IP protection; edge/WAF controls and broader distributed credential-stuffing detection remain complementary follow-ups.
+
+
+### Aegis-DSL / SEM implementation record (2026-11-25)
+
+The architecture direction is codified in docs/architecture/aegis-dsl-sem.md. It is a staged target architecture, not a declaration that all listed paradigms already exist.
+
+- Step 2.4 shared implementation: functions/lib/data-guards.mjs.
+- Supported secret patterns: bearer credentials, common OpenAI/GitHub token shapes, AWS access-key IDs and PEM private-key blocks.
+- Supported PII patterns: email addresses and phone-like strings, plus configured exact values supplied through AEGIS_PII_VALUES.
+- The scrubber has depth/node limits, rejects unsupported object types and cycles, and returns a redaction count. It is applied before the structured /api/memories write reaches the repository.
+- It is not yet a global logging middleware and does not yet cover every D1/audit sink. Those remain required inventory and integration work before Step 2.4 can be signed off.
+- Step 2.5: incoming structured memories are limited to user/external provenance classes; system-observation and project-event cannot be asserted by this public write boundary. The server stamps provenance as untrusted, and new records remain candidate until owner review.
+- Memory content remains reference data, never instructions. The chat prompt already explicitly preserves that boundary.
+- No direct browser-to-D1 access, zero-knowledge claim, 30-second ESCT, behavioral biometric telemetry, automatic Golden State rollback, generated migration AST, or 3D avatar has been implemented by this change.
