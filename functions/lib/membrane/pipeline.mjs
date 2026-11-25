@@ -192,7 +192,6 @@ function responseFor(error) {
   return new Response(JSON.stringify({ error: code }), { status, headers });
 }
 
-validateRoutePolicies();
 
 export async function withAegisImmunePipeline(context) {
   const { request, next } = context;
