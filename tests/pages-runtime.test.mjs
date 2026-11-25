@@ -63,7 +63,7 @@ async function authenticatedCookie() {
 test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion', runtimeOptions, async () => {
   const cookie = await authenticatedCookie();
   const payload = {
-    kind: 'fact', content: 'Wrangler membrane integration memory.',
+    kind: 'fact', content: 'Wrangler integration. Contact owner@example.com and token sk-abcdefghijklmnop.',
     source: { type: 'user-stated', url: 'https://aegis.test/source/runtime', attribution: 'Runtime integration test' },
     confidence: 0.8, sensitivity: 'private', tags: ['runtime-test'],
   };
@@ -75,6 +75,9 @@ test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion'
   const result = await valid.json();
   assert.equal(result.reviewRequired, true);
   assert.equal(result.memory.ownerId, 'owner');
+  assert.match(result.memory.content, /\[REDACTED_EMAIL\]/);
+  assert.match(result.memory.content, /\[REDACTED_TOKEN\]/);
+  assert.doesNotMatch(result.memory.content, /owner@example\.com|sk-abcdefghijklmnop/);
 });
 
 test('Pages runtime validates memory GET query parameters before retrieval', runtimeOptions, async () => {
