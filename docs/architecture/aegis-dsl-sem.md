@@ -58,3 +58,67 @@ These names do not authorize a wholesale rewrite. Existing Pages Functions, D1 s
 - No automatic acceptance of model-generated or externally sourced memories.
 - No biometrics or behavioral telemetry without a separately reviewed consent and privacy design.
 - No claim of zero-latency, globally consistent or zero-knowledge behavior without measurements and a verifiable protocol.
+
+
+## Genesis Directive v3.0 — Living Organism operating model
+
+The biological analogy is an architectural teaching model, not a claim that AEGIS is conscious or biologically alive. AEGIS is treated as an evolving digital organism: interactions are sensory inputs; provenance and trust labels are its immune recognition; policy and capability checks are its protective barriers; observability is its nervous system; and reviewed, tested releases are its controlled adaptation.
+
+### Organism lifecycle
+
+1. **Sense:** collect only necessary events from approved interfaces and integrations.
+2. **Classify:** label source, provenance, sensitivity, confidence and trust level.
+3. **Contain:** isolate suspicious input and deny authority to untrusted content.
+4. **Reason:** analyse evidence within bounded agent capabilities.
+5. **Propose:** prepare a patch, configuration change or learning candidate without applying it.
+6. **Verify:** run tests, policy checks, security scans and isolated simulations.
+7. **Approve:** require owner approval for privileged or production-impacting changes.
+8. **Release and observe:** deploy through a versioned pipeline, monitor health and retain a tested rollback path.
+
+### Evolution and self-healing safety boundary
+
+AEGIS may autonomously detect anomalies, create incident records, quarantine bounded data, draft patches, run isolated tests and recommend rollback. It must not autonomously rewrite its own executable code, mutate production configuration, grant capabilities, alter security policy, deploy a patch or spend funds.
+
+Runtime `eval` / `new Function`, self-modifying Worker code, live route/token-schema mutation and unreviewed WebAssembly hot-swapping are prohibited design patterns for the trusted control plane. Defensive updates must be ordinary reviewed source changes, built reproducibly and released through the approved CI/CD pipeline. A canary alert may trigger a bounded containment workflow; it must not become an unrestricted self-patching loop.
+
+### Additional frontier concepts — staged research register
+
+| Concept | Safe engineering interpretation | Gate |
+|---|---|---|
+| Self-mutating edge workers | Generate a proposed patch in a separate workspace; test and review it; deploy as a normal immutable version | No runtime code mutation |
+| Autonomous immunity loop | Detect, classify, alert, quarantine within pre-authorized bounds, draft remediation and request approval | No autonomous production code or policy writes |
+| Metabolic cleanup | Scheduled, observable maintenance proposals; index changes measured against representative workloads and applied as reviewed migrations | No destructive autonomous schema/index changes |
+| Polymorphic code mutation | Prefer conventional hardening, secret rotation and versioned deployment; do not mutate public interfaces or token formats unpredictably | No daily route/token mutation |
+| Temporal hash / causal audit DAG | Append-only events linked to parent digests, signed checkpoints and externally retained verification anchors | Cryptographic review and key-management design |
+| Neuromorphic threat topology | Evidence-backed graph of related indicators and bounded risk propagation, with explainable scoring | No autonomous global lockdown from weak signals |
+| IFC / SSA taint tracking | Explicit source-to-sink labels, typed wrappers and static analysis where language/tooling supports it | Incremental coverage and false-negative testing |
+| ESCT capability tokens | Single-use, audience- and action-bound tokens, maximum 30-second lifetime, replay protection and D1 grant validation | Separate protocol design and security review |
+| Behavioral Sentinel | Optional privacy-minimising signals with explicit consent, retention limits and non-biometric alternatives | Privacy/legal assessment before collection |
+| Golden State Manifest | Signed manifest of approved configuration/schema hashes, drift alerts and owner-approved restoration | Never overwrite evidence or rollback autonomously |
+| Canary / Turing-Hedge | Isolated synthetic decoy resources with harmless markers, telemetry and alert-only initial response | No real secrets; no interaction with production data |
+| Supply-chain ledger | Reproducible build metadata and SHA-256/Sigstore-style attestations for reviewed source, migrations and configuration | Verify keys, provenance and CI enforcement |
+| FSM-first Eve UI | Server-authoritative finite-state transitions with explicit invalid-transition handling; render state from validated events | UI cannot set threat state or security policy |
+| Metabolic UI morphing | Accessible, deterministic layout modes driven by explicit incident states and user preferences | No hidden inference of cognitive/biological state |
+| Algorithmic speciation | Offline/shadow evaluation against fixed datasets; champion/challenger comparison and human-reviewed promotion | Never learn directly from untrusted live traffic into production |
+| Teleological intent generation | Propose measurable reliability/security goals with explicit constraints and owner selection | No self-selected authority or unbounded objectives |
+| Autonomous treasury | Budgeted recommendations and transaction drafts | Human approval for every transfer or financial commitment |
+| Mycelial knowledge graph | Provenance-bearing graph of facts, sources, confidence, lifecycle and explicit relationships | Untrusted nodes never become trusted instructions |
+| Planetary mesh | Multi-region resilience and portable deployment architecture using supported cryptography and infrastructure | No self-replication or uncontrolled resource creation |
+
+### Security and reliability claims
+
+- “Zero lag”, “sub-millisecond global consistency”, “quantum-entangled”, “zero-knowledge” and “absolute zero-trust integrity” are aspirations, not accepted implementation claims. Each requires a precise protocol, threat model, measurable service objective and independent verification.
+- D1 is durable edge-accessible storage, not a globally linearizable, sub-millisecond shared memory bus. Session consistency and latency must be measured against the actual Cloudflare topology and service guarantees.
+- Quantum-resistant cryptography means adopting standardised, supported post-quantum algorithms and migration plans—not describing ordinary hashes as quantum entanglement.
+- Security events can request a state transition, but only server-side policy may authorize it. The client and Eve avatar are presentation surfaces, never sources of authority.
+- Financial, privacy-sensitive, destructive and production-impacting actions remain owner-governed.
+
+## Genesis Directive v3.0 execution gates
+
+**Immediate:** complete Phase 2 Steps 2.4 and 2.5 on `feature/production-migrations`; run focused and full Node tests and GitHub Actions; preserve production isolation.
+
+**Next:** Step 2.6 isolated canary tripwires, initially alert-only.
+
+**Later architecture spikes:** typed RPC compatibility layer; declarative schema/AST migration generator that emits reviewable SQL; broader IFC/taint analysis; ESCT protocol; signed Golden State Manifest; cryptographic supply-chain ledger; deterministic FSM UI contract.
+
+**Deferred research:** autonomous code evolution, polymorphic runtime mutation, neuromorphic global threat propagation, algorithmic speciation, autonomous financial treasury and planetary self-replicating infrastructure. These are not part of the trusted production control plane.
