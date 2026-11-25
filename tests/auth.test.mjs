@@ -358,3 +358,13 @@ test('login protection fails closed when the trusted client IP is unavailable', 
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('Set-Cookie'), null);
 });
+
+
+test('ambiguous duplicate session cookies fail closed instead of selecting the first token', () => {
+  const request = new Request('https://aegis.example/api/ask', {
+    headers: {
+      Cookie: '__Host-aegis_session=valid-looking.token; __Host-aegis_session=attacker.token',
+    },
+  });
+  assert.equal(readSessionToken(request), null);
+});
