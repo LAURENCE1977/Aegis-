@@ -191,6 +191,7 @@ test('D1 repository persists a memory and reads it back only in its exact owner 
   const db = new MemoryRepositoryD1();
   const repository = createMemoryRepository(db);
   const saved = await repository.create(record());
+  assert.equal(saved.source.trust, 'untrusted');
   assert.deepEqual(await repository.get(saved.id, { ownerId:'owner-1' }), saved);
   assert.equal(await repository.get(saved.id, { ownerId:'owner-2' }), null);
 });
