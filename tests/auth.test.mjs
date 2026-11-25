@@ -23,6 +23,7 @@ const configuredEnv = {
   AEGIS_SESSION_SECRET: secret,
 };
 const storedSessions = new Map();
+const loginBuckets = new Map();
 const sessionDb = {
   prepare(sql) {
     return { bind(...values) {
@@ -37,7 +38,28 @@ const sessionDb = {
     }};
   },
 };
+const loginDb = {
+  prepare(sql) {
+    if (sql.includes("INSERT INTO login_attempts")) {
+      return { bind(...values) { return { first: async () => {
+        const [identityHash, now, updatedAt, cutoff, , , threshold, lockSeconds] = values;
+        let row = loginBuckets.get(identityHash);
+        if (!row || row.window_started_at <= cutoff) row = { window_started_at: now, attempts: 1, locked_until: 0 };
+        else row = { ...row, attempts: row.attempts + 1 };
+        if (row.attempts >= threshold) row.locked_until = now + lockSeconds;
+        row.updated_at = updatedAt;
+        loginBuckets.set(identityHash, row);
+        return { attempts: row.attempts, locked_until: row.locked_until };
+      }}; }};
+    }
+    if (sql.includes("DELETE FROM login_attempts")) {
+      return { bind(identityHash) { return { run: async () => { loginBuckets.delete(identityHash); return { success: true }; } }; } };
+    }
+    return sessionDb.prepare(sql);
+  },
+};
 const persistedEnv = { ...configuredEnv, AEGIS_DB: sessionDb };
+const throttledEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 
 test('a newly created session token verifies before its expiry', async () => {
   const token = await createSessionToken(secret, fixedNow);
@@ -95,7 +117,7 @@ test('the login endpoint rejects an incorrect password', async () => {
   const response = await loginPost({
     request: new Request('https://aegis.example/api/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '192.0.2.10' },
       body: JSON.stringify({ password: 'wrong-password-value' }),
     }),
     env: configuredEnv,
@@ -107,7 +129,7 @@ test('successful login persists a revocable session accepted by the API guard', 
   const response = await loginPost({
     request: new Request('https://aegis.example/api/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '192.0.2.10' },
       body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
     }),
     env: persistedEnv,
@@ -247,7 +269,7 @@ test('chat rejects cross-origin requests before invoking the model', async () =>
 test('login refuses to issue a session when D1 session storage is unavailable', async () => {
   const response = await loginPost({
     request: new Request('https://aegis.example/api/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '192.0.2.10' },
       body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
     }),
     env: configuredEnv,
@@ -259,7 +281,7 @@ test('login refuses to issue a session when D1 session storage is unavailable', 
 test('logout revokes the D1 session and clears the browser cookie', async () => {
   const login = await loginPost({
     request: new Request('https://aegis.example/api/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '192.0.2.10' },
       body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
     }),
     env: persistedEnv,
@@ -290,4 +312,49 @@ test('D1 session lookup errors fail closed', async () => {
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
   const brokenEnv = { ...configuredEnv, AEGIS_DB: { prepare() { throw new Error('D1 unavailable'); } } };
   assert.equal(await isAuthorized(request, brokenEnv, fixedNow + 1_000), false);
+});
+
+
+test('login blocks the sixth attempt from one client IP without revealing a different error', async () => {
+  loginBuckets.clear();
+  const makeRequest = password => new Request('https://aegis.example/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '198.51.100.44' },
+    body: JSON.stringify({ password }),
+  });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await loginPost({ request: makeRequest('incorrect-password'), env: throttledEnv });
+    assert.equal(response.status, 401);
+    assert.equal(await response.text(), JSON.stringify({ error: 'Incorrect password.' }));
+  }
+  const blocked = await loginPost({ request: makeRequest(configuredEnv.AEGIS_PASSWORD), env: throttledEnv });
+  assert.equal(blocked.status, 401);
+  assert.equal(await blocked.text(), JSON.stringify({ error: 'Incorrect password.' }));
+  assert.equal(blocked.headers.get('Set-Cookie'), null);
+});
+
+test('login throttling isolates client IPs and stores only keyed hashes', async () => {
+  loginBuckets.clear();
+  const request = new Request('https://aegis.example/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '203.0.113.88' },
+    body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+  });
+  const response = await loginPost({ request, env: throttledEnv });
+  assert.equal(response.status, 200);
+  assert.equal(loginBuckets.size, 0);
+  assert.equal([...loginBuckets.keys()].includes('203.0.113.88'), false);
+});
+
+test('login protection fails closed when the trusted client IP is unavailable', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: throttledEnv,
+  });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('Set-Cookie'), null);
 });
