@@ -15,8 +15,10 @@ export const onRequest = [async (context) => {
   if (classification.kind === 'public') return context.next();
 
   // Explicitly migrate only audited endpoint/method pairs.
+  // Route every login method through policy dispatch. GET remains the
+  // unauthenticated session-status endpoint; POST logs in; DELETE logs out.
   const protectedRoute =
-    (classification.path === '/api/login' && context.request.method === 'POST') ||
+    classification.path === '/api/login' ||
     classification.path === '/api/memories' ||
     classification.path === '/api/ask';
   if (protectedRoute) return withAegisImmunePipeline(context);

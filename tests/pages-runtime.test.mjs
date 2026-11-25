@@ -67,7 +67,10 @@ test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion'
     source: { type: 'user-stated', url: 'https://aegis.test/source/runtime', attribution: 'Runtime integration test' },
     confidence: 0.8, sensitivity: 'private', tags: ['runtime-test'],
   };
-  const headers = { 'content-type': 'application/json', origin: baseUrl, cookie };
+  const headers = {
+    'content-type': 'application/json', origin: baseUrl, cookie,
+    'x-owner-id': 'attacker', 'x-aegis-owner': 'attacker', 'x-user-id': 'attacker',
+  };
   const spoof = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify({ ...payload, ownerId: 'attacker' }) });
   assert.equal(spoof.status, 400);
   const valid = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify(payload) });
@@ -143,7 +146,7 @@ test('Pages runtime bounds deeply nested and oversized adversarial request bodie
   for (let i = 0; i < 20; i += 1) { cursor.next = {}; cursor = cursor.next; }
   const nested = await fetch(baseUrl + '/api/ask', {
     method: 'POST', headers,
-    body: JSON.stringify({ question: 'bounded?', history: [{ role: 'user', content: JSON.stringify(deep) }] }),
+    body: JSON.stringify({ question: 'bounded?', history: [{ role: 'user', content: 'hello', nested: deep }] }),
   });
   assert.ok([400, 413].includes(nested.status));
   const oversized = await fetch(baseUrl + '/api/memories', {
@@ -154,4 +157,21 @@ test('Pages runtime bounds deeply nested and oversized adversarial request bodie
     }),
   });
   assert.equal(oversized.status, 413);
+});
+
+
+test('Pages runtime rejects replay of a logged-out session across memories and ask', runtimeOptions, async () => {
+  const cookie = await authenticatedCookie();
+  const logout = await fetch(baseUrl + '/api/login', {
+    method: 'DELETE', headers: { origin: baseUrl, cookie },
+  });
+  assert.equal(logout.status, 200);
+  const memory = await fetch(baseUrl + '/api/memories', { headers: { cookie } });
+  assert.equal(memory.status, 401);
+  const ask = await fetch(baseUrl + '/api/ask', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: baseUrl, cookie },
+    body: JSON.stringify({ question: 'Should not reach the model' }),
+  });
+  assert.equal(ask.status, 401);
 });

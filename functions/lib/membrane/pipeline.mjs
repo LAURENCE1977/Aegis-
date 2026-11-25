@@ -224,8 +224,8 @@ export async function withAegisImmunePipeline(context) {
     const route = evaluateRoutePolicy(path, request.method);
     if (!route.ok) throw new MembraneError(route.code, { code: route.code, status: route.status, ...(route.allow ? { allow: route.allow } : {}) });
     const policy = route.policy;
-    if (request.method === 'GET' || request.method === 'HEAD') {
-      if (request.body !== null) throw new MembraneError('GET and HEAD bodies are forbidden', { code: 'BODY_NOT_ALLOWED', status: 400 });
+    if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'DELETE') {
+      if (request.body !== null) throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
       const safeRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
       return await next(safeRequest);
     }

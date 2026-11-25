@@ -255,7 +255,7 @@ test('memory and ask membrane reject malformed media types, prototype keys and o
   });
   let reached = false;
   const limited = await onRequest[0]({ request: oversizedShape, next: async () => { reached = true; return new Response('unsafe'); } });
-  assert.equal(limited.status, 400);
+  assert.equal(limited.status, 413);
   assert.equal(reached, false);
 });
 

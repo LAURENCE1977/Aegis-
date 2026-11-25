@@ -15,7 +15,7 @@ const nullable = (descriptor) => Object.freeze({ ...descriptor, nullable: true }
 export const ROUTE_POLICIES = Object.freeze([
   Object.freeze({
     path: '/api/login',
-    methods: Object.freeze(['POST']),
+    methods: Object.freeze(['GET', 'POST', 'DELETE']),
     allowBodies: true,
     maxBodySize: 16 * 1024,
     allowedMediaTypes: Object.freeze(['application/json']),

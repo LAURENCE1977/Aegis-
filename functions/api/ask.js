@@ -2,6 +2,7 @@ import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/a
 import { buildSkillContext } from "../lib/skills.mjs";
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { listWorkspaceEvents } from "../lib/project-spaces.mjs";
+import { scrubSensitiveData } from "../lib/data-guards.mjs";
 
 const MAX_HISTORY = 10;
 const MAX_TEXT = 4000;
@@ -24,15 +25,22 @@ export async function onRequestPost(context) {
   if (!question) return json({ error: "Prompt required" }, 400);
   if (!env.AI) return json({ error: "No AI provider configured" }, 503);
 
-  const messages = await buildAskMessages(env, question, body.history);
-
   try {
+    const messages = await buildAskMessages(env, question, body.history);
+    // Scrub the complete provider-bound context, not only the latest question.
+    // This also covers client history, legacy KV notes and retrieved context.
+    const scrubbed = scrubSensitiveData(messages, {
+      piiValues: env.AEGIS_PII_VALUES ?? [],
+    });
+    if (!scrubbed.ok) {
+      return json({ error: "Prompt context could not be safely classified." }, 400);
+    }
     const result = await env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
-      messages,
+      messages: scrubbed.value,
       max_tokens: 1024
     });
     return json(result);
-  } catch (e) {
+  } catch {
     return json({ error: "The AI could not answer right now. Please try again." }, 502);
   }
 }
