@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="AEGIS — Personal AI Assistant" />
+  <meta name="theme-color" content="#07090e" />
+  <meta name="apple-mobile-web-app-title" content="AEGIS" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/aegis.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/aegis.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AEGIS · AI Assistant</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --card: rgba(13, 17, 26, 0.85);
+      --border: rgba(255,255,255,0.08);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; position: relative; }
+    h1 { font-size: 1.5rem; color: var(--accent); margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .login-panel {
+      max-width: 420px; margin: 12vh auto 0; padding: 1.5rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+    }
+    .login-panel h2 { font-size: 1.15rem; margin-bottom: .5rem; }
+    .login-panel p { color: var(--muted); line-height: 1.5; margin-bottom: 1rem; }
+    .login-panel input { width: 100%; margin-bottom: .75rem; }
+    .login-panel button { width: 100%; }
+    .chat-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+      padding: 1rem; margin-bottom: 1rem; height: 50vh; overflow-y: auto;
+    }
+    .message { margin-bottom: 1rem; white-space: pre-wrap; word-wrap: break-word; }
+    .user { color: var(--accent); }
+    .assistant { color: var(--text); }
+    .input-area { display: flex; gap: 0.5rem; }
+    input {
+      flex: 1; min-width: 0; padding: 0.875rem 1rem; border-radius: 0.75rem;
+      border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem;
+    }
+    button {
+      padding: 0.875rem 1.5rem; border-radius: 0.75rem; border: none;
+      background: var(--accent); color: white; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; }
+    .logout { position: absolute; right: 0; top: 0; padding: .45rem .7rem; font-size: .8rem; }
+    .status { text-align: center; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; }
+    .toolbar { display: flex; gap: .6rem; margin: 0 0 1rem; }
+    .toolbar button { flex: 1; padding: .7rem .9rem; }
+    .secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; color: var(--muted); font-size: .82rem; }
+    .project-context select { flex: 1; min-width: 0; padding: .65rem; border-radius: .7rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+    .memory-panel { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+    .memory-panel h2 { font-size: 1.05rem; margin-bottom: .4rem; }
+    .memory-help { color: var(--muted); font-size: .82rem; line-height: 1.45; margin-bottom: .8rem; }
+    .memory-form { display: grid; gap: .6rem; margin-bottom: 1rem; }
+    .memory-form select, .memory-form textarea {
+      width: 100%; padding: .75rem; border-radius: .7rem; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font: inherit;
+    }
+    .memory-form textarea { min-height: 5rem; resize: vertical; }
+    .memory-item { border-top: 1px solid var(--border); padding: .9rem 0; }
+    .memory-item p { line-height: 1.45; overflow-wrap: anywhere; }
+    .memory-meta { color: var(--muted); font-size: .75rem; margin: .35rem 0 .6rem; }
+    .memory-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .memory-actions button { padding: .5rem .7rem; font-size: .78rem; }
+    .memory-history { margin-top: .6rem; padding-left: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    .memory-empty { color: var(--muted); font-size: .85rem; padding: .75rem 0; }
+    .workspace-card, .approval-card { border: 1px solid var(--border); border-radius: .8rem; padding: .9rem; margin: .7rem 0; background: var(--card); }
+    .workspace-card h3, .approval-card h3 { font-size: .98rem; margin-bottom: .35rem; overflow-wrap: anywhere; }
+    .workspace-card p, .approval-card p { color: var(--muted); font-size: .84rem; line-height: 1.45; margin: .35rem 0; overflow-wrap: anywhere; }
+    .workspace-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .65rem; }
+    .workspace-actions button, .approval-actions button { padding: .55rem .75rem; font-size: .8rem; }
+    .workspace-detail { border-top: 1px solid var(--border); margin-top: .75rem; padding-top: .75rem; }
+    .workspace-detail textarea { width: 100%; min-height: 4rem; padding: .7rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+    .forge-preview { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 55vh; padding: .9rem; border-radius: .7rem; border: 1px solid var(--border); background: #05070b; color: var(--text); font: .78rem/1.5 ui-monospace, SFMono-Regular, monospace; }
+    .toolbar { flex-wrap: wrap; }
+    .toolbar button { min-width: 5rem; }
+    .project-context { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
+    .project-context select { min-width: 0; flex: 1; padding: .65rem; border-radius: .65rem; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; }
+    @media (max-width: 420px) {
+      .logout { position: static; margin-top: .75rem; }
+      .input-area button { padding-inline: 1rem; }
+    }
+  
+    .diagnostics-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+    .diagnostics-panel h2 { font-size: 1rem; margin-bottom: .75rem; color: var(--accent); }
+    .diagnostics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+    .diagnostic { padding: .75rem; border-radius: .7rem; background: rgba(255,255,255,.035); min-width: 0; }
+    .diagnostic-label { color: var(--muted); font-size: .75rem; margin-bottom: .35rem; }
+    .diagnostic-value { font-size: .95rem; font-weight: 650; overflow-wrap: anywhere; }
+    .diagnostic-ok { color: #65d6b0; }
+    .diagnostic-error { color: #ff7777; }
+    .diagnostics-refresh { margin-top: .75rem; padding: .6rem .9rem; }
+    @media (max-width: 420px) { .diagnostics-grid { grid-template-columns: 1fr; } }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AEGIS</h1>
+      <p class="subtitle">Personal AI Assistant</p>
+      <button class="logout" id="logoutBtn" type="button" hidden>Sign out</button>
+    </header>
+
+    <section class="diagnostics-panel" aria-labelledby="diagnostics-title">
+      <h2 id="diagnostics-title">System Diagnostics</h2>
+      <div class="diagnostics-grid">
+        <div class="diagnostic"><div class="diagnostic-label">D1 connection</div><div class="diagnostic-value" id="diag-db">Checking…</div></div>
+        <div class="diagnostic"><div class="diagnostic-label">Database latency</div><div class="diagnostic-value" id="diag-latency">—</div></div>
+        <div class="diagnostic"><div class="diagnostic-label">Operational mode</div><div class="diagnostic-value" id="diag-mode">—</div></div>
+        <div class="diagnostic"><div class="diagnostic-label">Threat level</div><div class="diagnostic-value" id="diag-threat">—</div></div>
+        <div class="diagnostic"><div class="diagnostic-label">Eve state tag</div><div class="diagnostic-value" id="diag-eve">—</div></div>
+        <div class="diagnostic"><div class="diagnostic-label">Last state update</div><div class="diagnostic-value" id="diag-updated">—</div></div>
+      </div>
+      <button class="secondary diagnostics-refresh" id="diag-refresh" type="button">Refresh diagnostics</button>
+      <p class="status" id="diag-checked" role="status" aria-live="polite">Checking API…</p>
+    </section>
+
+
+    <section class="login-panel" id="loginPanel" hidden>
+      <h2>Welcome back</h2>
+      <p>Sign in to access your private AEGIS workspace.</p>
+      <form id="loginForm">
+        <input type="password" id="loginPassword" placeholder="Your AEGIS password" autocomplete="current-password" required minlength="12" />
+        <button id="loginBtn" type="submit">Sign in</button>
+      </form>
+      <p class="status" id="loginStatus" role="status" aria-live="polite">Checking security settings…</p>
+    </section>
+
+    <main id="appPanel" hidden>
+      <div class="toolbar" role="tablist" aria-label="AEGIS Control Centre">
+        <button class="secondary" id="chatTab" type="button">Chat</button>
+        <button class="secondary" id="workspaceTab" type="button">Projects</button>
+        <button class="secondary" id="memoryTab" type="button">Memory</button>
+        <button class="secondary" id="approvalTab" type="button">Approvals</button>
+        <button class="secondary" id="forgeTab" type="button">Forge</button>
+        <button class="secondary" id="securityTab" type="button">Security</button>
+      </div>
+      <section id="chatSection">
+      <label class="project-context" for="chatProjectSelect">Chat context
+        <select id="chatProjectSelect" aria-label="Project Space context"><option value="">Personal memory only</option></select>
+      </label>
+      <div class="chat-box" id="chatBox" aria-live="polite"></div>
+      <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off" />
+        <button id="sendBtn" type="button">Send</button>
+      </div>
+      <p class="status" id="status">Ready</p>
+      </section>
+      <section class="memory-panel" id="forgeSection" hidden>
+        <h2>AEGIS Forge</h2>
+        <p class="memory-help">Inspect public GitHub repositories, pin source blobs and read bounded text files. This is read-only: no code is installed, run or executed.</p>
+        <form class="memory-form" id="forgeForm">
+          <input id="forgeSourceUrl" type="url" inputmode="url" placeholder="https://github.com/owner/repository" required />
+          <button id="forgeInspectBtn" type="submit">Inspect repository</button>
+        </form>
+        <div class="memory-actions">
+          <button id="forgeSentinelDiscoverBtn" class="secondary" type="button">Check public metadata through Sentinel</button>
+          <p class="status" id="forgeSentinelStatus" role="status" aria-live="polite">Requires an exact repository grant in Security Centre.</p>
+        </div>
+        <p class="status" id="forgeStatus" role="status" aria-live="polite">Ready for a public GitHub repository.</p>
+        <div id="forgeFileList" aria-live="polite"></div>
+        <h3>Saved source candidates</h3>
+        <div id="forgeCandidateList" aria-live="polite"></div>
+        <h3 id="forgePreviewTitle" hidden>Source preview</h3>
+        <pre class="forge-preview" id="forgeFilePreview" hidden></pre>
+      </section>
+      <section class="memory-panel" id="securitySection" hidden>
+        <h2>Security Centre</h2>
+        <p class="memory-help">Read-only inventory of AEGIS modules and capability contracts. A registered capability is not an execution permission; grants remain separate and default-deny.</p>
+        <p class="status" id="securityStatus" role="status" aria-live="polite">Loading security inventory…</p>
+        <h3>Modules</h3>
+        <div id="moduleList" aria-live="polite"></div>
+        <h3>Capability registry</h3>
+        <div id="capabilityList" aria-live="polite"></div>
+        <h3>Owner-controlled grants</h3>
+        <p class="memory-help">Grant only the actions and exact resources you intend. A grant is not an approval; human-gated operations still require a separate approval. Scopes are derived by the server from the trusted capability registry.</p>
+        <form class="memory-form" id="grantForm">
+          <label for="grantCapabilitySelect">Approved capability</label>
+          <select id="grantCapabilitySelect" required></select>
+          <label for="grantActionSelect">Actions to grant (select one or more)</label>
+          <select id="grantActionSelect" multiple size="4" required></select>
+          <label for="grantResourceId">Exact resource ID (wildcards are not allowed)</label>
+          <input id="grantResourceId" maxlength="256" placeholder="e.g. aegis:modules" required />
+          <label for="grantExpiresAt">Grant expiry</label>
+          <input id="grantExpiresAt" type="datetime-local" required />
+          <button id="createGrantBtn" type="submit">Create exact grant</button>
+        </form>
+        <p class="status" id="grantStatus" role="status" aria-live="polite">Grant history is not loaded.</p>
+        <div id="grantList" aria-live="polite"></div>
+        <h3>Sentinel read-only test</h3>
+        <p class="memory-help">This manual test invokes only the local module catalogue. It requires an active exact-resource grant and records the invocation in Sentinel's audit trail.</p>
+        <button id="invokeModuleCatalogueBtn" type="button">Run module catalogue through Sentinel</button>
+        <p class="status" id="sentinelInvokeStatus" role="status" aria-live="polite">No invocation run yet.</p>
+        <pre id="sentinelInvokeOutput" class="forge-preview" hidden></pre>
+        <p class="memory-help">No grants are created by this inventory; the controls above manage them separately. Revoking a grant blocks future Sentinel policy checks.</p>
+      </section>
+      <section class="memory-panel" id="workspaceSection" hidden>
+        <h2>Project Spaces</h2>
+        <p class="memory-help">Create private workspaces for projects. Notes and decisions are kept in an owner-only timeline.</p>
+        <form class="memory-form" id="workspaceForm">
+          <input id="workspaceName" maxlength="80" placeholder="Project name" required />
+          <textarea id="workspaceDescription" maxlength="500" placeholder="What is this project about?"></textarea>
+          <button id="createWorkspaceBtn" type="submit">Create Project Space</button>
+        </form>
+        <p class="status" id="workspaceStatus" role="status" aria-live="polite">Loading projects…</p>
+        <div id="workspaceList" aria-live="polite"></div>
+      </section>
+      <section class="memory-panel" id="approvalSection" hidden>
+        <h2>Approval inbox</h2>
+        <p class="memory-help">Review exact operations proposed by AEGIS. Approving here records your decision only; it does not itself execute an operation.</p>
+        <p class="status" id="approvalStatus" role="status" aria-live="polite">Loading approvals…</p>
+        <div id="approvalList" aria-live="polite"></div>
+      </section>
+      <section class="memory-panel" id="memorySection" hidden>
+        <h2>My AEGIS memory</h2>
+        <button class="secondary" id="exportMemoriesBtn" type="button">Export this scope</button>
+        <p class="memory-help">New memories are saved as candidates. They only become trusted recall after you approve them. This area needs the AEGIS D1 memory store to be connected.</p>
+        <form class="memory-form" id="memoryForm">
+          <select id="memoryProjectSelect" aria-label="Memory Project Space"><option value="">Personal memory</option></select>
+          <select id="memoryKind" aria-label="Memory type"><option value="fact">Fact</option><option value="preference">Preference</option><option value="decision">Decision</option><option value="event">Event</option><option value="procedure">Procedure</option><option value="artifact">Project / artifact</option></select>
+          <textarea id="memoryContent" maxlength="4000" placeholder="What should AEGIS remember?" required></textarea>
+          <button id="saveMemoryBtn" type="submit">Save for review</button>
+        </form>
+        <p class="status" id="memoryStatus" role="status" aria-live="polite">Loading memory…</p>
+        <div id="memoryList" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const status = document.getElementById('status');
+    const loginPanel = document.getElementById('loginPanel');
+    const loginForm = document.getElementById('loginForm');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginStatus = document.getElementById('loginStatus');
+    const appPanel = document.getElementById('appPanel');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const chatTab = document.getElementById('chatTab');
+    const memoryTab = document.getElementById('memoryTab');
+    const workspaceTab = document.getElementById('workspaceTab');
+    const approvalTab = document.getElementById('approvalTab');
+    const forgeTab = document.getElementById('forgeTab');
+    const securityTab = document.getElementById('securityTab');
+    const securitySection = document.getElementById('securitySection');
+    const securityStatus = document.getElementById('securityStatus');
+    const moduleList = document.getElementById('moduleList');
+    const capabilityList = document.getElementById('capabilityList');
+    const grantForm = document.getElementById('grantForm');
+    const grantCapabilitySelect = document.getElementById('grantCapabilitySelect');
+    const grantActionSelect = document.getElementById('grantActionSelect');
+    const grantResourceId = document.getElementById('grantResourceId');
+    const grantExpiresAt = document.getElementById('grantExpiresAt');
+    const createGrantBtn = document.getElementById('createGrantBtn');
+    const grantStatus = document.getElementById('grantStatus');
+    const grantList = document.getElementById('grantList');
+    const invokeModuleCatalogueBtn = document.getElementById('invokeModuleCatalogueBtn');
+    const sentinelInvokeStatus = document.getElementById('sentinelInvokeStatus');
+    const sentinelInvokeOutput = document.getElementById('sentinelInvokeOutput');
+    let securityCapabilities = [];
+    const forgeSection = document.getElementById('forgeSection');
+    const forgeForm = document.getElementById('forgeForm');
+    const forgeSourceUrl = document.getElementById('forgeSourceUrl');
+    const forgeInspectBtn = document.getElementById('forgeInspectBtn');
+    const forgeSentinelDiscoverBtn = document.getElementById('forgeSentinelDiscoverBtn');
+    const forgeSentinelStatus = document.getElementById('forgeSentinelStatus');
+    const forgeStatus = document.getElementById('forgeStatus');
+    const forgeFileList = document.getElementById('forgeFileList');
+    const forgeCandidateList = document.getElementById('forgeCandidateList');
+    const forgeFilePreview = document.getElementById('forgeFilePreview');
+    const forgePreviewTitle = document.getElementById('forgePreviewTitle');
+    const workspaceSection = document.getElementById('workspaceSection');
+    const approvalSection = document.getElementById('approvalSection');
+    const workspaceForm = document.getElementById('workspaceForm');
+    const workspaceName = document.getElementById('workspaceName');
+    const workspaceDescription = document.getElementById('workspaceDescription');
+    const createWorkspaceBtn = document.getElementById('createWorkspaceBtn');
+    const workspaceStatus = document.getElementById('workspaceStatus');
+    const workspaceList = document.getElementById('workspaceList');
+    const approvalStatus = document.getElementById('approvalStatus');
+    const approvalList = document.getElementById('approvalList');
+    const chatSection = document.getElementById('chatSection');
+    const chatProjectSelect = document.getElementById('chatProjectSelect');
+    const memorySection = document.getElementById('memorySection');
+    const memoryForm = document.getElementById('memoryForm');
+    const memoryKind = document.getElementById('memoryKind');
+    const memoryProjectSelect = document.getElementById('memoryProjectSelect');
+    const memoryContent = document.getElementById('memoryContent');
+    const saveMemoryBtn = document.getElementById('saveMemoryBtn');
+    const memoryStatus = document.getElementById('memoryStatus');
+    const exportMemoriesBtn = document.getElementById('exportMemoriesBtn');
+    const memoryList = document.getElementById('memoryList');
+
+    const STORE_KEY = 'aegis_chat_v1';
+    const MAX_SENT = 10;
+    const MAX_SAVED = 40;
+    let history = [];
+    let busy = false;
+    const threadId = 'aegis-' + crypto.randomUUID();
+
+    function loadHistory() {
+      try {
+        const list = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+        if (Array.isArray(list)) {
+          history = list
+            .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+            .slice(-MAX_SAVED);
+        }
+      } catch (e) { history = []; }
+    }
+
+    function saveHistory() {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(history.slice(-MAX_SAVED))); } catch (e) {}
+    }
+
+    function addMessage(text, sender = 'assistant') {
+      const div = document.createElement('div');
+      div.className = 'message ' + sender;
+      const label = document.createElement('strong');
+      label.textContent = (sender === 'user' ? 'You' : 'AEGIS') + ': ';
+      div.appendChild(label);
+      div.appendChild(document.createTextNode(text));
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function extractReply(data) {
+      if (data && typeof data.response === 'string') return data.response;
+      if (data && data.result && typeof data.result.response === 'string') return data.result.response;
+      if (data && typeof data.answer === 'string') return data.answer;
+      if (data && data.choices && data.choices[0] && data.choices[0].message) return data.choices[0].message.content;
+      return 'Sorry, I could not read the answer.';
+    }
+
+    function showLogin(message) {
+      appPanel.hidden = true;
+      logoutBtn.hidden = true;
+      loginPanel.hidden = false;
+      loginStatus.textContent = message || 'Sign in to continue.';
+      loginPassword.value = '';
+      loginPassword.focus();
+    }
+
+    function showApp() {
+      loginPanel.hidden = true;
+      appPanel.hidden = false;
+      logoutBtn.hidden = false;
+      chatSection.hidden = false;
+      memorySection.hidden = true;
+      chatBox.replaceChildren();
+      loadHistory();
+      addMessage('Hello! How can I help you today?');
+      loadChatProjects();
+      history.forEach(m => addMessage(m.content, m.role));
+      userInput.focus();
+    }
+
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/login', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.status === 503) {
+          showLogin('Security setup is not finished. Add AEGIS_PASSWORD and AEGIS_SESSION_SECRET in your Cloudflare Pages secrets.');
+          loginBtn.disabled = true;
+          return;
+        }
+        if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+        if (data.authenticated) showApp();
+        else showLogin('Sign in to continue.');
+      } catch (err) {
+        showLogin('Could not check your session. Please refresh and try again.');
+      }
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!loginPassword.value) return;
+      loginBtn.disabled = true;
+      loginStatus.textContent = 'Signing in…';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: loginPassword.value })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+        loginBtn.disabled = false;
+        showApp();
+      } catch (err) {
+        loginStatus.textContent = err.message || 'Sign in failed.';
+        loginBtn.disabled = false;
+        loginPassword.focus();
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try { await fetch('/api/login', { method: 'DELETE' }); } catch (e) {}
+      showLogin('You have signed out.');
+    });
+
+
+    async function memoryApi(path = '', options = {}) {
+      const res = await fetch('/api/memories' + path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store'
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Memory service error ' + res.status));
+      return data;
+    }
+
+    function memoryButton(label, action, secondary = true) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = secondary ? 'secondary' : '';
+      button.textContent = label;
+      button.addEventListener('click', action);
+      return button;
+    }
+
+    async function loadMemories() {
+      memoryStatus.textContent = 'Loading memories…';
+      memoryList.replaceChildren();
+      try {
+        const data = await memoryApi('?review=1&projectId=' + encodeURIComponent(memoryProjectSelect.value));
+        if (!Array.isArray(data.memories) || !data.memories.length) {
+          memoryList.textContent = 'No memories yet. Add one above, or continue chatting.';
+          memoryList.className = 'memory-empty';
+        } else {
+          memoryList.className = '';
+          data.memories.forEach(memory => {
+            const item = document.createElement('article');
+            item.className = 'memory-item';
+            item.id = 'memory-' + memory.id;
+            const content = document.createElement('p');
+            content.textContent = memory.content;
+            const meta = document.createElement('div');
+            meta.className = 'memory-meta';
+            meta.textContent = memory.kind + ' · ' + memory.status + ' · ' + (memory.source?.attribution || 'Source recorded');
+            item.append(content, meta);
+            const actions = document.createElement('div');
+            actions.className = 'memory-actions';
+            if (memory.status === 'accepted') {
+              actions.append(memoryButton('Correct', () => showCorrectionForm(memory)));
+            }
+            if (memory.status === 'candidate') {
+              actions.append(
+                memoryButton('Approve', () => changeMemoryStatus(memory, 'accepted'), false),
+                memoryButton('Reject', () => changeMemoryStatus(memory, 'retracted'))
+              );
+            }
+            actions.append(memoryButton('History', () => showMemoryHistory(memory)));
+            actions.append(memoryButton('Delete permanently', () => purgeMemory(memory)));
+            item.append(actions);
+            if (memory.supersedesId) {
+              const replaces = document.createElement('div');
+              replaces.className = 'memory-meta';
+              replaces.textContent = 'Correction of previous memory ' + memory.supersedesId;
+              item.append(replaces);
+            }
+            const history = document.createElement('ol');
+            history.className = 'memory-history';
+            history.hidden = true;
+            history.id = 'history-' + memory.id;
+            item.append(history);
+            memoryList.append(item);
+          });
+        }
+        memoryStatus.textContent = data.memories.length + ' memory record(s) · owner-only';
+      } catch (error) {
+        memoryStatus.textContent = error.message.includes('503') || error.message.includes('temporarily')
+          ? 'Persistent memory is not active yet. The D1 database and binding still need to be provisioned.'
+          : error.message;
+      }
+    }
+
+
+    function showCorrectionForm(memory) {
+      const existing = document.getElementById('correction-' + memory.id);
+      if (existing) { existing.hidden = !existing.hidden; return; }
+      const item = document.getElementById('memory-' + memory.id);
+      if (!item) return;
+      const form = document.createElement('form');
+      form.className = 'memory-form';
+      form.id = 'correction-' + memory.id;
+      const textarea = document.createElement('textarea');
+      textarea.maxLength = 4000;
+      textarea.required = true;
+      textarea.value = memory.content;
+      textarea.setAttribute('aria-label', 'Corrected memory content');
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.textContent = 'Save correction for review';
+      form.append(textarea, save);
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const content = textarea.value.trim();
+        if (!content) return;
+        save.disabled = true;
+        memoryStatus.textContent = 'Saving correction as a candidate…';
+        const scope = memory.projectId ? '?projectId=' + encodeURIComponent(memory.projectId) : '';
+        try {
+          await memoryApi('/' + encodeURIComponent(memory.id) + '/corrections' + scope, {
+            method: 'POST',
+            body: JSON.stringify({ content })
+          });
+          await loadMemories();
+          memoryStatus.textContent = 'Correction saved. Approve the new candidate to replace the previous memory.';
+        } catch (error) {
+          memoryStatus.textContent = error.message;
+          save.disabled = false;
+        }
+      });
+      item.append(form);
+    }
+
+    async function purgeMemory(memory) {
+      if (!confirm('Permanently delete this memory? Its content and provenance will be removed from the live memory table. A minimal audit tombstone will remain.')) return;
+      memoryStatus.textContent = 'Permanently deleting memory…';
+      try {
+        await memoryApi('/' + encodeURIComponent(memory.id), {
+          method: 'DELETE',
+          body: JSON.stringify({ confirm: true, projectId: memory.projectId || null }),
+        });
+        await loadMemories();
+        memoryStatus.textContent = 'Memory content purged. A minimal lifecycle audit record is retained.';
+      } catch (error) {
+        memoryStatus.textContent = error.message;
+      }
+    }
+
+    async function changeMemoryStatus(memory, nextStatus) {
+      memoryStatus.textContent = 'Saving review…';
+      try {
+        await memoryApi('/' + encodeURIComponent(memory.id), {
+          method: 'PATCH',
+          body: JSON.stringify({ status: nextStatus, projectId: memory.projectId || null })
+        });
+        await loadMemories();
+      } catch (error) { memoryStatus.textContent = error.message; }
+    }
+
+    async function showMemoryHistory(memory) {
+      const list = document.getElementById('history-' + memory.id);
+      if (!list) return;
+      if (!list.hidden) { list.hidden = true; return; }
+      list.hidden = false;
+      list.replaceChildren();
+      try {
+        const data = await memoryApi('/' + encodeURIComponent(memory.id) + '/events?projectId=' + encodeURIComponent(memory.projectId || ''));
+        data.events.forEach(event => {
+          const entry = document.createElement('li');
+          entry.textContent = event.type + ': ' + (event.fromStatus || 'new') + ' → ' + event.toStatus + ' · ' + new Date(event.occurredAt).toLocaleString();
+          list.append(entry);
+        });
+        if (!data.events.length) list.textContent = 'No history available.';
+      } catch (error) {
+        const entry = document.createElement('li');
+        entry.textContent = error.message;
+        list.append(entry);
+      }
+    }
+
+    memoryProjectSelect.addEventListener('change', loadMemories);
+
+    exportMemoriesBtn.addEventListener('click', async () => {
+      exportMemoriesBtn.disabled = true;
+      memoryStatus.textContent = 'Preparing your memory export…';
+      const scope = '?projectId=' + encodeURIComponent(memoryProjectSelect.value);
+      try {
+        const response = await fetch('/api/memories/export' + scope, { cache: 'no-store' });
+        if (response.status === 401) {
+          showLogin('Your session has expired. Sign in again.');
+          throw new Error('Session expired.');
+        }
+        if (!response.ok) {
+          let data = {};
+          try { data = await response.json(); } catch (error) {}
+          throw new Error(data.error || ('Export failed: ' + response.status));
+        }
+        const objectUrl = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'aegis-memory-export.json';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        memoryStatus.textContent = 'Memory export prepared. Keep the downloaded file somewhere private.';
+      } catch (error) {
+        memoryStatus.textContent = error.message;
+      } finally {
+        exportMemoriesBtn.disabled = false;
+      }
+    });
+
+    memoryForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const content = memoryContent.value.trim();
+      if (!content) return;
+      saveMemoryBtn.disabled = true;
+      memoryStatus.textContent = 'Saving memory for review…';
+      try {
+        await memoryApi('', {
+          method: 'POST',
+          body: JSON.stringify({
+            kind: memoryKind.value,
+            content,
+            source: {
+              type: 'user-stated',
+              url: 'https://aegis.local/manual-entry',
+              attribution: 'Owner entered this memory in AEGIS'
+            },
+            confidence: 1,
+            sensitivity: 'private',
+            projectId: memoryProjectSelect.value || undefined
+          })
+        });
+        memoryContent.value = '';
+        await loadMemories();
+      } catch (error) { memoryStatus.textContent = error.message; }
+      finally { saveMemoryBtn.disabled = false; }
+    });
+
+    function showPanel(panel) {
+      chatSection.hidden = panel !== 'chat';
+      workspaceSection.hidden = panel !== 'projects';
+      memorySection.hidden = panel !== 'memory';
+      approvalSection.hidden = panel !== 'approvals';
+      forgeSection.hidden = panel !== 'forge';
+      securitySection.hidden = panel !== 'security';
+      if (panel === 'forge') { forgeSourceUrl.focus(); loadForgeCandidates(); }
+      if (panel === 'security') loadSecurityCentre();
+      if (panel === 'chat') userInput.focus();
+      if (panel === 'projects') loadWorkspaces();
+      if (panel === 'memory') loadMemories();
+      if (panel === 'approvals') loadApprovals();
+    }
+    chatTab.addEventListener('click', () => showPanel('chat'));
+    workspaceTab.addEventListener('click', () => showPanel('projects'));
+    memoryTab.addEventListener('click', () => showPanel('memory'));
+    approvalTab.addEventListener('click', () => showPanel('approvals'));
+    forgeTab.addEventListener('click', () => showPanel('forge'));
+    securityTab.addEventListener('click', () => showPanel('security'));
+
+    async function controlApi(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+        cache: 'no-store',
+      });
+      let data = {};
+      try { data = await res.json(); } catch (error) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Service error ' + res.status));
+      return data;
+    }
+
+    async function loadChatProjects() {
+      const selectedChat = chatProjectSelect.value;
+      const selectedMemory = memoryProjectSelect.value;
+      for (const select of [chatProjectSelect, memoryProjectSelect]) {
+        select.replaceChildren();
+        const personal = document.createElement('option');
+        personal.value = '';
+        personal.textContent = select === chatProjectSelect ? 'Personal memory only' : 'Personal memory';
+        select.append(personal);
+      }
+      try {
+        const data = await controlApi('/api/workspaces');
+        (data.workspaces || []).forEach(workspace => {
+          for (const select of [chatProjectSelect, memoryProjectSelect]) {
+            const option = document.createElement('option');
+            option.value = workspace.id;
+            option.textContent = workspace.name;
+            select.append(option);
+          }
+        });
+        if ([...chatProjectSelect.options].some(option => option.value === selectedChat)) {
+          chatProjectSelect.value = selectedChat;
+        }
+        if ([...memoryProjectSelect.options].some(option => option.value === selectedMemory)) {
+          memoryProjectSelect.value = selectedMemory;
+        }
+      } catch (error) {
+        // Chat and personal memory remain available without the optional Project Space database.
+      }
+    }
+
+    async function loadSecurityCentre() {
+      securityStatus.textContent = 'Loading read-only registries…';
+      moduleList.replaceChildren();
+      capabilityList.replaceChildren();
+      try {
+        const [moduleData, capabilityData] = await Promise.all([
+          controlApi('/api/modules'),
+          controlApi('/api/capabilities'),
+        ]);
+        (moduleData.modules || []).forEach(module => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const moduleNode = document.createElement('h3');
+          moduleNode.textContent = module.name;
+          const description = document.createElement('p');
+          description.textContent = module.description || 'No description';
+          const state = document.createElement('p');
+          state.textContent = module.status + ' · ' + (module.capabilities || []).length + ' declared capability(s)';
+          card.append(moduleNode, description, state);
+          moduleList.append(card);
+        });
+        if (!moduleList.children.length) moduleList.textContent = 'No modules are registered.';
+        (capabilityData.capabilities || []).forEach(capability => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const capabilityNode = document.createElement('h3');
+          capabilityNode.textContent = capability.name;
+          const detail = document.createElement('p');
+          detail.textContent = capability.id + ' · v' + capability.version + ' · ' +
+            capability.status + ' · ' + capability.provider.kind;
+          const description = document.createElement('p');
+          description.textContent = capability.description;
+          const actions = document.createElement('ul');
+          actions.className = 'memory-history';
+          (capability.actions || []).forEach(action => {
+            const entry = document.createElement('li');
+            entry.textContent = action.id + ' · ' + action.effect + ' · ' +
+              action.risk + ' risk · approval: ' + action.approval;
+            actions.append(entry);
+          });
+          card.append(capabilityNode, detail, description, actions);
+          capabilityList.append(card);
+        });
+        if (!capabilityList.children.length) capabilityList.textContent = 'No capability manifests are registered.';
+        securityCapabilities = capabilityData.capabilities || [];
+        populateGrantCapabilities();
+        await loadGrantManager();
+        securityStatus.textContent = (moduleData.total || 0) + ' modules · ' +
+          (capabilityData.total || 0) + ' capability manifest(s) · registry inventory';
+      } catch (error) {
+        securityStatus.textContent = error.message;
+      }
+    }
+
+    function populateGrantCapabilities() {
+      grantCapabilitySelect.replaceChildren();
+      const eligible = securityCapabilities.filter(capability =>
+        capability.status === 'approved' &&
+        (capability.actions || []).some(action => (action.requiredScopes || []).length > 0)
+      );
+      eligible.forEach(capability => {
+        const option = document.createElement('option');
+        option.value = capability.id;
+        option.textContent = capability.name + ' · ' + capability.id;
+        grantCapabilitySelect.append(option);
+      });
+      populateGrantActions();
+      if (!eligible.length) {
+        grantStatus.textContent = 'No approved capability actions currently declare grantable scopes.';
+      }
+    }
+
+    function populateGrantActions() {
+      grantActionSelect.replaceChildren();
+      const capability = securityCapabilities.find(item => item.id === grantCapabilitySelect.value);
+      (capability?.actions || []).filter(action => (action.requiredScopes || []).length > 0).forEach(action => {
+        const option = document.createElement('option');
+        option.value = action.id;
+        option.textContent = action.id + ' · ' + action.effect + ' · ' +
+          (action.requiredScopes || []).join(', ');
+        grantActionSelect.append(option);
+      });
+    }
+
+    async function loadGrantManager() {
+      grantList.replaceChildren();
+      grantStatus.textContent = 'Loading owner grant history…';
+      try {
+        const data = await controlApi('/api/grants');
+        (data.grants || []).forEach(grant => {
+          const card = document.createElement('article');
+          card.className = 'workspace-card';
+          const title = document.createElement('h3');
+          title.textContent = grant.capabilityId + ' · ' + grant.status;
+          const detail = document.createElement('p');
+          detail.textContent = grant.resourceId + ' · ' + grant.scopes.join(', ');
+          const expiry = document.createElement('p');
+          expiry.textContent = 'Expires ' + new Date(grant.expiresAt).toLocaleString() +
+            (grant.revokedAt ? ' · Revoked ' + new Date(grant.revokedAt).toLocaleString() : '');
+          card.append(title, detail, expiry);
+          if (grant.status === 'active') {
+            const revoke = document.createElement('button');
+            revoke.type = 'button';
+            revoke.className = 'secondary';
+            revoke.textContent = 'Revoke grant';
+            revoke.addEventListener('click', async () => {
+              revoke.disabled = true;
+              try {
+                await controlApi('/api/grants', {
+                  method: 'DELETE',
+                  body: JSON.stringify({ id: grant.id }),
+                });
+                await loadGrantManager();
+              } catch (error) {
+                grantStatus.textContent = error.message;
+                revoke.disabled = false;
+              }
+            });
+            card.append(revoke);
+          }
+          grantList.append(card);
+        });
+        if (!grantList.children.length) grantList.textContent = 'No grants have been created.';
+        grantStatus.textContent = data.total + ' grant record(s) · owner-only · exact-resource';
+      } catch (error) {
+        grantStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Grant management is not active yet. The capability D1 migrations and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
+
+    invokeModuleCatalogueBtn.addEventListener('click', async () => {
+      invokeModuleCatalogueBtn.disabled = true;
+      sentinelInvokeOutput.hidden = true;
+      sentinelInvokeStatus.textContent = 'Checking grant and invoking through Sentinel…';
+      try {
+        const result = await controlApi('/api/sentinel/invoke', {
+          method: 'POST',
+          body: JSON.stringify({
+            capabilityId: 'aegis-module-catalogue',
+            actionId: 'list',
+            resourceId: 'aegis:modules',
+            input: {},
+          }),
+        });
+        sentinelInvokeOutput.textContent = JSON.stringify(result.output, null, 2);
+        sentinelInvokeOutput.hidden = false;
+        sentinelInvokeStatus.textContent = 'Success · invocation ' + result.invocationId +
+          ' · audited: ' + (result.auditRecorded ? 'yes' : 'no');
+      } catch (error) {
+        sentinelInvokeStatus.textContent = error.message;
+      } finally {
+        invokeModuleCatalogueBtn.disabled = false;
+      }
+    });
+
+    grantCapabilitySelect.addEventListener('change', populateGrantActions);
+    grantForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const actionIds = [...grantActionSelect.selectedOptions].map(option => option.value);
+      if (!actionIds.length) {
+        grantStatus.textContent = 'Select at least one registered action.';
+        return;
+      }
+      let expiresAt;
+      try {
+        expiresAt = new Date(grantExpiresAt.value).toISOString();
+      } catch (error) {
+        grantStatus.textContent = 'Choose a valid grant expiry.';
+        return;
+      }
+      createGrantBtn.disabled = true;
+      grantStatus.textContent = 'Creating exact owner grant…';
+      try {
+        await controlApi('/api/grants', {
+          method: 'POST',
+          body: JSON.stringify({
+            capabilityId: grantCapabilitySelect.value,
+            actionIds,
+            resourceId: grantResourceId.value.trim(),
+            expiresAt,
+          }),
+        });
+        grantStatus.textContent = 'Grant created. It does not bypass any required human approval.';
+        await loadGrantManager();
+      } catch (error) {
+        grantStatus.textContent = error.message;
+      } finally {
+        createGrantBtn.disabled = false;
+      }
+    });
+
+    async function loadWorkspaces() {
+      workspaceStatus.textContent = 'Loading Project Spaces…';
+      workspaceList.replaceChildren();
+      try {
+        const data = await controlApi('/api/workspaces');
+        if (!Array.isArray(data.workspaces) || !data.workspaces.length) {
+          workspaceList.textContent = 'No Project Spaces yet. Create one above.';
+          workspaceList.className = 'memory-empty';
+        } else {
+          workspaceList.className = '';
+          data.workspaces.forEach(workspace => {
+            const card = document.createElement('article');
+            card.className = 'workspace-card';
+            card.id = 'workspace-' + workspace.id;
+            const nameNode = document.createElement('h3');
+            nameNode.textContent = workspace.name;
+            const descriptionNode = document.createElement('p');
+            descriptionNode.textContent = workspace.description || 'No description';
+            const metaNode = document.createElement('p');
+            metaNode.textContent = workspace.status + ' · Updated ' + new Date(workspace.updatedAt).toLocaleString();
+            const actions = document.createElement('div');
+            actions.className = 'workspace-actions';
+            const open = document.createElement('button');
+            open.type = 'button';
+            open.textContent = 'Open timeline';
+            open.addEventListener('click', () => openWorkspace(workspace.id, card));
+            const buildBrief = document.createElement('button');
+            buildBrief.type = 'button';
+            buildBrief.textContent = 'Build handover brief';
+            buildBrief.addEventListener('click', () => loadWorkspaceBrief(workspace.id, card));
+            actions.append(open, buildBrief);
+            card.append(nameNode, descriptionNode, metaNode, actions);
+            workspaceList.append(card);
+          });
+        }
+        workspaceStatus.textContent = data.total + ' Project Space(s) · owner-only';
+      } catch (error) {
+        workspaceStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Project Spaces are not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
+
+    async function loadWorkspaceBrief(id, card) {
+      let panel = card.querySelector('.workspace-brief');
+      if (!panel) {
+        panel = document.createElement('section');
+        panel.className = 'workspace-detail workspace-brief';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Agent handover brief';
+        const status = document.createElement('p');
+        status.className = 'memory-help';
+        const output = document.createElement('textarea');
+        output.readOnly = true;
+        output.rows = 10;
+        output.setAttribute('aria-label', 'Project Space handover brief JSON');
+        output.placeholder = 'The brief will appear here.';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.textContent = 'Copy brief';
+        copy.addEventListener('click', async () => {
+          if (!output.value) return;
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            output.focus();
+            output.select();
+            status.textContent = 'Select the brief above and copy it.';
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(output.value);
+            status.textContent = 'Handover brief copied. It contains only this Project Space and approved, non-restricted memories.';
+          } catch (error) {
+            output.focus();
+            output.select();
+            status.textContent = 'Clipboard access was unavailable. Select the brief above and copy it.';
+          }
+        });
+        panel.append(heading, status, output, copy);
+        card.append(panel);
+      }
+      const status = panel.querySelector('.memory-help');
+      const output = panel.querySelector('textarea');
+      status.textContent = 'Building a bounded brief from this Project Space…';
+      output.value = '';
+      try {
+        const data = await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/brief?maxChars=6000');
+        const brief = data.brief;
+        output.value = JSON.stringify(brief, null, 2);
+        status.textContent = 'About ' + brief.budget.estimatedTokens + ' tokens · ' +
+          brief.memories.length + ' approved memory item(s) · ' +
+          brief.recentEvents.length + ' recent event(s)' +
+          (brief.budget.truncated ? ' · trimmed to fit the context budget' : '');
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    }
+
+    async function openWorkspace(id, card) {
+      const prior = card.querySelector('.workspace-detail');
+      if (prior) { prior.remove(); return; }
+      try {
+        const timelineData = await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events');
+        const detail = document.createElement('div');
+        detail.className = 'workspace-detail';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Project timeline';
+        const timeline = document.createElement('ol');
+        timeline.className = 'memory-history';
+        (timelineData.events || []).forEach(event => {
+          const entry = document.createElement('li');
+          const source = event.source === 'memory' ? 'Memory' : 'Project';
+          const when = event.occurredAt || event.createdAt;
+          entry.textContent = source + ' · ' + event.type + ' · ' +
+            (event.summary || (event.fromStatus ? event.fromStatus + ' → ' + event.toStatus : 'Lifecycle event')) +
+            ' · ' + new Date(when).toLocaleString();
+          timeline.append(entry);
+        });
+        if (!timeline.children.length) timeline.textContent = 'No timeline events yet.';
+        if (timelineData.memoryEventsAvailable === false) {
+          const note = document.createElement('p');
+          note.className = 'memory-help';
+          note.textContent = 'Memory lifecycle events are unavailable until the shared memory migration is applied.';
+          timeline.after(note);
+        }
+        const form = document.createElement('form');
+        form.className = 'memory-form';
+        const summary = document.createElement('input');
+        summary.maxLength = 240;
+        summary.placeholder = 'Note or decision title';
+        summary.required = true;
+        const content = document.createElement('textarea');
+        content.maxLength = 12000;
+        content.placeholder = 'Add a project note, decision or research finding';
+        content.required = true;
+        const save = document.createElement('button');
+        save.type = 'submit';
+        save.textContent = 'Add timeline entry';
+        form.append(summary, content, save);
+        form.addEventListener('submit', async event => {
+          event.preventDefault();
+          save.disabled = true;
+          try {
+            await controlApi('/api/workspaces/' + encodeURIComponent(id) + '/events', {
+              method: 'POST',
+              body: JSON.stringify({ type: 'note', summary: summary.value.trim(), content: content.value.trim() }),
+            });
+            await loadWorkspaces();
+          } catch (error) {
+            workspaceStatus.textContent = error.message;
+            save.disabled = false;
+          }
+        });
+        detail.append(heading, timeline, form);
+        card.append(detail);
+      } catch (error) { workspaceStatus.textContent = error.message; }
+    }
+
+    workspaceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!workspaceName.value.trim()) return;
+      createWorkspaceBtn.disabled = true;
+      workspaceStatus.textContent = 'Creating Project Space…';
+      try {
+        await controlApi('/api/workspaces', {
+          method: 'POST',
+          body: JSON.stringify({ name: workspaceName.value.trim(), description: workspaceDescription.value.trim() }),
+        });
+        workspaceName.value = '';
+        workspaceDescription.value = '';
+        await loadWorkspaces();
+        await loadChatProjects();
+      } catch (error) { workspaceStatus.textContent = error.message; }
+      finally { createWorkspaceBtn.disabled = false; }
+    });
+
+    let forgeRepository = null;
+
+    forgeSentinelDiscoverBtn.addEventListener('click', async () => {
+      const sourceUrl = forgeSourceUrl.value.trim();
+      if (!sourceUrl) {
+        forgeSentinelStatus.textContent = 'Enter a GitHub repository URL first.';
+        return;
+      }
+      forgeSentinelDiscoverBtn.disabled = true;
+      forgeSentinelStatus.textContent = 'Checking exact grant and public metadata through Sentinel…';
+      try {
+        const result = await controlApi('/api/sentinel/github-discover', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl }),
+        });
+        const repo = result.repository;
+        forgeSentinelStatus.textContent = 'Sentinel verified ' + repo.fullName +
+          ' · ' + (repo.primaryLanguage || 'language unknown') +
+          ' · ' + (repo.licenseSpdx || 'licence unknown') +
+          ' · invocation ' + result.invocationId;
+      } catch (error) {
+        forgeSentinelStatus.textContent = error.message +
+          ' If no exact grant exists, create one for aegis-github-public-discovery / discover / github:public:OWNER/REPO in Security Centre.';
+      } finally {
+        forgeSentinelDiscoverBtn.disabled = false;
+      }
+    });
+
+    forgeForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const sourceUrl = forgeSourceUrl.value.trim();
+      if (!sourceUrl) return;
+      forgeInspectBtn.disabled = true;
+      forgeStatus.textContent = 'Inspecting public repository…';
+      forgeFileList.replaceChildren();
+      forgeFilePreview.hidden = true;
+      forgePreviewTitle.hidden = true;
+      try {
+        const data = await controlApi('/api/forge/inspect', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl }),
+        });
+        forgeRepository = data.repository;
+        const repo = forgeRepository;
+        const summary = document.createElement('p');
+        summary.className = 'memory-meta';
+        summary.textContent = repo.fullName + ' · ' + (repo.licenseSpdx || 'Licence not identified') +
+          ' · ' + (repo.primaryLanguage || 'Language unknown') +
+          (repo.archived ? ' · archived' : '') + (repo.truncated ? ' · tree truncated' : '');
+        forgeFileList.append(summary);
+        const saveCandidate = document.createElement('button');
+        saveCandidate.type = 'button';
+        saveCandidate.id = 'forgeSaveCandidateBtn';
+        saveCandidate.textContent = 'Save pinned source as candidate';
+        saveCandidate.addEventListener('click', saveForgeCandidate);
+        forgeFileList.append(saveCandidate);
+        (repo.files || []).forEach(file => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const path = document.createElement('p');
+          path.textContent = file.path + ' · ' + file.size + ' bytes';
+          const read = document.createElement('button');
+          read.type = 'button';
+          read.textContent = 'Read pinned source';
+          read.addEventListener('click', () => readForgeBlob(file));
+          item.append(path, read);
+          forgeFileList.append(item);
+        });
+        if (!repo.files?.length) forgeFileList.append(document.createTextNode('No supported text files were found.'));
+        forgeStatus.textContent = 'Inspected ' + repo.fullName + ' · ' + repo.files.length + ' bounded text file(s). Nothing is executed.';
+      } catch (error) {
+        forgeRepository = null;
+        forgeStatus.textContent = error.message;
+      } finally {
+        forgeInspectBtn.disabled = false;
+      }
+    });
+
+    async function loadForgeCandidates() {
+      forgeCandidateList.replaceChildren();
+      try {
+        const data = await controlApi('/api/forge/candidates');
+        if (!Array.isArray(data.candidates) || !data.candidates.length) {
+          forgeCandidateList.textContent = 'No saved source candidates yet.';
+          forgeCandidateList.className = 'memory-empty';
+          return;
+        }
+        forgeCandidateList.className = '';
+        data.candidates.forEach(candidate => {
+          const item = document.createElement('article');
+          item.className = 'workspace-card';
+          const candidateNode = document.createElement('h3');
+          candidateNode.textContent = candidate.metadata.fullName;
+          const detail = document.createElement('p');
+          detail.textContent = candidate.status + ' · ' + candidate.decision +
+            ' · licence ' + candidate.licence.identifier + ' (' + candidate.licence.review + ')';
+          const pin = document.createElement('p');
+          pin.textContent = 'Pinned tree ' + candidate.version.slice(0, 12);
+          item.append(candidateNode, detail, pin);
+          const reviewHistory = Array.isArray(candidate.metadata?.licenceReviewHistory)
+            ? candidate.metadata.licenceReviewHistory
+            : [];
+          const latestReview = reviewHistory.at(-1);
+          if (latestReview) {
+            const reviewSummary = document.createElement('p');
+            reviewSummary.textContent = 'Latest owner review: ' + latestReview.note +
+              (latestReview.evidenceUrl ? ' · evidence: ' + latestReview.evidenceUrl : '');
+            item.append(reviewSummary);
+          }
+          const historyButton = document.createElement('button');
+          historyButton.type = 'button';
+          historyButton.className = 'secondary';
+          historyButton.textContent = 'Review history';
+          historyButton.addEventListener('click', async () => {
+            const existing = item.querySelector('.candidate-history');
+            if (existing) { existing.remove(); return; }
+            const history = document.createElement('ol');
+            history.className = 'candidate-history memory-history';
+            const loading = document.createElement('li');
+            loading.textContent = 'Loading review history…';
+            history.append(loading);
+            item.append(history);
+            try {
+              const result = await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id) + '/events');
+              history.replaceChildren();
+              (result.events || []).forEach(event => {
+                const entry = document.createElement('li');
+                entry.textContent = event.type + ' · ' +
+                  (event.fromStatus || 'new') + ' → ' + event.toStatus +
+                  ' · ' + (event.fromDecision || 'unassessed') + ' → ' + event.toDecision +
+                  ' · ' + new Date(event.occurredAt).toLocaleString();
+                history.append(entry);
+              });
+              if (!history.children.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'No review history recorded.';
+                history.append(empty);
+              }
+            } catch (error) {
+              history.textContent = error.message;
+            }
+          });
+          item.append(historyButton);
+          if (!['archived', 'rejected'].includes(candidate.status)) {
+            const reviewButton = document.createElement('button');
+            reviewButton.type = 'button';
+            reviewButton.textContent = 'Review candidate';
+            reviewButton.addEventListener('click', () => {
+              const existing = item.querySelector('.candidate-review');
+              if (existing) { existing.remove(); return; }
+              const candidateReviewForm = document.createElement('form');
+              candidateReviewForm.className = 'candidate-review memory-form';
+              const licenceSelect = document.createElement('select');
+              for (const value of ['review-required', 'verified', 'not-applicable']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                licenceSelect.append(option);
+              }
+              licenceSelect.value = candidate.licence.review;
+              const licenceLabel = document.createElement('label');
+              licenceLabel.textContent = 'Licence review';
+              licenceLabel.append(licenceSelect);
+              const licenceEvidenceUrl = document.createElement('input');
+              licenceEvidenceUrl.type = 'url';
+              licenceEvidenceUrl.placeholder = 'HTTPS link to the actual licence file (required when verified)';
+              const evidenceLabel = document.createElement('label');
+              evidenceLabel.textContent = 'Licence evidence URL';
+              evidenceLabel.append(licenceEvidenceUrl);
+              const reviewNote = document.createElement('textarea');
+              reviewNote.maxLength = 500;
+              reviewNote.placeholder = 'Record what you checked and any licence/dependency obligations (at least 10 characters)';
+              reviewNote.required = true;
+              const reviewNoteLabel = document.createElement('label');
+              reviewNoteLabel.textContent = 'Review notes';
+              reviewNoteLabel.append(reviewNote);
+              const licenceConfirmed = document.createElement('input');
+              licenceConfirmed.type = 'checkbox';
+              licenceSelect.addEventListener('change', () => {
+                if (licenceSelect.value !== 'verified') licenceConfirmed.checked = false;
+              });
+              const confirmationLabel = document.createElement('label');
+              confirmationLabel.append(licenceConfirmed, document.createTextNode(' I checked the actual upstream licence and relevant dependency licences.'));
+              const decisionSelect = document.createElement('select');
+              for (const value of ['unassessed', 'reuse', 'adapt', 'rebuild', 'combine', 'reject']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                decisionSelect.append(option);
+              }
+              decisionSelect.value = candidate.decision;
+              const statusSelect = document.createElement('select');
+              for (const value of ['inspected', 'assessed', 'approved', 'rejected', 'archived']) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                statusSelect.append(option);
+              }
+              statusSelect.value = candidate.status;
+              decisionSelect.addEventListener('change', () => {
+                if (decisionSelect.value === 'reject') statusSelect.value = 'rejected';
+              });
+              statusSelect.addEventListener('change', () => {
+                if (statusSelect.value === 'rejected') decisionSelect.value = 'reject';
+              });
+              const reviewStatus = document.createElement('p');
+              reviewStatus.className = 'status';
+              const saveReview = document.createElement('button');
+              saveReview.type = 'submit';
+              saveReview.textContent = 'Save review decision';
+              candidateReviewForm.append(licenceLabel, evidenceLabel, reviewNoteLabel, confirmationLabel, decisionSelect, statusSelect, reviewStatus, saveReview);
+              candidateReviewForm.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (reviewNote.value.trim().length < 10) {
+                  reviewStatus.textContent = 'Add review notes of at least 10 characters.';
+                  return;
+                }
+                if (licenceSelect.value === 'verified' &&
+                    (!licenceConfirmed.checked || !licenceEvidenceUrl.value.trim())) {
+                  reviewStatus.textContent = 'A verified licence needs your attestation and a direct HTTPS link to the licence evidence.';
+                  return;
+                }
+                if (['reuse', 'adapt', 'combine'].includes(decisionSelect.value) && licenceSelect.value !== 'verified') {
+                  reviewStatus.textContent = 'Verify the licence before choosing reuse, adapt or combine.';
+                  return;
+                }
+                if (statusSelect.value === 'approved' && decisionSelect.value === 'unassessed') {
+                  reviewStatus.textContent = 'Choose an engineering decision before approval.';
+                  return;
+                }
+                saveReview.disabled = true;
+                try {
+                  await controlApi('/api/forge/candidates/' + encodeURIComponent(candidate.id), {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      licenceReview: licenceSelect.value,
+                      decision: decisionSelect.value,
+                      status: statusSelect.value,
+                      licenceEvidenceUrl: licenceEvidenceUrl.value.trim() || null,
+                      reviewNote: reviewNote.value.trim(),
+                      licenceAttested: licenceConfirmed.checked,
+                      expectedUpdatedAt: candidate.updatedAt,
+                    }),
+                  });
+                  await loadForgeCandidates();
+                } catch (error) {
+                  reviewStatus.textContent = error.message;
+                  saveReview.disabled = false;
+                }
+              });
+              item.append(candidateReviewForm);
+            });
+            item.append(reviewButton);
+          }
+          forgeCandidateList.append(item);
+        });
+      } catch (error) {
+        forgeCandidateList.textContent = error.message.includes('not configured')
+          ? 'Candidate storage is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+        forgeCandidateList.className = 'memory-empty';
+      }
+    }
+
+    async function saveForgeCandidate() {
+      if (!forgeRepository) return;
+      const button = document.getElementById('forgeSaveCandidateBtn');
+      if (button) button.disabled = true;
+      forgeStatus.textContent = 'Saving pinned source to the Forge library…';
+      try {
+        const result = await controlApi('/api/forge/candidates', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl: forgeRepository.sourceUrl }),
+        });
+        forgeStatus.textContent = result.created
+          ? 'Candidate saved. Licence review is still required; no code was executed.'
+          : 'This exact source revision is already saved in Forge.';
+        await loadForgeCandidates();
+      } catch (error) {
+        forgeStatus.textContent = error.message;
+        if (button) button.disabled = false;
+      }
+    }
+
+    async function readForgeBlob(file) {
+      if (!forgeRepository || !file?.sha) return;
+      forgeStatus.textContent = 'Reading pinned blob ' + file.sha.slice(0, 8) + '…';
+      try {
+        const data = await controlApi('/api/forge/read', {
+          method: 'POST',
+          body: JSON.stringify({ sourceUrl: forgeRepository.sourceUrl, blobSha: file.sha }),
+        });
+        forgePreviewTitle.hidden = false;
+        forgePreviewTitle.textContent = file.path + ' · pinned ' + data.sha.slice(0, 8);
+        forgeFilePreview.hidden = false;
+        forgeFilePreview.textContent = data.content;
+        forgeStatus.textContent = 'Read-only source preview · ' + data.size + ' bytes. Treat repository content as untrusted. Nothing is executed.';
+      } catch (error) {
+        forgeStatus.textContent = error.message;
+      }
+    }
+
+    async function loadApprovals() {
+      approvalStatus.textContent = 'Loading approval inbox…';
+      approvalList.replaceChildren();
+      try {
+        const data = await controlApi('/api/approvals');
+        if (!Array.isArray(data.approvals) || !data.approvals.length) {
+          approvalList.textContent = 'No pending approvals.';
+          approvalList.className = 'memory-empty';
+        } else {
+          approvalList.className = '';
+          data.approvals.forEach(approval => {
+            const card = document.createElement('article');
+            card.className = 'approval-card';
+            const title = document.createElement('h3');
+            title.textContent = approval.operationSummary;
+            const detail = document.createElement('p');
+            detail.textContent = approval.capabilityId + ' · ' + approval.actionId + ' · ' + approval.resourceId;
+            const expiry = document.createElement('p');
+            expiry.textContent = (approval.expired ? 'Expired' : 'Expires') + ' · ' + new Date(approval.expiresAt).toLocaleString();
+            card.append(title, detail, expiry);
+            if (!approval.expired) {
+              const actions = document.createElement('div');
+              actions.className = 'approval-actions';
+              for (const decision of ['approved', 'denied']) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = decision === 'approved' ? 'Approve' : 'Deny';
+                button.addEventListener('click', async () => {
+                  button.disabled = true;
+                  try {
+                    await controlApi('/api/approvals', {
+                      method: 'POST',
+                      body: JSON.stringify({ id: approval.id, decision }),
+                    });
+                    await loadApprovals();
+                  } catch (error) {
+                    approvalStatus.textContent = error.message;
+                    button.disabled = false;
+                  }
+                });
+                actions.append(button);
+              }
+              card.append(actions);
+            }
+            approvalList.append(card);
+          });
+        }
+        approvalStatus.textContent = data.total + ' pending request(s) · decisions are recorded, not executed';
+      } catch (error) {
+        approvalStatus.textContent = error.message.includes('503') || error.message.includes('not configured')
+          ? 'Approval inbox is not active yet. The shared D1 database and AEGIS_DB binding must be provisioned.'
+          : error.message;
+      }
+    }
+
+    async function memoryCall(method, body) {
+      const res = await fetch('/api/memory', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.status === 401) {
+        showLogin('Your session has expired. Sign in again.');
+        throw new Error('Session expired.');
+      }
+      if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+      return data;
+    }
+
+    async function handleCommand(text) {
+      const lower = text.toLowerCase();
+
+      if (lower === '/memory') {
+        const data = await memoryCall('GET');
+        if (data.notes.length) {
+          addMessage('Here is what I remember:\n' + data.notes.map((n, i) => (i + 1) + '. ' + n).join('\n'));
+        } else {
+          addMessage('I have no saved notes yet. Type "remember that ..." to add one.');
+        }
+        return true;
+      }
+
+      const forget = text.match(/^\/forget(?:\s+(\d+))?$/i);
+      if (forget) {
+        if (forget[1]) {
+          await memoryCall('DELETE', { index: parseInt(forget[1], 10) });
+          addMessage('Done. I removed note ' + forget[1] + '.');
+        } else {
+          await memoryCall('DELETE');
+          addMessage('Done. I cleared all my saved notes.');
+        }
+        return true;
+      }
+
+      if (lower === '/clear') {
+        history = [];
+        saveHistory();
+        chatBox.innerHTML = '';
+        addMessage('Chat cleared. My saved notes are still here.');
+        return true;
+      }
+
+      const note = text.match(/^(?:please\s+)?remember\s+that\s+(.+)$/i) || text.match(/^remember:\s*(.+)$/i);
+      if (note) {
+        await memoryCall('POST', { note: note[1].trim() });
+        addMessage('Got it. I will remember: ' + note[1].trim());
+        return true;
+      }
+
+      return false;
+    }
+
+    async function readAgUiReply(response, onDelta = () => {}) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let reply = '';
+      let runStarted = false;
+      let runFinished = false;
+      let firstEvent = true;
+
+      function consumeFrame(frame) {
+        const line = frame.split(/\r?\n/).find(part => part.startsWith('data: '));
+        if (!line) return;
+        let event;
+        try { event = JSON.parse(line.slice(6)); }
+        catch (error) { throw new Error('The agent stream contained invalid event data.'); }
+        if (firstEvent && event.type !== 'RUN_STARTED' && event.type !== 'RUN_ERROR') {
+          throw new Error('The agent stream violated the AG-UI run lifecycle.');
+        }
+        if (firstEvent) firstEvent = false;
+        if (event.type === 'RUN_STARTED') runStarted = true;
+        if (event.type === 'TEXT_MESSAGE_CONTENT') {
+          if (typeof event.delta !== 'string') throw new Error('The agent stream contained invalid text.');
+          reply += event.delta;
+          onDelta(event.delta);
+        }
+        if (event.type === 'RUN_ERROR') throw new Error(event.message || 'The agent run failed.');
+        if (event.type === 'RUN_FINISHED') runFinished = true;
+      }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          while (true) {
+            const match = /\r?\n\r?\n/.exec(buffer);
+            if (!match) break;
+            consumeFrame(buffer.slice(0, match.index));
+            buffer = buffer.slice(match.index + match[0].length);
+          }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) consumeFrame(buffer);
+        if (!runStarted || !runFinished) throw new Error('The agent stream ended before the run completed.');
+        return reply;
+      } catch (error) {
+        try { await reader.cancel(error); } catch (cancelError) {}
+        throw error;
+      } finally {
+        try { reader.releaseLock(); } catch (error) {}
+      }
+    }
+
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text || busy) return;
+
+      busy = true;
+      sendBtn.disabled = true;
+      addMessage(text, 'user');
+      userInput.value = '';
+      status.textContent = 'Thinking…';
+
+      try {
+        if (await handleCommand(text)) {
+          status.textContent = 'Ready';
+          return;
+        }
+
+        const messages = history.slice(-MAX_SENT).map(message => ({
+          id: 'message-' + crypto.randomUUID(),
+          role: message.role,
+          content: message.content.slice(0, 4000),
+        }));
+        messages.push({
+          id: 'message-' + crypto.randomUUID(),
+          role: 'user',
+          content: text.slice(0, 4000),
+        });
+        const res = await fetch('/api/ag-ui', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify({
+            threadId,
+            runId: 'run-' + crypto.randomUUID(),
+            protocolVersion: '1.0',
+            messages,
+            tools: [],
+            context: [],
+            projectId: chatProjectSelect.value || undefined,
+          })
+        });
+        if (res.status === 401) {
+          showLogin('Your session has expired. Sign in again.');
+          return;
+        }
+        if (!res.ok) {
+          if ((res.headers.get('content-type') || '').includes('text/event-stream')) {
+            await readAgUiReply(res);
+            throw new Error('The agent run failed.');
+          }
+          let data = {};
+          try { data = await res.json(); } catch (error) {}
+          throw new Error(data.error || ('Error ' + res.status));
+        }
+        const assistantMessage = addMessage('', 'assistant');
+        const assistantText = assistantMessage.lastChild;
+        const reply = await readAgUiReply(res, delta => {
+          assistantText.textContent += delta;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        });
+        history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+        saveHistory();
+        status.textContent = 'Ready';
+      } catch (err) {
+        addMessage('Sorry, something went wrong: ' + err.message, 'assistant');
+        status.textContent = 'Error';
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+        if (!loginPanel.hidden) return;
+        userInput.focus();
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
+    });
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    }
+
+    checkSession();
+  </script>
+
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const put = (id, value) => { const node = byId(id); if (node) node.textContent = value == null ? "—" : String(value); };
+  async function refreshAegisDiagnostics() {
+    const db = byId("diag-db");
+    if (db) { db.textContent = "Checking…"; db.className = "diagnostic-value"; }
+    try {
+      const response = await fetch("/api/status", { headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
+      const data = await response.json();
+      if (!response.ok || data.ok !== true) throw new Error(data.error || "Status unavailable");
+      put("diag-db", "Connected");
+      if (db) db.className = "diagnostic-value diagnostic-ok";
+      put("diag-latency", data.database.latency_ms + " ms");
+      put("diag-mode", data.system_state.operational_mode);
+      put("diag-threat", data.system_state.threat_level);
+      put("diag-eve", data.system_state.eve_state_tag);
+      put("diag-updated", data.system_state.updated_at);
+      put("diag-checked", "Last checked: " + new Date().toLocaleTimeString());
+    } catch (error) {
+      put("diag-db", "Unavailable");
+      if (db) db.className = "diagnostic-value diagnostic-error";
+      put("diag-latency", "—");
+      put("diag-mode", "—");
+      put("diag-threat", "—");
+      put("diag-eve", "—");
+      put("diag-updated", "—");
+      put("diag-checked", "Status check failed. " + error.message);
+    }
+  }
+  const button = byId("diag-refresh");
+  if (button) button.addEventListener("click", refreshAegisDiagnostics);
+  refreshAegisDiagnostics();
+})();
+</script>
+
+</body>
+</html>
