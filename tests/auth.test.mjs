@@ -58,7 +58,7 @@ const loginDb = {
     return sessionDb.prepare(sql);
   },
 };
-const persistedEnv = { ...configuredEnv, AEGIS_DB: sessionDb };
+const persistedEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 const throttledEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 
 test('a newly created session token verifies before its expiry', async () => {
@@ -120,7 +120,7 @@ test('the login endpoint rejects an incorrect password', async () => {
       headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example', 'CF-Connecting-IP': '192.0.2.10' },
       body: JSON.stringify({ password: 'wrong-password-value' }),
     }),
-    env: configuredEnv,
+    env: throttledEnv,
   });
   assert.equal(response.status, 401);
 });

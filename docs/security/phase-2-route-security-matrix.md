@@ -6,7 +6,7 @@ This inventory records the existing Pages API and runtime authentication boundar
 
 | Surface | Route family | Authentication boundary | Existing tests | Phase 2 status |
 |---|---|---|---|---|
-| Login | `/api/login` GET/POST/DELETE | Public entry/status; POST and DELETE require same-origin; login issues D1-persisted session | `auth.test.mjs` | Extended for persistence and revocation |
+| Login | `/api/login` GET/POST/DELETE | Public entry/status; POST and DELETE require same-origin; login issues D1-persisted session; POST uses HMAC-keyed client-IP throttling | `auth.test.mjs` | Steps 2.2 and 2.3 implemented |
 | Chat | `/api/ask` POST | Owner HMAC session; same-origin write | `auth.test.mjs` | Existing unauthenticated/cross-origin checks retained |
 | Memory | `/api/memory` GET/POST/DELETE | Owner session; same-origin writes | `auth.test.mjs` | Existing checks retained |
 | MCP | `/mcp` POST | `AEGIS_MCP_TOKEN` bearer; owner-session fallback; Origin optional for server-to-server callers and validated when present | `bridge.test.mjs` | Dedicated bearer path unchanged |
@@ -29,3 +29,25 @@ This inventory records the existing Pages API and runtime authentication boundar
 - No global middleware is introduced.
 
 This is the baseline route inventory and existing test map, not a claim that every listed route already has a new unauthenticated/cross-origin test. Full route-by-route assertion expansion and protection of detailed status diagnostics remain follow-up items.
+
+
+## Phase 2 security extension roadmap
+
+| Step | Protection | Planned control | Status |
+|---|---|---|---|
+| 2.1 | API security test matrix | Inventory route families, authentication boundaries and regression coverage | Completed |
+| 2.2 | Revocable server-side sessions | HMAC-signed session IDs backed by D1 expiry and revocation records | Completed |
+| 2.3 | Login-attempt throttling | D1-backed rolling window; five attempts per client IP, sixth attempt locks for 15 minutes; HMAC-keyed IP identity; generic failure response | Implemented; Actions verification pending |
+| 2.4 | Fail-closed PII and secret scrubbing | Central redaction at log/audit/persistence boundaries; detect credentials, tokens, common API-key formats and configured PII; reject or quarantine payloads when scrubber cannot classify safely | Planned |
+| 2.5 | OWASP ASI06 memory-poisoning write guards | Validate provenance, trust labels, schema and policy before state/memory writes; distinguish untrusted retrieved content from instructions; prevent untrusted content from changing trusted system state | Planned |
+| 2.6 | Canary tripwires | Non-credential decoy markers and controlled probe surfaces; detect access without exposing real secrets; alert and invoke a bounded, owner-approved containment policy | Planned |
+
+### Step 2.3 policy notes
+
+- Rate-limit identity is derived from Cloudflare's `CF-Connecting-IP` header and keyed with HMAC-SHA256 using a domain-separated input and the existing session secret.
+- Raw client IP addresses are not stored in D1.
+- Missing trusted client identity or D1 failure blocks login rather than bypassing protection.
+- The sixth attempt inside a 15-minute window is blocked for 15 minutes.
+- Incorrect-password and throttled responses are identical (`401`, same body).
+- Successful login clears the corresponding attempt bucket.
+- This is per-client-IP protection; edge/WAF controls and broader distributed credential-stuffing detection remain complementary follow-ups.

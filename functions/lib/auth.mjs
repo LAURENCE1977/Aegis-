@@ -6,6 +6,19 @@ function fromBase64Url(value) { const base64=value.replace(/-/g,"+").replace(/_/
 async function signingKey(secret) { return crypto.subtle.importKey("raw",encoder.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign","verify"]); }
 function decodeClaims(token) { try { const payload=token.split(".")[0]; return payload?JSON.parse(new TextDecoder().decode(fromBase64Url(payload))):null; } catch { return null; } }
 async function signClaims(secret,claims) { const payload=toBase64Url(encoder.encode(JSON.stringify(claims))); const key=await signingKey(secret); const signature=new Uint8Array(await crypto.subtle.sign("HMAC",key,encoder.encode(payload))); return payload+"."+toBase64Url(signature); }
+export async function hashLoginIdentity(identity, secret) {
+  if (typeof identity !== "string" || !identity || typeof secret !== "string" || secret.length < 32) {
+    throw new Error("A trusted login identity and session secret are required.");
+  }
+  const key = await signingKey(secret);
+  const digest = new Uint8Array(await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode("aegis-login-rate-limit:" + identity)
+  ));
+  return toBase64Url(digest);
+}
+
 export function authConfigAvailable(env) { return Boolean(env&&typeof env.AEGIS_PASSWORD==="string"&&env.AEGIS_PASSWORD.length>=12&&typeof env.AEGIS_SESSION_SECRET==="string"&&env.AEGIS_SESSION_SECRET.length>=32); }
 export function constantTimeEqual(left,right) { if(typeof left!=="string"||typeof right!=="string")return false; const length=Math.max(left.length,right.length); let difference=left.length^right.length; for(let i=0;i<length;i++)difference|=(left.charCodeAt(i)||0)^(right.charCodeAt(i)||0); return difference===0; }
 // Stateless tokens remain available for isolated/local tests. Pages login uses the revocable form below.
