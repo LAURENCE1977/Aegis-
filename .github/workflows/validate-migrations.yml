@@ -19,5 +19,22 @@ jobs:
       - name: Install Dependencies
         run: npm install wrangler --save-dev
 
+      - name: Create Local-Only Wrangler Configuration
+        run: |
+          cat > wrangler.jsonc <<'EOF'
+          {
+            "name": "aegis-migration-validation",
+            "compatibility_date": "2026-11-25",
+            "d1_databases": [
+              {
+                "binding": "AEGIS_DB",
+                "database_name": "aegis-production-local-test",
+                "database_id": "00000000-0000-0000-0000-000000000000",
+                "migrations_dir": "migrations/production"
+              }
+            ]
+          }
+          EOF
+
       - name: Run Local D1 Migrations
-        run: npx wrangler d1 migrations apply aegis-production --local
+        run: npx wrangler d1 migrations apply aegis-production-local-test --local
