@@ -6,6 +6,7 @@ import {
 } from "../lib/owner-api.mjs";
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { getWorkspace } from "../lib/project-spaces.mjs";
+import { scrubSensitiveData } from "../lib/data-guards.mjs";
 
 const OWNER_ID = "owner";
 const MAX_BODY = 8192;
@@ -64,14 +65,16 @@ export async function onRequestPost({ request, env }) {
 
   const parsed = await readJsonRequest(request, MAX_BODY);
   if (!parsed.ok) return jsonResponse({ error: parsed.error }, parsed.status);
-  const body = parsed.body;
+  const scrubbed = scrubSensitiveData(parsed.body, { piiValues: env.AEGIS_PII_VALUES ?? [] });
+  if (!scrubbed.ok) return jsonResponse({ error: "Memory payload could not be safely classified." }, 400);
+  const body = scrubbed.value;
   const allowed = ["projectId", "kind", "content", "source", "confidence", "sensitivity", "tags", "expiresAt"];
   if (!body || typeof body !== "object" || Array.isArray(body) ||
       Object.keys(body).some((key) => !allowed.includes(key)) ||
       typeof body.kind !== "string" || typeof body.content !== "string" ||
       !body.source || typeof body.source !== "object" || Array.isArray(body.source) ||
       Object.keys(body.source).some((key) => !["type", "url", "attribution", "observedAt"].includes(key)) ||
-      typeof body.source.type !== "string" || typeof body.source.url !== "string" ||
+      !["user-stated", "conversation", "document", "external-source"].includes(body.source.type) || typeof body.source.url !== "string" ||
       typeof body.source.attribution !== "string" ||
       (body.source.observedAt !== undefined && typeof body.source.observedAt !== "string") ||
       (body.projectId !== undefined && typeof body.projectId !== "string") ||
@@ -100,6 +103,7 @@ export async function onRequestPost({ request, env }) {
         url: body.source.url,
         attribution: body.source.attribution,
         observedAt: body.source.observedAt ?? now,
+        trust: "untrusted",
       },
       confidence: body.confidence ?? 0.5,
       sensitivity: body.sensitivity ?? "private",
