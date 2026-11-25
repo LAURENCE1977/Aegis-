@@ -26,7 +26,7 @@ This inventory records the existing Pages API and runtime authentication boundar
 - D1 lookup errors fail closed; login cannot issue a session if D1 is unavailable.
 - Logout revokes the server-side row and clears the cookie.
 - MCP and runtime bearer credentials remain independent of Pages sessions.
-- No global middleware is introduced.
+- No blanket request-body middleware is applied to the existing API surface. The root Pages middleware performs canonical path classification, rejects ambiguous separators and normalisation, and sends only POST /api/login through the membrane. Other existing API routes retain their route-specific controls until individually audited and migrated.
 
 This is the baseline route inventory and existing test map, not a claim that every listed route already has a new unauthenticated/cross-origin test. Full route-by-route assertion expansion and protection of detailed status diagnostics remain follow-up items.
 
@@ -65,3 +65,12 @@ The architecture direction is codified in docs/architecture/aegis-dsl-sem.md. It
 - Step 2.5: incoming structured memories are limited to user/external provenance classes; system-observation and project-event cannot be asserted by this public write boundary. The server stamps provenance as untrusted, and new records remain candidate until owner review.
 - Memory content remains reference data, never instructions. The chat prompt already explicitly preserves that boundary.
 - No direct browser-to-D1 access, zero-knowledge claim, 30-second ESCT, behavioral biometric telemetry, automatic Golden State rollback, generated migration AST, or 3D avatar has been implemented by this change.
+
+
+## Step 2.6.7 — selective Pages membrane integration
+
+- The first integration is scoped to the existing `POST /api/login` handler, whose current contract accepts JSON with a single `password` property. The membrane rejects duplicate JSON keys, extra properties, unsupported media types, malformed UTF-8, over-limit bodies and ambiguous API path encodings before the handler runs.
+- The membrane modules are namespaced under `functions/lib/membrane/` because `functions/lib/data-guards.mjs` is already used by existing memory-ingestion security controls and must not be overwritten.
+- Static assets, `GET /api/login`, and other existing API handlers continue through the existing Pages routing and security controls.
+- This is an application-layer Pages middleware boundary, not a hypervisor, kernel, firmware or silicon-level security boundary.
+- Approval remains pending the full repository test suite and Wrangler Pages runtime integration checks (static pass-through, request reconstruction, downstream handler chaining and encoded-path rejection).
