@@ -1,0 +1,23 @@
+name: Validate D1 Migrations
+
+on:
+  push:
+    branches: [ "feature/production-migrations" ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install wrangler --save-dev
+
+      - name: Run Local D1 Migrations
+        run: npx wrangler d1 migrations apply aegis-production --local
