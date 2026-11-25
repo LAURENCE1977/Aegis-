@@ -99,3 +99,59 @@ test('Pages runtime rejects invalid ask history and accepts valid ask schema', r
   // The CI runtime has no AI binding; 503 confirms the existing handler was reached.
   assert.equal(valid.status, 503);
 });
+
+
+test('Pages runtime routes every login method through explicit policy and preserves logout', runtimeOptions, async () => {
+  const unsupported = await fetch(baseUrl + '/api/login', { method: 'PUT' });
+  assert.equal(unsupported.status, 405);
+  assert.match(unsupported.headers.get('allow') || '', /POST/);
+  const cookie = await authenticatedCookie();
+  const logout = await fetch(baseUrl + '/api/login', {
+    method: 'DELETE',
+    headers: { origin: baseUrl, cookie },
+  });
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get('set-cookie') || '', /Max-Age=0/);
+  const status = await fetch(baseUrl + '/api/login', { headers: { cookie } });
+  assert.deepEqual(await status.json(), { authenticated: false });
+});
+
+test('Pages runtime fails closed on unsupported media types and malformed memory scope', runtimeOptions, async () => {
+  const cookie = await authenticatedCookie();
+  const baseHeaders = { origin: baseUrl, cookie };
+  const multipart = await fetch(baseUrl + '/api/memories', {
+    method: 'POST',
+    headers: { ...baseHeaders, 'content-type': 'multipart/form-data; boundary=redteam' },
+    body: '--redteam--',
+  });
+  assert.equal(multipart.status, 415);
+  const text = await fetch(baseUrl + '/api/ask', {
+    method: 'POST',
+    headers: { ...baseHeaders, 'content-type': 'text/plain' },
+    body: 'question=hello',
+  });
+  assert.equal(text.status, 415);
+  const foreignProject = await fetch(baseUrl + '/api/memories?projectId=attacker-project', { headers: baseHeaders });
+  assert.equal(foreignProject.status, 404);
+});
+
+test('Pages runtime bounds deeply nested and oversized adversarial request bodies', runtimeOptions, async () => {
+  const cookie = await authenticatedCookie();
+  const headers = { 'content-type': 'application/json', origin: baseUrl, cookie };
+  const deep = { value: 'x' };
+  let cursor = deep;
+  for (let i = 0; i < 20; i += 1) { cursor.next = {}; cursor = cursor.next; }
+  const nested = await fetch(baseUrl + '/api/ask', {
+    method: 'POST', headers,
+    body: JSON.stringify({ question: 'bounded?', history: [{ role: 'user', content: JSON.stringify(deep) }] }),
+  });
+  assert.ok([400, 413].includes(nested.status));
+  const oversized = await fetch(baseUrl + '/api/memories', {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      kind: 'fact', content: 'x'.repeat(9000),
+      source: { type: 'user-stated', url: 'https://aegis.test/source/oversized', attribution: 'runtime test' },
+    }),
+  });
+  assert.equal(oversized.status, 413);
+});

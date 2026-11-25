@@ -202,3 +202,71 @@ test('migrated API paths reject unsupported methods inside the membrane', async 
     assert.equal(reached, false);
   }
 });
+
+
+test('login method dispatch cannot bypass the membrane while GET and DELETE remain supported', async () => {
+  for (const method of ['PUT', 'PATCH', 'OPTIONS', 'HEAD']) {
+    let reached = false;
+    const response = await onRequest[0]({
+      request: new Request('https://aegis.test/api/login', { method }),
+      next: async () => { reached = true; return new Response('unsafe'); },
+    });
+    assert.equal(response.status, 405, method);
+    assert.equal(reached, false, method);
+    assert.match(response.headers.get('allow') || '', /POST/);
+  }
+  let getReached = false;
+  const getResponse = await onRequest[0]({
+    request: new Request('https://aegis.test/api/login'),
+    next: async () => { getReached = true; return new Response('status'); },
+  });
+  assert.equal(getResponse.status, 200);
+  assert.equal(getReached, true);
+  let deleteReached = false;
+  const deleteResponse = await onRequest[0]({
+    request: new Request('https://aegis.test/api/login', { method: 'DELETE' }),
+    next: async (request) => {
+      deleteReached = true;
+      assert.equal(request.method, 'DELETE');
+      return new Response('logout', { status: 200 });
+    },
+  });
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deleteReached, true);
+});
+
+test('memory and ask membrane reject malformed media types, prototype keys and oversized object shapes', async () => {
+  const cases = [
+    new Request('https://aegis.test/api/memories', { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x' }, body: '--x--' }),
+    new Request('https://aegis.test/api/ask', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: 'question=hello' }),
+    new Request('https://aegis.test/api/memories', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"kind":"fact","content":"x","source":{"type":"user-stated","url":"https://aegis.test","attribution":"test"},"__proto__":{"ownerId":"attacker"}}' }),
+    new Request('https://aegis.test/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"question":"hello","constructor":{"prototype":{"ownerId":"attacker"}}}' }),
+  ];
+  for (const request of cases) {
+    let reached = false;
+    const response = await onRequest[0]({ request, next: async () => { reached = true; return new Response('unsafe'); } });
+    assert.ok([400, 415].includes(response.status), request.url);
+    assert.equal(reached, false);
+  }
+  const manyProperties = Object.fromEntries(Array.from({ length: 65 }, (_, i) => ['field' + i, 'x']));
+  const oversizedShape = new Request('https://aegis.test/api/memories', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...memoryInput, metadata: manyProperties }),
+  });
+  let reached = false;
+  const limited = await onRequest[0]({ request: oversizedShape, next: async () => { reached = true; return new Response('unsafe'); } });
+  assert.equal(limited.status, 400);
+  assert.equal(reached, false);
+});
+
+test('memory GET rejects array-style and comma-joined scalar parameter pollution', async () => {
+  for (const path of ['/api/memories?limit[]=5', '/api/memories?limit=1,2', '/api/memories?projectId[]=foreign']) {
+    let reached = false;
+    const response = await onRequest[0]({
+      request: new Request('https://aegis.test' + path),
+      next: async () => { reached = true; return new Response('unsafe'); },
+    });
+    assert.equal(response.status, 400, path);
+    assert.equal(reached, false);
+  }
+});
