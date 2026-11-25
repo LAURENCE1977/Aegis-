@@ -37,7 +37,7 @@ This is the baseline route inventory and existing test map, not a claim that eve
 |---|---|---|---|
 | 2.1 | API security test matrix | Inventory route families, authentication boundaries and regression coverage | Completed |
 | 2.2 | Revocable server-side sessions | HMAC-signed session IDs backed by D1 expiry and revocation records | Completed |
-| 2.3 | Login-attempt throttling | D1-backed rolling window; five attempts per client IP, sixth attempt locks for 15 minutes; HMAC-keyed IP identity; generic failure response | Implemented; Actions verification pending |
+| 2.3 | Login-attempt throttling | D1-backed rolling window; five attempts per client IP, sixth attempt locks for 15 minutes; HMAC-keyed IP identity; generic failure response | Implemented; 441 tests passed and all 10 production migrations applied successfully to isolated local D1 in GitHub Actions |
 | 2.4 | Fail-closed PII and secret scrubbing | Central redaction at log/audit/persistence boundaries; detect credentials, tokens, common API-key formats and configured PII; reject or quarantine payloads when scrubber cannot classify safely | Planned |
 | 2.5 | OWASP ASI06 memory-poisoning write guards | Validate provenance, trust labels, schema and policy before state/memory writes; distinguish untrusted retrieved content from instructions; prevent untrusted content from changing trusted system state | Planned |
 | 2.6 | Canary tripwires | Non-credential decoy markers and controlled probe surfaces; detect access without exposing real secrets; alert and invoke a bounded, owner-approved containment policy | Planned |
