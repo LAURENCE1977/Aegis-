@@ -247,7 +247,6 @@ export async function withAegisImmunePipeline(context) {
         verifiedRequest = request;
       }
     } else {
-else {
       if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
       const contentEncoding = request.headers.get('content-encoding');
     if (contentEncoding && contentEncoding.trim().toLowerCase() !== 'identity') throw new MembraneError('Content-Encoding is unsupported', { code: 'UNSUPPORTED_CONTENT_ENCODING', status: 415 });
