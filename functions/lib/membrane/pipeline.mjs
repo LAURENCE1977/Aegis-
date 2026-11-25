@@ -224,24 +224,30 @@ export async function withAegisImmunePipeline(context) {
     const route = evaluateRoutePolicy(path, request.method);
     if (!route.ok) throw new MembraneError(route.code, { code: route.code, status: route.status, ...(route.allow ? { allow: route.allow } : {}) });
     const policy = route.policy;
-    if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'DELETE') {
-      // Some Pages runtimes expose an empty stream for bodyless requests instead
-      // of null. Probe a clone so the original request remains readable by Pages.
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      if (request.body !== null) throw new MembraneError('GET and HEAD bodies are forbidden', { code: 'BODY_NOT_ALLOWED', status: 400 });
+      verifiedRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
+    } else if (request.method === 'DELETE') {
+      // Pages may expose a zero-byte stream for DELETE rather than a null body.
+      // Consume that stream and rebuild a bodyless request for the logout handler.
       if (request.body !== null) {
         try {
-          const bytes = await readBoundedBody(request.clone(), 0);
-          if (bytes.byteLength !== 0) {
-            throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
-          }
+          await readBoundedBody(request, 0);
         } catch (error) {
           if (error instanceof LimitError) {
             throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
           }
           throw error;
         }
+        const headers = new Headers(request.headers);
+        headers.delete('content-length');
+        headers.delete('transfer-encoding');
+        verifiedRequest = new Request(request.url, { method: 'DELETE', headers });
+      } else {
+        verifiedRequest = request;
       }
-      verifiedRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
     } else {
+else {
       if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
       const contentEncoding = request.headers.get('content-encoding');
     if (contentEncoding && contentEncoding.trim().toLowerCase() !== 'identity') throw new MembraneError('Content-Encoding is unsupported', { code: 'UNSUPPORTED_CONTENT_ENCODING', status: 415 });
