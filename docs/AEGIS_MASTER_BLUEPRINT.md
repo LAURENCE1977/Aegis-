@@ -431,3 +431,14 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## AEGIS request membrane — Step 2.6.7 verified integration
+
+The selective Cloudflare Pages request membrane is integrated on `feature/production-migrations` at implementation commit `400021284b17d63c2ab7b8d8d069db5d4f1a76fc`. The four membrane modules live under `functions/lib/membrane/`; the existing `functions/lib/data-guards.mjs` remains intact because it is already used by memory-ingestion security controls.
+
+The root Pages middleware performs API path classification, rejects ambiguous encoded slash/backslash separators and URL-normalisation ambiguity, and applies the full request pipeline only to the existing `POST /api/login` contract. That route accepts JSON with exactly one required string property, `password`; duplicate JSON keys, unknown fields, unsupported media types, invalid UTF-8, invalid credentials and over-limit bodies fail before the handler. Valid credential strings are preserved exactly. Existing static assets, `GET /api/login` and other established API routes continue through their existing handlers and route-specific controls.
+
+**Verified on 25 November 2026:** GitHub Actions reports 464 Node tests (459 passed, 0 failed, 5 conditional runtime tests skipped in the default run), followed by a dedicated Wrangler Pages Dev run with 5/5 HTTP integration tests passing. The Pages Functions build, isolated local production D1 migration, and separate D1/Pages validation workflow also pass. See [AEGIS tests](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286973) and [D1/Pages validation](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286998).
+
+**Scope and limitations:** this is application-layer request validation in the Cloudflare Pages runtime, not a hypervisor, kernel, firmware or silicon-level firewall. A literal backslash may be canonicalised by the Fetch/URL parser before middleware receives `request.url`; rejecting the original raw request-target character requires an edge/WAF control before URL normalisation. URL-encoded `%2F` and `%5C` are covered by the runtime tests. No production deployment or production D1 mutation was performed. Other API routes are not yet migrated into the membrane; they retain their existing controls pending individual contract audits.

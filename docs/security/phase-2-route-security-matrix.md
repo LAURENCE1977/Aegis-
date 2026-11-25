@@ -73,4 +73,6 @@ The architecture direction is codified in docs/architecture/aegis-dsl-sem.md. It
 - The membrane modules are namespaced under `functions/lib/membrane/` because `functions/lib/data-guards.mjs` is already used by existing memory-ingestion security controls and must not be overwritten.
 - Static assets, `GET /api/login`, and other existing API handlers continue through the existing Pages routing and security controls.
 - This is an application-layer Pages middleware boundary, not a hypervisor, kernel, firmware or silicon-level security boundary.
-- Approval remains pending the full repository test suite and Wrangler Pages runtime integration checks (static pass-through, request reconstruction, downstream handler chaining and encoded-path rejection).
+- **Verification passed on 25 November 2026:** the full Node suite reports 464 tests (459 passed, 0 failed, 5 conditionally skipped); the dedicated Wrangler Pages Dev integration suite reports 5/5 passed. The Pages Functions bundle builds successfully, the local production-schema D1 migration applies, and both repository validation workflows succeed. See [AEGIS tests run](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286973) and [D1/Pages validation run](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286998).
+
+- The Pages runtime verifies encoded `%2F` and `%5C` separators. A literal backslash may be canonicalised by the Fetch/URL layer before Pages middleware receives `request.url`; rejection of the original raw request-target character requires an edge/WAF rule before URL normalisation.

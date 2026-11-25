@@ -8,6 +8,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 - Mobile-friendly chat interface for iPhone, iPad and Chromebook browsers
 - Cloudflare Pages Functions API
+- Selective AEGIS request membrane for `POST /api/login`, with canonical API-path screening, strict JSON schema validation, duplicate-key rejection and bounded request reconstruction
 - Cloudflare Workers AI binding for the current chat model
 - Optional Cloudflare KV binding for simple notes
 - Password sign-in with signed, expiring, HttpOnly browser sessions
@@ -123,3 +124,8 @@ AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers A
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Request membrane status
+
+Step 2.6.7 is integrated and verified on `feature/production-migrations`. The membrane is scoped to the existing JSON-only `POST /api/login` handler; other established API handlers retain their existing route-specific controls. The full repository Node suite passes (464 tests, 459 passed, 0 failed, 5 conditionally skipped), and the dedicated Wrangler Pages Dev runtime suite passes 5/5. This is application-layer middleware, not hardware or hypervisor isolation. No production deployment or production D1 mutation was performed. See the [master blueprint](docs/AEGIS_MASTER_BLUEPRINT.md) for scope and limitations.

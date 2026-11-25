@@ -43,8 +43,10 @@ test('Pages middleware reconstructs the request and chains to the real login han
   assert.match(response.headers.get('set-cookie') || '', /^__Host-aegis_session=/);
 });
 
-test('Pages middleware rejects encoded API path separators', runtimeOptions, async () => {
-  const response = await fetch(baseUrl + '/api%2Flogin', { method: 'POST' });
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: 'INVALID_API_PATH' });
+test('Pages middleware rejects encoded slash and backslash API separators', runtimeOptions, async () => {
+  for (const path of ['/api%2Flogin', '/api%5Clogin']) {
+    const response = await fetch(baseUrl + path, { method: 'POST' });
+    assert.equal(response.status, 400, path);
+    assert.deepEqual(await response.json(), { error: 'INVALID_API_PATH' });
+  }
 });
