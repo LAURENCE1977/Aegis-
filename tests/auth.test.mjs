@@ -21,6 +21,22 @@ const configuredEnv = {
   AEGIS_PASSWORD: 'a-long-test-password-value',
   AEGIS_SESSION_SECRET: secret,
 };
+const storedSessions = new Map();
+const sessionDb = {
+  prepare(sql) {
+    return { bind(...values) {
+      return {
+        run: async () => {
+          if (sql.startsWith('INSERT INTO auth_sessions')) storedSessions.set(values[0], { expires_at: values[2], revoked_at: null });
+          else if (sql.startsWith('UPDATE auth_sessions')) { const row = storedSessions.get(values[1]); if (row) row.revoked_at = values[0]; }
+          return { success: true };
+        },
+        first: async () => { const row = storedSessions.get(values[0]); return row && row.expires_at > values[1] && !row.revoked_at ? { session_id: values[0] } : null; },
+      };
+    }};
+  },
+};
+const persistedEnv = { ...configuredEnv, AEGIS_DB: sessionDb };
 
 test('a newly created session token verifies before its expiry', async () => {
   const token = await createSessionToken(secret, fixedNow);
@@ -86,22 +102,21 @@ test('the login endpoint rejects an incorrect password', async () => {
   assert.equal(response.status, 401);
 });
 
-test('successful login issues a session cookie accepted by the API guard', async () => {
+test('successful login persists a revocable session accepted by the API guard', async () => {
   const response = await loginPost({
     request: new Request('https://aegis.example/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
       body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
     }),
-    env: configuredEnv,
+    env: persistedEnv,
   });
   assert.equal(response.status, 200);
-  const cookie = response.headers.get('Set-Cookie');
-  const token = cookie.match(/__Host-aegis_session=([^;]+)/)[1];
+  const token = response.headers.get('Set-Cookie').match(/__Host-aegis_session=([^;]+)/)[1];
   const authenticatedRequest = new Request('https://aegis.example/api/ask', {
     headers: { Cookie: '__Host-aegis_session=' + token },
   });
-  assert.equal(await isAuthorized(authenticatedRequest, configuredEnv), true);
+  assert.equal(await isAuthorized(authenticatedRequest, persistedEnv), true);
 });
 
 test('cross-origin login attempts are rejected', async () => {
@@ -225,4 +240,52 @@ test('chat rejects cross-origin requests before invoking the model', async () =>
   });
   assert.equal(response.status, 403);
   assert.equal(modelCalls, 0);
+});
+
+
+test('login refuses to issue a session when D1 session storage is unavailable', async () => {
+  const response = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: configuredEnv,
+  });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('Set-Cookie'), null);
+});
+
+test('logout revokes the D1 session and clears the browser cookie', async () => {
+  const login = await loginPost({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://aegis.example' },
+      body: JSON.stringify({ password: configuredEnv.AEGIS_PASSWORD }),
+    }),
+    env: persistedEnv,
+  });
+  const token = login.headers.get('Set-Cookie').match(/__Host-aegis_session=([^;]+)/)[1];
+  const cookie = '__Host-aegis_session=' + token;
+  const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: cookie } });
+  assert.equal(await isAuthorized(request, persistedEnv), true);
+  const { onRequestDelete } = await import('../functions/api/login.js');
+  const logout = await onRequestDelete({
+    request: new Request('https://aegis.example/api/login', { method: 'DELETE', headers: { Origin: 'https://aegis.example', Cookie: cookie } }),
+    env: persistedEnv,
+  });
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get('Set-Cookie') || '', /Max-Age=0/);
+  assert.equal(await isAuthorized(request, persistedEnv), false);
+});
+
+test('a valid stateless legacy token is rejected when D1 sessions are enabled', async () => {
+  const token = await createSessionToken(secret, fixedNow);
+  const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
+  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);
+});
+
+test('D1 session lookup errors fail closed', async () => {
+  const token = await createSessionToken(secret, fixedNow);
+  const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
+  const brokenEnv = { ...configuredEnv, AEGIS_DB: { prepare() { throw new Error('D1 unavailable'); } } };
+  assert.equal(await isAuthorized(request, brokenEnv, fixedNow + 1_000), false);
 });

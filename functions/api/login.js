@@ -1,51 +1,6 @@
-import {
-  authConfigAvailable,
-  constantTimeEqual,
-  createSessionToken,
-  isAuthorized,
-  isSameOriginRequest,
-  sessionCookie,
-  clearSessionCookie,
-} from "../lib/auth.mjs";
-
-const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), {
-  status,
-  headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    ...headers,
-  },
-});
-
-export async function onRequestGet({ request, env }) {
-  if (!authConfigAvailable(env)) {
-    return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
-  }
-  return json({ authenticated: await isAuthorized(request, env) });
-}
-
-export async function onRequestPost({ request, env }) {
-  if (!authConfigAvailable(env)) {
-    return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
-  }
-  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid request." }, 400);
-  }
-
-  if (!constantTimeEqual(body?.password, env.AEGIS_PASSWORD)) {
-    return json({ error: "Incorrect password." }, 401);
-  }
-
-  const token = await createSessionToken(env.AEGIS_SESSION_SECRET);
-  return json({ authenticated: true }, 200, { "Set-Cookie": sessionCookie(token) });
-}
-
-export async function onRequestDelete({ request }) {
-  if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
-  return json({ authenticated: false }, 200, { "Set-Cookie": clearSessionCookie() });
-}
+import { authConfigAvailable, constantTimeEqual, createRevocableSessionToken, isAuthorized, isSameOriginRequest, revokeSession, sessionCookie, clearSessionCookie } from "../lib/auth.mjs";
+const json=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store",...headers}});
+function sessionStoreAvailable(env){return Boolean(env?.AEGIS_DB&&typeof env.AEGIS_DB.prepare==="function");}
+export async function onRequestGet({request,env}){if(!authConfigAvailable(env))return json({error:"Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET."},503);return json({authenticated:await isAuthorized(request,env)});}
+export async function onRequestPost({request,env}){if(!authConfigAvailable(env))return json({error:"Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET."},503);if(!isSameOriginRequest(request))return json({error:"Invalid request origin."},403);let body;try{body=await request.json();}catch{return json({error:"Invalid request."},400);}if(!constantTimeEqual(body?.password,env.AEGIS_PASSWORD))return json({error:"Incorrect password."},401);if(!sessionStoreAvailable(env))return json({error:"Persistent session storage is unavailable."},503);try{const {token,sessionId,expiresAt}=await createRevocableSessionToken(env.AEGIS_SESSION_SECRET);await env.AEGIS_DB.prepare("INSERT INTO auth_sessions (session_id, created_at, expires_at, revoked_at) VALUES (?, ?, ?, NULL)").bind(sessionId,new Date().toISOString(),expiresAt).run();return json({authenticated:true},200,{"Set-Cookie":sessionCookie(token)});}catch{return json({error:"Unable to create an authenticated session."},503);}}
+export async function onRequestDelete({request,env}){if(!isSameOriginRequest(request))return json({error:"Invalid request origin."},403);try{await revokeSession(request,env);}catch{/* D1 errors fail protected session checks closed. */}return json({authenticated:false},200,{"Set-Cookie":clearSessionCookie()});}
