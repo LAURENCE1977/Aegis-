@@ -277,10 +277,11 @@ test('logout revokes the D1 session and clears the browser cookie', async () => 
   assert.equal(await isAuthorized(request, persistedEnv), false);
 });
 
-test('a valid stateless legacy token is rejected when D1 sessions are enabled', async () => {
+test('a valid stateless legacy token remains valid during its original 12-hour migration window', async () => {
   const token = await createSessionToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
-  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);
+  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), true);
+  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 12 * 60 * 60 * 1000 + 1), false);
 });
 
 test('D1 session lookup errors fail closed', async () => {

@@ -22,7 +22,7 @@ This inventory records the existing Pages API and runtime authentication boundar
 
 ## Required assertions
 - HMAC-SHA256 signature and existing HttpOnly, Secure, SameSite=Strict, host-only cookie attributes remain.
-- With Pages D1 configured, a valid signature alone is insufficient: the session ID must exist, be unexpired and not revoked.
+- Newly issued Pages sessions carry a session ID and require a matching, unexpired, unrevoked D1 record. Pre-deployment stateless HMAC cookies remain valid only until their original 12-hour expiry; they cannot be renewed by the new login path.
 - D1 lookup errors fail closed; login cannot issue a session if D1 is unavailable.
 - Logout revokes the server-side row and clears the cookie.
 - MCP and runtime bearer credentials remain independent of Pages sessions.
