@@ -25,31 +25,27 @@ jobs:
 
       - name: Create isolated local-only Wrangler configuration
         run: |
-          cat > wrangler.jsonc <<'EOF'
-          {
-            "name": "aegis-phase1-validation",
-            "pages_build_output_dir": "public",
-            "compatibility_date": "2026-11-25",
-            "d1_databases": [
-              {
-                "binding": "AEGIS_DB",
-                "database_name": "aegis-production-local-test",
-                "database_id": "00000000-0000-0000-0000-000000000000",
-                "migrations_dir": "migrations/production"
-              }
-            ]
-          }
+          cat > wrangler.toml <<'EOF'
+          name = "aegis-phase1-validation"
+          pages_build_output_dir = "public"
+          compatibility_date = "2026-11-25"
+
+          [[d1_databases]]
+          binding = "AEGIS_DB"
+          database_name = "aegis-production-local-test"
+          database_id = "00000000-0000-0000-0000-000000000000"
+          migrations_dir = "migrations/production"
           EOF
 
       - name: Apply complete production migration chain to local D1
-        run: npx --yes wrangler@4.86.0 d1 migrations apply aegis-production-local-test --local --config wrangler.jsonc
+        run: npx --yes wrangler@4.86.0 d1 migrations apply aegis-production-local-test --local
 
       - name: Verify recorded local migration history
-        run: npx --yes wrangler@4.86.0 d1 migrations list aegis-production-local-test --local --config wrangler.jsonc
+        run: npx --yes wrangler@4.86.0 d1 migrations list aegis-production-local-test --local
 
       - name: Start local Cloudflare Pages development server
         run: |
-          nohup npx --yes wrangler@4.86.0 pages dev public --local --ip 127.0.0.1 --port 8788 --config wrangler.jsonc > "$RUNNER_TEMP/aegis-pages-dev.log" 2>&1 &
+          nohup npx --yes wrangler@4.86.0 pages dev public --local --ip 127.0.0.1 --port 8788 > "$RUNNER_TEMP/aegis-pages-dev.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/aegis-pages-dev.pid"
 
       - name: Wait for Pages and assert the D1 status endpoint
