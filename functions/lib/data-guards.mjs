@@ -25,6 +25,12 @@ export function scrubSensitiveText(input) {
 }
 
 export function scrubSensitiveData(input, { piiValues = [] } = {}) {
+  if (typeof piiValues === 'string') {
+    try { piiValues = JSON.parse(piiValues); } catch {
+      return { ok: false, value: null, redactions: 0 };
+    }
+  }
+  if (!Array.isArray(piiValues)) return { ok: false, value: null, redactions: 0 };
   let nodes = 0;
   let redactions = 0;
   const seen = new WeakSet();
