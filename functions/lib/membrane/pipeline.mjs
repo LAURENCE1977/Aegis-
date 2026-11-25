@@ -226,10 +226,10 @@ export async function withAegisImmunePipeline(context) {
     const policy = route.policy;
     if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'DELETE') {
       // Some Pages runtimes expose an empty stream for bodyless requests instead
-      // of null. Consume only that zero-byte stream; never forward actual bytes.
+      // of null. Probe a clone so the original request remains readable by Pages.
       if (request.body !== null) {
         try {
-          const bytes = await readBoundedBody(request, 0);
+          const bytes = await readBoundedBody(request.clone(), 0);
           if (bytes.byteLength !== 0) {
             throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
           }
@@ -240,11 +240,10 @@ export async function withAegisImmunePipeline(context) {
           throw error;
         }
       }
-      const safeRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
-      return await next(safeRequest);
-    }
-    if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
-    const contentEncoding = request.headers.get('content-encoding');
+      verifiedRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
+    } else {
+      if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
+      const contentEncoding = request.headers.get('content-encoding');
     if (contentEncoding && contentEncoding.trim().toLowerCase() !== 'identity') throw new MembraneError('Content-Encoding is unsupported', { code: 'UNSUPPORTED_CONTENT_ENCODING', status: 415 });
     if (request.headers.has('content-md5') || request.headers.has('digest') || request.headers.has('signature')) throw new MembraneError('Integrity headers cannot be retained across body verification', { code: 'UNSUPPORTED_INTEGRITY_HEADER', status: 400 });
     const mediaType = parseContentType(request.headers.get('content-type'));
@@ -259,7 +258,8 @@ export async function withAegisImmunePipeline(context) {
     const serialized = mediaType === 'application/json' ? JSON.stringify(clean) : new URLSearchParams(Object.entries(clean).flatMap(([k, v]) => Array.isArray(v) ? v.map((x) => [k, x]) : [[k, v]])).toString();
     const headers = new Headers(request.headers);
     headers.delete('content-length'); headers.delete('content-encoding');
-    verifiedRequest = new Request(request, { headers, body: serialized });
+      verifiedRequest = new Request(request, { headers, body: serialized });
+    }
   } catch (error) { return responseFor(error); }
   // Keep downstream exceptions outside the membrane's input-error mapping.
   return await next(verifiedRequest);
