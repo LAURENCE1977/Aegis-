@@ -1,0 +1,9 @@
+name = "aegis-infinity"
+pages_build_output_dir = "public"
+compatibility_date = "2026-11-25"
+
+[[d1_databases]]
+binding = "AEGIS_DB"
+database_name = "aegis-production"
+database_id = "44e524ef-c248-4232-93df-05220040f4bb"
+migrations_dir = "migrations/production"
