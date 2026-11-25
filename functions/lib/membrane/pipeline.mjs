@@ -182,7 +182,7 @@ function scrubAndValidate(value, policy) {
   const scrubbed = scrubSensitiveData(value, policy.profile, policy.credentialFields);
   if (!scrubbed.ok) throw scrubbed.error;
   validateSchema(scrubbed.value, policy.schema);
-  return scrubbbed.value;
+  return scrubbed.value;
 }
 function responseFor(error) {
   const status = error instanceof MembraneError ? error.status : 500;
