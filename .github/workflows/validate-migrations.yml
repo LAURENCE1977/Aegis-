@@ -1,14 +1,21 @@
-name: Validate D1 Migrations
+name: Validate D1 Migrations and Pages Status
 
 on:
   push:
-    branches: [ "feature/production-migrations" ]
+    branches:
+      - "feature/production-migrations"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -16,14 +23,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm install wrangler --save-dev
-
-      - name: Create Local-Only Wrangler Configuration
+      - name: Create isolated local-only Wrangler configuration
         run: |
           cat > wrangler.jsonc <<'EOF'
           {
-            "name": "aegis-migration-validation",
+            "name": "aegis-phase1-validation",
+            "pages_build_output_dir": "public",
             "compatibility_date": "2026-11-25",
             "d1_databases": [
               {
@@ -36,5 +41,62 @@ jobs:
           }
           EOF
 
-      - name: Run Local D1 Migrations
-        run: npx wrangler d1 migrations apply aegis-production-local-test --local
+      - name: Apply complete production migration chain to local D1
+        run: npx --yes wrangler@4.86.0 d1 migrations apply aegis-production-local-test --local --config wrangler.jsonc
+
+      - name: Verify recorded local migration history
+        run: npx --yes wrangler@4.86.0 d1 migrations list aegis-production-local-test --local --config wrangler.jsonc
+
+      - name: Start local Cloudflare Pages development server
+        run: |
+          nohup npx --yes wrangler@4.86.0 pages dev public --local --ip 127.0.0.1 --port 8788 --config wrangler.jsonc > "$RUNNER_TEMP/aegis-pages-dev.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/aegis-pages-dev.pid"
+
+      - name: Wait for Pages and assert the D1 status endpoint
+        run: |
+          status_file="$RUNNER_TEMP/aegis-status.json"
+          ready=0
+
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://127.0.0.1:8788/api/status --output "$status_file"; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "Pages status endpoint did not become ready."
+            cat "$RUNNER_TEMP/aegis-pages-dev.log"
+            exit 1
+          fi
+
+          node --input-type=commonjs - "$status_file" <<'NODE'
+          const fs = require("node:fs");
+          const data = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+
+          const checks = [
+            [data.ok === true, "API reports success"],
+            [data.service === "AEGIS Infinity", "service identity"],
+            [data.database?.status === "connected", "local D1 connection"],
+            [Number.isFinite(data.database?.latency_ms), "database latency"],
+            [data.system_state?.operational_mode === "NORMAL", "seeded operational mode"],
+            [data.system_state?.threat_level === "LOW", "seeded threat level"],
+            [data.system_state?.eve_state_tag === "IDLE", "seeded Eve state tag"],
+            [typeof data.system_state?.updated_at === "string", "state update timestamp"]
+          ];
+
+          const failures = checks.filter(([passed]) => !passed);
+          for (const [passed, label] of checks) {
+            console.log(`${passed ? "PASS" : "FAIL"}: ${label}`);
+          }
+
+          if (failures.length) process.exit(1);
+          NODE
+
+      - name: Stop local Pages development server
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/aegis-pages-dev.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/aegis-pages-dev.pid")" 2>/dev/null || true
+          fi
