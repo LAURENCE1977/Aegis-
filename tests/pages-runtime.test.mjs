@@ -113,7 +113,7 @@ test('Pages runtime routes every login method through explicit policy and preser
     method: 'DELETE',
     headers: { origin: baseUrl, cookie },
   });
-  assert.equal(logout.status, 200);
+  assert.equal(logout.status, 200, await logout.clone().text());
   assert.match(logout.headers.get('set-cookie') || '', /Max-Age=0/);
   const status = await fetch(baseUrl + '/api/login', { headers: { cookie } });
   assert.deepEqual(await status.json(), { authenticated: false });

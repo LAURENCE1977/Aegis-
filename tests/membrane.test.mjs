@@ -270,3 +270,23 @@ test('memory GET rejects array-style and comma-joined scalar parameter pollution
     assert.equal(reached, false);
   }
 });
+
+
+test('bodyless login DELETE rejects non-empty streams but permits empty requests', async () => {
+  const withBody = new Request('https://aegis.test/api/login', {
+    method: 'DELETE', body: 'unexpected',
+  });
+  let reached = false;
+  const rejected = await onRequest[0]({
+    request: withBody,
+    next: async () => { reached = true; return new Response('unsafe'); },
+  });
+  assert.equal(rejected.status, 400);
+  assert.equal(reached, false);
+  const empty = new Request('https://aegis.test/api/login', { method: 'DELETE' });
+  const accepted = await onRequest[0]({
+    request: empty,
+    next: async () => new Response('logout'),
+  });
+  assert.equal(accepted.status, 200);
+});

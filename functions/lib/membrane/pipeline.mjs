@@ -225,7 +225,21 @@ export async function withAegisImmunePipeline(context) {
     if (!route.ok) throw new MembraneError(route.code, { code: route.code, status: route.status, ...(route.allow ? { allow: route.allow } : {}) });
     const policy = route.policy;
     if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'DELETE') {
-      if (request.body !== null) throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
+      // Some Pages runtimes expose an empty stream for bodyless requests instead
+      // of null. Consume only that zero-byte stream; never forward actual bytes.
+      if (request.body !== null) {
+        try {
+          const bytes = await readBoundedBody(request, 0);
+          if (bytes.byteLength !== 0) {
+            throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
+          }
+        } catch (error) {
+          if (error instanceof LimitError) {
+            throw new MembraneError('Body is forbidden for this method', { code: 'BODY_NOT_ALLOWED', status: 400 });
+          }
+          throw error;
+        }
+      }
       const safeRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
       return await next(safeRequest);
     }
