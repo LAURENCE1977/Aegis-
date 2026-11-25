@@ -3,9 +3,15 @@ import { MembraneError } from './data-guards.mjs';
 export const GLOBAL_MAX_BODY_SIZE = 1024 * 1024;
 const str = (maxLength, minLength = 0, extra = {}) => Object.freeze({ type: 'string', minLength, maxLength, ...extra });
 
-// This first integration policy deliberately matches the existing Pages login
-// handler. Other AEGIS API contracts remain on their existing route-specific
-// guards until each route has been audited and explicitly added here.
+// Policies are explicit contracts for each migrated route. Memory POST
+// deliberately excludes ownerId: ownership is derived server-side.
+const obj = (properties, required) => Object.freeze({
+  type: 'object', additionalProperties: false,
+  required: Object.freeze(required), properties: Object.freeze(properties),
+});
+const array = (items, maxItems) => Object.freeze({ type: 'array', items, maxItems });
+const nullable = (descriptor) => Object.freeze({ ...descriptor, nullable: true });
+
 export const ROUTE_POLICIES = Object.freeze([
   Object.freeze({
     path: '/api/login',
@@ -24,6 +30,51 @@ export const ROUTE_POLICIES = Object.freeze([
     formFields: Object.freeze([]),
     multiValuedFormFields: Object.freeze([]),
     allowDuplicateFormFields: false,
+  }),
+  Object.freeze({
+    path: '/api/memories',
+    methods: Object.freeze(['GET', 'POST']),
+    allowBodies: true,
+    maxBodySize: 8192,
+    allowedMediaTypes: Object.freeze(['application/json']),
+    profile: 'standard',
+    schema: obj({
+      projectId: str(100, 1),
+      kind: str(32, 1, { enum: ['fact', 'preference', 'decision', 'event', 'procedure', 'artifact'] }),
+      content: str(4000, 1),
+      source: obj({
+        type: str(32, 1, { enum: ['user-stated', 'conversation', 'document', 'external-source'] }),
+        url: str(2048, 9),
+        attribution: str(300, 1),
+        observedAt: str(24, 20),
+      }, ['type', 'url', 'attribution']),
+      confidence: Object.freeze({ type: 'number', minimum: 0, maximum: 1 }),
+      sensitivity: str(16, 1, { enum: ['public', 'internal', 'private', 'restricted'] }),
+      tags: array(str(64, 1), 30),
+      expiresAt: nullable(str(24, 20)),
+    }, ['kind', 'content', 'source']),
+    querySchema: obj({
+      projectId: str(100, 1),
+      limit: str(2, 1, { enum: Array.from({ length: 50 }, (_, i) => String(i + 1)) }),
+      q: str(200, 1),
+      review: str(1, 1, { enum: ['0', '1'] }),
+    }, []),
+    credentialFields: Object.freeze([]), formFields: Object.freeze([]),
+    multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,
+  }),
+  Object.freeze({
+    path: '/api/ask', methods: Object.freeze(['POST']), allowBodies: true,
+    maxBodySize: 48 * 1024, allowedMediaTypes: Object.freeze(['application/json']),
+    profile: 'standard',
+    schema: obj({
+      question: str(4000, 1),
+      history: array(obj({
+        role: str(9, 4, { enum: ['user', 'assistant'] }),
+        content: str(4000, 1),
+      }, ['role', 'content']), 10),
+    }, ['question']),
+    credentialFields: Object.freeze([]), formFields: Object.freeze([]),
+    multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,
   }),
 ]);
 
@@ -46,7 +97,8 @@ function validateSchema(schema, path = 'schema', depth = 0) {
     boolean: ['type'],
     array: ['type', 'items', 'maxItems'],
   }[schema.type];
-  assert(Object.keys(schema).every((key) => allowedKeys.includes(key)), `${path} contains an unknown descriptor key`);
+  assert(Object.keys(schema).every((key) => allowedKeys.includes(key) || key === 'nullable'), `${path} contains an unknown descriptor key`);
+  if (schema.nullable !== undefined) assert(typeof schema.nullable === 'boolean', `${path}.nullable must be boolean`);
   if (schema.type === 'object') {
     assert(schema.properties && typeof schema.properties === 'object' && !Array.isArray(schema.properties), `${path}.properties required`);
     const keys = Object.keys(schema.properties);
@@ -87,6 +139,11 @@ export function validateRoutePolicies(policies = ROUTE_POLICIES) {
     assert(typeof policy.allowDuplicateFormFields === 'boolean', `${policy.path} duplicate policy invalid`);
     assert(policy.schema?.type === 'object', `${policy.path} root schema must be object`);
     validateSchema(policy.schema, `${policy.path}.schema`);
+    if (policy.querySchema !== undefined) {
+      assert(policy.methods.includes('GET'), `${policy.path} query schema requires GET`);
+      assert(policy.querySchema?.type === 'object', `${policy.path} query schema must be an object`);
+      validateSchema(policy.querySchema, `${policy.path}.querySchema`);
+    }
     assert(policy.credentialFields.every((field) => Object.hasOwn(policy.schema.properties, field)), `${policy.path} credentials must be schema properties`);
     assert(policy.formFields.every((field) => Object.hasOwn(policy.schema.properties, field)), `${policy.path} form fields must be schema properties`);
     if (!policy.allowBodies) assert(policy.maxBodySize === 0 && policy.allowedMediaTypes.length === 0, `${policy.path} bodyless policy must have zero size and no media types`);

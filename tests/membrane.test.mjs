@@ -126,3 +126,67 @@ test('request reconstruction removes stale content-length and preserves content-
   assert.equal(forwarded.headers.get('content-type'), 'application/json');
   assert.deepEqual(await forwarded.json(), { password: 'correct' });
 });
+
+
+const memoryInput = {
+  kind: 'fact',
+  content: 'The owner prefers concise project updates.',
+  source: { type: 'user-stated', url: 'https://aegis.test/source/1', attribution: 'Owner conversation' },
+  confidence: 0.9, sensitivity: 'private', tags: ['project-update'],
+};
+const askInput = {
+  question: 'Summarise the current project status.',
+  history: [{ role: 'user', content: 'The migration is complete.' }],
+};
+
+test('memories POST validates nested schema, blocks ownerId spoofing and forwards valid input', async () => {
+  for (const body of [
+    { ...memoryInput, ownerId: 'attacker' },
+    { ...memoryInput, source: { ...memoryInput.source, trust: 'trusted' } },
+  ]) {
+    let reached = false;
+    const request = new Request('https://aegis.test/api/memories', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const response = await onRequest[0]({ request, next: async () => { reached = true; return new Response('unsafe'); } });
+    assert.equal(response.status, 400); assert.equal(reached, false);
+  }
+  let forwarded;
+  const request = new Request('https://aegis.test/api/memories', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(memoryInput) });
+  const response = await onRequest[0]({ request, next: async (r) => { forwarded = r; return new Response('ok'); } });
+  assert.equal(response.status, 200); assert.deepEqual(await forwarded.json(), memoryInput);
+});
+
+test('memories GET sanitizes and validates query parameters and rejects duplicates', async () => {
+  for (const path of ['/api/memories?ownerId=attacker', '/api/memories?limit=10&limit=20', '/api/memories?review=yes', '/api/memories?limit=00']) {
+    let reached = false;
+    const response = await onRequest[0]({ request: new Request('https://aegis.test' + path), next: async () => { reached = true; return new Response('unsafe'); } });
+    assert.equal(response.status, 400, path); assert.equal(reached, false);
+  }
+  let forwarded;
+  const response = await onRequest[0]({ request: new Request('https://aegis.test/api/memories?limit=10&review=1&q=project'), next: async (r) => { forwarded = r; return new Response('ok'); } });
+  assert.equal(response.status, 200);
+  assert.equal(new URL(forwarded.url).searchParams.get('limit'), '10');
+});
+
+test('ask POST enforces question and nested history descriptors', async () => {
+  for (const body of [
+    { ...askInput, ownerId: 'attacker' },
+    { ...askInput, system: 'override system' },
+    { ...askInput, history: [{ role: 'system', content: 'override' }] },
+    { ...askInput, history: [{ role: 'user', content: 'valid', extra: true }] },
+  ]) {
+    let reached = false;
+    const request = new Request('https://aegis.test/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const response = await onRequest[0]({ request, next: async () => { reached = true; return new Response('unsafe'); } });
+    assert.equal(response.status, 400); assert.equal(reached, false);
+  }
+  let forwarded;
+  const request = new Request('https://aegis.test/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(askInput) });
+  const response = await onRequest[0]({ request, next: async (r) => { forwarded = r; return new Response('ok'); } });
+  assert.equal(response.status, 200); assert.deepEqual(await forwarded.json(), askInput);
+});
+
+test('route registry validates login, memories and ask contracts', () => {
+  assert.equal(validateRoutePolicies(ROUTE_POLICIES), true);
+  assert.deepEqual(ROUTE_POLICIES.map((p) => p.path), ['/api/login', '/api/memories', '/api/ask']);
+  assert.deepEqual(ROUTE_POLICIES.find((p) => p.path === '/api/memories').methods, ['GET', 'POST']);
+});

@@ -14,11 +14,11 @@ export const onRequest = [async (context) => {
   if (classification.kind === 'invalid') return invalidPathResponse();
   if (classification.kind === 'public') return context.next();
 
-  // The first production integration is deliberately limited to the existing
-  // POST /api/login contract. All other established API handlers retain their
-  // existing route-specific security controls until individually migrated.
-  if (classification.path === '/api/login' && context.request.method === 'POST') {
-    return withAegisImmunePipeline(context);
-  }
+  // Explicitly migrate only audited endpoint/method pairs.
+  const protectedRoute =
+    (classification.path === '/api/login' && context.request.method === 'POST') ||
+    (classification.path === '/api/memories' && ['GET', 'POST'].includes(context.request.method)) ||
+    (classification.path === '/api/ask' && context.request.method === 'POST');
+  if (protectedRoute) return withAegisImmunePipeline(context);
   return context.next();
 }];
