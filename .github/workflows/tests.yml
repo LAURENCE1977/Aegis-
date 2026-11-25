@@ -91,7 +91,7 @@ jobs:
       - name: Start local Cloudflare Pages runtime
         shell: bash
         run: |
-          nohup wrangler pages dev public --config wrangler.toml --ip 127.0.0.1 --port 8788 --persist-to .wrangler/test-pages --log-level warn > /tmp/aegis-pages-dev.log 2>&1 &
+          nohup wrangler pages dev public --d1 AEGIS_DB=44e524ef-c248-4232-93df-05220040f4bb --ip 127.0.0.1 --port 8788 --persist-to .wrangler/test-pages --log-level warn > /tmp/aegis-pages-dev.log 2>&1 &
           echo $! > /tmp/aegis-pages-dev.pid
           for attempt in $(seq 1 45); do
             if curl --silent --fail http://127.0.0.1:8788/ >/dev/null; then exit 0; fi
