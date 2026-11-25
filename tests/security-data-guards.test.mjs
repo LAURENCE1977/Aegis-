@@ -57,6 +57,18 @@ test('secret and PII scrubber redacts bearer credentials and email addresses', (
   assert.ok(result.redactions >= 2);
 });
 
+test('configured PII values are parsed from the Cloudflare environment string', () => {
+  const result = scrubSensitiveData({ note: 'Call the owner at private-code-77' }, {
+    piiValues: JSON.stringify(['private-code-77']),
+  });
+  assert.equal(result.ok, true);
+  assert.doesNotMatch(result.value.note, /private-code-77/);
+});
+
+test('invalid configured PII values fail closed', () => {
+  assert.equal(scrubSensitiveData({ note: 'text' }, { piiValues: 'not-json' }).ok, false);
+});
+
 test('secret scrubber fails closed on unsupported payload types', () => {
   const result = scrubSensitiveData({ value: BigInt(1) });
   assert.equal(result.ok, false);
