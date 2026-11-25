@@ -265,6 +265,8 @@ export function createMemoryRepository(db) {
   return Object.freeze({
     async create(record) {
       validateMemoryRecord(record);
+      const persisted = clone(record);
+      persisted.source = { ...persisted.source, trust: 'untrusted' };
       await db.prepare(`
         INSERT INTO aegis_memories (
           id, owner_id, project_id, kind, content, source_type, source_url,
@@ -278,7 +280,7 @@ export function createMemoryRepository(db) {
         record.status, JSON.stringify(record.tags), record.createdAt,
         record.updatedAt, record.expiresAt, record.supersedesId ?? null,
       ).run();
-      return clone(record);
+      return persisted;
     },
 
     async get(id, { ownerId, projectId = null } = {}) {
