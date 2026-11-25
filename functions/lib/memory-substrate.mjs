@@ -210,6 +210,7 @@ function mapMemoryRow(row) {
       url: row.source_url,
       attribution: row.source_attribution,
       observedAt: row.source_observed_at,
+      trust: "untrusted",
     },
     confidence: row.confidence,
     sensitivity: row.sensitivity,
