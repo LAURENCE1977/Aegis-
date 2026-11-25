@@ -137,7 +137,9 @@ export function parseJsonNoDuplicates(source) {
   const result = value(); ws(); if (i !== source.length) fail('Trailing JSON content'); return result;
 }
 
-function validateSchema(value, schema, path = '
+function validateSchema(value, schema, path = '$') {
+  const bad = (message) => { throw new MembraneError(`${path}: ${message}`, { code: 'SCHEMA_VALIDATION', status: 400 }); };
+  if (value === null && schema.nullable === true) return;
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) bad('must be an object');
     for (const key of Object.keys(value)) {
@@ -182,10 +184,16 @@ function validateQueryParameters(request, schema) {
   const params = new URL(request.url).searchParams;
   const query = Object.create(null);
   for (const [key, value] of params) {
-    if (hasOwn(query, key)) throw new MembraneError('Duplicate query parameter ' + key, { code: 'DUPLICATE_QUERY_PARAMETER', status: 400 });
+    if (hasOwn(query, key)) {
+      throw new MembraneError('Duplicate query parameter ' + key, {
+        code: 'DUPLICATE_QUERY_PARAMETER', status: 400,
+      });
+    }
     query[key] = value;
   }
-  const clean = scrubAndValidate(query, { profile: 'standard', credentialFields: [], schema });
+  const clean = scrubAndValidate(query, {
+    profile: 'standard', credentialFields: [], schema,
+  });
   const url = new URL(request.url);
   url.search = '';
   for (const [key, value] of Object.entries(clean)) url.searchParams.append(key, value);
@@ -220,98 +228,6 @@ export async function withAegisImmunePipeline(context) {
       if (request.body !== null) throw new MembraneError('GET and HEAD bodies are forbidden', { code: 'BODY_NOT_ALLOWED', status: 400 });
       const safeRequest = request.method === 'GET' ? validateQueryParameters(request, policy.querySchema) : request;
       return await next(safeRequest);
-    }
-    if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
-    const contentEncoding = request.headers.get('content-encoding');
-    if (contentEncoding && contentEncoding.trim().toLowerCase() !== 'identity') throw new MembraneError('Content-Encoding is unsupported', { code: 'UNSUPPORTED_CONTENT_ENCODING', status: 415 });
-    if (request.headers.has('content-md5') || request.headers.has('digest') || request.headers.has('signature')) throw new MembraneError('Integrity headers cannot be retained across body verification', { code: 'UNSUPPORTED_INTEGRITY_HEADER', status: 400 });
-    const mediaType = parseContentType(request.headers.get('content-type'));
-    if (!policy.allowedMediaTypes.includes(mediaType)) throw new MembraneError('Media type is not allowed for this route', { code: 'UNSUPPORTED_MEDIA_TYPE', status: 415 });
-    const bytes = await readBoundedBody(request, Math.min(policy.maxBodySize, GLOBAL_MAX_BODY_SIZE));
-    const text = decodeUtf8(bytes);
-    let parsed;
-    if (mediaType === 'application/json') parsed = parseJsonNoDuplicates(text);
-    else if (mediaType === 'application/x-www-form-urlencoded') parsed = parseForm(text, policy);
-    else throw new MembraneError('Unsupported media type', { code: 'UNSUPPORTED_MEDIA_TYPE', status: 415 });
-    const clean = scrubAndValidate(parsed, policy);
-    const serialized = mediaType === 'application/json' ? JSON.stringify(clean) : new URLSearchParams(Object.entries(clean).flatMap(([k, v]) => Array.isArray(v) ? v.map((x) => [k, x]) : [[k, v]])).toString();
-    const headers = new Headers(request.headers);
-    headers.delete('content-length'); headers.delete('content-encoding');
-    verifiedRequest = new Request(request, { headers, body: serialized });
-  } catch (error) { return responseFor(error); }
-  // Keep downstream exceptions outside the membrane's input-error mapping.
-  return await next(verifiedRequest);
-}
-) {
-  const bad = (message) => { throw new MembraneError(`${path}: ${message}`, { code: 'SCHEMA_VALIDATION', status: 400 }); };
-  if (value === null && schema.nullable === true) return;
-  if (schema.type === 'object') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) bad('must be an object');
-    for (const key of Object.keys(value)) {
-      if (FORBIDDEN_KEYS.includes(key) || /[.\[\]\\/]/.test(key)) bad(`forbidden property ${key}`);
-      if (!hasOwn(schema.properties, key)) { if (!schema.additionalProperties) bad(`unknown property ${key}`); else continue; }
-      validateSchema(value[key], schema.properties[key], `${path}.${key}`);
-    }
-    for (const key of schema.required) if (!hasOwn(value, key)) bad(`missing required property ${key}`);
-    return;
-  }
-  if (schema.type === 'string') {
-    if (typeof value !== 'string') bad('must be a string');
-    if (value.length < (schema.minLength ?? 0) || value.length > schema.maxLength) bad('string length out of range');
-    if (schema.enum && !schema.enum.includes(value)) bad('value is not an allowed enum member');
-  } else if (schema.type === 'boolean') { if (typeof value !== 'boolean') bad('must be a boolean'); }
-  else if (schema.type === 'integer') { if (!Number.isSafeInteger(value) || value < schema.minimum || value > schema.maximum) bad('integer out of range'); }
-  else if (schema.type === 'number') { if (!Number.isFinite(value) || value < schema.minimum || value > schema.maximum) bad('number out of range'); }
-  else if (schema.type === 'array') { if (!Array.isArray(value) || value.length > schema.maxItems) bad('array invalid or too large'); value.forEach((x, i) => validateSchema(x, schema.items, `${path}[${i}]`)); }
-}
-function parseForm(source, policy) {
-  const fields = source === '' ? [] : source.split('&');
-  if (fields.length > MAX_FORM_FIELDS) throw new LimitError('Too many form fields', 'FORM_FIELD_LIMIT');
-  const output = Object.create(null); const counts = new Map();
-  for (const part of fields) {
-    if (!part) throw new MembraneError('Empty form segment is not allowed', { code: 'INVALID_FORM', status: 400 });
-    const eq = part.indexOf('='); if (eq < 1) throw new MembraneError('Form fields must use key=value syntax', { code: 'INVALID_FORM', status: 400 });
-    let key, value;
-    try { key = decodeURIComponent(part.slice(0, eq).replace(/\+/g, ' ')); value = decodeURIComponent(part.slice(eq + 1).replace(/\+/g, ' ')); }
-    catch (cause) { throw new MembraneError('Malformed form percent encoding', { code: 'INVALID_FORM_ENCODING', status: 400, cause }); }
-    if (!key || key.length > MAX_FORM_KEY_LENGTH || value.length > MAX_FORM_VALUE_LENGTH) throw new LimitError('Form key or value limit exceeded', 'FORM_VALUE_LIMIT');
-    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(key) || FORBIDDEN_KEYS.includes(key)) throw new MembraneError('Invalid form field name', { code: 'INVALID_FORM_KEY', status: 400 });
-    if (!policy.formFields.includes(key)) throw new MembraneError(`Form field ${key} is not allowed`, { code: 'UNKNOWN_FORM_FIELD', status: 400 });
-    const count = (counts.get(key) ?? 0) + 1; counts.set(key, count);
-    if (count > 1 && (!policy.allowDuplicateFormFields || !policy.multiValuedFormFields.includes(key))) throw new MembraneError(`Duplicate form field ${key}`, { code: 'DUPLICATE_FORM_FIELD', status: 400 });
-    if (count > 1) output[key].push(value); else output[key] = policy.multiValuedFormFields.includes(key) ? [value] : value;
-  }
-  for (const key of policy.schema.required) if (!hasOwn(output, key)) throw new MembraneError(`Missing required form field ${key}`, { code: 'MISSING_REQUIRED_FIELD', status: 400 });
-  return output;
-}
-function scrubAndValidate(value, policy) {
-  const scrubbed = scrubSensitiveData(value, policy.profile, policy.credentialFields);
-  if (!scrubbed.ok) throw scrubbed.error;
-  validateSchema(scrubbed.value, policy.schema);
-  return scrubbed.value;
-}
-function responseFor(error) {
-  const status = error instanceof MembraneError ? error.status : 500;
-  const code = error instanceof MembraneError ? error.code : 'INTERNAL_MEMBRANE_ERROR';
-  const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
-  if (error?.allow) headers.allow = error.allow;
-  return new Response(JSON.stringify({ error: code }), { status, headers });
-}
-
-
-export async function withAegisImmunePipeline(context) {
-  const { request, next } = context;
-  let verifiedRequest;
-  try {
-    const classification = classifyApiPath(request.url);
-    if (classification.kind !== 'api') throw new MembraneError(classification.reason ?? 'Invalid API path', { code: 'INVALID_API_PATH', status: 400 });
-    const path = classification.path;
-    const route = evaluateRoutePolicy(path, request.method);
-    if (!route.ok) throw new MembraneError(route.code, { code: route.code, status: route.status, ...(route.allow ? { allow: route.allow } : {}) });
-    const policy = route.policy;
-    if (request.method === 'GET' || request.method === 'HEAD') {
-      if (request.body !== null) throw new MembraneError('GET and HEAD bodies are forbidden', { code: 'BODY_NOT_ALLOWED', status: 400 });
-      return await next(request);
     }
     if (!policy.allowBodies) throw new MembraneError('Request body is forbidden for this route', { code: 'BODY_NOT_ALLOWED', status: 400 });
     const contentEncoding = request.headers.get('content-encoding');
