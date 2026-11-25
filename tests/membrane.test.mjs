@@ -19,8 +19,8 @@ test('API path classifier rejects encoded separators, backslashes and normalizat
   assert.equal(classifyApiPath('https://aegis.test/assets/app.js').kind, 'public');
 });
 
-test('root middleware leaves static assets and existing non-login API routes untouched', async () => {
-  for (const url of ['https://aegis.test/', 'https://aegis.test/api/ask', 'https://aegis.test/api/login']) {
+test('root middleware leaves static assets and non-migrated API routes untouched', async () => {
+  for (const url of ['https://aegis.test/', 'https://aegis.test/api/other', 'https://aegis.test/api/login']) {
     const request = new Request(url);
     let nextCalls = 0;
     const response = await onRequest[0]({ request, next: async (forwarded = request) => {
@@ -87,8 +87,7 @@ test('credential values remain unchanged while invalid values are rejected', () 
 
 test('actual login route policy passes exhaustive startup validation', () => {
   assert.equal(validateRoutePolicies(ROUTE_POLICIES), true);
-  assert.equal(ROUTE_POLICIES.length, 1);
-  assert.equal(ROUTE_POLICIES[0].path, '/api/login');
+  assert.deepEqual(ROUTE_POLICIES.map((policy) => policy.path), ['/api/login', '/api/memories', '/api/ask']);
 });
 
 test('duplicate JSON properties are rejected at every nesting level', () => {
