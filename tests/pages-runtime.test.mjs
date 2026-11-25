@@ -71,8 +71,9 @@ test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion'
   const spoof = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify({ ...payload, ownerId: 'attacker' }) });
   assert.equal(spoof.status, 400);
   const valid = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify(payload) });
-  assert.equal(valid.status, 201);
-  const result = await valid.json();
+  const validText = await valid.text();
+  assert.equal(valid.status, 201, validText);
+  const result = JSON.parse(validText);
   assert.equal(result.reviewRequired, true);
   assert.equal(result.memory.ownerId, 'owner');
   assert.match(result.memory.content, /\[REDACTED_EMAIL\]/);
@@ -85,7 +86,8 @@ test('Pages runtime validates memory GET query parameters before retrieval', run
   const headers = { cookie };
   assert.equal((await fetch(baseUrl + '/api/memories?ownerId=attacker', { headers })).status, 400);
   assert.equal((await fetch(baseUrl + '/api/memories?limit=1&limit=2', { headers })).status, 400);
-  assert.equal((await fetch(baseUrl + '/api/memories?limit=5&review=1', { headers })).status, 200);
+  const valid = await fetch(baseUrl + '/api/memories?limit=5&review=1', { headers });
+  assert.equal(valid.status, 200, await valid.text());
 });
 
 test('Pages runtime rejects invalid ask history and accepts valid ask schema', runtimeOptions, async () => {
