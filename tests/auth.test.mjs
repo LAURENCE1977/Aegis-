@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createSessionToken,
+  createRevocableSessionToken,
   verifySessionToken,
   readSessionToken,
   isAuthorized,
@@ -285,7 +286,7 @@ test('a valid stateless legacy token remains valid during its original 12-hour m
 });
 
 test('D1 session lookup errors fail closed', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const { token } = await createRevocableSessionToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
   const brokenEnv = { ...configuredEnv, AEGIS_DB: { prepare() { throw new Error('D1 unavailable'); } } };
   assert.equal(await isAuthorized(request, brokenEnv, fixedNow + 1_000), false);
