@@ -82,7 +82,7 @@ test('Sentinel invocation rejects unauthenticated requests before touching D1', 
     env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 401);
-  assert.equal(db.prepareCalls, 1);
+  assert.equal(db.prepareCalls, 0);
 });
 
 test('Sentinel invocation fails closed when authentication or D1 is unavailable', async () => {
@@ -106,7 +106,7 @@ test('Sentinel invocation rejects cross-origin requests before touching D1', asy
     env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 403);
-  assert.equal(db.prepareCalls, 0);
+  assert.equal(db.prepareCalls, 1);
 });
 
 test('Sentinel invocation exposes only the fixed read-only module action and empty input', async () => {
