@@ -141,7 +141,7 @@ compatibility_date = "2026-11-25"
 binding = "AEGIS_DB"
 database_name = "$DB_NAME"
 database_id = "$DB_ID"
-migrations_dir = "stages/$stage"
+migrations_dir = "$stage_dir"
 EOF
 
   printf '%s\n' "$config"
