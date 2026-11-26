@@ -21,7 +21,7 @@ export async function hashLoginIdentity(identity, secret) {
   return toBase64Url(digest);
 }
 
-export function authConfigAvailable(env) { return Boolean(env&&typeof env.AEGIS_PASSWORD==="string"&&env.AEGIS_PASSWORD.length>=12&&typeof env.AEGIS_SESSION_SECRET==="string"&&env.AEGIS_SESSION_SECRET.length>=32); }
+export function authConfigAvailable(env) { return Boolean(env && typeof env.AEGIS_SESSION_SECRET === "string" && env.AEGIS_SESSION_SECRET.length >= 32 && env.AEGIS_DB && typeof env.AEGIS_DB.prepare === "function"); }
 export function constantTimeEqual(left,right) { if(typeof left!=="string"||typeof right!=="string")return false; const length=Math.max(left.length,right.length); let difference=left.length^right.length; for(let i=0;i<length;i++)difference|=(left.charCodeAt(i)||0)^(right.charCodeAt(i)||0); return difference===0; }
 export async function createRevocableSessionToken(secret,now=Date.now()) { if(typeof secret!=="string"||secret.length<32)throw new Error("A session signing secret of at least 32 characters is required."); const sessionId=crypto.randomUUID(); const expiresAt=Math.floor(now/1000)+SESSION_TTL_SECONDS; return {token:await signClaims(secret,{sid:sessionId,exp:expiresAt}),sessionId,expiresAt}; }
 async function verifySignedSessionToken(token, secret, now = Date.now()) {
@@ -47,25 +47,25 @@ async function resolveSessionRecord(token, secret, db, now = Date.now()) {
   if (!claims) return null;
   try {
     const row = await db.prepare(`
-      SELECT s.session_id, s.principal_id, s.tenant_id, s.roles_json
+      SELECT s.session_id, s.principal_id, s.tenant_id, m.role
       FROM auth_sessions s
-      INNER JOIN aegis_principals p ON p.id = s.principal_id AND p.tenant_id = s.tenant_id
-      INNER JOIN aegis_tenants t ON t.id = s.tenant_id
+      INNER JOIN aegis_principals p ON p.id = s.principal_id AND p.status = 'active'
+      INNER JOIN aegis_tenants t ON t.id = s.tenant_id AND t.status = 'active'
+      INNER JOIN aegis_tenant_memberships m
+        ON m.principal_id = s.principal_id AND m.tenant_id = s.tenant_id
+       AND m.status = 'active'
       WHERE s.session_id = ? AND s.expires_at > ? AND s.revoked_at IS NULL
       LIMIT 1
     `).bind(claims.sid, Math.floor(now / 1000)).first();
     if (!row || row.session_id !== claims.sid ||
         typeof row.principal_id !== "string" || !row.principal_id ||
         typeof row.tenant_id !== "string" || !row.tenant_id) return null;
-    let roles;
-    try { roles = JSON.parse(row.roles_json); } catch { return null; }
-    if (!Array.isArray(roles) || roles.length === 0 ||
-        roles.some(role => typeof role !== "string" || !/^[a-z][a-z0-9:_-]{0,31}$/.test(role))) return null;
+    if (!["owner", "admin", "member"].includes(row.role)) return null;
     return Object.freeze({
       sid: row.session_id,
       principalId: row.principal_id,
       tenantId: row.tenant_id,
-      roles: Object.freeze([...new Set(roles)]),
+      roles: Object.freeze([row.role]),
     });
   } catch {
     return null;
