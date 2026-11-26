@@ -136,8 +136,9 @@ function clone(value) {
   return structuredClone(value);
 }
 
-function inScope(record, ownerId, projectId) {
-  return record.ownerId === ownerId && record.projectId === projectId;
+function inScope(record, ownerId, principalId, tenantId, projectId) {
+  return record.ownerId === ownerId && record.principalId === principalId &&
+    record.tenantId === tenantId && record.projectId === projectId;
 }
 
 function isRetrievable(record, now) {
@@ -148,7 +149,7 @@ function isRetrievable(record, now) {
 /**
  * Creates a deterministic, in-memory read model for memory records.
  * Persistence and authenticated owner derivation belong to the API/storage adapter.
- * Every read requires an exact owner and personal-or-project scope.
+ * Every read requires an exact owner, principal, tenant and personal-or-project scope.
  */
 export function createMemoryStore(records = []) {
   if (!Array.isArray(records) || records.length > 10000) {
@@ -161,34 +162,36 @@ export function createMemoryStore(records = []) {
     byId.set(record.id, clone(record));
   }
 
-  function validScope(ownerId, projectId) {
+  function validScope(ownerId, principalId, tenantId, projectId) {
     return typeof ownerId === 'string' && ID_PATTERN.test(ownerId) &&
+      typeof principalId === 'string' && ID_PATTERN.test(principalId) &&
+      typeof tenantId === 'string' && ID_PATTERN.test(tenantId) &&
       (projectId === null || (typeof projectId === 'string' && ID_PATTERN.test(projectId)));
   }
 
   return Object.freeze({
-    get(id, { ownerId, projectId = null } = {}) {
-      if (!validScope(ownerId, projectId) || typeof id !== 'string' || !ID_PATTERN.test(id)) return null;
+    get(id, { ownerId, principalId, tenantId, projectId = null } = {}) {
+      if (!validScope(ownerId, principalId, tenantId, projectId) || typeof id !== 'string' || !ID_PATTERN.test(id)) return null;
       const record = byId.get(id);
-      return record && inScope(record, ownerId, projectId) ? clone(record) : null;
+      return record && inScope(record, ownerId, principalId, tenantId, projectId) ? clone(record) : null;
     },
-    list({ ownerId, projectId = null, now = Date.now(), limit = 20 } = {}) {
-      if (!validScope(ownerId, projectId) || !Number.isFinite(now)) return [];
+    list({ ownerId, principalId, tenantId, projectId = null, now = Date.now(), limit = 20 } = {}) {
+      if (!validScope(ownerId, principalId, tenantId, projectId) || !Number.isFinite(now)) return [];
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid memory result limit');
       return [...byId.values()]
-        .filter((record) => inScope(record, ownerId, projectId) && isRetrievable(record, now))
+        .filter((record) => inScope(record, ownerId, principalId, tenantId, projectId) && isRetrievable(record, now))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
         .slice(0, limit)
         .map(clone);
     },
-    search({ ownerId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
-      if (!validScope(ownerId, projectId) || typeof query !== 'string' ||
+    search({ ownerId, principalId, tenantId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
+      if (!validScope(ownerId, principalId, tenantId, projectId) || typeof query !== 'string' ||
           !query.trim() || query.length > 200 || !Number.isFinite(now)) return [];
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid memory result limit');
       const terms = [...new Set(tokenizeMemoryText(query))];
       if (!terms.length) return [];
       const candidates = [...byId.values()]
-        .filter((record) => inScope(record, ownerId, projectId) &&
+        .filter((record) => inScope(record, ownerId, principalId, tenantId, projectId) &&
           isRetrievable(record, now) && record.sensitivity !== 'restricted');
       return rankMemoryRecords(candidates, terms, limit);
     },
