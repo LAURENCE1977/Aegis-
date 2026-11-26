@@ -1,8 +1,9 @@
-import { resolveSessionPrincipal,isSameOriginRequest } from "../../lib/auth.mjs";
+import { resolveSessionPrincipal,isSameOriginRequest,ROOT_PRINCIPAL_ID } from "../../lib/auth.mjs";
 import { createPasswordCredential,verifyPasswordCredential,isStrongPassword } from "../../lib/identity.mjs";
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
 export async function onRequestPost({request,env}){
  const p=await resolveSessionPrincipal(request,env);if(!p)return json({error:"UNAUTHORIZED"},401);
+ if(p.principalId===ROOT_PRINCIPAL_ID)return json({error:"Root bootstrap password is managed through the encrypted AEGIS_PASSWORD deployment secret."},409);
  if(!isSameOriginRequest(request))return json({error:"Invalid request origin."},403);
  let b;try{b=await request.json();}catch{return json({error:"Invalid request."},400);}
  if(typeof b.currentPassword!=="string"||typeof b.newPassword!=="string"||!isStrongPassword(b.newPassword)||b.currentPassword===b.newPassword)return json({error:"Invalid password change."},400);
