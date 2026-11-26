@@ -45,8 +45,27 @@ WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
 
 ALTER TABLE aegis_memory_events ADD COLUMN principal_id TEXT;
 ALTER TABLE aegis_memory_events ADD COLUMN tenant_id TEXT;
+
+-- 0012 made memory events append-only. Permit only this one-time identity
+-- backfill while the migration is running, then restore both protections
+-- before the migration completes.
+DROP TRIGGER IF EXISTS trg_aegis_memory_events_no_update;
+DROP TRIGGER IF EXISTS trg_aegis_memory_events_no_delete;
+
 UPDATE aegis_memory_events SET principal_id = 'usr-root', tenant_id = 'org-root'
 WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
+
+CREATE TRIGGER trg_aegis_memory_events_no_update
+BEFORE UPDATE ON aegis_memory_events
+BEGIN
+  SELECT RAISE(ABORT, 'AEGIS memory events are append-only');
+END;
+
+CREATE TRIGGER trg_aegis_memory_events_no_delete
+BEFORE DELETE ON aegis_memory_events
+BEGIN
+  SELECT RAISE(ABORT, 'AEGIS memory events are append-only');
+END;
 
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_principal_tenant_active
   ON auth_sessions (tenant_id, principal_id, expires_at) WHERE revoked_at IS NULL;
