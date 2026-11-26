@@ -90,7 +90,7 @@ export const ROUTE_POLICIES = Object.freeze([
       identity: str(254, 3),
       displayName: str(120, 1),
       password: str(1024, 12),
-      role: str(6, 6, { enum: ['owner', 'admin', 'member'] }),
+      role: str(6, 4, { enum: ['owner', 'admin', 'member'] }),
       principalId: str(80, 3),
       status: str(9, 6, { enum: ['active', 'suspended', 'revoked'] }),
     }, []),
