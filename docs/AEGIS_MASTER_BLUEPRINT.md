@@ -442,3 +442,29 @@ The root Pages middleware performs API path classification, rejects ambiguous en
 **Verified on 25 November 2026:** GitHub Actions reports 464 Node tests (459 passed, 0 failed, 5 conditional runtime tests skipped in the default run), followed by a dedicated Wrangler Pages Dev run with 5/5 HTTP integration tests passing. The Pages Functions build, isolated local production D1 migration, and separate D1/Pages validation workflow also pass. See [AEGIS tests](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286973) and [D1/Pages validation](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286998).
 
 **Scope and limitations:** this is application-layer request validation in the Cloudflare Pages runtime, not a hypervisor, kernel, firmware or silicon-level firewall. A literal backslash may be canonicalised by the Fetch/URL parser before middleware receives `request.url`; rejecting the original raw request-target character requires an edge/WAF control before URL normalisation. URL-encoded `%2F` and `%5C` are covered by the runtime tests. No production deployment or production D1 mutation was performed. Other API routes are not yet migrated into the membrane; they retain their existing controls pending individual contract audits.
+
+
+## Step 2.6.11 — Multi-Principal Provisioning, Tenant Lifecycle & Session Governance
+
+**Verified implementation snapshot: 26 November 2026.** This work is on `feature/production-migrations` only. It is not merged into `main` and is not production-deployed.
+
+- Canonical repository: `LAURENCE1977/Aegis-`.
+- Branch implementation commit: `18738d389c8e7647de048c6ffc66d210ee36e8c1`.
+- Starting branch head inspected before implementation: `e681b6d4e75bb051dfdb36a10263de61166f5146`.
+- `0015_multi_principal_provisioning.sql` and the initial principal/session governance routes already existed on the branch. This milestone hardens and completes that in-progress slice rather than replacing it.
+- Additive migration: `0016_identity_credential_versioning.sql`. It adds PBKDF2 algorithm and pepper-version metadata, normalized email/username columns and uniqueness indexes, plus D1 guards that prevent inactive principals or tenants from retaining or regaining active memberships. Existing lifecycle/session triggers revoke sessions; session resolution continues to check active principal, tenant and membership on each request.
+- Named login accepts exactly one of `identity`, `identifier` or `email`. Existing `AEGIS_PASSWORD` root bootstrap remains available. Named credentials use WebCrypto PBKDF2-SHA256, a per-credential 16-byte random salt, 210,000 iterations and an optional HMAC pre-hash pepper. Pepper material is never stored in D1.
+- Tenant administration remains server-scoped to the caller's active tenant. Owner/admin session listing and revocation are restricted to that same tenant; members retain self-session management but cannot administer principals or tenants.
+- `GET /api/health` is unauthenticated, read-only and database-free. It is registered in the route policy and Pages middleware allowlist, with no-store response headers and strict method/query enforcement.
+- Adversarial tests cover independent tenant logins, memory and `/api/ask` context isolation, RBAC, cross-tenant principal/session boundaries, immediate revocation, credential pepper/version behavior and health routing.
+
+**Verified CI evidence on implementation commit `18738d389c8e7647de048c6ffc66d210ee36e8c1`:**
+
+- GitHub Actions `AEGIS tests`, run `45843334241`: success; 500 Node tests, 484 passed, 0 failed, 16 conditionally skipped; dedicated Wrangler Pages runtime suite 16/16 passed.
+- GitHub Actions `Validate D1 Migrations and Pages Status`, run `45843334248`: success.
+- Wrangler applied the production migration set only to isolated local D1 for CI. No remote or production D1 migration was run.
+- Pages Functions bundle built successfully and local Wrangler Pages Dev runtime checks passed.
+
+**Deployment and governance boundary:** main was still `37fb54bbb396c8ca0fded245c680f70d8af9ab01` when checked; both main and the feature branch are unprotected, and the implementation commits are unsigned. No PR was merged, no deployment was made, and no production D1, Replit deployment/data, secrets or Cloudflare settings were changed.
+
+**Credential operations note:** credentials created without a pepper retain the `none` version and continue to verify if a pepper is later configured. The current implementation supports one active pepper version; rotating an already-used pepper requires a coordinated password reset/rehash or a future multi-version keyring before rotation.

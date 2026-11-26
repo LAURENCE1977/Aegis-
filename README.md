@@ -32,6 +32,8 @@ In the Cloudflare dashboard, open the AEGIS Pages project and add these as encry
 1. `AEGIS_PASSWORD` — a unique password of at least 12 characters.
 2. `AEGIS_SESSION_SECRET` — a cryptographically random secret of at least 32 characters. Do not reuse your AEGIS password.
 
+Optional for named-principal credentials only: configure `AEGIS_PASSWORD_PEPPER` as an additional encrypted Cloudflare Pages secret (at least 32 random characters). You may set the non-secret `AEGIS_PASSWORD_PEPPER_VERSION` deployment variable; it defaults to `v1`. Existing credentials created without a pepper remain compatible. The current implementation supports one active pepper version, so do not rotate an in-use pepper without a coordinated password reset or rehash.
+
 Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable.
 
 If the login screen says security setup is unfinished, configure both secrets before using AEGIS.
