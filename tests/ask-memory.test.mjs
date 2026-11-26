@@ -147,3 +147,51 @@ test('chat combines personal memory with only the selected Project Space memorie
   assert.doesNotMatch(system,/Private unrelated project music workflow/);
   assert.deepEqual(db.queries.map(query=>query.values[2]),[null,'project-123']);
 });
+
+
+test('the /api/ask route never mixes retrieved memories across principals or tenants', async () => {
+  const tenantA = { sid: 'session-tenant-a', principalId: 'usr-tenant-a', tenantId: 'org-tenant-a', roles: ['member'] };
+  const tenantB = { sid: 'session-tenant-b', principalId: 'usr-tenant-b', tenantId: 'org-tenant-b', roles: ['member'] };
+  const db = new RetrievalD1([
+    row({ id: 'tenant-a-memory', owner_id: tenantA.principalId, principal_id: tenantA.principalId, tenant_id: tenantA.tenantId, content: 'Tenant isolation marker alpha private material.' }),
+    row({ id: 'tenant-b-memory', owner_id: tenantB.principalId, principal_id: tenantB.principalId, tenant_id: tenantB.tenantId, content: 'Tenant isolation marker bravo private material.' }),
+  ]);
+  const requestFor = async principal => {
+    const session = await createRevocableSessionToken(secret);
+    sessions.set(session.sessionId, {
+      expires_at: session.expiresAt, revoked_at: null,
+      principal_id: principal.principalId, tenant_id: principal.tenantId,
+      roles_json: JSON.stringify(principal.roles),
+    });
+    return new Request('https://aegis.example/api/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', Origin: 'https://aegis.example',
+        Cookie: '__Host-aegis_session=' + session.token,
+      },
+      body: JSON.stringify({ question: 'tenant isolation private material', history: [] }),
+    });
+  };
+  const answerFor = async principal => {
+    let captured;
+    const response = await onRequestPost({
+      request: await requestFor(principal),
+      env: {
+        ...ownerEnv, AEGIS_DB: db,
+        AI: { async run(model, input) { captured = input; return { response: 'Scoped answer.' }; } },
+      },
+    });
+    assert.equal(response.status, 200);
+    return captured.messages[0].content;
+  };
+  const promptA = await answerFor(tenantA);
+  const promptB = await answerFor(tenantB);
+  assert.match(promptA, /Tenant isolation marker alpha private material/);
+  assert.doesNotMatch(promptA, /Tenant isolation marker bravo private material/);
+  assert.match(promptB, /Tenant isolation marker bravo private material/);
+  assert.doesNotMatch(promptB, /Tenant isolation marker alpha private material/);
+  assert.deepEqual(db.queries.map(query => query.values.slice(0, 2)), [
+    [tenantA.tenantId, tenantA.principalId],
+    [tenantB.tenantId, tenantB.principalId],
+  ]);
+});
