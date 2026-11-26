@@ -1,24 +1,50 @@
-# Phase 2.1 — API security test matrix
+# Phase 2.6 — Pages API route security matrix
 
 Branch: `feature/production-migrations`
 
-This inventory records the existing Pages API and runtime authentication boundaries. It intentionally does not add blanket middleware or alter route contracts.
+This matrix records the current route boundary after Steps 2.6.7–2.6.13. The request membrane is selective: it is not a replacement for route-local authentication on handlers that have not been migrated. Every sensitive handler must enforce its own authenticated principal/role boundary or be dispatched through the membrane, and the two intentionally public probes are restricted to minimal data.
 
-| Surface | Route family | Authentication boundary | Existing tests | Phase 2 status |
-|---|---|---|---|---|
-| Login | `/api/login` GET/POST/DELETE | Public entry/status; POST and DELETE require same-origin; login issues D1-persisted session; POST uses HMAC-keyed client-IP throttling | `auth.test.mjs` | Steps 2.2 and 2.3 implemented |
-| Chat | `/api/ask` POST | Owner HMAC session; same-origin write | `auth.test.mjs` | Existing unauthenticated/cross-origin checks retained |
-| Memory | `/api/memory` GET/POST/DELETE | Owner session; same-origin writes | `auth.test.mjs` | Existing checks retained |
-| MCP | `/mcp` POST | `AEGIS_MCP_TOKEN` bearer; owner-session fallback; Origin optional for server-to-server callers and validated when present | `bridge.test.mjs` | Dedicated bearer path unchanged |
-| Runtime | `/health`, `/v1/jobs`, `/v1/agent-runs` | Independent `AEGIS_JOB_TOKEN` bearer | `runtime-http.test.mjs`, `runtime-integration.test.mjs` | Runtime auth implementation unchanged |
-| Status | `/api/status` GET | Currently public; exposes database and operational-state diagnostics | Phase 1 Pages smoke test | Known perimeter finding; diagnostic split remains follow-up |
-| Capabilities | `/api/capabilities`, `/api/approvals`, `/api/grants` | Route-specific owner/capability policy | `capabilities-api.test.mjs`, `capability-approval-api.test.mjs`, `grants-api.test.mjs` | Existing tests retained |
-| Sentinel | `/api/sentinel/*` | Route-specific owner auth and capability/grant mediation | `sentinel-*.test.mjs` | Existing tests retained |
-| Forge | `/api/forge/*` | Route-specific owner auth and candidate/review policy | `forge-*.test.mjs` | Existing tests retained |
-| Memories | `/api/memories/*` | Route-specific owner auth and memory lifecycle policy | `memory-*.test.mjs` | Existing tests retained |
-| Workspaces | `/api/workspaces/*` | Route-specific owner auth and workspace policy | `workspace-api.test.mjs`, `project-spaces.test.mjs` | Existing tests retained |
-| Registries | `/api/modules`, `/api/skills` | Route-specific read policy | `modules-api.test.mjs`, `skills.test.mjs` | Existing tests retained |
-| AG-UI | `/api/ag-ui` | Route-specific request/session policy | `ag-ui-api.test.mjs`, `ag-ui-protocol.test.mjs` | Existing tests retained |
+## Central middleware and membrane
+
+`functions/_middleware.js` classifies canonical API paths and dispatches these paths through `functions/lib/membrane/pipeline.mjs` and `functions/lib/membrane/route-policy.mjs`:
+
+- `/api/login`
+- `/api/memories` and `/api/ask`
+- `/api/admin/principals` and `/api/admin/tenants`
+- `/api/sessions`
+- `/api/health` and `/api/status`
+- `/api/account/password` and `/api/account/recovery`
+- `/api/tenants/invitations` and `/api/tenants/recovery`
+
+These policies use closed schemas, method allowlists and bounded bodies/queries. The middleware rejects ambiguous API path encodings before dispatch. The handler remains responsible for authenticating the principal, enforcing role/tenant authority and checking same-origin on state-changing browser requests.
+
+## Route-family inventory
+
+| Surface | Routes | Authentication and authority boundary |
+|---|---|---|
+| Login/session bootstrap | `/api/login` | POST is same-origin and password-authenticated; DELETE is same-origin and revokes the current session. GET reports only whether the current request is authenticated. The optional `tenantId` is a selection hint and is accepted only when it matches an active membership returned by the server-side credential lookup; it does not create or override a membership. |
+| Generic health | `/api/health` | Intentionally public; returns only `ok` and service identity. It does not return database state, threat level, tenant or principal data. |
+| Internal status | `/api/status` | Session-authenticated and membrane-registered. Detailed operational state is not exposed to anonymous callers. |
+| Chat and AG-UI | `/api/ask`, `/api/ag-ui` | Session/owner authentication; same-origin protection on writes; conversation continuity is session-bound. |
+| Memory | `/api/memory`, `/api/memories/*` | Session/owner authentication; owner/principal/tenant scope is derived from the verified session and repository boundary. |
+| Tenant/principal administration | `/api/admin/principals`, `/api/admin/tenants` | Verified session plus tenant-scoped owner/admin checks; platform tenant lifecycle is root-owner-only. `principalId` and `tenantId` in administrative operations identify the target resource only after actor authority and tenant scope are checked; they never replace the caller identity. |
+| Invitations and recovery | `/api/tenants/invitations`, `/api/tenants/recovery`, `/api/account/recovery` | Invitation and recovery issuance require an authorised tenant owner/admin session. Invitation acceptance also requires an authenticated principal with exact normalized identity match. Recovery completion is a time-limited, single-use bearer-token operation; the token is the credential for that one operation, not a client-supplied principal override. |
+| Credential rotation | `/api/account/password` | Verified session, current-password verification, strong new password, same-origin and revocation of other sessions. Root bootstrap password remains encrypted-deployment-secret managed. |
+| Session administration | `/api/sessions` | Verified session. Non-admin callers can see/revoke only their own sessions; owner/admin callers are still scoped to the active tenant. A query `principalId` is a target selector, not caller identity. |
+| Approvals, capabilities and grants | `/api/approvals`, `/api/capabilities`, `/api/grants` | Route-local owner authentication; grant/capability policy derives authority from the authenticated principal and server-side registry. |
+| Sentinel | `/api/sentinel/*` | Route-local authenticated principal plus exact capability/grant mediation and same-origin checks for writes. |
+| Forge | `/api/forge/*` | Route-local authenticated session and owner/candidate review policy; external repository content remains untrusted reference data. |
+| Project Spaces | `/api/workspaces/*` | Route-local authenticated principal; workspace, event and memory queries are tenant/principal scoped server-side. |
+| Registries | `/api/modules`, `/api/skills` | Authenticated read-only registry access. |
+| MCP Bridge | `/mcp` | Separate bearer/session boundary; read-only initial tool surface. |
+| Runtime Worker | `/health`, `/v1/jobs/*`, `/v1/agent-runs/*` | Separate runtime bearer-token boundary; it is not a Pages API route and does not inherit Pages sessions. |
+
+## Identity-field interpretation
+
+- `ownerId` is not accepted as authority from the browser. Ownership is derived from the authenticated principal and trusted repository arguments.
+- `principalId` and `tenantId` may appear only as target/selection identifiers in the explicitly scoped operations above. Each is checked against the authenticated actor's role and tenant boundary before use. The server-side caller principal and active tenant always come from the verified session.
+- The membrane's generic forbidden-key list is prototype-pollution focused; identity authority is enforced by each route's closed schema and server-side scope checks, not by assuming those three names are globally forbidden in every JSON payload.
+- Routes not centrally dispatched through the membrane retain explicit route-local authentication helpers. Do not describe the membrane as a blanket API firewall or claim that every route uses the same middleware path.
 
 ## Required assertions
 - HMAC-SHA256 signature and existing HttpOnly, Secure, SameSite=Strict, host-only cookie attributes remain.
