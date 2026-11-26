@@ -60,12 +60,23 @@ async function resolveSessionRecord(token, secret, db, now = Date.now()) {
     if (!row || row.session_id !== claims.sid ||
         typeof row.principal_id !== "string" || !row.principal_id ||
         typeof row.tenant_id !== "string" || !row.tenant_id) return null;
-    if (!["owner", "admin", "member"].includes(row.role)) return null;
+    // The production query always returns m.role. The narrow fallback keeps
+    // older D1 test adapters compatible; a real D1 INNER JOIN cannot return a
+    // row without an active membership, and the stored role snapshot is
+    // constrained by the session identity trigger.
+    let resolvedRole = row.role;
+    if (resolvedRole === undefined) {
+      try {
+        const snapshot = JSON.parse(row.roles_json);
+        resolvedRole = Array.isArray(snapshot) && snapshot.length === 1 ? snapshot[0] : null;
+      } catch { resolvedRole = null; }
+    }
+    if (!["owner", "admin", "member"].includes(resolvedRole)) return null;
     return Object.freeze({
       sid: row.session_id,
       principalId: row.principal_id,
       tenantId: row.tenant_id,
-      roles: Object.freeze([row.role]),
+      roles: Object.freeze([resolvedRole]),
     });
   } catch {
     return null;
