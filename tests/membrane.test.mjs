@@ -307,3 +307,10 @@ test('health route is actually dispatched through membrane method and query enfo
  const method=await onRequest[0]({request:new Request('https://aegis.test/api/health',{method:'POST'}),next:async()=>{reached=true;return new Response('unsafe');}});
  assert.equal(method.status,405); assert.equal(reached,false);
 });
+
+test('account password, invitation and recovery routes are membrane registered with strict methods and schemas',()=>{
+ for(const path of ['/api/account/password','/api/account/recovery','/api/tenants/invitations','/api/tenants/recovery']){
+  const p=ROUTE_POLICIES.find(x=>x.path===path);assert.ok(p,path);assert.deepEqual(p.methods,['POST']);assert.equal(p.schema.additionalProperties,false);
+ }
+ assert.equal(validateRoutePolicies(),true);
+});
