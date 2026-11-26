@@ -90,7 +90,7 @@ async function clearLoginAttempts(env, identityHash) {
 
 export async function onRequestGet({ request, env }) {
   if (!authConfigAvailable(env)) {
-    return json({ error: "Authentication is not configured. Set AEGIS_PASSWORD and AEGIS_SESSION_SECRET." }, 503);
+    return json({ error: "Authentication is not configured. Set AEGIS_SESSION_SECRET and configure D1 or AEGIS_PASSWORD." }, 503);
   }
   return json({ authenticated: await isAuthorized(request, env) });
 }
