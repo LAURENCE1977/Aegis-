@@ -60,7 +60,7 @@ export async function onRequestGet({ request, env }) {
   let cursorPayload = null;
   if (rawCursor !== null) {
     if (typeof env.CURSOR_SIGNING_SECRET !== "string" ||
-        new TextEncoder().encode(env.CURSOR_SIGNING_SECRET).byteLength < 32) {
+        env.CURSOR_SIGNING_SECRET.trim().length === 0 || new TextEncoder().encode(env.CURSOR_SIGNING_SECRET).byteLength < 32) {
       return jsonResponse({ error: "Memory pagination is not configured." }, 503);
     }
     cursorPayload = await verifyAndDecodeCursor(rawCursor, scope, filters, env.CURSOR_SIGNING_SECRET);
