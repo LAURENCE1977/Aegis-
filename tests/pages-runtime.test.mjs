@@ -300,6 +300,36 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   const adminACookie = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
   const memberBCookie = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
 
+  const identifierAliasLogin = await loginRequest(JSON.stringify({
+    identifier: 'admin-a@example.test', password: 'admin-a-strong-password-2026', tenantId: tenantA,
+  }));
+  assert.equal(identifierAliasLogin.status, 200, await identifierAliasLogin.clone().text());
+  const emailAliasLogin = await loginRequest(JSON.stringify({
+    email: 'member-b@example.test', password: 'member-b-strong-password-2026', tenantId: tenantB,
+  }));
+  assert.equal(emailAliasLogin.status, 200, await emailAliasLogin.clone().text());
+
+  const tenantAMarker = 'tenant-a-private-memory-marker-2.6.11';
+  const tenantBMarker = 'tenant-b-private-memory-marker-2.6.11';
+  const memoryPayload = marker => ({
+    kind: 'fact', content: marker,
+    source: { type: 'user-stated', url: 'https://aegis.test/tenant-isolation', attribution: 'Tenant isolation runtime test' },
+    sensitivity: 'private', tags: ['tenant-isolation'],
+  });
+  const writeTenantA = await jsonRequest('/api/memories', 'POST', adminACookie, memoryPayload(tenantAMarker));
+  assert.equal(writeTenantA.status, 201, await writeTenantA.clone().text());
+  const writeTenantB = await jsonRequest('/api/memories', 'POST', memberBCookie, memoryPayload(tenantBMarker));
+  assert.equal(writeTenantB.status, 201, await writeTenantB.clone().text());
+  const readTenantA = await fetch(baseUrl + '/api/memories?limit=50', { headers: { cookie: adminACookie } });
+  const readTenantB = await fetch(baseUrl + '/api/memories?limit=50', { headers: { cookie: memberBCookie } });
+  const tenantABody = await readTenantA.text(), tenantBBody = await readTenantB.text();
+  assert.equal(readTenantA.status, 200, tenantABody);
+  assert.equal(readTenantB.status, 200, tenantBBody);
+  assert.match(tenantABody, new RegExp(tenantAMarker));
+  assert.doesNotMatch(tenantABody, new RegExp(tenantBMarker));
+  assert.match(tenantBBody, new RegExp(tenantBMarker));
+  assert.doesNotMatch(tenantBBody, new RegExp(tenantAMarker));
+
   const crossTenantProvision = await jsonRequest('/api/admin/principals', 'POST', adminACookie, {
     identity: 'attacker@example.test',
     displayName: 'Cross Tenant Attempt',
@@ -338,6 +368,11 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.equal(nonOwnerTenantCreate.status, 403);
 
   const secondMemberSession = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+  const adminTenantSessions = await jsonRequest('/api/sessions', 'GET', adminACookie);
+  assert.equal(adminTenantSessions.status, 200, await adminTenantSessions.clone().text());
+  assert.ok(!(await adminTenantSessions.json()).sessions.some(item => item.sessionId === secondMemberSession));
+  const memberCrossPrincipalSessions = await fetch(baseUrl + '/api/sessions?principalId=' + encodeURIComponent(adminAId), { headers: { cookie: memberBCookie } });
+  assert.equal(memberCrossPrincipalSessions.status, 403);
   const sessionList = await jsonRequest('/api/sessions', 'GET', memberBCookie);
   assert.equal(sessionList.status, 200, await sessionList.clone().text());
   const ownSessions = (await sessionList.json()).sessions;
@@ -358,6 +393,12 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   });
   assert.equal(suspendMembership.status, 200, await suspendMembership.clone().text());
   assert.equal((await jsonRequest('/api/sessions', 'GET', secondMemberSession)).status, 401);
+  assert.equal((await fetch(baseUrl + '/api/memories', { headers: { cookie: secondMemberSession } })).status, 401);
+  const suspendedMembershipAsk = await fetch(baseUrl + '/api/ask', {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: baseUrl, cookie: secondMemberSession },
+    body: JSON.stringify({ question: 'Read my tenant memories.' }),
+  });
+  assert.equal(suspendedMembershipAsk.status, 401);
 
   const reactivateMembership = await jsonRequest('/api/admin/principals', 'PATCH', rootB, {
     principalId: memberBId, status: 'active',
@@ -370,6 +411,16 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   });
   assert.equal(suspendPrincipal.status, 200, await suspendPrincipal.clone().text());
   assert.equal((await jsonRequest('/api/sessions', 'GET', reauthenticatedMember)).status, 401);
+  assert.equal((await fetch(baseUrl + '/api/memories', { headers: { cookie: reauthenticatedMember } })).status, 401);
+  const suspendedPrincipalAsk = await fetch(baseUrl + '/api/ask', {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: baseUrl, cookie: reauthenticatedMember },
+    body: JSON.stringify({ question: 'Read my tenant memories.' }),
+  });
+  assert.equal(suspendedPrincipalAsk.status, 401);
+  const forbiddenMembershipReactivation = await jsonRequest('/api/admin/principals', 'PATCH', rootB, {
+    principalId: memberBId, status: 'active',
+  });
+  assert.equal(forbiddenMembershipReactivation.status, 503);
 
   const suspendTenant = await jsonRequest('/api/admin/tenants', 'PATCH', rootCookie, {
     tenantId: tenantB, status: 'suspended',
