@@ -202,7 +202,7 @@ test('expired pending approvals cannot be approved through the API', async () =>
 });
 
 test('approval decisions reject malformed JSON and invalid decision values', async () => {
-  const token = await createSessionToken(secret);
+  const token = await (async()=>{const s=await createRevocableSessionToken(secret);sessions.set(s.sessionId,{expires_at:s.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});return s.token;})();
   const malformed = await onRequestPost({
     request: new Request('https://aegis.example/api/approvals', {
       method: 'POST',
