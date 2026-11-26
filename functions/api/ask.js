@@ -1,4 +1,5 @@
 import { authConfigAvailable, resolveSessionPrincipal, isSameOriginRequest } from "../lib/auth.mjs";
+import { signAssistantTurn, verifyAssistantTurn } from "../lib/ask-history.mjs";
 import { buildSkillContext } from "../lib/skills.mjs";
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { listWorkspaceEvents } from "../lib/project-spaces.mjs";
@@ -21,17 +22,37 @@ export async function onRequestPost(context) {
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Invalid request" }, 400); }
-  if (body.history !== undefined && (!Array.isArray(body.history) ||
-      body.history.some(turn => !turn || turn.role !== "user" ||
-        typeof turn.content !== "string" || !turn.content.trim()))) {
-    return json({ error: "Only user-authored history turns are accepted." }, 400);
+  const conversationId = typeof body.conversationId === "string" ? body.conversationId : crypto.randomUUID();
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(conversationId)) {
+    return json({ error: "Invalid conversation identifier." }, 400);
+  }
+  const verifiedHistory = [];
+  if (body.history !== undefined && !Array.isArray(body.history)) {
+    return json({ error: "Invalid conversation history." }, 400);
+  }
+  for (const turn of body.history || []) {
+    if (!turn || typeof turn.content !== "string" || !turn.content.trim()) {
+      return json({ error: "Invalid conversation history turn." }, 400);
+    }
+    if (turn.role === "user") {
+      verifiedHistory.push({ role: "user", content: turn.content });
+      continue;
+    }
+    if (turn.role !== "assistant" || typeof turn.signature !== "string") {
+      return json({ error: "Assistant history requires a valid server signature." }, 400);
+    }
+    const valid = await verifyAssistantTurn(
+      env.AEGIS_SESSION_SECRET, principal.sid, conversationId, turn.content, turn.signature
+    );
+    if (!valid) return json({ error: "Assistant history signature is invalid." }, 403);
+    verifiedHistory.push({ role: "assistant", content: turn.content });
   }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (!question) return json({ error: "Prompt required" }, 400);
   if (!env.AI) return json({ error: "No AI provider configured" }, 503);
 
   try {
-    const messages = await buildAskMessages(env, question, body.history, { principal });
+    const messages = await buildAskMessages(env, question, verifiedHistory, { principal, allowVerifiedAssistant: true });
     // Scrub the complete provider-bound context, not only the latest question.
     // This also covers client history, legacy KV notes and retrieved context.
     const scrubbed = scrubSensitiveData(messages, {
@@ -54,7 +75,7 @@ export async function onRequestPost(context) {
 export async function buildAskMessages(env, question, history = [], { projectId = null, principal = null } = {}) {
   const safeHistory = Array.isArray(history)
     ? history
-      .filter(m => m && m.role === "user" && typeof m.content === "string" && m.content.trim())
+      .filter(m => m && (m.role === "user" || (allowVerifiedAssistant && m.role === "assistant")) && typeof m.content === "string" && m.content.trim())
       .slice(-MAX_HISTORY)
       .map(m => ({ role: m.role, content: m.content.slice(0, MAX_TEXT) }))
     : [];
