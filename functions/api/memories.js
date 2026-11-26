@@ -117,7 +117,8 @@ export async function onRequestGet({ request, env }) {
       next_cursor: nextCursor,
       has_more: hasMore,
     });
-  } catch {
+  } catch (error) {
+    console.error("Memory pagination request failed:", error instanceof Error ? error.message : "unknown error");
     return jsonResponse({ error: "Memory search is temporarily unavailable." }, 503);
   }
 }
