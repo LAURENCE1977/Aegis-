@@ -87,7 +87,7 @@ test('credential values remain unchanged while invalid values are rejected', () 
 
 test('actual login route policy passes exhaustive startup validation', () => {
   assert.equal(validateRoutePolicies(ROUTE_POLICIES), true);
-  assert.deepEqual(ROUTE_POLICIES.map((policy) => policy.path), ['/api/login', '/api/memories', '/api/ask', '/api/admin/principals', '/api/admin/tenants', '/api/sessions']);
+  assert.deepEqual(ROUTE_POLICIES.map((policy) => policy.path), ['/api/login', '/api/memories', '/api/ask', '/api/admin/principals', '/api/admin/tenants', '/api/sessions', '/api/health']);
 });
 
 test('duplicate JSON properties are rejected at every nesting level', () => {
@@ -186,7 +186,7 @@ test('ask POST enforces question and nested history descriptors', async () => {
 
 test('route registry validates login, memories and ask contracts', () => {
   assert.equal(validateRoutePolicies(ROUTE_POLICIES), true);
-  assert.deepEqual(ROUTE_POLICIES.map((p) => p.path), ['/api/login', '/api/memories', '/api/ask', '/api/admin/principals', '/api/admin/tenants', '/api/sessions']);
+  assert.deepEqual(ROUTE_POLICIES.map((p) => p.path), ['/api/login', '/api/memories', '/api/ask', '/api/admin/principals', '/api/admin/tenants', '/api/sessions', '/api/health']);
   assert.deepEqual(ROUTE_POLICIES.find((p) => p.path === '/api/memories').methods, ['GET', 'POST']);
 });
 
