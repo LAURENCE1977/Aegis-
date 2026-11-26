@@ -53,7 +53,7 @@ function row(id, updatedAt = '2026-11-26T19:00:00.000Z', overrides = {}) {
     source_type:'user-stated', source_url:'https://aegis.example/source',
     source_attribution:'pagination test', source_observed_at:'2026-11-26T18:00:00.000Z',
     confidence:1, sensitivity:'private', status:'accepted', tags_json:'[]',
-    created_at:'2026-11-26T18:00:00.000Z', updated_at:updatedAt, expires_at:null,
+    created_at:'2026-11-25T18:00:00.000Z', updated_at:updatedAt, expires_at:null,
     ...overrides,
   };
 }
