@@ -63,7 +63,7 @@ class MemoryD1 {
             results: [...db.spaces.values()]
               .filter(row => row.tenant_id === v[0] && row.principal_id === v[1] && row.status === 'active')
               .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-              .slice(0, v[3]).map(row => ({ ...row })),
+              .slice(0, v[2]).map(row => ({ ...row })),
           };
         }
         if (sql.includes('FROM project_space_events')) {
@@ -71,7 +71,7 @@ class MemoryD1 {
             results: [...db.events.values()]
               .filter(row => row.tenant_id === v[0] && row.principal_id === v[1] && row.space_id === v[2])
               .sort((a, b) => b.created_at.localeCompare(a.created_at))
-              .slice(0, v[2]).map(row => ({ ...row })),
+              .slice(0, v[3]).map(row => ({ ...row })),
           };
         }
         return { results: [] };
