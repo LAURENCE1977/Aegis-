@@ -25,6 +25,13 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Enforce Cloudflare-only repository boundary
+        shell: bash
+        run: |
+          if git grep -niE 'replit' -- .; then
+            echo "Retired hosting references are not permitted in the AEGIS repository."
+            exit 1
+          fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
