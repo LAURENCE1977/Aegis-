@@ -137,3 +137,77 @@ BEFORE UPDATE OF principal_id, tenant_id ON project_spaces
 WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
   OR NOT EXISTS (SELECT 1 FROM aegis_principals p WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id)
 BEGIN SELECT RAISE(ABORT, 'AEGIS project principal scope required'); END;
+
+
+-- Enforce parent/child tenant equality in D1, not only in application queries.
+DROP TRIGGER IF EXISTS trg_aegis_memories_identity_insert;
+CREATE TRIGGER trg_aegis_memories_identity_insert
+BEFORE INSERT ON aegis_memories
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (
+    SELECT 1 FROM aegis_principals p
+    WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id
+  )
+  OR (NEW.project_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM project_spaces s
+    WHERE s.id = NEW.project_id
+      AND s.principal_id = NEW.principal_id
+      AND s.tenant_id = NEW.tenant_id
+      AND s.status = 'active'
+  ))
+BEGIN SELECT RAISE(ABORT, 'AEGIS memory tenant scope required'); END;
+
+DROP TRIGGER IF EXISTS trg_aegis_memories_identity_update;
+CREATE TRIGGER trg_aegis_memories_identity_update
+BEFORE UPDATE OF principal_id, tenant_id, project_id ON aegis_memories
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (
+    SELECT 1 FROM aegis_principals p
+    WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id
+  )
+  OR (NEW.project_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM project_spaces s
+    WHERE s.id = NEW.project_id
+      AND s.principal_id = NEW.principal_id
+      AND s.tenant_id = NEW.tenant_id
+      AND s.status = 'active'
+  ))
+BEGIN SELECT RAISE(ABORT, 'AEGIS memory tenant scope required'); END;
+
+DROP TRIGGER IF EXISTS trg_project_space_events_identity_insert;
+CREATE TRIGGER trg_project_space_events_identity_insert
+BEFORE INSERT ON project_space_events
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (
+    SELECT 1 FROM project_spaces s
+    WHERE s.id = NEW.space_id
+      AND s.owner_id = NEW.owner_id
+      AND s.principal_id = NEW.principal_id
+      AND s.tenant_id = NEW.tenant_id
+  )
+BEGIN SELECT RAISE(ABORT, 'AEGIS project event tenant scope required'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_project_space_events_identity_update
+BEFORE UPDATE OF space_id, owner_id, principal_id, tenant_id ON project_space_events
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (
+    SELECT 1 FROM project_spaces s
+    WHERE s.id = NEW.space_id
+      AND s.owner_id = NEW.owner_id
+      AND s.principal_id = NEW.principal_id
+      AND s.tenant_id = NEW.tenant_id
+  )
+BEGIN SELECT RAISE(ABORT, 'AEGIS project event tenant scope required'); END;
+
+DROP TRIGGER IF EXISTS trg_aegis_memory_events_identity_insert;
+CREATE TRIGGER trg_aegis_memory_events_identity_insert
+BEFORE INSERT ON aegis_memory_events
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (
+    SELECT 1 FROM aegis_memories m
+    WHERE m.id = NEW.memory_id
+      AND m.owner_id = NEW.owner_id
+      AND m.principal_id = NEW.principal_id
+      AND m.tenant_id = NEW.tenant_id
+  )
+BEGIN SELECT RAISE(ABORT, 'AEGIS memory event tenant scope required'); END;
