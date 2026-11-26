@@ -77,9 +77,9 @@ class MemoryD1 {
   }
 }
 
-async function request(path, {method='GET',body,origin='https://aegis.example'}={}) {
+async function request(path, {method='GET',body,origin='https://aegis.example',principalId='usr-root',tenantId='org-root'}={}) {
   const session=await createRevocableSessionToken(secret);
-  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});
+  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:principalId,tenant_id:tenantId,roles_json:'[\"owner\"]'});
   const token=session.token;
   const headers={Cookie:'__Host-aegis_session='+token};
   if (origin!==null) headers.Origin=origin;
@@ -255,4 +255,61 @@ test('owner review queue includes candidates but normal memory reads do not', as
     env:{...envBase,AEGIS_DB:db},
   });
   assert.equal((await review.json()).memories[0].id,memory.id);
+});
+
+
+test('memory API isolates two active D1 principals across GET and POST project scope', async () => {
+  const db = new MemoryD1();
+  db.projects.set('project-b', {
+    id: 'project-b', owner_id: 'usr-b', principal_id: 'usr-b', tenant_id: 'org-b',
+    name: 'Private B', description: '', status: 'active',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  });
+  db.memories.set('memory-b', {
+    id: 'memory-b', owner_id: 'usr-b', principal_id: 'usr-b', tenant_id: 'org-b',
+    project_id: 'project-b', kind: 'fact', content: 'Tenant B private record',
+    source_type: 'user-stated', source_url: 'https://aegis.example/b',
+    source_attribution: 'Tenant B', source_observed_at: new Date().toISOString(),
+    confidence: 1, sensitivity: 'private', status: 'accepted',
+    tags_json: '[]', created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(), expires_at: null,
+  });
+
+  const principalAList = await onRequestGet({
+    request: await request('/api/memories?q=private', { principalId: 'usr-a', tenantId: 'org-a' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAList.status, 200);
+  assert.equal((await principalAList.json()).total, 0);
+
+  const principalAProject = await onRequestGet({
+    request: await request('/api/memories?projectId=project-b', { principalId: 'usr-a', tenantId: 'org-a' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAProject.status, 404);
+
+  const principalAAttach = await onRequestPost({
+    request: await request('/api/memories', {
+      method: 'POST', principalId: 'usr-a', tenantId: 'org-a',
+      body: { ...memoryInput, projectId: 'project-b' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAAttach.status, 404);
+
+  const principalBRead = await onRequestGet({
+    request: await request('/api/memories?projectId=project-b', { principalId: 'usr-b', tenantId: 'org-b' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalBRead.status, 200);
+  assert.equal((await principalBRead.json()).memories[0].id, 'memory-b');
+
+  const principalBWrite = await onRequestPost({
+    request: await request('/api/memories', {
+      method: 'POST', principalId: 'usr-b', tenantId: 'org-b',
+      body: { ...memoryInput, projectId: 'project-b' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalBWrite.status, 201, await principalBWrite.clone().text());
 });
