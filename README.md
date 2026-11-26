@@ -32,7 +32,7 @@ In the Cloudflare dashboard, open the AEGIS Pages project and add these as encry
 1. `AEGIS_PASSWORD` — a unique password of at least 12 characters.
 2. `AEGIS_SESSION_SECRET` — a cryptographically random secret of at least 32 characters. Do not reuse your AEGIS password.
 
-Optional for named-principal credentials only: configure `AEGIS_PASSWORD_PEPPER` as an additional encrypted Cloudflare Pages secret (at least 32 random characters). You may set the non-secret `AEGIS_PASSWORD_PEPPER_VERSION` deployment variable; it defaults to `v1`. Existing credentials created without a pepper remain compatible. The current implementation supports one active pepper version, so do not rotate an in-use pepper without a coordinated password reset or rehash.
+For named-principal credentials, configure `AEGIS_PASSWORD_PEPPER_KEYRING` as an encrypted Cloudflare Pages secret containing a JSON object of version-to-secret mappings (for example `{"v1":"...32+ random characters...","v2":"...another 32+ random characters..."}`). Set the non-secret `AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION` variable to the desired current key version. Keep old keys in the keyring during a rotation: existing credentials verify against their recorded version and are transparently rehashed with the active version after successful login. The legacy `AEGIS_PASSWORD_PEPPER` plus `AEGIS_PASSWORD_PEPPER_VERSION` pair remains supported for a single-version deployment. Never remove an old key until its credentials have migrated or affected users have completed a reset. The keyring accepts at most eight versions.
 
 Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable.
 
@@ -131,3 +131,8 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 ## Request membrane status
 
 Step 2.6.7 is integrated and verified on `feature/production-migrations`. The membrane is scoped to the existing JSON-only `POST /api/login` handler; other established API handlers retain their existing route-specific controls. The full repository Node suite passes (464 tests, 459 passed, 0 failed, 5 conditionally skipped), and the dedicated Wrangler Pages Dev runtime suite passes 5/5. This is application-layer middleware, not hardware or hypervisor isolation. No production deployment or production D1 mutation was performed. See the [master blueprint](docs/AEGIS_MASTER_BLUEPRINT.md) for scope and limitations.
+
+
+## Multi-tenant account governance — Step 2.6.12
+
+On the `feature/production-migrations` branch, AEGIS adds versioned pepper-keyring verification with login-time rehash, self-service password change, single-use tenant invitations, and administrator-issued one-hour recovery tokens. The D1 schema stores SHA-256 token digests only. The invitation and recovery APIs are membrane-registered, same-origin protected where authenticated, and scoped to the caller’s active tenant. Recovery completion is a bearer-token operation and restores only the target tenant membership; all existing principal sessions are revoked. These endpoints and migration are branch-only until reviewed and merged. Do not run migrations against production D1 before an approved deployment plan.
