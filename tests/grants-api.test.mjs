@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { createCapabilityGrant } from '../functions/lib/capability-grants.mjs';
 import {
   onRequestDelete,
@@ -9,6 +9,7 @@ import {
 } from '../functions/api/grants.js';
 
 const secret = 'grant-api-test-session-secret-with-enough-entropy';
+const sessions = new Map();
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
@@ -18,6 +19,7 @@ class MemoryD1 {
   constructor() { this.rows = new Map(); }
   prepare(sql) {
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row=sessions.get(sid); return row && row.expires_at>now && !row.revoked_at ? {session_id:sid,...row} : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -70,7 +72,9 @@ class MemoryD1 {
 async function request(path, { method = 'GET', body, origin = 'https://aegis.example', authenticated = true } = {}) {
   const headers = {};
   if (authenticated) {
-    const token = await createSessionToken(secret);
+    const session = await createRevocableSessionToken(secret);
+    sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});
+    const token = session.token;
     headers.Cookie = '__Host-aegis_session=' + token;
   }
   if (origin !== null) headers.Origin = origin;
@@ -102,7 +106,7 @@ test('grant history fails closed when D1 is unavailable', async () => {
     request: await request('/api/grants'),
     env: envBase,
   });
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 401);
 });
 
 test('grant history returns only owner-scoped safe metadata', async () => {

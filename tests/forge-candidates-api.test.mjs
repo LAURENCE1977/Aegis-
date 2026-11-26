@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestGet, onRequestPost } from '../functions/api/forge/candidates.js';
 import { onRequestPatch } from '../functions/api/forge/candidates/[id].js';
 
 const secret='forge-candidate-api-test-session-secret-long-enough';
+const sessions=new Map();
 const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
 
 class CandidateD1 {
   constructor(){this.rows=new Map();this.events=[];}
   prepare(sql){
     const db=this;
+    if(sql.includes('FROM auth_sessions'))return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return row&&row.expires_at>now&&!row.revoked_at?{session_id:sid,...row}:null;}};}};
     return {
       values:[],
       bind(...values){this.values=values;return this;},
@@ -55,7 +57,7 @@ class CandidateD1 {
 
 async function request(path,body,{authenticated=true,origin='https://aegis.example',method}={}){
   const headers={'Content-Type':'application/json',Origin:origin};
-  if(authenticated)headers.Cookie='__Host-aegis_session='+await createSessionToken(secret);
+  if(authenticated){const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});headers.Cookie='__Host-aegis_session='+session.token;}
   return new Request('https://aegis.example'+path,{method:method||(body===undefined?'GET':'POST'),headers,...(body===undefined?{}:{body:JSON.stringify(body)})});
 }
 
