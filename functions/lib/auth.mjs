@@ -24,43 +24,29 @@ export async function hashLoginIdentity(identity, secret) {
 export function authConfigAvailable(env) { return Boolean(env&&typeof env.AEGIS_PASSWORD==="string"&&env.AEGIS_PASSWORD.length>=12&&typeof env.AEGIS_SESSION_SECRET==="string"&&env.AEGIS_SESSION_SECRET.length>=32); }
 export function constantTimeEqual(left,right) { if(typeof left!=="string"||typeof right!=="string")return false; const length=Math.max(left.length,right.length); let difference=left.length^right.length; for(let i=0;i<length;i++)difference|=(left.charCodeAt(i)||0)^(right.charCodeAt(i)||0); return difference===0; }
 export async function createRevocableSessionToken(secret,now=Date.now()) { if(typeof secret!=="string"||secret.length<32)throw new Error("A session signing secret of at least 32 characters is required."); const sessionId=crypto.randomUUID(); const expiresAt=Math.floor(now/1000)+SESSION_TTL_SECONDS; return {token:await signClaims(secret,{sid:sessionId,exp:expiresAt}),sessionId,expiresAt}; }
-export async function verifySessionToken(token, secret, now = Date.now()) {
-  if (typeof secret !== "string" || secret.length < 32 || typeof token !== "string") return false;
+async function verifySignedSessionToken(token, secret, now = Date.now()) {
+  if (typeof secret !== "string" || secret.length < 32 || typeof token !== "string") return null;
   const parts = token.split(".");
-  if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   try {
     const claims = JSON.parse(new TextDecoder().decode(fromBase64Url(parts[0])));
-    // A valid signature is insufficient: every session must carry a D1 session id.
-    if (typeof claims.sid !== "string" || !/^[0-9a-f-]{36}$/i.test(claims.sid)) return false;
-    if (!Number.isSafeInteger(claims.exp) || claims.exp <= Math.floor(now / 1000)) return false;
-    return await crypto.subtle.verify("HMAC", await signingKey(secret), fromBase64Url(parts[1]), encoder.encode(parts[0]));
+    if (typeof claims.sid !== "string" || !/^[0-9a-f-]{36}$/i.test(claims.sid)) return null;
+    if (!Number.isSafeInteger(claims.exp) || claims.exp <= Math.floor(now / 1000)) return null;
+    const valid = await crypto.subtle.verify(
+      "HMAC", await signingKey(secret), fromBase64Url(parts[1]), encoder.encode(parts[0])
+    );
+    return valid ? claims : null;
   } catch {
-    return false;
+    return null;
   }
 }
-export function readSessionToken(request) {
-  const header = request.headers.get("Cookie") || "";
-  let token = null;
-  let found = false;
-  for (const part of header.split(";")) {
-    const i = part.indexOf("=");
-    if (i < 0 || part.slice(0, i).trim() !== COOKIE_NAME) continue;
-    // Duplicate auth cookies are ambiguous across intermediaries/frameworks.
-    // Reject the whole header instead of choosing first-wins or last-wins.
-    if (found) return null;
-    found = true;
-    token = part.slice(i + 1).trim();
-  }
-  return found && token ? token : null;
-}
-export async function resolveSessionPrincipal(request, env, now = Date.now()) {
-  if (!env || typeof env.AEGIS_SESSION_SECRET !== "string" ||
-      !env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") return null;
-  const token = readSessionToken(request);
-  if (!token || !(await verifySessionToken(token, env.AEGIS_SESSION_SECRET, now))) return null;
-  const claims = decodeClaims(token);
+
+async function resolveSessionRecord(token, secret, db, now = Date.now()) {
+  if (!db || typeof db.prepare !== "function") return null;
+  const claims = await verifySignedSessionToken(token, secret, now);
+  if (!claims) return null;
   try {
-    const row = await env.AEGIS_DB.prepare(`
+    const row = await db.prepare(`
       SELECT s.session_id, s.principal_id, s.tenant_id, s.roles_json
       FROM auth_sessions s
       INNER JOIN aegis_principals p ON p.id = s.principal_id AND p.tenant_id = s.tenant_id
@@ -86,6 +72,32 @@ export async function resolveSessionPrincipal(request, env, now = Date.now()) {
   }
 }
 
+export async function verifySessionToken(token, secret, now = Date.now(), db) {
+  return Boolean(await resolveSessionRecord(token, secret, db, now));
+}
+export function readSessionToken(request) {
+  const header = request.headers.get("Cookie") || "";
+  let token = null;
+  let found = false;
+  for (const part of header.split(";")) {
+    const i = part.indexOf("=");
+    if (i < 0 || part.slice(0, i).trim() !== COOKIE_NAME) continue;
+    // Duplicate auth cookies are ambiguous across intermediaries/frameworks.
+    // Reject the whole header instead of choosing first-wins or last-wins.
+    if (found) return null;
+    found = true;
+    token = part.slice(i + 1).trim();
+  }
+  return found && token ? token : null;
+}
+export async function resolveSessionPrincipal(request, env, now = Date.now()) {
+  if (!env || typeof env.AEGIS_SESSION_SECRET !== "string" ||
+      !env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") return null;
+  const token = readSessionToken(request);
+  if (!token) return null;
+  return resolveSessionRecord(token, env.AEGIS_SESSION_SECRET, env.AEGIS_DB, now);
+}
+
 export async function isAuthorized(request, env, now = Date.now()) {
   return Boolean(await resolveSessionPrincipal(request, env, now));
 }
@@ -93,7 +105,7 @@ export async function revokeSession(request, env) {
   const token = readSessionToken(request);
   if (!token) return true;
   // Invalid/expired cookies can be cleared without touching the session store.
-  if (!(await verifySessionToken(token, env?.AEGIS_SESSION_SECRET))) return true;
+  if (!(await verifySignedSessionToken(token, env?.AEGIS_SESSION_SECRET))) return true;
   if (!env?.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     throw new Error("D1 session storage is unavailable.");
   }

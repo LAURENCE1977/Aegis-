@@ -74,25 +74,25 @@ async function issueStoredSession(now = Date.now()) {
 const throttledEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 
 test('a newly created session token verifies before its expiry', async () => {
-  const { token } = await createRevocableSessionToken(secret, fixedNow);
-  assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000), true);
+  const token = await issueStoredSession(fixedNow);
+  assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000, persistedEnv.AEGIS_DB), true);
 });
 
 test('an expired session token is rejected', async () => {
   const { token } = await createRevocableSessionToken(secret, fixedNow);
-  assert.equal(await verifySessionToken(token, secret, fixedNow + 12 * 60 * 60 * 1000 + 1), false);
+  assert.equal(await verifySessionToken(token, secret, fixedNow + 12 * 60 * 60 * 1000 + 1, persistedEnv.AEGIS_DB), false);
 });
 
 test('a modified session token is rejected', async () => {
   const { token } = await createRevocableSessionToken(secret, fixedNow);
   const [payload, signature] = token.split('.');
   const changedSignature = (signature[0] === 'A' ? 'B' : 'A') + signature.slice(1);
-  assert.equal(await verifySessionToken(payload + '.' + changedSignature, secret, fixedNow), false);
+  assert.equal(await verifySessionToken(payload + '.' + changedSignature, secret, fixedNow, persistedEnv.AEGIS_DB), false);
 });
 
 test('session verification fails closed when the signing secret is missing', async () => {
   const { token } = await createRevocableSessionToken(secret, fixedNow);
-  assert.equal(await verifySessionToken(token, '', fixedNow), false);
+  assert.equal(await verifySessionToken(token, '', fixedNow, persistedEnv.AEGIS_DB), false);
 });
 
 test('the session cookie is HttpOnly, Secure, SameSite Strict and host-only', () => {
@@ -316,7 +316,7 @@ test('logout revokes the D1 session and clears the browser cookie', async () => 
 test('a valid signed legacy token without sid is rejected even inside its former 12-hour window', async () => {
   const token = await createLegacySignedToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
-  assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000), false);
+  assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000, persistedEnv.AEGIS_DB), false);
   assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);
 });
 
@@ -409,4 +409,12 @@ test('logout revokes the D1 session and D1 failure is reported instead of false 
   });
   assert.equal(failing.status, 503);
   assert.match(failing.headers.get('Set-Cookie') || '', /Max-Age=0/);
+});
+
+
+test('verifySessionToken fails closed without D1 or without a matching active row', async () => {
+  const token = await issueStoredSession();
+  assert.equal(await verifySessionToken(token, secret), false);
+  const emptyDb = { prepare() { return { bind() { return { first: async () => null }; } }; } };
+  assert.equal(await verifySessionToken(token, secret, Date.now(), emptyDb), false);
 });
