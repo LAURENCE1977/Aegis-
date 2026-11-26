@@ -321,7 +321,7 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   const writeTenantB = await jsonRequest('/api/memories', 'POST', memberBCookie, memoryPayload(tenantBMarker));
   assert.equal(writeTenantB.status, 201, await writeTenantB.clone().text());
   const readTenantA = await fetch(baseUrl + '/api/memories?limit=50&review=1', { headers: { cookie: adminACookie } });
-  const readTenantB = await fetch(baseUrl + '/api/memories?limit=50', { headers: { cookie: memberBCookie } });
+  const readTenantB = await fetch(baseUrl + '/api/memories?limit=50&review=1', { headers: { cookie: memberBCookie } });
   const tenantABody = await readTenantA.text(), tenantBBody = await readTenantB.text();
   assert.equal(readTenantA.status, 200, tenantABody);
   assert.equal(readTenantB.status, 200, tenantBBody);
@@ -364,6 +364,21 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
 
   const memberAdminDenied = await jsonRequest('/api/admin/principals', 'GET', memberBCookie);
   assert.equal(memberAdminDenied.status, 403);
+  const memberProvisionDenied = await jsonRequest('/api/admin/principals', 'POST', memberBCookie, {
+    identity: 'forbidden-member@example.test',
+    displayName: 'Forbidden Member Provision',
+    password: 'forbidden-member-password-2026',
+    role: 'member',
+  });
+  assert.equal(memberProvisionDenied.status, 403);
+  const memberRevocationDenied = await jsonRequest('/api/admin/principals', 'PATCH', memberBCookie, {
+    principalId: adminAId, status: 'suspended',
+  });
+  assert.equal(memberRevocationDenied.status, 403);
+  const memberTenantCreateDenied = await jsonRequest('/api/admin/tenants', 'POST', memberBCookie, {
+    name: 'Forbidden Member Tenant',
+  });
+  assert.equal(memberTenantCreateDenied.status, 403);
   const nonOwnerTenantCreate = await jsonRequest('/api/admin/tenants', 'POST', adminACookie, { name: 'Forbidden Tenant' });
   assert.equal(nonOwnerTenantCreate.status, 403);
 
