@@ -23,4 +23,6 @@ SELECT
               WHERE id = 'legacy-memory' AND principal_id = 'usr-root' AND tenant_id = 'org-root')
   AND EXISTS (SELECT 1 FROM aegis_memory_events
               WHERE memory_id = 'legacy-memory' AND principal_id = 'usr-root' AND tenant_id = 'org-root')
-  AND NOT EXISTS (SELECT 1 FROM pragma_foreign_key_check);
+  AND NOT EXISTS (SELECT 1 FROM pragma_foreign_key_check)
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_update')
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_delete');
