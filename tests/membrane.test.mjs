@@ -97,10 +97,10 @@ test('duplicate JSON properties are rejected at every nesting level', () => {
 });
 
 test('UTF-8 charset matching is case-insensitive and single quotes are rejected', async () => {
-  const valid = loginRequest('{"password":"correct"}', { 'content-type': 'application/json; charset="UTF-8"' });
+  const valid = loginRequest('{"password":"correct-password-value"}', { 'content-type': 'application/json; charset="UTF-8"' });
   const accepted = await withAegisImmunePipeline({ request: valid, next: async () => new Response('ok') });
   assert.equal(accepted.status, 200);
-  const invalid = loginRequest('{"password":"correct"}', { 'content-type': "application/json; charset='utf-8'" });
+  const invalid = loginRequest('{"password":"correct-password-value"}', { 'content-type': "application/json; charset='utf-8'" });
   const rejected = await withAegisImmunePipeline({ request: invalid, next: async () => new Response('unsafe') });
   assert.equal(rejected.status, 415);
 });
@@ -108,12 +108,12 @@ test('UTF-8 charset matching is case-insensitive and single quotes are rejected'
 test('login body size and content-encoding limits fail closed', async () => {
   const oversized = loginRequest(JSON.stringify({ password: 'x'.repeat(17 * 1024) }));
   assert.equal((await withAegisImmunePipeline({ request: oversized, next: async () => new Response('unsafe') })).status, 413);
-  const encoded = loginRequest('{"password":"correct"}', { 'content-encoding': 'gzip' });
+  const encoded = loginRequest('{"password":"correct-password-value"}', { 'content-encoding': 'gzip' });
   assert.equal((await withAegisImmunePipeline({ request: encoded, next: async () => new Response('unsafe') })).status, 415);
 });
 
 test('request reconstruction removes stale content-length and preserves content-type', async () => {
-  const body = '{"password":"correct"}';
+  const body = '{"password":"correct-password-value"}';
   const original = loginRequest(body, { 'content-length': String(new TextEncoder().encode(body).byteLength) });
   let forwarded;
   const response = await withAegisImmunePipeline({ request: original, next: async (request) => {
