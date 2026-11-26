@@ -159,7 +159,7 @@ test('project memories require an existing active owner workspace', async()=>{
   assert.equal(db.memories.size,0);
 
   db.projects.set('project-a',{
-    id:'project-a',owner_id:'owner',name:'Project A',description:'',
+    id:'project-a',owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',name:'Project A',description:'',
     status:'active',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),
   });
   const valid=await onRequestPost({
