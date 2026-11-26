@@ -241,3 +241,111 @@ test('Pages runtime verifies session-bound assistant HMAC and rejects tampering'
   });
   assert.equal(tampered.status, 403);
 });
+
+
+test('Pages runtime provisions isolated tenant principals, enforces roles and revokes sessions on lifecycle changes', runtimeOptions, async () => {
+  const jsonRequest = (path, method, cookie, body) => fetch(baseUrl + path, {
+    method,
+    headers: { 'content-type': 'application/json', origin: baseUrl, cookie },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  const cookieFrom = response => {
+    const cookie = response.headers.get('set-cookie') || '';
+    assert.match(cookie, /^__Host-aegis_session=/);
+    return cookie.split(';', 1)[0];
+  };
+  const rootCookie = await authenticatedCookie();
+
+  const tenantAResponse = await jsonRequest('/api/admin/tenants', 'POST', rootCookie, { name: 'Tenant A Runtime' });
+  assert.equal(tenantAResponse.status, 201, await tenantAResponse.clone().text());
+  const tenantA = (await tenantAResponse.json()).tenantId;
+  const tenantBResponse = await jsonRequest('/api/admin/tenants', 'POST', rootCookie, { name: 'Tenant B Runtime' });
+  assert.equal(tenantBResponse.status, 201, await tenantBResponse.clone().text());
+  const tenantB = (await tenantBResponse.json()).tenantId;
+
+  const rootTenantLogin = async tenantId => {
+    const response = await loginRequest(JSON.stringify({ password: testPassword, tenantId }));
+    assert.equal(response.status, 200, await response.clone().text());
+    return cookieFrom(response);
+  };
+  const rootA = await rootTenantLogin(tenantA);
+  const rootB = await rootTenantLogin(tenantB);
+
+  const adminCreate = await jsonRequest('/api/admin/principals', 'POST', rootA, {
+    identity: 'admin-a@example.test',
+    displayName: 'Tenant A Admin',
+    password: 'admin-a-strong-password-2026',
+    role: 'admin',
+  });
+  assert.equal(adminCreate.status, 201, await adminCreate.clone().text());
+  const adminAId = (await adminCreate.json()).principalId;
+
+  const memberCreate = await jsonRequest('/api/admin/principals', 'POST', rootB, {
+    identity: 'member-b@example.test',
+    displayName: 'Tenant B Member',
+    password: 'member-b-strong-password-2026',
+    role: 'member',
+  });
+  assert.equal(memberCreate.status, 201, await memberCreate.clone().text());
+  const memberBId = (await memberCreate.json()).principalId;
+
+  const loginIdentity = async (identity, password, tenantId) => {
+    const response = await loginRequest(JSON.stringify({ identity, password, tenantId }));
+    assert.equal(response.status, 200, await response.clone().text());
+    return cookieFrom(response);
+  };
+  const adminACookie = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
+  const memberBCookie = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+
+  const adminList = await jsonRequest('/api/admin/principals', 'GET', adminACookie);
+  assert.equal(adminList.status, 200, await adminList.clone().text());
+  const listedMembers = (await adminList.json()).members;
+  assert.ok(listedMembers.some(item => item.principalId === adminAId));
+  assert.ok(!listedMembers.some(item => item.principalId === memberBId));
+
+  const crossTenantMutation = await jsonRequest('/api/admin/principals', 'PATCH', adminACookie, {
+    principalId: memberBId, status: 'suspended',
+  });
+  assert.equal(crossTenantMutation.status, 404);
+
+  const memberAdminDenied = await jsonRequest('/api/admin/principals', 'GET', memberBCookie);
+  assert.equal(memberAdminDenied.status, 403);
+  const nonOwnerTenantCreate = await jsonRequest('/api/admin/tenants', 'POST', adminACookie, { name: 'Forbidden Tenant' });
+  assert.equal(nonOwnerTenantCreate.status, 403);
+
+  const secondMemberSession = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+  const sessionList = await jsonRequest('/api/sessions', 'GET', memberBCookie);
+  assert.equal(sessionList.status, 200, await sessionList.clone().text());
+  const ownSessions = (await sessionList.json()).sessions;
+  assert.ok(ownSessions.length >= 2);
+  const firstSession = ownSessions.find(item => item.current === 1);
+  assert.ok(firstSession);
+  const targetedRevoke = await jsonRequest('/api/sessions', 'DELETE', memberBCookie, { sessionId: firstSession.sessionId });
+  assert.equal(targetedRevoke.status, 200);
+  assert.equal((await jsonRequest('/api/sessions', 'GET', memberBCookie)).status, 401);
+  assert.equal((await jsonRequest('/api/sessions', 'GET', secondMemberSession)).status, 200);
+
+  const suspendMembership = await jsonRequest('/api/admin/principals', 'PATCH', rootB, {
+    principalId: memberBId, status: 'suspended',
+  });
+  assert.equal(suspendMembership.status, 200, await suspendMembership.clone().text());
+  assert.equal((await jsonRequest('/api/sessions', 'GET', secondMemberSession)).status, 401);
+
+  const reactivateMembership = await jsonRequest('/api/admin/principals', 'PATCH', rootB, {
+    principalId: memberBId, status: 'active',
+  });
+  assert.equal(reactivateMembership.status, 200);
+  const reauthenticatedMember = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+
+  const suspendPrincipal = await jsonRequest('/api/admin/principals', 'PATCH', rootCookie, {
+    principalId: memberBId, principalStatus: 'suspended',
+  });
+  assert.equal(suspendPrincipal.status, 200, await suspendPrincipal.clone().text());
+  assert.equal((await jsonRequest('/api/sessions', 'GET', reauthenticatedMember)).status, 401);
+
+  const suspendTenant = await jsonRequest('/api/admin/tenants', 'PATCH', rootCookie, {
+    tenantId: tenantB, status: 'suspended',
+  });
+  assert.equal(suspendTenant.status, 200, await suspendTenant.clone().text());
+  assert.equal((await jsonRequest('/api/sessions', 'GET', rootB)).status, 401);
+});
