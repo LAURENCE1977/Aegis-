@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           version_output="$(wrangler --version)"
-          printf '%s\\n' "$version_output"
+          printf '%s\n' "$version_output"
           version="${version_output##* }"
           if [[ "$version" != "4.168.0" ]]; then
             echo "Expected Wrangler 4.168.0, got: $version_output"
