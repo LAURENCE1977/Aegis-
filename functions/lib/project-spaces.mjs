@@ -34,6 +34,8 @@ function mapWorkspace(row) {
   return {
     id: row.id,
     ownerId: row.owner_id,
+    principalId: row.principal_id,
+    tenantId: row.tenant_id,
     name: row.name,
     description: row.description,
     status: row.status,
@@ -48,6 +50,8 @@ function mapEvent(row) {
     id: row.id,
     workspaceId: row.space_id,
     ownerId: row.owner_id,
+    principalId: row.principal_id,
+    tenantId: row.tenant_id,
     type: row.event_type,
     summary: row.summary,
     content: row.content,
@@ -66,9 +70,12 @@ function assertDatabase(db) {
   }
 }
 
-export async function createWorkspace(db, ownerId, input, now = Date.now()) {
+export async function createWorkspace(db, principal, input, now = Date.now()) {
   assertDatabase(db);
-  requiredId(ownerId, 'owner identifier');
+  const { principalId, tenantId } = principal || {};
+  requiredId(principalId, 'principal identifier');
+  requiredId(tenantId, 'tenant identifier');
+  const ownerId = principalId;
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new TypeError('Workspace details are required');
   }
@@ -79,75 +86,84 @@ export async function createWorkspace(db, ownerId, input, now = Date.now()) {
 
   await db.prepare(`
     INSERT INTO project_spaces (
-      id, owner_id, name, description, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, 'active', ?, ?)
-  `).bind(id, ownerId, name, description, timestamp, timestamp).run();
+      id, owner_id, principal_id, tenant_id, name, description, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+  `).bind(id, ownerId, principalId, tenantId, name, description, timestamp, timestamp).run();
 
   return {
-    id, ownerId, name, description, status: 'active',
+    id, ownerId, principalId, tenantId, name, description, status: 'active',
     createdAt: timestamp, updatedAt: timestamp,
   };
 }
 
-export async function listWorkspaces(db, ownerId, limit = 50) {
+export async function listWorkspaces(db, principal, limit = 50) {
   assertDatabase(db);
-  requiredId(ownerId, 'owner identifier');
+  const { principalId, tenantId } = principal || {};
+  requiredId(principalId, 'principal identifier');
+  requiredId(tenantId, 'tenant identifier');
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw new TypeError('Workspace list limit must be between 1 and 100');
   }
   const result = await db.prepare(`
     SELECT * FROM project_spaces
-    WHERE owner_id = ? AND status = 'active'
+    WHERE tenant_id = ? AND principal_id = ? AND status = 'active'
     ORDER BY updated_at DESC
     LIMIT ?
-  `).bind(ownerId, limit).all();
+  `).bind(tenantId, principalId, limit).all();
   return (result?.results || []).map(mapWorkspace);
 }
 
-export async function getWorkspace(db, ownerId, workspaceId) {
+export async function getWorkspace(db, principal, workspaceId) {
   assertDatabase(db);
-  requiredId(ownerId, 'owner identifier');
+  const { principalId, tenantId } = principal || {};
+  requiredId(principalId, 'principal identifier');
+  requiredId(tenantId, 'tenant identifier');
   requiredId(workspaceId, 'identifier');
   const row = await db.prepare(`
-    SELECT * FROM project_spaces WHERE id = ? AND owner_id = ? LIMIT 1
-  `).bind(workspaceId, ownerId).first();
+    SELECT * FROM project_spaces WHERE id = ? AND tenant_id = ? AND principal_id = ? LIMIT 1
+  `).bind(workspaceId, tenantId, principalId).first();
   return mapWorkspace(row);
 }
 
 export async function appendWorkspaceEvent(db, {
-  ownerId, workspaceId, type, summary, content,
+  principal, workspaceId, type, summary, content,
 } = {}, now = Date.now()) {
   assertDatabase(db);
-  requiredId(ownerId, 'owner identifier');
+  const { principalId, tenantId } = principal || {};
+  requiredId(principalId, 'principal identifier');
+  requiredId(tenantId, 'tenant identifier');
+  const ownerId = principalId;
   requiredId(workspaceId, 'identifier');
   if (!EVENT_TYPES.has(type)) throw new TypeError('Unsupported workspace event type');
   const safeSummary = boundedText(summary, 'event summary', 240, { required: true });
   const safeContent = boundedText(content, 'event content', 12_000, { required: true });
   const timestamp = validClock(now);
-  const workspace = await getWorkspace(db, ownerId, workspaceId);
+  const workspace = await getWorkspace(db, principal, workspaceId);
   if (!workspace || workspace.status !== 'active') return null;
 
   const id = crypto.randomUUID();
   await db.prepare(`
     INSERT INTO project_space_events (
-      id, space_id, owner_id, event_type, summary, content, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, workspaceId, ownerId, type, safeSummary, safeContent, timestamp).run();
+      id, space_id, owner_id, principal_id, tenant_id, event_type, summary, content, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, workspaceId, ownerId, principalId, tenantId, type, safeSummary, safeContent, timestamp).run();
 
   await db.prepare(`
     UPDATE project_spaces SET updated_at = ?
-    WHERE id = ? AND owner_id = ? AND status = 'active'
-  `).bind(timestamp, workspaceId, ownerId).run();
+    WHERE id = ? AND tenant_id = ? AND principal_id = ? AND status = 'active'
+  `).bind(timestamp, workspaceId, tenantId, principalId).run();
 
   return {
-    id, workspaceId, ownerId, type, summary: safeSummary,
+    id, workspaceId, ownerId, principalId, tenantId, type, summary: safeSummary,
     content: safeContent, createdAt: timestamp,
   };
 }
 
-export async function listWorkspaceEvents(db, ownerId, workspaceId, limit = 50) {
+export async function listWorkspaceEvents(db, principal, workspaceId, limit = 50) {
   assertDatabase(db);
-  requiredId(ownerId, 'owner identifier');
+  const { principalId, tenantId } = principal || {};
+  requiredId(principalId, 'principal identifier');
+  requiredId(tenantId, 'tenant identifier');
   requiredId(workspaceId, 'identifier');
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw new TypeError('Workspace event limit must be between 1 and 100');
@@ -156,9 +172,9 @@ export async function listWorkspaceEvents(db, ownerId, workspaceId, limit = 50) 
   if (!workspace) return null;
   const result = await db.prepare(`
     SELECT * FROM project_space_events
-    WHERE owner_id = ? AND space_id = ?
+    WHERE tenant_id = ? AND principal_id = ? AND space_id = ?
     ORDER BY created_at DESC
     LIMIT ?
-  `).bind(ownerId, workspaceId, limit).all();
+  `).bind(tenantId, principalId, workspaceId, limit).all();
   return (result?.results || []).map(mapEvent);
 }

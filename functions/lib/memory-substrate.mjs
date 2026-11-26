@@ -42,6 +42,8 @@ export function validateMemoryRecord(record, now = Date.now()) {
   if (!Number.isFinite(now)) throw new TypeError('Invalid memory validation time');
   requireId(record.id, 'identifier');
   requireId(record.ownerId, 'owner identifier');
+  requireId(record.principalId, 'principal identifier');
+  requireId(record.tenantId, 'tenant identifier');
   if (record.projectId !== null) requireId(record.projectId, 'project identifier');
   if (record.supersedesId !== undefined && record.supersedesId !== null) requireId(record.supersedesId, 'superseded memory identifier');
   if (!KINDS.has(record.kind)) throw new TypeError('Invalid memory kind');
@@ -201,6 +203,8 @@ function mapMemoryRow(row) {
   const record = {
     id: row.id,
     ownerId: row.owner_id,
+    principalId: row.principal_id,
+    tenantId: row.tenant_id,
     projectId: row.project_id,
     supersedesId: row.supersedes_id ?? null,
     kind: row.kind,
@@ -230,8 +234,10 @@ function assertMemoryDatabase(db) {
   }
 }
 
-function assertMemoryScope(ownerId, projectId) {
+function assertMemoryScope(ownerId, principalId, tenantId, projectId) {
   requireId(ownerId, 'owner identifier');
+  requireId(principalId, 'principal identifier');
+  requireId(tenantId, 'tenant identifier');
   if (projectId !== null) requireId(projectId, 'project identifier');
 }
 
@@ -251,6 +257,8 @@ function mapMemoryEventRow(row) {
     id: row.id,
     memoryId: row.memory_id,
     ownerId: row.owner_id,
+    principalId: row.principal_id,
+    tenantId: row.tenant_id,
     projectId: row.project_id,
     type: row.event_type,
     fromStatus: row.from_status,
@@ -269,12 +277,12 @@ export function createMemoryRepository(db) {
       persisted.source = { ...persisted.source, trust: 'untrusted' };
       await db.prepare(`
         INSERT INTO aegis_memories (
-          id, owner_id, project_id, kind, content, source_type, source_url,
+          id, owner_id, principal_id, tenant_id, project_id, kind, content, source_type, source_url,
           source_attribution, source_observed_at, confidence, sensitivity,
           status, tags_json, created_at, updated_at, expires_at, supersedes_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        record.id, record.ownerId, record.projectId, record.kind, record.content,
+        record.id, record.ownerId, record.principalId, record.tenantId, record.projectId, record.kind, record.content,
         record.source.type, record.source.url, record.source.attribution,
         record.source.observedAt, record.confidence, record.sensitivity,
         record.status, JSON.stringify(record.tags), record.createdAt,
@@ -283,36 +291,36 @@ export function createMemoryRepository(db) {
       return persisted;
     },
 
-    async get(id, { ownerId, projectId = null } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async get(id, { ownerId, principalId, tenantId, projectId = null } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       requireId(id, 'identifier');
       const row = await db.prepare(`
         SELECT * FROM aegis_memories
-        WHERE id = ? AND owner_id = ? AND project_id IS ?
+        WHERE id = ? AND tenant_id = ? AND principal_id = ? AND project_id IS ?
         LIMIT 1
-      `).bind(id, ownerId, projectId).first();
+      `).bind(id, tenantId, principalId, projectId).first();
       return mapMemoryRow(row);
     },
 
-    async list({ ownerId, projectId = null, now = Date.now(), limit = 20, includeCandidates = false } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async list({ ownerId, principalId, tenantId, projectId = null, now = Date.now(), limit = 20, includeCandidates = false } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
         throw new TypeError('Invalid memory result limit');
       }
       const result = await db.prepare(`
         SELECT * FROM aegis_memories
-        WHERE owner_id = ? AND project_id IS ?
+        WHERE tenant_id = ? AND principal_id = ? AND project_id IS ?
           AND status IN (${includeCandidates ? "'accepted', 'candidate'" : "'accepted'"})
           AND (expires_at IS NULL OR expires_at > ?)
         ORDER BY updated_at DESC, id ASC
         LIMIT ?
-      `).bind(ownerId, projectId, new Date(now).toISOString(), limit).all();
+      `).bind(tenantId, principalId, projectId, new Date(now).toISOString(), limit).all();
       return (result?.results ?? []).map(mapMemoryRow);
     },
 
-    async search({ ownerId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async search({ ownerId, principalId, tenantId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
       if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
         throw new TypeError('Invalid memory result limit');
@@ -322,13 +330,13 @@ export function createMemoryRepository(db) {
       const predicates = terms.map(() => "LOWER(content || ' ' || kind || ' ' || tags_json) LIKE ?");
       const candidateLimit = 200;
       const bindings = [
-        ownerId, projectId, new Date(now).toISOString(),
+        tenantId, principalId, projectId, new Date(now).toISOString(),
         ...terms.map((term) => '%' + term + '%'),
         candidateLimit,
       ];
       const result = await db.prepare(`
         SELECT * FROM aegis_memories
-        WHERE owner_id = ? AND project_id IS ?
+        WHERE tenant_id = ? AND principal_id = ? AND project_id IS ?
           AND status = 'accepted'
           AND sensitivity <> 'restricted'
           AND (expires_at IS NULL OR expires_at > ?)
@@ -341,8 +349,10 @@ export function createMemoryRepository(db) {
     },
 
 
-    async exportAll({ ownerId, projectId, memoryLimit = 500, eventLimit = 2000 } = {}) {
+    async exportAll({ ownerId, principalId, tenantId, projectId, memoryLimit = 500, eventLimit = 2000 } = {}) {
       requireId(ownerId, 'owner identifier');
+      requireId(principalId, 'principal identifier');
+      requireId(tenantId, 'tenant identifier');
       if (projectId !== undefined && projectId !== null) requireId(projectId, 'project identifier');
       if (!Number.isInteger(memoryLimit) || memoryLimit < 1 || memoryLimit > 1000 ||
           !Number.isInteger(eventLimit) || eventLimit < 1 || eventLimit > 5000) {
@@ -353,16 +363,16 @@ export function createMemoryRepository(db) {
       const [memoryResult, eventResult] = await Promise.all([
         db.prepare(`
           SELECT * FROM aegis_memories
-          WHERE owner_id = ? AND (? = 1 OR project_id IS ?)
+          WHERE tenant_id = ? AND principal_id = ? AND (? = 1 OR project_id IS ?)
           ORDER BY created_at ASC, id ASC
           LIMIT ?
-        `).bind(ownerId, allScopes, scopeId, memoryLimit + 1).all(),
+        `).bind(tenantId, principalId, allScopes, scopeId, memoryLimit + 1).all(),
         db.prepare(`
           SELECT * FROM aegis_memory_events
           WHERE owner_id = ? AND (? = 1 OR project_id IS ?)
           ORDER BY occurred_at ASC, id ASC
           LIMIT ?
-        `).bind(ownerId, allScopes, scopeId, eventLimit + 1).all(),
+        `).bind(tenantId, principalId, allScopes, scopeId, eventLimit + 1).all(),
       ]);
       const memoryRows = memoryResult?.results ?? [];
       const eventRows = eventResult?.results ?? [];
@@ -373,38 +383,38 @@ export function createMemoryRepository(db) {
       };
     },
 
-    async listProjectEvents({ ownerId, projectId, limit = 100 } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async listProjectEvents({ ownerId, principalId, tenantId, projectId, limit = 100 } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       if (projectId === null) throw new TypeError('A Project Space identifier is required');
       if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
         throw new TypeError('Invalid project memory event limit');
       }
       const result = await db.prepare(`
         SELECT * FROM aegis_memory_events
-        WHERE owner_id = ? AND project_id = ?
+        WHERE tenant_id = ? AND principal_id = ? AND project_id = ?
         ORDER BY occurred_at ASC, id ASC
         LIMIT ?
-      `).bind(ownerId, projectId, limit).all();
+      `).bind(tenantId, principalId, projectId, limit).all();
       return (result?.results ?? []).map(mapMemoryEventRow);
     },
 
-    async listEvents(id, { ownerId, projectId = null, limit = 50 } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async listEvents(id, { ownerId, principalId, tenantId, projectId = null, limit = 50 } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       requireId(id, 'identifier');
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         throw new TypeError('Invalid memory event limit');
       }
       const result = await db.prepare(`
         SELECT * FROM aegis_memory_events
-        WHERE memory_id = ? AND owner_id = ? AND project_id IS ?
+        WHERE memory_id = ? AND tenant_id = ? AND principal_id = ? AND project_id IS ?
         ORDER BY occurred_at ASC, id ASC
         LIMIT ?
-      `).bind(id, ownerId, projectId, limit).all();
+      `).bind(id, tenantId, principalId, projectId, limit).all();
       return (result?.results ?? []).map(mapMemoryEventRow);
     },
 
-    async purge(id, { ownerId, projectId = null } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async purge(id, { ownerId, principalId, tenantId, projectId = null } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       requireId(id, 'identifier');
       if (typeof db.batch !== 'function') {
         throw new TypeError('Transactional D1 batch support is required for memory purge');
@@ -413,18 +423,18 @@ export function createMemoryRepository(db) {
         db.prepare(`
           UPDATE aegis_memories
           SET supersedes_id = NULL
-          WHERE supersedes_id = ? AND owner_id = ? AND project_id IS ?
-        `).bind(id, ownerId, projectId),
+          WHERE supersedes_id = ? AND tenant_id = ? AND principal_id = ? AND project_id IS ?
+        `).bind(id, tenantId, principalId, projectId),
         db.prepare(`
           DELETE FROM aegis_memories
-          WHERE id = ? AND owner_id = ? AND project_id IS ?
-        `).bind(id, ownerId, projectId),
+          WHERE id = ? AND tenant_id = ? AND principal_id = ? AND project_id IS ?
+        `).bind(id, tenantId, principalId, projectId),
       ]);
       return (results?.[1]?.meta?.changes ?? 0) === 1;
     },
 
-    async setStatus(id, { ownerId, projectId = null, status, now = Date.now() } = {}) {
-      assertMemoryScope(ownerId, projectId);
+    async setStatus(id, { ownerId, principalId, tenantId, projectId = null, status, now = Date.now() } = {}) {
+      assertMemoryScope(ownerId, principalId, tenantId, projectId);
       requireId(id, 'identifier');
       if (!['accepted', 'superseded', 'retracted'].includes(status)) {
         throw new TypeError('Invalid memory lifecycle status');
@@ -434,9 +444,9 @@ export function createMemoryRepository(db) {
       const result = await db.prepare(`
         UPDATE aegis_memories
         SET status = ?, updated_at = ?
-        WHERE id = ? AND owner_id = ? AND project_id IS ?
+        WHERE id = ? AND tenant_id = ? AND principal_id = ? AND project_id IS ?
           AND status IN ('candidate', 'accepted')
-      `).bind(status, timestamp, id, ownerId, projectId).run();
+      `).bind(status, timestamp, id, tenantId, principalId, projectId).run();
       return (result?.meta?.changes ?? 0) === 1;
     },
   });
