@@ -1,8 +1,7 @@
-import { authorizeOwner, jsonResponse } from "../../lib/owner-api.mjs";
+import { authorizePrincipal, jsonResponse } from "../../lib/owner-api.mjs";
 import { createMemoryRepository } from "../../lib/memory-substrate.mjs";
 import { getWorkspace } from "../../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 
 function parseProjectId(value) {
   if (value === null) return undefined;
@@ -12,8 +11,9 @@ function parseProjectId(value) {
 }
 
 export async function onRequestGet({ request, env }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
   }
@@ -24,13 +24,15 @@ export async function onRequestGet({ request, env }) {
 
   try {
     if (projectId !== undefined) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") {
         return jsonResponse({ error: "Project not found." }, 404);
       }
     }
     const data = await createMemoryRepository(env.AEGIS_DB).exportAll({
-      ownerId: OWNER_ID,
+      ownerId: principal.principalId,
+      principalId: principal.principalId,
+      tenantId: principal.tenantId,
       projectId,
       memoryLimit: 500,
       eventLimit: 2000,

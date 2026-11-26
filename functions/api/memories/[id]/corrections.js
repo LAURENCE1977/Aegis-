@@ -1,5 +1,5 @@
 import {
-  authorizeOwner,
+  authorizePrincipal,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
@@ -7,12 +7,12 @@ import {
 import { createMemoryRepository } from "../../../lib/memory-substrate.mjs";
 import { getWorkspace } from "../../../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 const MAX_BODY = 6000;
 
 export async function onRequestPost({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!isOwnerWriteRequest(request)) return jsonResponse({ error: "Invalid request origin." }, 403);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
@@ -39,12 +39,14 @@ export async function onRequestPost({ request, env, params }) {
 
   try {
     const repository = createMemoryRepository(env.AEGIS_DB);
-    const prior = await repository.get(id, { ownerId: OWNER_ID, projectId });
+    const prior = await repository.get(id, { ownerId: principal.principalId,
+      principalId: principal.principalId,
+      tenantId: principal.tenantId, projectId });
     if (!prior || prior.status !== "accepted") {
       return jsonResponse({ error: "Only an accepted memory can be corrected." }, 404);
     }
     if (projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") {
         return jsonResponse({ error: "Memory not found." }, 404);
       }
@@ -53,7 +55,9 @@ export async function onRequestPost({ request, env, params }) {
     const now = new Date().toISOString();
     const correction = {
       id: crypto.randomUUID(),
-      ownerId: OWNER_ID,
+      ownerId: principal.principalId,
+      principalId: principal.principalId,
+      tenantId: principal.tenantId,
       projectId: prior.projectId,
       supersedesId: prior.id,
       kind: prior.kind,
