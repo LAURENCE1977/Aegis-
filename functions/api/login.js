@@ -139,7 +139,7 @@ export async function onRequestDelete({ request, env }) {
   try {
     await revokeSession(request, env);
   } catch {
-    // D1 errors fail protected session checks closed.
+    return json({ error: "Session revocation is temporarily unavailable." }, 503, { "Set-Cookie": clearSessionCookie() });
   }
   return json({ authenticated: false }, 200, { "Set-Cookie": clearSessionCookie() });
 }

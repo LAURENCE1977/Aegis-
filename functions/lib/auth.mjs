@@ -90,7 +90,24 @@ export async function resolveSessionPrincipal(request, env, now = Date.now()) {
 export async function isAuthorized(request, env, now = Date.now()) {
   return Boolean(await resolveSessionPrincipal(request, env, now));
 }
-export async function revokeSession(request,env) { const token=readSessionToken(request); if(!token||!env?.AEGIS_DB||typeof env.AEGIS_DB.prepare!=="function")return false; if(!(await verifySessionToken(token,env.AEGIS_SESSION_SECRET)))return false; const claims=decodeClaims(token); if(typeof claims?.sid!=="string"||!claims.sid)return false; await env.AEGIS_DB.prepare("UPDATE auth_sessions SET revoked_at = ? WHERE session_id = ? AND revoked_at IS NULL").bind(new Date().toISOString(),claims.sid).run(); return true; }
+export async function revokeSession(request, env) {
+  const token = readSessionToken(request);
+  if (!token) return true;
+  // Invalid/expired cookies can be cleared without touching the session store.
+  if (!(await verifySessionToken(token, env?.AEGIS_SESSION_SECRET))) return true;
+  if (!env?.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
+    throw new Error("D1 session storage is unavailable.");
+  }
+  const claims = decodeClaims(token);
+  if (typeof claims?.sid !== "string" || !claims.sid) return true;
+  // A resolved UPDATE is success even if already revoked (idempotent logout).
+  // Storage errors propagate so the endpoint cannot report a successful logout
+  // while a still-valid stolen token remains active.
+  await env.AEGIS_DB.prepare(
+    "UPDATE auth_sessions SET revoked_at = ? WHERE session_id = ? AND revoked_at IS NULL"
+  ).bind(new Date().toISOString(), claims.sid).run();
+  return true;
+}
 export function isSameOriginRequest(request) { const origin=request.headers.get("Origin");if(!origin)return false;try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;} }
 export function sessionCookie(token,maxAge=SESSION_TTL_SECONDS) { return COOKIE_NAME+"="+token+"; Path=/; Max-Age="+maxAge+"; HttpOnly; Secure; SameSite=Strict"; }
 export function clearSessionCookie() { return COOKIE_NAME+"=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict"; }
