@@ -320,6 +320,8 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
     token: invitationToken, identity: 'ignored@example.test',
   });
   assert.equal(mixedInvitationPayload.status, 400);
+  const wrongPrincipalInvitation = await jsonRequest('/api/tenants/invitations', 'POST', memberBCookie, { token: invitationToken });
+  assert.equal(wrongPrincipalInvitation.status, 403);
   const acceptedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
   assert.equal(acceptedInvitation.status, 201, await acceptedInvitation.clone().text());
   const replayedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
