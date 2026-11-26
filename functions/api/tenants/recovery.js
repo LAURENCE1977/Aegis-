@@ -9,8 +9,9 @@ export async function onRequestPost({request,env}){
  let b;try{b=await request.json();}catch{return json({error:"Invalid request."},400);}
  if(typeof b.principalId!=="string"||(b.principalId===ROOT_PRINCIPAL_ID&&p.tenantId!==ROOT_TENANT_ID))return json({error:"Invalid recovery target."},400);
  try{
-  const target=await env.AEGIS_DB.prepare("SELECT p.status,m.status AS membership_status FROM aegis_principals p JOIN aegis_tenant_memberships m ON m.principal_id=p.id WHERE p.id=? AND m.tenant_id=?").bind(b.principalId,p.tenantId).first();
+  const target=await env.AEGIS_DB.prepare("SELECT p.status,m.status AS membership_status,m.role FROM aegis_principals p JOIN aegis_tenant_memberships m ON m.principal_id=p.id WHERE p.id=? AND m.tenant_id=?").bind(b.principalId,p.tenantId).first();
   if(!target)return json({error:"Principal not found in this tenant."},404);
+  if(p.roles.includes("admin")&&target.role!=="member")return json({error:"Admins may recover member accounts only."},403);
   if(target.status!=="suspended"&&target.membership_status!=="suspended")return json({error:"Principal is not suspended."},409);
   const raw=makeToken(),now=new Date().toISOString(),expires=Math.floor(Date.now()/1000)+3600;
   await env.AEGIS_DB.prepare("INSERT INTO aegis_account_recovery_tokens(recovery_id,token_hash,principal_id,tenant_id,issued_by_principal_id,created_at,expires_at) VALUES(?,?,?,?,?,?,?)")
