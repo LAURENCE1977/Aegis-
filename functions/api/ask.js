@@ -21,6 +21,11 @@ export async function onRequestPost(context) {
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Invalid request" }, 400); }
+  if (body.history !== undefined && (!Array.isArray(body.history) ||
+      body.history.some(turn => !turn || turn.role !== "user" ||
+        typeof turn.content !== "string" || !turn.content.trim()))) {
+    return json({ error: "Only user-authored history turns are accepted." }, 400);
+  }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (!question) return json({ error: "Prompt required" }, 400);
   if (!env.AI) return json({ error: "No AI provider configured" }, 503);

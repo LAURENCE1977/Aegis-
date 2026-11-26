@@ -369,7 +369,7 @@ export function createMemoryRepository(db) {
         `).bind(tenantId, principalId, allScopes, scopeId, memoryLimit + 1).all(),
         db.prepare(`
           SELECT * FROM aegis_memory_events
-          WHERE owner_id = ? AND (? = 1 OR project_id IS ?)
+          WHERE tenant_id = ? AND principal_id = ? AND (? = 1 OR project_id IS ?)
           ORDER BY occurred_at ASC, id ASC
           LIMIT ?
         `).bind(tenantId, principalId, allScopes, scopeId, eventLimit + 1).all(),

@@ -141,6 +141,7 @@ export async function appendWorkspaceEvent(db, {
   const workspace = await getWorkspace(db, principal, workspaceId);
   if (!workspace || workspace.status !== 'active') return null;
 
+  const ownerId = workspace.ownerId;
   const id = crypto.randomUUID();
   await db.prepare(`
     INSERT INTO project_space_events (
