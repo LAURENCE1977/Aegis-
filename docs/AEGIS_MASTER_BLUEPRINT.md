@@ -465,7 +465,7 @@ The root Pages middleware performs API path classification, rejects ambiguous en
 - Wrangler applied the production migration set only to isolated local D1 for CI. No remote or production D1 migration was run.
 - Pages Functions bundle built successfully and local Wrangler Pages Dev runtime checks passed.
 
-**Deployment and governance boundary:** main was still `37fb54bbb396c8ca0fded245c680f70d8af9ab01` when checked; both main and the feature branch are unprotected, and the implementation commits are unsigned. No PR was merged, no deployment was made, and no production D1, Replit deployment/data, secrets or Cloudflare settings were changed.
+**Deployment and governance boundary:** main was still `37fb54bbb396c8ca0fded245c680f70d8af9ab01` when checked; both main and the feature branch are unprotected, and the implementation commits are unsigned. No PR was merged, no deployment was made, and no production D1, secrets or Cloudflare settings were changed.
 
 **Credential operations note:** credentials created without a pepper retain the `none` version and continue to verify if a pepper is later configured. The current implementation supports one active pepper version; rotating an already-used pepper requires a coordinated password reset/rehash or a future multi-version keyring before rotation.
 
