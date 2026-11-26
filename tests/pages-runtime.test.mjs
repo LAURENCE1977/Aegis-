@@ -300,6 +300,29 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   const adminACookie = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
   const memberBCookie = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
 
+  const invitation = await jsonRequest('/api/tenants/invitations', 'POST', adminACookie, {
+    identity: 'member-b@example.test', role: 'member',
+  });
+  assert.equal(invitation.status, 201, await invitation.clone().text());
+  const invitationToken = (await invitation.json()).invitationToken;
+  assert.match(invitationToken, /^[a-f0-9]{64}$/);
+  const acceptedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', memberBCookie, { token: invitationToken });
+  assert.equal(acceptedInvitation.status, 201, await acceptedInvitation.clone().text());
+  const replayedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', memberBCookie, { token: invitationToken });
+  assert.equal(replayedInvitation.status, 409);
+  const crossTenantInvitation = await jsonRequest('/api/tenants/invitations', 'POST', adminACookie, {
+    identity: 'member-b@example.test', role: 'member', tenantId: tenantB,
+  });
+  assert.equal(crossTenantInvitation.status, 400);
+
+  const otherAdminSession = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
+  const passwordChange = await jsonRequest('/api/account/password', 'POST', adminACookie, {
+    currentPassword: 'admin-a-strong-password-2026', newPassword: 'admin-a-rotated-password-2026',
+  });
+  assert.equal(passwordChange.status, 200, await passwordChange.clone().text());
+  assert.equal((await fetch(baseUrl + '/api/memories', { headers: { cookie: otherAdminSession } })).status, 401);
+
+
   const identifierAliasLogin = await loginRequest(JSON.stringify({
     identifier: 'admin-a@example.test', password: 'admin-a-strong-password-2026', tenantId: tenantA,
   }));
@@ -436,6 +459,23 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
     principalId: memberBId, status: 'active',
   });
   assert.equal(forbiddenMembershipReactivation.status, 409);
+
+  const foreignRecovery = await jsonRequest('/api/tenants/recovery', 'POST', adminACookie, { principalId: memberBId });
+  assert.equal(foreignRecovery.status, 404);
+  const ownerRecovery = await jsonRequest('/api/tenants/recovery', 'POST', rootB, { principalId: memberBId });
+  assert.equal(ownerRecovery.status, 201, await ownerRecovery.clone().text());
+  const recoveryToken = (await ownerRecovery.json()).recoveryToken;
+  const completedRecovery = await jsonRequest('/api/account/recovery', 'POST', memberBCookie, {
+    token: recoveryToken, newPassword: 'member-b-recovered-password-2026',
+  });
+  assert.equal(completedRecovery.status, 200, await completedRecovery.clone().text());
+  const replayRecovery = await jsonRequest('/api/account/recovery', 'POST', memberBCookie, {
+    token: recoveryToken, newPassword: 'member-b-another-password-2026',
+  });
+  assert.equal(replayRecovery.status, 409);
+  const recoveredLogin = await loginIdentity('member-b@example.test', 'member-b-recovered-password-2026', tenantB);
+  assert.match(recoveredLogin, /^__Host-aegis_session=/);
+
 
   const suspendTenant = await jsonRequest('/api/admin/tenants', 'PATCH', rootCookie, {
     tenantId: tenantB, status: 'suspended',
