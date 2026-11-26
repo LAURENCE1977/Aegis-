@@ -7,6 +7,7 @@ import {
 import { createMemoryRepository } from "../lib/memory-substrate.mjs";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { scrubSensitiveData } from "../lib/data-guards.mjs";
+import { encodeSignedCursor, verifyAndDecodeCursor } from "../lib/cursor.js";
 
 const MAX_BODY = 8192;
 
@@ -35,8 +36,37 @@ export async function onRequestGet({ request, env }) {
   if (projectId === undefined) return jsonResponse({ error: "Invalid project scope." }, 400);
   const rawLimit = url.searchParams.get("limit");
   const limit = rawLimit === null ? 20 : Number(rawLimit);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
-    return jsonResponse({ error: "Memory limit must be between 1 and 50." }, 400);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return jsonResponse({ error: "Memory limit must be between 1 and 100." }, 400);
+  }
+
+  const reviewFilter = url.searchParams.get("review");
+  if (reviewFilter !== null && reviewFilter !== "0" && reviewFilter !== "1") {
+    return jsonResponse({ error: "Invalid memory review filter." }, 400);
+  }
+  const includeCandidates = reviewFilter === "1";
+  const query = url.searchParams.get("q");
+  const rawCursor = url.searchParams.get("cursor");
+  if (rawCursor !== null && url.searchParams.has("q")) {
+    return jsonResponse({ error: "Cursor pagination is not supported for relevance search." }, 400);
+  }
+
+  const scope = {
+    tenant_id: principal.tenantId,
+    principal_id: principal.principalId,
+    project_id: projectId,
+  };
+  const filters = { review: includeCandidates };
+  let cursorPayload = null;
+  if (rawCursor !== null) {
+    if (typeof env.CURSOR_SIGNING_SECRET !== "string" ||
+        new TextEncoder().encode(env.CURSOR_SIGNING_SECRET).byteLength < 32) {
+      return jsonResponse({ error: "Memory pagination is not configured." }, 503);
+    }
+    cursorPayload = await verifyAndDecodeCursor(rawCursor, scope, filters, env.CURSOR_SIGNING_SECRET);
+    if (!cursorPayload) {
+      return jsonResponse({ error: "Invalid, expired, or out-of-scope memory cursor." }, 400);
+    }
   }
 
   try {
@@ -44,12 +74,49 @@ export async function onRequestGet({ request, env }) {
       return jsonResponse({ error: "Project not found." }, 404);
     }
     const repository = createMemoryRepository(env.AEGIS_DB);
-    const query = url.searchParams.get("q");
-    const includeCandidates = url.searchParams.get("review") === "1";
-    const memories = query
-      ? await repository.search({ principalId: principal.principalId, tenantId: principal.tenantId, ownerId: principal.principalId, projectId, query, limit })
-      : await repository.list({ principalId: principal.principalId, tenantId: principal.tenantId, ownerId: principal.principalId, projectId, limit, includeCandidates });
-    return jsonResponse({ memories, total: memories.length });
+    if (query) {
+      const memories = await repository.search({
+        principalId: principal.principalId,
+        tenantId: principal.tenantId,
+        ownerId: principal.principalId,
+        projectId,
+        query,
+        limit,
+      });
+      return jsonResponse({ memories, total: memories.length, next_cursor: null, has_more: false });
+    }
+
+    const page = await repository.list({
+      principalId: principal.principalId,
+      tenantId: principal.tenantId,
+      ownerId: principal.principalId,
+      projectId,
+      limit: limit + 1,
+      includeCandidates,
+      cursor: cursorPayload ? { updatedAt: cursorPayload.updated_at, id: cursorPayload.id } : null,
+    });
+    const hasMore = page.length > limit;
+    const memories = hasMore ? page.slice(0, limit) : page;
+    let nextCursor = null;
+    if (hasMore) {
+      if (typeof env.CURSOR_SIGNING_SECRET !== "string" ||
+          new TextEncoder().encode(env.CURSOR_SIGNING_SECRET).byteLength < 32) {
+        return jsonResponse({ error: "Memory pagination is not configured." }, 503);
+      }
+      const last = memories[memories.length - 1];
+      nextCursor = await encodeSignedCursor(
+        { updated_at: last.updatedAt, id: last.id },
+        scope,
+        filters,
+        env.CURSOR_SIGNING_SECRET,
+      );
+    }
+    return jsonResponse({
+      memories,
+      total: memories.length,
+      next_cursor: nextCursor,
+      has_more: hasMore,
+    });
   } catch {
     return jsonResponse({ error: "Memory search is temporarily unavailable." }, 503);
   }
