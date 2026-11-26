@@ -162,6 +162,13 @@ export const ROUTE_POLICIES = Object.freeze([
     multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,
   }),
   Object.freeze({
+    path: '/api/status', methods: Object.freeze(['GET']),
+    allowBodies: false, maxBodySize: 0, allowedMediaTypes: [],
+    profile: 'minimal', schema: obj({}, []), querySchema: obj({}, []),
+    credentialFields: Object.freeze([]), formFields: Object.freeze([]),
+    multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,
+  }),
+  Object.freeze({
     path: '/api/health', methods: Object.freeze(['GET']),
     allowBodies: false, maxBodySize: 0, allowedMediaTypes: Object.freeze([]),
     profile: 'minimal', schema: obj({}, []), querySchema: obj({}, []),
