@@ -299,16 +299,22 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   };
   const adminACookie = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
   const memberBCookie = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+  const inviteeCreate = await jsonRequest('/api/admin/principals', 'POST', rootB, {
+    identity: 'invitee-b@example.test', displayName: 'Tenant B Invitee',
+    password: 'invitee-b-strong-password-2026', role: 'member',
+  });
+  assert.equal(inviteeCreate.status, 201, await inviteeCreate.clone().text());
+  const inviteeCookie = await loginIdentity('invitee-b@example.test', 'invitee-b-strong-password-2026', tenantB);
 
   const invitation = await jsonRequest('/api/tenants/invitations', 'POST', adminACookie, {
-    identity: 'member-b@example.test', role: 'member',
+    identity: 'invitee-b@example.test', role: 'member',
   });
   assert.equal(invitation.status, 201, await invitation.clone().text());
   const invitationToken = (await invitation.json()).invitationToken;
   assert.match(invitationToken, /^[a-f0-9]{64}$/);
-  const acceptedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', memberBCookie, { token: invitationToken });
+  const acceptedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
   assert.equal(acceptedInvitation.status, 201, await acceptedInvitation.clone().text());
-  const replayedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', memberBCookie, { token: invitationToken });
+  const replayedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
   assert.equal(replayedInvitation.status, 409);
   const crossTenantInvitation = await jsonRequest('/api/tenants/invitations', 'POST', adminACookie, {
     identity: 'member-b@example.test', role: 'member', tenantId: tenantB,
