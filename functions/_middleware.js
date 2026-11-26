@@ -23,7 +23,8 @@ export const onRequest = [async (context) => {
     classification.path === '/api/ask' ||
     classification.path === '/api/admin/principals' ||
     classification.path === '/api/admin/tenants' ||
-    classification.path === '/api/sessions';
+    classification.path === '/api/sessions' ||
+    classification.path === '/api/health';
   if (protectedRoute) return withAegisImmunePipeline(context);
   return context.next();
 }];

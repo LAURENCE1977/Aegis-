@@ -299,3 +299,11 @@ test('health and credentialed login have explicit strict membrane policies',()=>
  for(const field of ['identity','identifier','email'])assert.ok(Object.hasOwn(login.schema.properties,field));
  assert.equal(validateRoutePolicies(),true);
 });
+
+test('health route is actually dispatched through membrane method and query enforcement',async()=>{
+ let reached=false;
+ const query=await onRequest[0]({request:new Request('https://aegis.test/api/health?diagnostics=1'),next:async()=>{reached=true;return new Response('unsafe');}});
+ assert.equal(query.status,400); assert.equal(reached,false);
+ const method=await onRequest[0]({request:new Request('https://aegis.test/api/health',{method:'POST'}),next:async()=>{reached=true;return new Response('unsafe');}});
+ assert.equal(method.status,405); assert.equal(reached,false);
+});

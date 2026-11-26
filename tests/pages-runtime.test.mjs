@@ -320,7 +320,7 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.equal(writeTenantA.status, 201, await writeTenantA.clone().text());
   const writeTenantB = await jsonRequest('/api/memories', 'POST', memberBCookie, memoryPayload(tenantBMarker));
   assert.equal(writeTenantB.status, 201, await writeTenantB.clone().text());
-  const readTenantA = await fetch(baseUrl + '/api/memories?limit=50', { headers: { cookie: adminACookie } });
+  const readTenantA = await fetch(baseUrl + '/api/memories?limit=50&review=1', { headers: { cookie: adminACookie } });
   const readTenantB = await fetch(baseUrl + '/api/memories?limit=50', { headers: { cookie: memberBCookie } });
   const tenantABody = await readTenantA.text(), tenantBBody = await readTenantB.text();
   assert.equal(readTenantA.status, 200, tenantABody);
