@@ -456,3 +456,25 @@ test('versioned pepper keyring verifies previous keys and rejects unknown versio
  const unknown={...v2,AEGIS_PASSWORD_PEPPER_KEYRING:JSON.stringify({v2:'second-pepper-material-with-at-least-32-bytes'})};
  assert.equal(await verifyPasswordCredential('rotation-test-password-2026',row,unknown),false);
 });
+
+test('password rotation strength policy rejects low-diversity and short credentials',async()=>{
+ const {isStrongPassword}=await import('../functions/lib/identity.mjs');
+ assert.equal(isStrongPassword('short'),false);
+ assert.equal(isStrongPassword('alllowercasepassword'),false);
+ assert.equal(isStrongPassword('Strong-password-2026'),true);
+});
+test('successful login transparently rehashes a v1 credential to the active v2 pepper',async()=>{
+ const {authenticatePrincipal}=await import('../functions/lib/identity.mjs');
+ const v1={AEGIS_PASSWORD_PEPPER_KEYRING:JSON.stringify({v1:'first-pepper-material-with-at-least-32-bytes',v2:'second-pepper-material-with-at-least-32-bytes'}),AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION:'v1'};
+ const v2={...v1,AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION:'v2'};
+ const created=await createPasswordCredential('transparent-rehash-password-2026',v1);
+ let row={principal_id:'usr-test',password_salt:created.passwordSalt,password_hash:created.passwordHash,password_iterations:created.passwordIterations,password_algorithm:created.passwordAlgorithm,password_pepper_version:created.passwordPepperVersion};
+ const db={prepare(sql){return{bind(...values){return{
+  first:async()=>sql.includes('aegis_principal_credentials')?{...row}:null,
+  all:async()=>({results:[{tenant_id:'org-test',tenant_name:'Test',role:'member'}]}),
+  run:async()=>{if(sql.startsWith('UPDATE aegis_principal_credentials'))row={...row,password_algorithm:values[0],password_pepper_version:values[1],password_salt:values[2],password_hash:values[3],password_iterations:values[4]};return{success:true};}
+ };}};}};
+ const account=await authenticatePrincipal(db,'person@example.test','transparent-rehash-password-2026',v2);
+ assert.equal(account.principalId,'usr-test');assert.equal(row.password_pepper_version,'v2');
+ assert.equal(await verifyPasswordCredential('transparent-rehash-password-2026',row,v2),true);
+});
