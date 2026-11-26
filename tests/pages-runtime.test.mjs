@@ -324,7 +324,7 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
 
 
   const identifierAliasLogin = await loginRequest(JSON.stringify({
-    identifier: 'admin-a@example.test', password: 'admin-a-strong-password-2026', tenantId: tenantA,
+    identifier: 'admin-a@example.test', password: 'admin-a-rotated-password-2026', tenantId: tenantA,
   }));
   assert.equal(identifierAliasLogin.status, 200, await identifierAliasLogin.clone().text());
   const emailAliasLogin = await loginRequest(JSON.stringify({
