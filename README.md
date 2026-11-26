@@ -130,7 +130,7 @@ The server-side AG-UI model gateway now has an optional Anthropic Messages SSE a
 
 ## Request membrane status
 
-Step 2.6.7 is integrated and verified on `feature/production-migrations`. The membrane is scoped to the existing JSON-only `POST /api/login` handler; other established API handlers retain their existing route-specific controls. The full repository Node suite passes (464 tests, 459 passed, 0 failed, 5 conditionally skipped), and the dedicated Wrangler Pages Dev runtime suite passes 5/5. This is application-layer middleware, not hardware or hypervisor isolation. No production deployment or production D1 mutation was performed. See the [master blueprint](docs/AEGIS_MASTER_BLUEPRINT.md) for scope and limitations.
+The request membrane now explicitly governs login, memories, ask, tenant/principal administration, sessions, health, password changes, invitations and account recovery. Each migrated route has a closed schema, method allowlist and bounded request policy. Step 2.6.12 is implemented on `feature/production-migrations` at `9b1c6f3fd37e66aa9c97d2c428e0dbb55f9fe1b8` (not merged or deployed). Verified CI: 504 Node tests (488 passed, 0 failed, 16 conditional skips) and 16/16 Wrangler Pages runtime tests. This is application-layer middleware, not hardware or hypervisor isolation. Production D1 and deployments remain untouched. See the [master blueprint](docs/AEGIS_MASTER_BLUEPRINT.md) for scope and limitations.
 
 
 ## Multi-tenant account governance — Step 2.6.12
