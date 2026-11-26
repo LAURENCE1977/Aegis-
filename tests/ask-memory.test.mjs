@@ -124,8 +124,8 @@ test('selected Project Space chat includes only its recent event summaries as un
   const db=new RetrievalD1([],[
     {id:'project-123',owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',name:'AEGIS',description:'Build AEGIS',status:'active',created_at:'2026-11-15T10:00:00.000Z',updated_at:'2026-11-15T12:00:00.000Z'},
   ],[
-    {id:'event-current',space_id:'project-123',owner_id:'owner',event_type:'decision',summary:'Keep one canonical D1 database.',content:'RAW PRIVATE EVENT BODY: never copy this into the model context.',created_at:'2026-11-15T11:00:00.000Z'},
-    {id:'event-other',space_id:'project-other',owner_id:'owner',event_type:'note',summary:'Other project secret summary.',content:'other project raw body',created_at:'2026-11-15T11:30:00.000Z'},
+    {id:'event-current',space_id:'project-123',owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',event_type:'decision',summary:'Keep one canonical D1 database.',content:'RAW PRIVATE EVENT BODY: never copy this into the model context.',created_at:'2026-11-15T11:00:00.000Z'},
+    {id:'event-other',space_id:'project-other',owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',event_type:'note',summary:'Other project secret summary.',content:'other project raw body',created_at:'2026-11-15T11:30:00.000Z'},
   ]);
   const messages=await buildAskMessages({AEGIS_DB:db},'How should I build this?',[],{projectId:'project-123',principal:rootPrincipal});
   const system=messages[0].content;

@@ -102,7 +102,7 @@ test('approval inbox fails closed when the D1 binding is missing', async () => {
     request: await authenticatedRequest('/api/approvals'),
     env: envBase,
   });
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 401);
 });
 
 test('approval inbox returns pending exact-operation details without exposing the input digest', async () => {
@@ -170,7 +170,7 @@ test('approval decisions reject oversized bodies while streaming', async () => {
 });
 
 test('approval decisions reject non-JSON content types', async () => {
-  const token = await createSessionToken(secret);
+  const token = await (async()=>{const s=await createRevocableSessionToken(secret);sessions.set(s.sessionId,{expires_at:s.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});return s.token;})();
   const response = await onRequestPost({
     request: new Request('https://aegis.example/api/approvals', {
       method: 'POST',

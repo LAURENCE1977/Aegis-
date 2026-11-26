@@ -97,7 +97,9 @@ async function loadApprovedMemories(env, question, projectId = null, principal) 
     });
     if (!projectId) return personal;
     const project = await repository.search({
-      ownerId: MEMORY_OWNER_ID,
+      ownerId: principal.principalId,
+      principalId: principal.principalId,
+      tenantId: principal.tenantId,
       projectId,
       query: question,
       limit: 4,
