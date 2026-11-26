@@ -1,5 +1,7 @@
 import {
   authConfigAvailable,
+  ROOT_PRINCIPAL_ID,
+  ROOT_TENANT_ID,
   constantTimeEqual,
   createRevocableSessionToken,
   hashLoginIdentity,
@@ -123,8 +125,8 @@ export async function onRequestPost({ request, env }) {
   try {
     const { token, sessionId, expiresAt } = await createRevocableSessionToken(env.AEGIS_SESSION_SECRET);
     await env.AEGIS_DB.prepare(
-      "INSERT INTO auth_sessions (session_id, created_at, expires_at, revoked_at) VALUES (?, ?, ?, NULL)"
-    ).bind(sessionId, new Date().toISOString(), expiresAt).run();
+      "INSERT INTO auth_sessions (session_id, created_at, expires_at, revoked_at, principal_id, tenant_id, roles_json) VALUES (?, ?, ?, NULL, ?, ?, ?)"
+    ).bind(sessionId, new Date().toISOString(), expiresAt, ROOT_PRINCIPAL_ID, ROOT_TENANT_ID, JSON.stringify(["owner"])).run();
     await clearLoginAttempts(env, attempt.identityHash);
     return json({ authenticated: true }, 200, { "Set-Cookie": sessionCookie(token) });
   } catch {

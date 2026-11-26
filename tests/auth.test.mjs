@@ -6,6 +6,7 @@ import {
   verifySessionToken,
   readSessionToken,
   isAuthorized,
+  resolveSessionPrincipal,
   sessionCookie,
 } from '../functions/lib/auth.mjs';
 import { onRequestGet as loginGet, onRequestPost as loginPost } from '../functions/api/login.js';
@@ -29,11 +30,11 @@ const sessionDb = {
     return { bind(...values) {
       return {
         run: async () => {
-          if (sql.startsWith('INSERT INTO auth_sessions')) storedSessions.set(values[0], { expires_at: values[2], revoked_at: null });
+          if (sql.startsWith('INSERT INTO auth_sessions')) storedSessions.set(values[0], { expires_at: values[2], revoked_at: null, principal_id: values[3], tenant_id: values[4], roles_json: values[5] });
           else if (sql.startsWith('UPDATE auth_sessions')) { const row = storedSessions.get(values[1]); if (row) row.revoked_at = values[0]; }
           return { success: true };
         },
-        first: async () => { const row = storedSessions.get(values[0]); return row && row.expires_at > values[1] && !row.revoked_at ? { session_id: values[0] } : null; },
+        first: async () => { const row = storedSessions.get(values[0]); return row && row.expires_at > values[1] && !row.revoked_at ? { session_id: values[0], principal_id: row.principal_id, tenant_id: row.tenant_id, roles_json: row.roles_json } : null; },
       };
     }};
   },
@@ -140,6 +141,7 @@ test('successful login persists a revocable session accepted by the API guard', 
     headers: { Cookie: '__Host-aegis_session=' + token },
   });
   assert.equal(await isAuthorized(authenticatedRequest, persistedEnv), true);
+  assert.deepEqual(await resolveSessionPrincipal(authenticatedRequest, persistedEnv), { sid: storedSessions.keys().next().value, principalId: 'usr_root', tenantId: 'org_root', roles: ['owner'] });
 });
 
 test('cross-origin login attempts are rejected', async () => {
@@ -300,11 +302,10 @@ test('logout revokes the D1 session and clears the browser cookie', async () => 
   assert.equal(await isAuthorized(request, persistedEnv), false);
 });
 
-test('a valid stateless legacy token remains valid during its original 12-hour migration window', async () => {
+test('a valid signed legacy token without sid is rejected even inside its former 12-hour window', async () => {
   const token = await createSessionToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
-  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), true);
-  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 12 * 60 * 60 * 1000 + 1), false);
+  assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);
 });
 
 test('D1 session lookup errors fail closed', async () => {
