@@ -25,18 +25,20 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 ## Security setup
 
-**Do not expose a deployment until both secrets are configured.**
+**Do not expose a deployment until the authentication configuration is complete.**
 
-In the Cloudflare dashboard, open the AEGIS Pages project and add these as encrypted secrets for the production environment (and separately for Preview if you use it):
+In the Cloudflare dashboard, open the AEGIS Pages project and configure these for the production environment (and separately for Preview if used):
 
-1. `AEGIS_PASSWORD` — a unique password of at least 12 characters.
-2. `AEGIS_SESSION_SECRET` — a cryptographically random secret of at least 32 characters. Do not reuse your AEGIS password.
+1. `AEGIS_SESSION_SECRET` — encrypted secret; a unique cryptographically random value of at least 32 characters.
+2. `AEGIS_PASSWORD` — encrypted secret; the root bootstrap password, at least 12 characters.
+3. `AEGIS_PASSWORD_PEPPER_KEYRING` — encrypted secret for named-principal credentials; a JSON object of version-to-secret mappings (for example `{"v1":"...32+ random characters...","v2":"...another 32+ random characters..."}`). Each pepper must be 32–512 characters; the keyring accepts at most eight versions.
+4. `AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION` — **plain environment variable, not a secret**; it must name a key present in the keyring.
 
-For named-principal credentials, configure `AEGIS_PASSWORD_PEPPER_KEYRING` as an encrypted Cloudflare Pages secret containing a JSON object of version-to-secret mappings (for example `{"v1":"...32+ random characters...","v2":"...another 32+ random characters..."}`). Set the non-secret `AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION` variable to the desired current key version. Keep old keys in the keyring during a rotation: existing credentials verify against their recorded version and are transparently rehashed with the active version after successful login. The legacy `AEGIS_PASSWORD_PEPPER` plus `AEGIS_PASSWORD_PEPPER_VERSION` pair remains supported for a single-version deployment. Never remove an old key until its credentials have migrated or affected users have completed a reset. The keyring accepts at most eight versions.
+Keep old keys in the keyring during rotation: existing credentials verify against their recorded version and are transparently rehashed with the active version after successful login. Never remove an old key until its credentials have migrated or affected users have completed a reset. The legacy `AEGIS_PASSWORD_PEPPER` plus `AEGIS_PASSWORD_PEPPER_VERSION` pair remains supported for a single-version deployment.
 
-Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable.
+AI provider keys are optional and must be provisioned only when the corresponding server-side adapter is deliberately activated: `ANTHROPIC_API_KEY` for Anthropic and `AEGIS_QWEN_API_KEY` for Alibaba Qwen. Cloudflare Workers AI uses the `AI` binding and does not require a third-party provider key. Provider keys are never browser-visible; GitHub Actions secrets are not automatically available to Cloudflare runtime bindings.
 
-If the login screen says security setup is unfinished, configure both secrets before using AEGIS.
+Redeploy after changing runtime secrets or configuration. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. Never put secrets in `index.html`, browser storage, GitHub, or a public build variable. See [the production migration runbook](docs/PRODUCTION_MIGRATION_RUNBOOK.md) before any production database migration.
 
 ## Forge and engineering intelligence
 
