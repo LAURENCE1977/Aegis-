@@ -1,7 +1,7 @@
 const COOKIE_NAME = "__Host-aegis_session";
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
-export const ROOT_PRINCIPAL_ID = "usr_root";
-export const ROOT_TENANT_ID = "org_root";
+export const ROOT_PRINCIPAL_ID = "usr-root";
+export const ROOT_TENANT_ID = "org-root";
 const ROOT_ROLES = Object.freeze(["owner"]);
 const encoder = new TextEncoder();
 function toBase64Url(bytes) { let binary=""; for (const byte of bytes) binary+=String.fromCharCode(byte); return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,""); }

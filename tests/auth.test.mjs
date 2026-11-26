@@ -62,7 +62,7 @@ const loginDb = {
 const persistedEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 async function issueStoredSession(now = Date.now()) {
   const session = await createRevocableSessionToken(secret, now);
-  storedSessions.set(session.sessionId, { expires_at: session.expiresAt, revoked_at: null, principal_id: 'usr_root', tenant_id: 'org_root', roles_json: '[\"owner\"]' });
+  storedSessions.set(session.sessionId, { expires_at: session.expiresAt, revoked_at: null, principal_id: 'usr-root', tenant_id: 'org-root', roles_json: '[\"owner\"]' });
   return session.token;
 }
 const throttledEnv = { ...configuredEnv, AEGIS_DB: loginDb };
@@ -146,7 +146,7 @@ test('successful login persists a revocable session accepted by the API guard', 
     headers: { Cookie: '__Host-aegis_session=' + token },
   });
   assert.equal(await isAuthorized(authenticatedRequest, persistedEnv), true);
-  assert.deepEqual(await resolveSessionPrincipal(authenticatedRequest, persistedEnv), { sid: storedSessions.keys().next().value, principalId: 'usr_root', tenantId: 'org_root', roles: ['owner'] });
+  assert.deepEqual(await resolveSessionPrincipal(authenticatedRequest, persistedEnv), { sid: storedSessions.keys().next().value, principalId: 'usr-root', tenantId: 'org-root', roles: ['owner'] });
 });
 
 test('cross-origin login attempts are rejected', async () => {

@@ -16,36 +16,36 @@ CREATE TABLE IF NOT EXISTS aegis_principals (
 );
 
 INSERT OR IGNORE INTO aegis_tenants (id, name, created_at)
-VALUES ('org_root', 'AEGIS Root Tenant', '2026-11-26T00:00:00.000Z');
+VALUES ('org-root', 'AEGIS Root Tenant', '2026-11-26T00:00:00.000Z');
 
 INSERT OR IGNORE INTO aegis_principals (id, tenant_id, display_name, created_at)
-VALUES ('usr_root', 'org_root', 'AEGIS Root Principal', '2026-11-26T00:00:00.000Z');
+VALUES ('usr-root', 'org-root', 'AEGIS Root Principal', '2026-11-26T00:00:00.000Z');
 
 ALTER TABLE auth_sessions ADD COLUMN principal_id TEXT;
 ALTER TABLE auth_sessions ADD COLUMN tenant_id TEXT;
 ALTER TABLE auth_sessions ADD COLUMN roles_json TEXT;
 UPDATE auth_sessions
-SET principal_id = 'usr_root', tenant_id = 'org_root', roles_json = '["owner"]'
+SET principal_id = 'usr-root', tenant_id = 'org-root', roles_json = '["owner"]'
 WHERE principal_id IS NULL OR tenant_id IS NULL OR roles_json IS NULL;
 
 ALTER TABLE aegis_memories ADD COLUMN principal_id TEXT;
 ALTER TABLE aegis_memories ADD COLUMN tenant_id TEXT;
-UPDATE aegis_memories SET principal_id = 'usr_root', tenant_id = 'org_root'
+UPDATE aegis_memories SET principal_id = 'usr-root', tenant_id = 'org-root'
 WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
 
 ALTER TABLE project_spaces ADD COLUMN principal_id TEXT;
 ALTER TABLE project_spaces ADD COLUMN tenant_id TEXT;
-UPDATE project_spaces SET principal_id = 'usr_root', tenant_id = 'org_root'
+UPDATE project_spaces SET principal_id = 'usr-root', tenant_id = 'org-root'
 WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
 
 ALTER TABLE project_space_events ADD COLUMN principal_id TEXT;
 ALTER TABLE project_space_events ADD COLUMN tenant_id TEXT;
-UPDATE project_space_events SET principal_id = 'usr_root', tenant_id = 'org_root'
+UPDATE project_space_events SET principal_id = 'usr-root', tenant_id = 'org-root'
 WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
 
 ALTER TABLE aegis_memory_events ADD COLUMN principal_id TEXT;
 ALTER TABLE aegis_memory_events ADD COLUMN tenant_id TEXT;
-UPDATE aegis_memory_events SET principal_id = 'usr_root', tenant_id = 'org_root'
+UPDATE aegis_memory_events SET principal_id = 'usr-root', tenant_id = 'org-root'
 WHERE owner_id = 'owner' AND (principal_id IS NULL OR tenant_id IS NULL);
 
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_principal_tenant_active
