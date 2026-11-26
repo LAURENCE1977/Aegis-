@@ -10,6 +10,7 @@ import {
 } from '../functions/lib/auth.mjs';
 import { onRequestGet as loginGet, onRequestPost as loginPost, onRequestDelete as loginDelete } from '../functions/api/login.js';
 import { onRequestPost as askPost } from '../functions/api/ask.js';
+import { createPasswordCredential, verifyPasswordCredential, normalizeLoginIdentifier } from '../functions/lib/identity.mjs';
 import {
   onRequestGet as memoryGet,
   onRequestPost as memoryPost,
@@ -419,4 +420,27 @@ test('verifySessionToken fails closed without D1 or without a matching active ro
   assert.equal(await verifySessionToken(token, secret), false);
   const emptyDb = { prepare() { return { bind() { return { first: async () => null }; } }; } };
   assert.equal(await verifySessionToken(token, secret, Date.now(), emptyDb), false);
+});
+
+test('PBKDF2 credentials use a fresh 16-byte salt and explicit algorithm version',async()=>{
+ const a=await createPasswordCredential('governance-test-password-2026'),b=await createPasswordCredential('governance-test-password-2026');
+ assert.equal(a.passwordAlgorithm,'PBKDF2-SHA256-v1'); assert.equal(a.passwordPepperVersion,'none');
+ assert.equal(a.passwordIterations,210000); assert.equal(Buffer.from(a.passwordSalt,'base64url').length,16); assert.notEqual(a.passwordSalt,b.passwordSalt);
+ const row={password_salt:a.passwordSalt,password_hash:a.passwordHash,password_iterations:a.passwordIterations,password_algorithm:a.passwordAlgorithm,password_pepper_version:a.passwordPepperVersion};
+ assert.equal(await verifyPasswordCredential('governance-test-password-2026',row),true);
+ assert.equal(await verifyPasswordCredential('incorrect-password',row),false);
+});
+test('PBKDF2 credentials require the configured pepper version',async()=>{
+ const env={AEGIS_PASSWORD_PEPPER:'test-pepper-secret-with-at-least-32-bytes',AEGIS_PASSWORD_PEPPER_VERSION:'pepper-2026-01'};
+ const c=await createPasswordCredential('peppered-governance-password-2026',env);
+ const row={password_salt:c.passwordSalt,password_hash:c.passwordHash,password_iterations:c.passwordIterations,password_algorithm:c.passwordAlgorithm,password_pepper_version:c.passwordPepperVersion};
+ assert.equal(await verifyPasswordCredential('peppered-governance-password-2026',row,env),true);
+ assert.equal(await verifyPasswordCredential('peppered-governance-password-2026',row,{}),false);
+ assert.equal(await verifyPasswordCredential('peppered-governance-password-2026',row,{...env,AEGIS_PASSWORD_PEPPER:'different-pepper-secret-with-32-bytes-minimum'}),false);
+});
+test('login identifiers normalize consistently',()=>{
+ assert.equal(normalizeLoginIdentifier(' USER.Name+tag@Example.Test '),'user.name+tag@example.test');
+ assert.equal(normalizeLoginIdentifier('User.Name'),'user.name');
+ assert.equal(normalizeLoginIdentifier('../admin'),null);
+ assert.equal(normalizeLoginIdentifier('x'.repeat(255)),null);
 });

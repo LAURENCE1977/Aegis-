@@ -290,3 +290,12 @@ test('bodyless login DELETE rejects non-empty streams but permits empty requests
   });
   assert.equal(accepted.status, 200);
 });
+
+test('health and credentialed login have explicit strict membrane policies',()=>{
+ const health=ROUTE_POLICIES.find(policy=>policy.path==='/api/health');
+ assert.ok(health); assert.deepEqual(health.methods,['GET']); assert.equal(health.allowBodies,false);
+ assert.deepEqual(Object.keys(health.querySchema.properties),[]);
+ const login=ROUTE_POLICIES.find(policy=>policy.path==='/api/login');
+ for(const field of ['identity','identifier','email'])assert.ok(Object.hasOwn(login.schema.properties,field));
+ assert.equal(validateRoutePolicies(),true);
+});

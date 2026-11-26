@@ -377,3 +377,11 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.equal(suspendTenant.status, 200, await suspendTenant.clone().text());
   assert.equal((await jsonRequest('/api/sessions', 'GET', rootB)).status, 401);
 });
+
+test('Pages runtime exposes unauthenticated no-store edge liveness with strict route enforcement',runtimeOptions,async()=>{
+ const response=await fetch(baseUrl+'/api/health');
+ assert.equal(response.status,200); assert.match(response.headers.get('cache-control')||'',/no-store/i);
+ assert.deepEqual(await response.json(),{ok:true,service:'aegis-infinity'});
+ const query=await fetch(baseUrl+'/api/health?diagnostics=1'); assert.equal(query.status,400);
+ const post=await fetch(baseUrl+'/api/health',{method:'POST'}); assert.equal(post.status,405);
+});

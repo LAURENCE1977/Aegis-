@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const credential = await createPasswordCredential(body.password);
+    const credential = await createPasswordCredential(body.password, env);
     const principalId = "usr-" + crypto.randomUUID();
     const now = new Date().toISOString();
     await env.AEGIS_DB.batch([
@@ -57,9 +57,13 @@ export async function onRequestPost({ request, env }) {
       `).bind(principalId, principal.tenantId, displayName, now),
       env.AEGIS_DB.prepare(`
         INSERT INTO aegis_principal_credentials
-          (principal_id, login_identifier, password_salt, password_hash, password_iterations, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(principalId, identity, credential.passwordSalt, credential.passwordHash, credential.passwordIterations, now, now),
+          (principal_id, login_identifier, email, username, password_algorithm, password_pepper_version,
+           password_salt, password_hash, password_iterations, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(principalId, identity, identity.includes("@") ? identity : null,
+        identity.includes("@") ? null : identity, credential.passwordAlgorithm,
+        credential.passwordPepperVersion, credential.passwordSalt, credential.passwordHash,
+        credential.passwordIterations, now, now),
       env.AEGIS_DB.prepare(`
         INSERT INTO aegis_tenant_memberships
           (principal_id, tenant_id, role, status, created_at, updated_at)

@@ -24,7 +24,7 @@ export const ROUTE_POLICIES = Object.freeze([
       type: 'object',
       additionalProperties: false,
       required: Object.freeze(['password']),
-      properties: Object.freeze({ password: str(1024, 12), identity: str(254, 3), tenantId: str(128, 3) }),
+      properties: Object.freeze({ password: str(1024, 12), identity: str(254, 3), identifier: str(254, 3), email: str(254, 3), tenantId: str(128, 3) }),
     }),
     credentialFields: Object.freeze(['password']),
     formFields: Object.freeze([]),
@@ -127,10 +127,18 @@ export const ROUTE_POLICIES = Object.freeze([
     allowedMediaTypes: Object.freeze(['application/json']),
     profile: 'standard',
     schema: obj({ sessionId: str(64, 1) }, []),
+    querySchema: obj({ principalId: str(80, 3) }, []),
     credentialFields: Object.freeze([]),
     formFields: Object.freeze([]),
     multiValuedFormFields: Object.freeze([]),
     allowDuplicateFormFields: false,
+  }),
+  Object.freeze({
+    path: '/api/health', methods: Object.freeze(['GET']),
+    allowBodies: false, maxBodySize: 0, allowedMediaTypes: Object.freeze([]),
+    profile: 'minimal', schema: obj({}, []), querySchema: obj({}, []),
+    credentialFields: Object.freeze([]), formFields: Object.freeze([]),
+    multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,
   }),
 ]);
 

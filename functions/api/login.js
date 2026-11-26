@@ -123,10 +123,13 @@ export async function onRequestPost({ request, env }) {
   // Named identities always authenticate against their own PBKDF2 credential.
   let principalId;
   let membership;
-  if (typeof body?.identity === "string") {
+  const suppliedIdentifiers = ["identity", "identifier", "email"].filter(key => typeof body?.[key] === "string");
+  if (suppliedIdentifiers.length > 1) return json({ error: "Provide exactly one login identifier." }, 400);
+  const suppliedIdentity = suppliedIdentifiers.length === 1 ? body[suppliedIdentifiers[0]] : null;
+  if (suppliedIdentity !== null) {
     let account;
     try {
-      account = await authenticatePrincipal(env.AEGIS_DB, body.identity, body.password);
+      account = await authenticatePrincipal(env.AEGIS_DB, suppliedIdentity, body.password, env);
     } catch {
       return json({ error: "Authentication is temporarily unavailable." }, 503);
     }
