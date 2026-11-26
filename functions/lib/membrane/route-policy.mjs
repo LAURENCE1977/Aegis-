@@ -121,7 +121,7 @@ export const ROUTE_POLICIES = Object.freeze([
   }),
   Object.freeze({
     path: '/api/sessions',
-    methods: Object.freeze(['GET', 'DELETE']),
+    methods: Object.freeze(['GET', 'POST']),
     allowBodies: true,
     maxBodySize: 1024,
     allowedMediaTypes: Object.freeze(['application/json']),

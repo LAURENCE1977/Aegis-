@@ -19,7 +19,7 @@ export async function onRequestGet({ request, env }) {
   } catch { return json({ error: "Unable to list sessions." }, 503); }
 }
 
-export async function onRequestDelete({ request, env }) {
+export async function onRequestPost({ request, env }) {
   const principal = await resolveSessionPrincipal(request, env);
   if (!principal) return json({ error: "UNAUTHORIZED" }, 401);
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);

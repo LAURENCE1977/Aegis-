@@ -320,7 +320,7 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.ok(ownSessions.length >= 2);
   const firstSession = ownSessions.find(item => item.current === 1);
   assert.ok(firstSession);
-  const targetedRevoke = await jsonRequest('/api/sessions', 'DELETE', memberBCookie, { sessionId: firstSession.sessionId });
+  const targetedRevoke = await jsonRequest('/api/sessions', 'POST', memberBCookie, { sessionId: firstSession.sessionId });
   assert.equal(targetedRevoke.status, 200);
   assert.equal((await jsonRequest('/api/sessions', 'GET', memberBCookie)).status, 401);
   assert.equal((await jsonRequest('/api/sessions', 'GET', secondMemberSession)).status, 200);
