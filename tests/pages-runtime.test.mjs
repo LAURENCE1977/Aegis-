@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createSessionToken } from '../functions/lib/auth.mjs';
 
 const baseUrl = process.env.AEGIS_PAGES_RUNTIME_URL;
 const runtimeOptions = baseUrl ? {} : { skip: 'Set AEGIS_PAGES_RUNTIME_URL when Wrangler Pages Dev is running.' };
 const testPassword = process.env.AEGIS_RUNTIME_TEST_PASSWORD || 'aegis-pages-runtime-test-password';
+const testSessionSecret = 'aegis-pages-runtime-test-session-secret-32chars';
 
 function loginRequest(body, contentType = 'application/json') {
   return fetch(baseUrl + '/api/login', {
@@ -178,4 +180,20 @@ test('Pages runtime rejects replay of a logged-out session across memories and a
     body: JSON.stringify({ question: 'Should not reach the model' }),
   });
   assert.equal(ask.status, 401);
+});
+
+
+test('Pages runtime rejects a correctly signed legacy token without a D1 sid', runtimeOptions, async () => {
+  const token = await createSessionToken(testSessionSecret);
+  const response = await fetch(baseUrl + '/api/ask', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: baseUrl,
+      cookie: '__Host-aegis_session=' + token,
+    },
+    body: JSON.stringify({ question: 'legacy replay attempt' }),
+  });
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: 'Authentication required.' });
 });
