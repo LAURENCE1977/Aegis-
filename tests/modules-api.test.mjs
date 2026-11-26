@@ -31,7 +31,7 @@ test('module API rejects requests without a valid session', async () => {
 
 test('module API returns the catalogue to an authenticated session without granting permissions', async () => {
   const session = await createRevocableSessionToken(secret);
-  sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr_root',tenant_id:'org_root',roles_json:'[\"owner\"]'});
+  sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});
   const token = session.token;
   const response = await onRequestGet({
     request: new Request('https://aegis.example/api/modules', {

@@ -42,7 +42,7 @@ async function request(body = { sourceUrl: 'https://github.com/Example/Repo' }, 
   origin = 'https://aegis.example',
 } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (authenticated) { const session=await createRevocableSessionToken(secret); sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr_root',tenant_id:'org_root',roles_json:'[\"owner\"]'}); headers.Cookie='__Host-aegis_session='+session.token; }
+  if (authenticated) { const session=await createRevocableSessionToken(secret); sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'}); headers.Cookie='__Host-aegis_session='+session.token; }
   if (origin !== null) headers.Origin = origin;
   return new Request('https://aegis.example/api/sentinel/github-discover', {
     method: 'POST',
@@ -55,13 +55,13 @@ function activeGrant() {
   const now = Date.now();
   return {
     id: 'github-grant-1',
-    principal_id: 'usr_root',
+    principal_id: 'usr-root',
     capability_id: 'aegis-github-public-discovery',
     capability_version: '0.1.0',
     resource_id: 'github:public:Example/Repo',
     scopes_json: JSON.stringify(['github:public-metadata:read']),
     status: 'active',
-    created_by: 'usr_root',
+    created_by: 'usr-root',
     created_at: new Date(now - 1000).toISOString(),
     expires_at: new Date(now + 60_000).toISOString(),
     revoked_at: null,
