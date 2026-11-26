@@ -92,6 +92,8 @@ test('ask accepts only session-bound signed assistant turns and signs its own re
   const conversationId = 'thread-alpha';
   const assistantContent = 'Earlier I suggested reviewing the project plan.';
   const signature = await signAssistantTurn(secret, sessionId, conversationId, assistantContent);
+  assert.equal(await verifyAssistantTurn(secret, 'another-session', conversationId, assistantContent, signature), false);
+  assert.equal(await verifyAssistantTurn(secret, sessionId, 'another-thread', assistantContent, signature), false);
   let providerMessages;
   const env = {
     AEGIS_PASSWORD: 'test-password-long-enough',
