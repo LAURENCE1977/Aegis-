@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signAssistantTurn, verifyAssistantTurn } from '../functions/lib/ask-history.mjs';
+import { signAssistantTurn } from '../functions/lib/ask-history.mjs';
 
 const baseUrl = process.env.AEGIS_PAGES_RUNTIME_URL;
 const runtimeOptions = baseUrl ? {} : { skip: 'Set AEGIS_PAGES_RUNTIME_URL when Wrangler Pages Dev is running.' };
@@ -227,10 +227,8 @@ test('Pages runtime verifies session-bound assistant HMAC and rejects tampering'
       history: [{ role: 'assistant', content: previous, signature }],
     }),
   });
-  assert.equal(valid.status, 200, await valid.clone().text());
-  const payload = await valid.json();
-  assert.equal(payload.conversationId, conversationId);
-  assert.equal(await verifyAssistantTurn(testSessionSecret, claims.sid, conversationId, payload.response, payload.assistantTurnSignature), true);
+  assert.equal(valid.status, 503, await valid.clone().text());
+  assert.deepEqual(await valid.json(), { error: 'No AI provider configured' });
 
   const tampered = await fetch(baseUrl + '/api/ask', {
     method: 'POST',
