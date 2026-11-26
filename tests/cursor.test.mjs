@@ -19,9 +19,15 @@ test('signed cursor round-trips its position and authenticated scope', async () 
 });
 
 test('cursor rejects missing or weak signing secrets', async () => {
+  const cursor = await encodeSignedCursor(row, scope, filters, secret);
   await assert.rejects(() => encodeSignedCursor(row, scope, filters, ''), /CURSOR_SIGNING_SECRET/);
   await assert.rejects(() => encodeSignedCursor(row, scope, filters, 'short'), /32 bytes/);
-  assert.equal(await verifyAndDecodeCursor('abc.def', scope, filters, undefined), null);
+  assert.equal(await verifyAndDecodeCursor(cursor, scope, filters, undefined), null);
+  const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(
+    atob(cursor.split('.')[0].replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - cursor.split('.')[0].length % 4) % 4)),
+    character => character.charCodeAt(0),
+  )));
+  assert.equal(payload.exp - payload.iat, 86400);
 });
 
 test('cursor rejects signature tampering and non-canonical Base64URL', async () => {
