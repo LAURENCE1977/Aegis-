@@ -1,3 +1,5 @@
+import { authConfigAvailable, isAuthorized } from '../lib/auth.mjs';
+
 const SECURITY_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -17,7 +19,13 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
+  if (!authConfigAvailable(env)) {
+    return jsonResponse({ ok: false, error: 'Authentication is not configured.' }, 503);
+  }
+  if (!(await isAuthorized(request, env))) {
+    return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
+  }
   const db = env.AEGIS_DB;
 
   if (!db || typeof db.prepare !== "function") {
