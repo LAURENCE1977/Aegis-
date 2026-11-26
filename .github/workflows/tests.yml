@@ -96,6 +96,8 @@ jobs:
           printf 'AEGIS_SESSION_SECRET=%s\n' 'aegis-pages-runtime-test-session-secret-32chars' >> .dev.vars
       - name: Apply production Pages schema to isolated local D1
         run: wrangler d1 migrations apply aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages
+      - name: Assert fresh production migration ledger, foreign keys and triggers
+        run: wrangler d1 execute aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages --file scripts/production-empty-assert.sql
       - name: Verify production migration chain against a legacy owner snapshot
         shell: bash
         run: |
