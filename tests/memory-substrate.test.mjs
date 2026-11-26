@@ -306,7 +306,7 @@ test('D1 repository paginates by updated timestamp and ascending ID without dupl
   await repository.create(record({id:'memory-a',createdAt:sharedTime,updatedAt:sharedTime}));
   await repository.create(record({id:'memory-b',createdAt:sharedTime,updatedAt:sharedTime}));
   await repository.create(record({id:'memory-c',createdAt:sharedTime,updatedAt:sharedTime}));
-  await repository.create(record({id:'memory-d',createdAt:sharedTime,updatedAt:'2026-11-15T10:00:00.000Z'}));
+  await repository.create(record({id:'memory-d',createdAt:'2026-11-15T09:00:00.000Z',updatedAt:'2026-11-15T10:00:00.000Z'}));
 
   const scope = {ownerId:'owner-1',principalId:'principal-1',tenantId:'tenant-1'};
   const first = await repository.list({...scope,now,limit:3});
