@@ -9,7 +9,7 @@ import {
 const now = Date.parse('2026-11-15T12:00:00.000Z');
 const record = (overrides = {}) => ({
   id: 'preferred-writing-style',
-  ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',
+  ownerId: 'owner-1',
   principalId: 'principal-1',
   tenantId: 'tenant-1',
   projectId: null,
@@ -68,6 +68,7 @@ test('search is isolated to the requested owner and personal/project scope', () 
   const store = createMemoryStore([
     record(),
     record({ id: 'other-owner', ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2' }),
+    record({ id: 'same-principal-other-tenant', ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-2' }),
     record({ id: 'project-memory', projectId: 'project-a' }),
     record({ id: 'other-project', projectId: 'project-b' }),
   ]);
