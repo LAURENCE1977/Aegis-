@@ -1,5 +1,5 @@
 import {
-  authorizeOwner,
+  authorizePrincipal,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
@@ -9,11 +9,11 @@ import {
   listWorkspaceEvents,
 } from "../../../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 
 export async function onRequestGet({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Workspace storage is not configured." }, 503);
   }
@@ -22,7 +22,7 @@ export async function onRequestGet({ request, env, params }) {
     return jsonResponse({ error: "Workspace not found." }, 404);
   }
   try {
-    const events = await listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, id, 50);
+    const events = await listWorkspaceEvents(env.AEGIS_DB, principal, id, 50);
     if (!events) return jsonResponse({ error: "Workspace not found." }, 404);
     return jsonResponse({ events, total: events.length });
   } catch {
@@ -31,7 +31,7 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestPost({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
+  const denied = await authorizePrincipal(request, env);
   if (denied) return denied;
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: "Invalid request origin." }, 403);
@@ -50,7 +50,7 @@ export async function onRequestPost({ request, env, params }) {
   }
   try {
     const event = await appendWorkspaceEvent(env.AEGIS_DB, {
-      ownerId: OWNER_ID,
+      principal,
       workspaceId: params?.id,
       type: body.type,
       summary: body.summary,

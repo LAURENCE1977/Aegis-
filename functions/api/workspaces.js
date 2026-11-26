@@ -1,21 +1,21 @@
 import {
-  authorizeOwner,
+  authorizePrincipal,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
 } from "../lib/owner-api.mjs";
 import { createWorkspace, listWorkspaces } from "../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 
 export async function onRequestGet({ request, env }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Workspace storage is not configured." }, 503);
   }
   try {
-    const workspaces = await listWorkspaces(env.AEGIS_DB, OWNER_ID, 50);
+    const workspaces = await listWorkspaces(env.AEGIS_DB, principal, 50);
     return jsonResponse({ workspaces, total: workspaces.length });
   } catch {
     return jsonResponse({ error: "Workspace list is temporarily unavailable." }, 503);
@@ -23,7 +23,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const denied = await authorizeOwner(request, env);
+  const denied = await authorizePrincipal(request, env);
   if (denied) return denied;
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: "Invalid request origin." }, 403);
@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
     return jsonResponse({ error: "A workspace name and optional description are required." }, 400);
   }
   try {
-    const workspace = await createWorkspace(env.AEGIS_DB, OWNER_ID, body);
+    const workspace = await createWorkspace(env.AEGIS_DB, principal, body);
     return jsonResponse({ workspace }, 201);
   } catch (error) {
     if (error instanceof TypeError) {
