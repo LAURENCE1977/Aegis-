@@ -3,6 +3,7 @@ import { normalizeLoginIdentifier } from "../../lib/identity.mjs";
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
 const enc=new TextEncoder();async function digest(s){return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s))),x=>x.toString(16).padStart(2,"0")).join("");}
 function makeToken(){return Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,"0")).join("");}
+export function invitationState(invitation,nowSeconds=Math.floor(Date.now()/1000)){if(invitation?.accepted_at)return "used";if(!Number.isSafeInteger(Number(invitation?.expires_at))||Number(invitation.expires_at)<=nowSeconds)return "expired";return "active";}
 export async function onRequestPost({request,env}){
  const p=await resolveSessionPrincipal(request,env);if(!p)return json({error:"UNAUTHORIZED"},401);
  if(!isSameOriginRequest(request))return json({error:"Invalid request origin."},403);
@@ -13,12 +14,14 @@ export async function onRequestPost({request,env}){
   try{
    const hash=await digest(b.token),now=new Date().toISOString(),epoch=Math.floor(Date.now()/1000);
    const [inv,cred]=await Promise.all([
-    env.AEGIS_DB.prepare("SELECT invitation_id,tenant_id,normalized_identity,role,expires_at,accepted_at FROM aegis_tenant_invitations WHERE token_hash=?").bind(hash).first(),
+    env.AEGIS_DB.prepare("SELECT i.invitation_id,i.tenant_id,i.normalized_identity,i.role,i.expires_at,i.accepted_at,t.status AS tenant_status FROM aegis_tenant_invitations i JOIN aegis_tenants t ON t.id=i.tenant_id WHERE i.token_hash=?").bind(hash).first(),
     env.AEGIS_DB.prepare("SELECT login_identifier FROM aegis_principal_credentials WHERE principal_id=?").bind(p.principalId).first()
    ]);
    if(!inv)return json({error:"Invitation not found."},404);
-   if(inv.accepted_at)return json({error:"Invitation already used."},409);
-   if(Number(inv.expires_at)<=epoch)return json({error:"Invitation expired."},410);
+   const state=invitationState(inv,epoch);
+   if(state==="used")return json({error:"Invitation already used."},409);
+   if(state==="expired")return json({error:"Invitation expired."},409);
+   if(inv.tenant_status!=="active")return json({error:"Invitation tenant is not active."},409);
    if(!cred||cred.login_identifier!==inv.normalized_identity)return json({error:"Invitation identity mismatch."},403);
    const result=await env.AEGIS_DB.batch([
     env.AEGIS_DB.prepare("UPDATE aegis_tenant_invitations SET accepted_at=? WHERE invitation_id=? AND accepted_at IS NULL AND expires_at>?").bind(now,inv.invitation_id,epoch),
