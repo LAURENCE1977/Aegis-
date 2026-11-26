@@ -123,7 +123,7 @@ test('request reconstruction removes stale content-length and preserves content-
   assert.equal(response.status, 200);
   assert.equal(forwarded.headers.get('content-length'), null);
   assert.equal(forwarded.headers.get('content-type'), 'application/json');
-  assert.deepEqual(await forwarded.json(), { password: 'correct' });
+  assert.deepEqual(await forwarded.json(), { password: 'correct-password-value' });
 });
 
 
