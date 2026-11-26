@@ -65,14 +65,23 @@ export async function onRequestPost(context) {
       messages: scrubbed.value,
       max_tokens: 1024
     });
-    return json(result);
+    const payload = result && typeof result === "object" && !Array.isArray(result)
+      ? { ...result }
+      : { response: result };
+    payload.conversationId = conversationId;
+    if (typeof payload.response === "string" && payload.response.length <= MAX_TEXT) {
+      payload.assistantTurnSignature = await signAssistantTurn(
+        env.AEGIS_SESSION_SECRET, principal.sid, conversationId, payload.response
+      );
+    }
+    return json(payload);
   } catch {
     return json({ error: "The AI could not answer right now. Please try again." }, 502);
   }
 }
 
 
-export async function buildAskMessages(env, question, history = [], { projectId = null, principal = null } = {}) {
+export async function buildAskMessages(env, question, history = [], { projectId = null, principal = null, allowVerifiedAssistant = false } = {}) {
   const safeHistory = Array.isArray(history)
     ? history
       .filter(m => m && (m.role === "user" || (allowVerifiedAssistant && m.role === "assistant")) && typeof m.content === "string" && m.content.trim())
