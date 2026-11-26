@@ -117,6 +117,8 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Login protection is unavailable." }, 503);
   }
 
+  if (attempt.locked) return json({ error: "Incorrect password." }, 401);
+
   // A password-only request is the controlled appliance bootstrap path.
   // Named identities always authenticate against their own PBKDF2 credential.
   let principalId;
@@ -168,8 +170,6 @@ export async function onRequestPost({ request, env }) {
     principalId = ROOT_PRINCIPAL_ID;
     membership = { tenant_id: matches[0].tenant_id, role: matches[0].role };
   }
-
-  if (attempt.locked) return json({ error: "Incorrect password." }, 401);
 
   try {
     const { token, sessionId, expiresAt } = await createRevocableSessionToken(env.AEGIS_SESSION_SECRET);

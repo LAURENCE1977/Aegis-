@@ -33,7 +33,8 @@ const sessionDb = {
           else if (sql.startsWith('UPDATE auth_sessions')) { const row = storedSessions.get(values[1]); if (row) row.revoked_at = values[0]; }
           return { success: true };
         },
-        first: async () => { const row = storedSessions.get(values[0]); return row && row.expires_at > values[1] && !row.revoked_at ? { session_id: values[0], principal_id: row.principal_id, tenant_id: row.tenant_id, roles_json: row.roles_json } : null; },
+        first: async () => { const row = storedSessions.get(values[0]); return row && row.expires_at > values[1] && !row.revoked_at ? { session_id: values[0], principal_id: row.principal_id, tenant_id: row.tenant_id, roles_json: row.roles_json, role: JSON.parse(row.roles_json)[0] } : null; },
+        all: async () => ({ results: sql.includes("aegis_tenant_memberships") ? [{ tenant_id: 'org-root', tenant_name: 'AEGIS Root Tenant', role: 'owner' }] : [] }),
       };
     }};
   },
