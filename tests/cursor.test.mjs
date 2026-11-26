@@ -74,3 +74,14 @@ test('cursor rejects oversized and structurally malformed tokens', async () => {
   assert.equal(await verifyAndDecodeCursor('one.two.three', scope, filters, secret), null);
   assert.equal(await verifyAndDecodeCursor('', scope, filters, secret), null);
 });
+
+
+test('cursor encoder refuses scope payloads that exceed the wire limit', async () => {
+  const longId = 'a'.repeat(100);
+  await assert.rejects(() => encodeSignedCursor(
+    { updated_at: row.updated_at, id: longId },
+    { tenant_id: longId, principal_id: longId, project_id: longId },
+    filters,
+    secret,
+  ), /maximum supported length/);
+});
