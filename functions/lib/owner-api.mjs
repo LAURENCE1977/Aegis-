@@ -1,6 +1,7 @@
 import {
   authConfigAvailable,
   isAuthorized,
+  resolveSessionPrincipal,
   isSameOriginRequest,
 } from "./auth.mjs";
 
@@ -72,4 +73,16 @@ export async function readJsonRequest(request, maxBytes) {
   } catch {
     return { ok: false, status: 400, error: "Invalid JSON request." };
   }
+}
+
+
+export async function authorizePrincipal(request, env) {
+  if (!authConfigAvailable(env)) {
+    return { response: jsonResponse({ error: "Authentication is not configured." }, 503) };
+  }
+  const principal = await resolveSessionPrincipal(request, env);
+  if (!principal) {
+    return { response: jsonResponse({ error: "Authentication required." }, 401) };
+  }
+  return { principal };
 }

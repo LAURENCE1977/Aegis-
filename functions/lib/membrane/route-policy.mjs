@@ -69,7 +69,7 @@ export const ROUTE_POLICIES = Object.freeze([
     schema: obj({
       question: str(4000, 1),
       history: array(obj({
-        role: str(9, 4, { enum: ['user', 'assistant'] }),
+        role: str(4, 4, { enum: ['user'] }),
         content: str(4000, 1),
       }, ['role', 'content']), 10),
     }, ['question']),
