@@ -89,37 +89,37 @@ test('creates a named project space with an active status', async () => {
   assert.equal(space.name, 'AEGIS Forge');
   assert.equal(space.description, 'Research and build workspace');
   assert.equal(space.status, 'active');
-  assert.equal(db.spaces.get(space.id).owner_id, 'owner');
+  assert.equal(db.spaces.get(space.id).owner_id, 'usr_root');
 });
 
 test('rejects invalid workspace names and oversized descriptions', async () => {
   const db = new MemoryD1();
-  await assert.rejects(() => createWorkspace(db, 'owner', { name: '   ' }), /name/i);
-  await assert.rejects(() => createWorkspace(db, 'owner', {
+  await assert.rejects(() => createWorkspace(db, root, { name: '   ' }), /name/i);
+  await assert.rejects(() => createWorkspace(db, root, {
     name: 'Project', description: 'x'.repeat(501),
   }), /description/i);
 });
 
 test("lists only the owner's active workspaces with a bounded limit", async () => {
   const db = new MemoryD1();
-  await createWorkspace(db, 'owner', { name: 'Mine' });
+  await createWorkspace(db, root, { name: 'Mine' });
   await createWorkspace(db, other, { name: 'Not mine' });
   const spaces = await listWorkspaces(db, root, 10);
   assert.equal(spaces.length, 1);
   assert.equal(spaces[0].name, 'Mine');
-  await assert.rejects(() => listWorkspaces(db, 'owner', 101), /limit/i);
+  await assert.rejects(() => listWorkspaces(db, root, 101), /limit/i);
 });
 
 test('workspace lookup is owner-scoped', async () => {
   const db = new MemoryD1();
-  const space = await createWorkspace(db, 'owner', { name: 'Private' });
+  const space = await createWorkspace(db, root, { name: 'Private' });
   assert.equal((await getWorkspace(db, root, space.id)).id, space.id);
   assert.equal(await getWorkspace(db, other, space.id), null);
 });
 
 test('appends typed notes and decisions only to an owned workspace', async () => {
   const db = new MemoryD1();
-  const space = await createWorkspace(db, 'owner', { name: 'Project' });
+  const space = await createWorkspace(db, root, { name: 'Project' });
   const event = await appendWorkspaceEvent(db, {
     principal: root,
     workspaceId: space.id,
@@ -141,26 +141,26 @@ test('appends typed notes and decisions only to an owned workspace', async () =>
 
 test('rejects unsupported event types and oversized event content', async () => {
   const db = new MemoryD1();
-  const space = await createWorkspace(db, 'owner', { name: 'Project' });
+  const space = await createWorkspace(db, root, { name: 'Project' });
   await assert.rejects(() => appendWorkspaceEvent(db, {
-    ownerId: 'owner', workspaceId: space.id, type: 'shell',
+    principal: root, workspaceId: space.id, type: 'shell',
     summary: 'Run a command', content: 'No arbitrary execution',
   }), /type/i);
   await assert.rejects(() => appendWorkspaceEvent(db, {
-    ownerId: 'owner', workspaceId: space.id, type: 'note',
+    principal: root, workspaceId: space.id, type: 'note',
     summary: 'Too much', content: 'x'.repeat(12_001),
   }), /content/i);
 });
 
 test('lists the most recent workspace events only for the owner', async () => {
   const db = new MemoryD1();
-  const space = await createWorkspace(db, 'owner', { name: 'Timeline' });
+  const space = await createWorkspace(db, root, { name: 'Timeline' });
   await appendWorkspaceEvent(db, {
-    ownerId: 'owner', workspaceId: space.id, type: 'note',
+    principal: root, workspaceId: space.id, type: 'note',
     summary: 'First', content: 'First event',
   }, Date.parse('2026-11-15T12:00:00.000Z'));
   await appendWorkspaceEvent(db, {
-    ownerId: 'owner', workspaceId: space.id, type: 'research',
+    principal: root, workspaceId: space.id, type: 'research',
     summary: 'Second', content: 'Second event',
   }, Date.parse('2026-11-15T12:01:00.000Z'));
   const events = await listWorkspaceEvents(db, root, space.id, 10);
