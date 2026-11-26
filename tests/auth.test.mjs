@@ -266,7 +266,7 @@ test('chat rejects cross-origin requests before invoking the model', async () =>
       },
       body: JSON.stringify({ question: 'hello' }),
     }),
-    env: { ...configuredEnv, AI: { run: async () => { modelCalls += 1; return { response: 'hello' }; } } },
+    env: { ...persistedEnv, AI: { run: async () => { modelCalls += 1; return { response: 'hello' }; } } },
   });
   assert.equal(response.status, 403);
   assert.equal(modelCalls, 0);

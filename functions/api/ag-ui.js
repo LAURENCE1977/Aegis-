@@ -1,4 +1,4 @@
-import { authConfigAvailable, isAuthorized, isSameOriginRequest } from "../lib/auth.mjs";
+import { authConfigAvailable, resolveSessionPrincipal, isSameOriginRequest } from "../lib/auth.mjs";
 import { buildAskMessages } from "./ask.js";
 import { getWorkspace } from "../lib/project-spaces.mjs";
 import { createModelStream } from "../lib/model-provider.mjs";
@@ -33,7 +33,8 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const fetchImpl = context.fetchImpl || fetch;
   if (!authConfigAvailable(env)) return json({ error: "Authentication is not configured." }, 503);
-  if (!(await isAuthorized(request, env))) return json({ error: "Authentication required." }, 401);
+  const principal = await resolveSessionPrincipal(request, env);
+  if (!principal) return json({ error: "Authentication required." }, 401);
   if (!isSameOriginRequest(request)) return json({ error: "Invalid request origin." }, 403);
 
   let bodyText;
@@ -58,7 +59,7 @@ export async function onRequestPost(context) {
       return json({ error: "Project Space storage is not configured." }, 503);
     }
     try {
-      const workspace = await getWorkspace(env.AEGIS_DB, "owner", input.projectId);
+      const workspace = await getWorkspace(env.AEGIS_DB, principal, input.projectId);
       if (!workspace || workspace.status !== "active") return json({ error: "Project Space not found." }, 404);
       projectId = input.projectId;
     } catch {
@@ -85,7 +86,7 @@ export async function onRequestPost(context) {
   let modelStream;
   try {
     const history = messages.slice(0, -1).slice(-10);
-    promptMessages = await buildAskMessages(env, latest.content, history, { projectId });
+    promptMessages = await buildAskMessages(env, latest.content, history, { projectId, principal });
     modelStream = await createModelStream({ env, messages: promptMessages, tools, fetchImpl });
   } catch (error) {
     if (String(env.AEGIS_MODEL_PROVIDER || "workers-ai") === "alibaba-qwen" &&
