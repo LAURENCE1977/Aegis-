@@ -8,6 +8,7 @@ export async function onRequestPost({request,env}){
  if(!isSameOriginRequest(request))return json({error:"Invalid request origin."},403);
  let b;try{b=await request.json();}catch{return json({error:"Invalid request."},400);}
  if(typeof b.token==="string"){
+  if(b.identity!==undefined||b.role!==undefined)return json({error:"Invitation acceptance accepts only the token."},400);
   if(!/^[a-f0-9]{64}$/.test(b.token))return json({error:"Invalid token."},400);
   try{
    const hash=await digest(b.token),now=new Date().toISOString(),epoch=Math.floor(Date.now()/1000);
