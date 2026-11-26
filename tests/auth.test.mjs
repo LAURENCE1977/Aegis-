@@ -444,3 +444,15 @@ test('login identifiers normalize consistently',()=>{
  assert.equal(normalizeLoginIdentifier('../admin'),null);
  assert.equal(normalizeLoginIdentifier('x'.repeat(255)),null);
 });
+
+test('versioned pepper keyring verifies previous keys and rejects unknown versions',async()=>{
+ const {passwordCredentialNeedsUpgrade}=await import('../functions/lib/identity.mjs');
+ const v1={AEGIS_PASSWORD_PEPPER_KEYRING:JSON.stringify({v1:'first-pepper-material-with-at-least-32-bytes',v2:'second-pepper-material-with-at-least-32-bytes'}),AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION:'v1'};
+ const c=await createPasswordCredential('rotation-test-password-2026',v1);
+ const row={password_salt:c.passwordSalt,password_hash:c.passwordHash,password_iterations:c.passwordIterations,password_algorithm:c.passwordAlgorithm,password_pepper_version:c.passwordPepperVersion};
+ const v2={...v1,AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION:'v2'};
+ assert.equal(await verifyPasswordCredential('rotation-test-password-2026',row,v2),true);
+ assert.equal(passwordCredentialNeedsUpgrade(row,v2),true);
+ const unknown={...v2,AEGIS_PASSWORD_PEPPER_KEYRING:JSON.stringify({v2:'second-pepper-material-with-at-least-32-bytes'})};
+ assert.equal(await verifyPasswordCredential('rotation-test-password-2026',row,unknown),false);
+});
