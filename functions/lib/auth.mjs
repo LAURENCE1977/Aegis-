@@ -2,7 +2,6 @@ const COOKIE_NAME = "__Host-aegis_session";
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 export const ROOT_PRINCIPAL_ID = "usr-root";
 export const ROOT_TENANT_ID = "org-root";
-const ROOT_ROLES = Object.freeze(["owner"]);
 const encoder = new TextEncoder();
 function toBase64Url(bytes) { let binary=""; for (const byte of bytes) binary+=String.fromCharCode(byte); return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,""); }
 function fromBase64Url(value) { const base64=value.replace(/-/g,"+").replace(/_/g,"/"); const padded=base64+"=".repeat((4-(base64.length%4))%4); const binary=atob(padded); return Uint8Array.from(binary,c=>c.charCodeAt(0)); }
@@ -64,9 +63,11 @@ export async function resolveSessionPrincipal(request, env, now = Date.now()) {
   const claims = decodeClaims(token);
   try {
     const row = await env.AEGIS_DB.prepare(`
-      SELECT session_id, principal_id, tenant_id, roles_json
-      FROM auth_sessions
-      WHERE session_id = ? AND expires_at > ? AND revoked_at IS NULL
+      SELECT s.session_id, s.principal_id, s.tenant_id, s.roles_json
+      FROM auth_sessions s
+      INNER JOIN aegis_principals p ON p.id = s.principal_id AND p.tenant_id = s.tenant_id
+      INNER JOIN aegis_tenants t ON t.id = s.tenant_id
+      WHERE s.session_id = ? AND s.expires_at > ? AND s.revoked_at IS NULL
       LIMIT 1
     `).bind(claims.sid, Math.floor(now / 1000)).first();
     if (!row || row.session_id !== claims.sid ||

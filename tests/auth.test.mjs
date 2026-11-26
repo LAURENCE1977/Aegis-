@@ -9,7 +9,7 @@ import {
   resolveSessionPrincipal,
   sessionCookie,
 } from '../functions/lib/auth.mjs';
-import { onRequestGet as loginGet, onRequestPost as loginPost } from '../functions/api/login.js';
+import { onRequestGet as loginGet, onRequestPost as loginPost, onRequestDelete as loginDelete } from '../functions/api/login.js';
 import { onRequestPost as askPost } from '../functions/api/ask.js';
 import {
   onRequestGet as memoryGet,
@@ -374,4 +374,33 @@ test('ambiguous duplicate session cookies fail closed instead of selecting the f
     },
   });
   assert.equal(readSessionToken(request), null);
+});
+
+
+test('logout revokes the D1 session and D1 failure is reported instead of false success', async () => {
+  const token = await issueStoredSession();
+  const sid = [...storedSessions.keys()].at(-1);
+  const response = await loginDelete({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'DELETE',
+      headers: { Origin: 'https://aegis.example', Cookie: '__Host-aegis_session=' + token },
+    }),
+    env: persistedEnv,
+  });
+  assert.equal(response.status, 200);
+  assert.ok(storedSessions.get(sid).revoked_at);
+  const replay = new Request('https://aegis.example/api/ask', {
+    headers: { Cookie: '__Host-aegis_session=' + token },
+  });
+  assert.equal(await isAuthorized(replay, persistedEnv), false);
+
+  const failing = await loginDelete({
+    request: new Request('https://aegis.example/api/login', {
+      method: 'DELETE',
+      headers: { Origin: 'https://aegis.example', Cookie: '__Host-aegis_session=' + token },
+    }),
+    env: { ...persistedEnv, AEGIS_DB: { prepare() { return { bind() { return { run: async () => { throw new Error('D1 offline'); } }; } }; } } },
+  });
+  assert.equal(failing.status, 503);
+  assert.match(failing.headers.get('Set-Cookie') || '', /Max-Age=0/);
 });
