@@ -31,8 +31,9 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestPost({ request, env, params }) {
-  const denied = await authorizePrincipal(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!isOwnerWriteRequest(request)) {
     return jsonResponse({ error: "Invalid request origin." }, 403);
   }

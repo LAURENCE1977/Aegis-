@@ -168,7 +168,7 @@ export async function listWorkspaceEvents(db, principal, workspaceId, limit = 50
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw new TypeError('Workspace event limit must be between 1 and 100');
   }
-  const workspace = await getWorkspace(db, ownerId, workspaceId);
+  const workspace = await getWorkspace(db, principal, workspaceId);
   if (!workspace) return null;
   const result = await db.prepare(`
     SELECT * FROM project_space_events

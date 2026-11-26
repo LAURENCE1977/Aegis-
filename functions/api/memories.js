@@ -56,8 +56,9 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!isOwnerWriteRequest(request)) return jsonResponse({ error: "Invalid request origin." }, 403);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
