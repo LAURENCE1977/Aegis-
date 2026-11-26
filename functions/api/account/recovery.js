@@ -1,9 +1,9 @@
-import { createPasswordCredential } from "../../lib/identity.mjs";
+import { createPasswordCredential,isStrongPassword } from "../../lib/identity.mjs";
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
 const enc=new TextEncoder();async function digest(s){return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s))),x=>x.toString(16).padStart(2,"0")).join("");}
 export async function onRequestPost({request,env}){
  let b;try{b=await request.json();}catch{return json({error:"Invalid request."},400);}
- if(typeof b.token!=="string"||!/^[a-f0-9]{64}$/.test(b.token)||typeof b.newPassword!=="string"||b.newPassword.length<12||b.newPassword.length>1024)return json({error:"Invalid recovery request."},400);
+ if(typeof b.token!=="string"||!/^[a-f0-9]{64}$/.test(b.token)||typeof b.newPassword!=="string"||!isStrongPassword(b.newPassword))return json({error:"Invalid recovery request."},400);
  try{
   const row=await env.AEGIS_DB.prepare("SELECT recovery_id,principal_id,tenant_id,expires_at,accepted_at FROM aegis_account_recovery_tokens WHERE token_hash=?").bind(await digest(b.token)).first();
   if(!row)return json({error:"Recovery token not found."},404);
