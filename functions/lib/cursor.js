@@ -2,7 +2,7 @@ const MAX_CURSOR_LENGTH = 512;
 const MAX_CURSOR_TTL_SECONDS = 86400;
 const MIN_CURSOR_TTL_SECONDS = 60;
 const MIN_SECRET_BYTES = 32;
-const D1_TIMESTAMP = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/;
+const D1_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function getSigningKey(secretString) {
@@ -28,7 +28,7 @@ function base64UrlEncode(buffer) {
   for (let index = 0; index < bytes.byteLength; index += 1) {
     binary += String.fromCharCode(bytes[index]);
   }
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function base64UrlDecodeToBytes(value) {
