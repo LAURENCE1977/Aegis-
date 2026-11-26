@@ -84,7 +84,7 @@ test('memory ingestion scrubs secrets and PII before persistence and marks prove
     request: await ownerRequest(memoryInput),
     env: { ...envBase, AEGIS_DB: db },
   });
-  assert.equal(response.status, 201);
+  assert.equal(response.status, 201, await response.clone().text());
   assert.doesNotMatch(db.records[0].content, /abcdefghijklmnopqrstuvwxyz123456/);
   assert.doesNotMatch(db.records[0].source_attribution, /alex@example\.com/);
   const payload = await response.json();

@@ -112,7 +112,7 @@ test('new memories enter candidate review and become searchable only after owner
     request:await request('/api/memories',{method:'POST',body:memoryInput}),
     env:{...envBase,AEGIS_DB:db},
   });
-  assert.equal(created.status,201);
+  assert.equal(created.status,201,await created.clone().text());
   const {memory,reviewRequired}=await created.json();
   assert.equal(reviewRequired,true);
   assert.equal(memory.status,'candidate');
