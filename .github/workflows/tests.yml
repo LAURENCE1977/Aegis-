@@ -9,6 +9,7 @@ on:
       - 'stack/**'
       - 'docs/**'
       - 'test/**'
+      - 'infra/**'
   pull_request:
 
 permissions:
@@ -99,48 +100,7 @@ jobs:
       - name: Assert fresh production migration ledger, foreign keys and triggers
         run: wrangler d1 execute aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages --file scripts/production-empty-assert.sql
       - name: Verify production migration chain against a legacy owner snapshot
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .wrangler/migrations-pre14 .wrangler/migrations-post13
-          for migration in migrations/production/*.sql; do
-            filename="$(basename "$migration")"
-            if [[ "$filename" < "0014" ]]; then
-              cp "$migration" .wrangler/migrations-pre14/
-            else
-              cp "$migration" .wrangler/migrations-post13/
-            fi
-          done
-
-          cat > wrangler.production-legacy-test.toml <<'EOF'
-          name = "aegis-production-legacy-migration-test"
-          pages_build_output_dir = "public"
-          compatibility_date = "2026-11-25"
-
-          [[d1_databases]]
-          binding = "AEGIS_DB"
-          database_name = "aegis-production-legacy-test"
-          database_id = "00000000-0000-0000-0000-000000000000"
-          migrations_dir = ".wrangler/migrations-pre14"
-          EOF
-
-          wrangler d1 migrations apply aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy
-          wrangler d1 execute aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy --file scripts/production-legacy-owner-seed.sql
-
-          cat > wrangler.production-legacy-test.toml <<'EOF'
-          name = "aegis-production-legacy-migration-test"
-          pages_build_output_dir = "public"
-          compatibility_date = "2026-11-25"
-
-          [[d1_databases]]
-          binding = "AEGIS_DB"
-          database_name = "aegis-production-legacy-test"
-          database_id = "00000000-0000-0000-0000-000000000000"
-          migrations_dir = ".wrangler/migrations-post13"
-          EOF
-
-          wrangler d1 migrations apply aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy
-          wrangler d1 execute aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy --file scripts/production-legacy-owner-assert.sql
+        run: bash scripts/test-local-d1-migrations.sh
 
       - name: Start local Cloudflare Pages runtime
         shell: bash
