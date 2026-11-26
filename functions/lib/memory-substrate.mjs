@@ -305,27 +305,40 @@ export function createMemoryRepository(db) {
       return mapMemoryRow(row);
     },
 
-    async list({ ownerId, principalId, tenantId, projectId = null, now = Date.now(), limit = 20, includeCandidates = false } = {}) {
+    async list({ ownerId, principalId, tenantId, projectId = null, now = Date.now(), limit = 20, includeCandidates = false, cursor = null } = {}) {
       assertMemoryScope(ownerId, principalId, tenantId, projectId);
       if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
-      if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 101) {
         throw new TypeError('Invalid memory result limit');
       }
-      const result = await db.prepare(`
+      let sql = `
         SELECT * FROM aegis_memories
         WHERE tenant_id = ? AND principal_id = ? AND project_id IS ?
           AND status IN (${includeCandidates ? "'accepted', 'candidate'" : "'accepted'"})
           AND (expires_at IS NULL OR expires_at > ?)
-        ORDER BY updated_at DESC, id ASC
-        LIMIT ?
-      `).bind(tenantId, principalId, projectId, new Date(now).toISOString(), limit).all();
+      `;
+      const bindings = [tenantId, principalId, projectId, new Date(now).toISOString()];
+      if (cursor !== null) {
+        if (!cursor || typeof cursor.updatedAt !== 'string' ||
+            !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(cursor.updatedAt) ||
+            !Number.isFinite(Date.parse(cursor.updatedAt)) ||
+            new Date(Date.parse(cursor.updatedAt)).toISOString() !== cursor.updatedAt ||
+            typeof cursor.id !== 'string' || cursor.id.length > 100 || !ID_PATTERN.test(cursor.id)) {
+          throw new TypeError('Invalid memory pagination position');
+        }
+        sql += ` AND (updated_at < ? OR (updated_at = ? AND id > ?))`;
+        bindings.push(cursor.updatedAt, cursor.updatedAt, cursor.id);
+      }
+      sql += ` ORDER BY updated_at DESC, id ASC LIMIT ?`;
+      bindings.push(limit);
+      const result = await db.prepare(sql).bind(...bindings).all();
       return (result?.results ?? []).map(mapMemoryRow);
     },
 
     async search({ ownerId, principalId, tenantId, projectId = null, query, now = Date.now(), limit = 20 } = {}) {
       assertMemoryScope(ownerId, principalId, tenantId, projectId);
       if (!Number.isFinite(now)) throw new TypeError('Invalid memory clock');
-      if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         throw new TypeError('Invalid memory result limit');
       }
       const terms = normalizeSearchTerms(query);
