@@ -91,7 +91,11 @@ export async function encodeSignedCursor(row, scope, filters, secret) {
   const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const key = await getSigningKey(secret);
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(encodedPayload));
-  return encodedPayload + "." + base64UrlEncode(signature);
+  const cursor = encodedPayload + "." + base64UrlEncode(signature);
+  if (cursor.length > MAX_CURSOR_LENGTH) {
+    throw new RangeError("Signed cursor exceeds the maximum supported length.");
+  }
+  return cursor;
 }
 
 /**
