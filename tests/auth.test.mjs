@@ -478,3 +478,12 @@ test('successful login transparently rehashes a v1 credential to the active v2 p
  assert.equal(account.principalId,'usr-test');assert.equal(row.password_pepper_version,'v2');
  assert.equal(await verifyPasswordCredential('transparent-rehash-password-2026',row,v2),true);
 });
+
+import { invitationState } from '../functions/api/tenants/invitations.js';
+
+test('invitation lifecycle rejects expired and consumed tokens deterministically',()=>{
+ const now=1_800_000_000;
+ assert.equal(invitationState({expires_at:now-1,accepted_at:null},now),'expired');
+ assert.equal(invitationState({expires_at:now+60,accepted_at:'2026-11-26T00:00:00.000Z'},now),'used');
+ assert.equal(invitationState({expires_at:now+60,accepted_at:null},now),'active');
+});
