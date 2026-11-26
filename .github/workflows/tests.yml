@@ -28,7 +28,8 @@ jobs:
       - name: Enforce Cloudflare-only repository boundary
         shell: bash
         run: |
-          if git grep -niE 'replit' -- .; then
+          needle="re""plit"
+          if git grep -ni "$needle" -- .; then
             echo "Retired hosting references are not permitted in the AEGIS repository."
             exit 1
           fi
