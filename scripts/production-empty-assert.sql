@@ -7,27 +7,15 @@ INSERT INTO __aegis_migration_assertions (passed)
 SELECT
   (SELECT COUNT(*) FROM d1_migrations) = 17
   AND NOT EXISTS (
-    SELECT 1 FROM (
-      SELECT 'capability_approvals' AS name UNION ALL
-      SELECT 'capability_grants' UNION ALL
-      SELECT 'capability_connections' UNION ALL
-      SELECT 'capability_secrets' UNION ALL
-      SELECT 'capability_invocation_audit' UNION ALL
-      SELECT 'capability_invocation_limits' UNION ALL
-      SELECT 'project_spaces' UNION ALL
-      SELECT 'project_space_events' UNION ALL
-      SELECT 'system_state' UNION ALL
-      SELECT 'auth_sessions' UNION ALL
-      SELECT 'login_attempts' UNION ALL
-      SELECT 'aegis_memories' UNION ALL
-      SELECT 'aegis_memory_events' UNION ALL
-      SELECT 'aegis_tenants' UNION ALL
-      SELECT 'aegis_principals' UNION ALL
-      SELECT 'aegis_tenant_memberships' UNION ALL
-      SELECT 'aegis_principal_credentials' UNION ALL
-      SELECT 'aegis_tenant_invitations' UNION ALL
-      SELECT 'aegis_account_recovery_tokens'
-    ) expected
+    WITH expected(name) AS (VALUES
+      ('capability_approvals'), ('capability_grants'), ('capability_connections'),
+      ('capability_secrets'), ('capability_invocation_audit'), ('capability_invocation_limits'),
+      ('project_spaces'), ('project_space_events'), ('system_state'), ('auth_sessions'),
+      ('login_attempts'), ('aegis_memories'), ('aegis_memory_events'), ('aegis_tenants'),
+      ('aegis_principals'), ('aegis_tenant_memberships'), ('aegis_principal_credentials'),
+      ('aegis_tenant_invitations'), ('aegis_account_recovery_tokens')
+    )
+    SELECT 1 FROM expected
     WHERE NOT EXISTS (
       SELECT 1 FROM sqlite_schema actual
       WHERE actual.type = 'table' AND actual.name = expected.name
