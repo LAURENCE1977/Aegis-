@@ -1,16 +1,16 @@
-import { authorizeOwner, jsonResponse } from "../../../lib/owner-api.mjs";
+import { authorizePrincipal, jsonResponse } from "../../../lib/owner-api.mjs";
 import { getWorkspace, listWorkspaceEvents } from "../../../lib/project-spaces.mjs";
 import { createMemoryRepository } from "../../../lib/memory-substrate.mjs";
 import { buildProjectBrief } from "../../../lib/project-brief.mjs";
 
-const OWNER_ID = "owner";
 const DEFAULT_MAX_CHARS = 6000;
 const MIN_MAX_CHARS = 1000;
 const MAX_MAX_CHARS = 12000;
 
 export async function onRequestGet({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Project Space storage is not configured." }, 503);
   }
@@ -26,14 +26,16 @@ export async function onRequestGet({ request, env, params }) {
   }
 
   try {
-    const workspace = await getWorkspace(env.AEGIS_DB, OWNER_ID, id);
+    const workspace = await getWorkspace(env.AEGIS_DB, principal, id);
     if (!workspace || workspace.status !== "active") {
       return jsonResponse({ error: "Project Space not found." }, 404);
     }
     const [events, memories] = await Promise.all([
-      listWorkspaceEvents(env.AEGIS_DB, OWNER_ID, id, 100),
+      listWorkspaceEvents(env.AEGIS_DB, principal, id, 100),
       createMemoryRepository(env.AEGIS_DB).list({
-        ownerId: OWNER_ID,
+        ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId,
         projectId: id,
         limit: 50,
       }),
