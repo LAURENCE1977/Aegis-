@@ -152,7 +152,8 @@ test('successful login persists a revocable session accepted by the API guard', 
     headers: { Cookie: '__Host-aegis_session=' + token },
   });
   assert.equal(await isAuthorized(authenticatedRequest, persistedEnv), true);
-  assert.deepEqual(await resolveSessionPrincipal(authenticatedRequest, persistedEnv), { sid: storedSessions.keys().next().value, principalId: 'usr-root', tenantId: 'org-root', roles: ['owner'] });
+  const sessionId = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8')).sid;
+  assert.deepEqual(await resolveSessionPrincipal(authenticatedRequest, persistedEnv), { sid: sessionId, principalId: 'usr-root', tenantId: 'org-root', roles: ['owner'] });
 });
 
 test('cross-origin login attempts are rejected', async () => {
