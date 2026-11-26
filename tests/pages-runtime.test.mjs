@@ -255,6 +255,10 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
     return cookie.split(';', 1)[0];
   };
   const rootCookie = await authenticatedCookie();
+  const rootPasswordChange = await jsonRequest('/api/account/password', 'POST', rootCookie, {
+    currentPassword: testPassword, newPassword: 'new-root-bootstrap-password-2026',
+  });
+  assert.equal(rootPasswordChange.status, 409);
 
   const tenantAResponse = await jsonRequest('/api/admin/tenants', 'POST', rootCookie, { name: 'Tenant A Runtime' });
   assert.equal(tenantAResponse.status, 201, await tenantAResponse.clone().text());
@@ -312,6 +316,10 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.equal(invitation.status, 201, await invitation.clone().text());
   const invitationToken = (await invitation.json()).invitationToken;
   assert.match(invitationToken, /^[a-f0-9]{64}$/);
+  const mixedInvitationPayload = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, {
+    token: invitationToken, identity: 'ignored@example.test',
+  });
+  assert.equal(mixedInvitationPayload.status, 400);
   const acceptedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
   assert.equal(acceptedInvitation.status, 201, await acceptedInvitation.clone().text());
   const replayedInvitation = await jsonRequest('/api/tenants/invitations', 'POST', inviteeCookie, { token: invitationToken });
