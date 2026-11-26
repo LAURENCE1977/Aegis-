@@ -5,7 +5,7 @@ CREATE TABLE __aegis_migration_assertions (
 );
 INSERT INTO __aegis_migration_assertions (passed)
 SELECT
-  (SELECT COUNT(*) FROM d1_migrations) = 17
+  (SELECT COUNT(*) FROM d1_migrations) = 18
   AND EXISTS (SELECT 1 FROM aegis_tenants WHERE id = 'org-root')
   AND EXISTS (SELECT 1 FROM aegis_principals WHERE id = 'usr-root' AND tenant_id = 'org-root')
   AND EXISTS (SELECT 1 FROM aegis_tenant_memberships
@@ -23,6 +23,7 @@ SELECT
               WHERE id = 'legacy-memory' AND principal_id = 'usr-root' AND tenant_id = 'org-root')
   AND EXISTS (SELECT 1 FROM aegis_memory_events
               WHERE memory_id = 'legacy-memory' AND principal_id = 'usr-root' AND tenant_id = 'org-root')
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='index' AND name='idx_aegis_memories_cursor_scope')
   AND NOT EXISTS (SELECT 1 FROM pragma_foreign_key_check)
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_update')
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_delete');
