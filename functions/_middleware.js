@@ -20,7 +20,10 @@ export const onRequest = [async (context) => {
   const protectedRoute =
     classification.path === '/api/login' ||
     classification.path === '/api/memories' ||
-    classification.path === '/api/ask';
+    classification.path === '/api/ask' ||
+    classification.path === '/api/admin/principals' ||
+    classification.path === '/api/admin/tenants' ||
+    classification.path === '/api/sessions';
   if (protectedRoute) return withAegisImmunePipeline(context);
   return context.next();
 }];
