@@ -24,7 +24,7 @@ export const ROUTE_POLICIES = Object.freeze([
       type: 'object',
       additionalProperties: false,
       required: Object.freeze(['password']),
-      properties: Object.freeze({ password: str(1024, 1), identity: str(254, 3), tenantId: str(128, 3) }),
+      properties: Object.freeze({ password: str(1024, 12), identity: str(254, 3), tenantId: str(128, 3) }),
     }),
     credentialFields: Object.freeze(['password']),
     formFields: Object.freeze([]),

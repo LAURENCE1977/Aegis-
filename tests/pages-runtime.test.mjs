@@ -268,6 +268,9 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
     assert.equal(response.status, 200, await response.clone().text());
     return cookieFrom(response);
   };
+  const ambiguousRootLogin = await loginRequest(JSON.stringify({ password: testPassword }));
+  assert.equal(ambiguousRootLogin.status, 409);
+  assert.equal((await ambiguousRootLogin.json()).code, 'TENANT_SELECTION_REQUIRED');
   const rootA = await rootTenantLogin(tenantA);
   const rootB = await rootTenantLogin(tenantB);
 
@@ -296,6 +299,23 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   };
   const adminACookie = await loginIdentity('admin-a@example.test', 'admin-a-strong-password-2026', tenantA);
   const memberBCookie = await loginIdentity('member-b@example.test', 'member-b-strong-password-2026', tenantB);
+
+  const crossTenantProvision = await jsonRequest('/api/admin/principals', 'POST', adminACookie, {
+    identity: 'attacker@example.test',
+    displayName: 'Cross Tenant Attempt',
+    password: 'attacker-strong-password-2026',
+    role: 'member',
+    tenantId: tenantB,
+  });
+  assert.equal(crossTenantProvision.status, 400);
+
+  const adminRoleEscalation = await jsonRequest('/api/admin/principals', 'POST', adminACookie, {
+    identity: 'escalation@example.test',
+    displayName: 'Role Escalation Attempt',
+    password: 'escalation-strong-password-2026',
+    role: 'admin',
+  });
+  assert.equal(adminRoleEscalation.status, 403);
 
   const adminList = await jsonRequest('/api/admin/principals', 'GET', adminACookie);
   assert.equal(adminList.status, 200, await adminList.clone().text());

@@ -179,7 +179,7 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO auth_sessions (session_id, created_at, expires_at, revoked_at, principal_id, tenant_id, roles_json) VALUES (?, ?, ?, NULL, ?, ?, ?)"
     ).bind(sessionId, new Date().toISOString(), expiresAt, principalId, tenantId, JSON.stringify([role])).run();
     await clearLoginAttempts(env, attempt.identityHash);
-    return json({ authenticated: true, principalId, tenantId, role }, 200, { "Set-Cookie": sessionCookie(token) });
+    return json({ authenticated: true, tenantId, role }, 200, { "Set-Cookie": sessionCookie(token) });
   } catch {
     return json({ error: "Unable to create an authenticated session." }, 503);
   }
