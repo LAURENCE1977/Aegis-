@@ -27,4 +27,6 @@ SELECT
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_membership_revoke_sessions')
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_membership_active_insert_guard')
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_invitation_active_tenant_insert')
-  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_recovery_active_tenant_insert');
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_recovery_active_tenant_insert')
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_update')
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_aegis_memory_events_no_delete');
