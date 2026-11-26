@@ -132,7 +132,6 @@ export async function appendWorkspaceEvent(db, {
   const { principalId, tenantId } = principal || {};
   requiredId(principalId, 'principal identifier');
   requiredId(tenantId, 'tenant identifier');
-  const ownerId = principalId;
   requiredId(workspaceId, 'identifier');
   if (!EVENT_TYPES.has(type)) throw new TypeError('Unsupported workspace event type');
   const safeSummary = boundedText(summary, 'event summary', 240, { required: true });
