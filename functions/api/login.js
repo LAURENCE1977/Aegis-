@@ -11,6 +11,7 @@ import {
   sessionCookie,
   clearSessionCookie,
 } from "../lib/auth.mjs";
+import { authenticatePrincipal } from "../lib/identity.mjs";
 
 const LOGIN_WINDOW_SECONDS = 15 * 60;
 const LOGIN_MAX_ATTEMPTS = 5;
@@ -116,19 +117,69 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Login protection is unavailable." }, 503);
   }
 
-  // Wrong passwords and throttled attempts deliberately share the same
-  // response to avoid disclosing lockout state or account information.
-  if (attempt.locked || !constantTimeEqual(body?.password, env.AEGIS_PASSWORD)) {
-    return json({ error: "Incorrect password." }, 401);
+  // A password-only request is the controlled appliance bootstrap path.
+  // Named identities always authenticate against their own PBKDF2 credential.
+  let principalId;
+  let membership;
+  if (typeof body?.identity === "string") {
+    let account;
+    try {
+      account = await authenticatePrincipal(env.AEGIS_DB, body.identity, body.password);
+    } catch {
+      return json({ error: "Authentication is temporarily unavailable." }, 503);
+    }
+    if (!account) return json({ error: "Incorrect password." }, 401);
+    const matches = account.memberships.filter(item =>
+      typeof body.tenantId !== "string" || item.tenantId === body.tenantId
+    );
+    if (matches.length === 0) return json({ error: "Incorrect password." }, 401);
+    if (matches.length > 1) {
+      return json({
+        error: "Select an active tenant.",
+        code: "TENANT_SELECTION_REQUIRED",
+        tenants: matches.map(({ tenantId, tenantName, role }) => ({ tenantId, tenantName, role })),
+      }, 409);
+    }
+    principalId = account.principalId;
+    membership = matches[0];
+  } else {
+    if (typeof env.AEGIS_PASSWORD !== "string" || env.AEGIS_PASSWORD.length < 12 ||
+        !constantTimeEqual(body?.password, env.AEGIS_PASSWORD)) {
+      return json({ error: "Incorrect password." }, 401);
+    }
+    const memberships = await env.AEGIS_DB.prepare(`
+      SELECT m.tenant_id, m.role, t.name AS tenant_name
+      FROM aegis_tenant_memberships m
+      JOIN aegis_tenants t ON t.id = m.tenant_id
+      WHERE m.principal_id = ? AND m.status = 'active' AND t.status = 'active'
+      ORDER BY m.tenant_id
+    `).bind(ROOT_PRINCIPAL_ID).all();
+    const matches = (memberships?.results || []).filter(item =>
+      typeof body.tenantId !== "string" || item.tenant_id === body.tenantId
+    );
+    if (matches.length === 0) return json({ error: "Incorrect password." }, 401);
+    if (matches.length > 1) {
+      return json({
+        error: "Select an active tenant.",
+        code: "TENANT_SELECTION_REQUIRED",
+        tenants: matches.map(item => ({ tenantId: item.tenant_id, tenantName: item.tenant_name, role: item.role })),
+      }, 409);
+    }
+    principalId = ROOT_PRINCIPAL_ID;
+    membership = { tenant_id: matches[0].tenant_id, role: matches[0].role };
   }
+
+  if (attempt.locked) return json({ error: "Incorrect password." }, 401);
 
   try {
     const { token, sessionId, expiresAt } = await createRevocableSessionToken(env.AEGIS_SESSION_SECRET);
+    const tenantId = membership.tenantId || membership.tenant_id;
+    const role = membership.role;
     await env.AEGIS_DB.prepare(
       "INSERT INTO auth_sessions (session_id, created_at, expires_at, revoked_at, principal_id, tenant_id, roles_json) VALUES (?, ?, ?, NULL, ?, ?, ?)"
-    ).bind(sessionId, new Date().toISOString(), expiresAt, ROOT_PRINCIPAL_ID, ROOT_TENANT_ID, JSON.stringify(["owner"])).run();
+    ).bind(sessionId, new Date().toISOString(), expiresAt, principalId, tenantId, JSON.stringify([role])).run();
     await clearLoginAttempts(env, attempt.identityHash);
-    return json({ authenticated: true }, 200, { "Set-Cookie": sessionCookie(token) });
+    return json({ authenticated: true, principalId, tenantId, role }, 200, { "Set-Cookie": sessionCookie(token) });
   } catch {
     return json({ error: "Unable to create an authenticated session." }, 503);
   }
