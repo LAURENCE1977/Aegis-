@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { createApprovalRequest } from '../functions/lib/capability-approvals.mjs';
 import {
   onRequestGet,
@@ -8,6 +8,7 @@ import {
 } from '../functions/api/approvals.js';
 
 const secret = 'approval-api-test-session-secret-with-enough-entropy';
+const sessions=new Map();
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
@@ -29,6 +30,7 @@ class MemoryD1 {
   constructor() { this.rows = new Map(); }
   prepare(sql) {
     const db = this;
+    if(sql.includes('FROM auth_sessions'))return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return row&&row.expires_at>now&&!row.revoked_at?{session_id:sid,...row}:null;}};}};
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -75,7 +77,7 @@ class MemoryD1 {
 }
 
 async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example' } = {}) {
-  const token = await createSessionToken(secret);
+  const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});const token=session.token;
   const headers = { Cookie: '__Host-aegis_session=' + token };
   if (origin !== null) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = 'application/json';

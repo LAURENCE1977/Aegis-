@@ -1,14 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { discoverGitHubRepository } from '../functions/lib/github-discovery.mjs';
 import { onRequestPost } from '../functions/api/forge/discover.js';
 
 const secret = 'test-only-forge-session-secret-with-sufficient-entropy';
+const sessions=new Map();
 const configuredEnv = {
   AEGIS_PASSWORD: 'a-long-test-password-value',
   AEGIS_SESSION_SECRET: secret,
+  AEGIS_DB:{prepare(sql){return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return sql.includes('FROM auth_sessions')&&row&&row.expires_at>now?{session_id:sid,...row}:null;}};}};}},
 };
+async function issueToken(){const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});return session.token;}
 
 test('GitHub discovery normalises public repository metadata without fetching source code', async () => {
   let requestedUrl = '';
@@ -84,7 +87,7 @@ test('Forge discovery API rejects unauthenticated and cross-origin requests', as
     }),
     env: configuredEnv,
   });
-  const token = await createSessionToken(secret);
+  const token = await issueToken();
   const crossOrigin = await onRequestPost({
     request: new Request('https://aegis.example/api/forge/discover', {
       method: 'POST',

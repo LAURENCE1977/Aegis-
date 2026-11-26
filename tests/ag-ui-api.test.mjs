@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost } from '../functions/api/ag-ui.js';
 
 const secret='ag-ui-api-test-session-secret-long-enough';
-const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
+const sessions=new Map();
+const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret,AEGIS_DB:{prepare(sql){return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return sql.includes('FROM auth_sessions')&&row&&row.expires_at>now?{session_id:sid,...row}:null;}};}};}}};
 
 async function request(body,{authenticated=true,origin='https://aegis.example'}={}){
   const headers={'Content-Type':'application/json',Origin:origin};
-  if(authenticated) headers.Cookie='__Host-aegis_session='+await createSessionToken(secret);
+  if(authenticated){const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});headers.Cookie='__Host-aegis_session='+session.token;}
   return new Request('https://aegis.example/api/ag-ui',{method:'POST',headers,body:JSON.stringify(body)});
 }
 const input=(overrides={})=>({
