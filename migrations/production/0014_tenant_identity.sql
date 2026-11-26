@@ -94,3 +94,46 @@ BEFORE INSERT ON aegis_memory_events
 WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
   OR NOT EXISTS (SELECT 1 FROM aegis_principals p WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id)
 BEGIN SELECT RAISE(ABORT, 'AEGIS memory event principal scope required'); END;
+
+
+-- Rebuild memory audit triggers to carry the same immutable tenant/principal
+-- scope as the memory row. The 0012 triggers predate tenant identity.
+DROP TRIGGER IF EXISTS trg_aegis_memory_created;
+DROP TRIGGER IF EXISTS trg_aegis_memory_status_changed;
+
+CREATE TRIGGER trg_aegis_memory_created
+AFTER INSERT ON aegis_memories
+BEGIN
+  INSERT INTO aegis_memory_events (
+    id, memory_id, owner_id, project_id, event_type,
+    from_status, to_status, occurred_at, principal_id, tenant_id
+  ) VALUES (
+    lower(hex(randomblob(16))), NEW.id, NEW.owner_id, NEW.project_id,
+    'created', NULL, NEW.status, NEW.created_at, NEW.principal_id, NEW.tenant_id
+  );
+END;
+
+CREATE TRIGGER trg_aegis_memory_status_changed
+AFTER UPDATE OF status ON aegis_memories
+WHEN OLD.status <> NEW.status
+BEGIN
+  INSERT INTO aegis_memory_events (
+    id, memory_id, owner_id, project_id, event_type,
+    from_status, to_status, occurred_at, principal_id, tenant_id
+  ) VALUES (
+    lower(hex(randomblob(16))), NEW.id, NEW.owner_id, NEW.project_id,
+    'status_changed', OLD.status, NEW.status, NEW.updated_at, NEW.principal_id, NEW.tenant_id
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_aegis_memories_identity_update
+BEFORE UPDATE OF principal_id, tenant_id ON aegis_memories
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (SELECT 1 FROM aegis_principals p WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id)
+BEGIN SELECT RAISE(ABORT, 'AEGIS memory principal scope required'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_project_spaces_identity_update
+BEFORE UPDATE OF principal_id, tenant_id ON project_spaces
+WHEN NEW.principal_id IS NULL OR NEW.tenant_id IS NULL
+  OR NOT EXISTS (SELECT 1 FROM aegis_principals p WHERE p.id = NEW.principal_id AND p.tenant_id = NEW.tenant_id)
+BEGIN SELECT RAISE(ABORT, 'AEGIS project principal scope required'); END;
