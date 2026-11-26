@@ -232,21 +232,21 @@ test('memory writes reject cross-origin requests before changing KV', async () =
       },
       body: JSON.stringify({ note: 'private note' }),
     }),
-    env: { ...configuredEnv, MEMORY: { get: async () => '[]', put: async () => { writes += 1; } } },
+    env: { ...persistedEnv, MEMORY: { get: async () => '[]', put: async () => { writes += 1; } } },
   });
   assert.equal(response.status, 403);
   assert.equal(writes, 0);
 });
 
 test('memory deletes reject cross-origin requests before changing KV', async () => {
-  const token = await createSessionToken(secret);
+  const token = await issueStoredSession();
   let deletes = 0;
   const response = await memoryDelete({
     request: new Request('https://aegis.example/api/memory', {
       method: 'DELETE',
       headers: { Origin: 'https://attacker.example', Cookie: '__Host-aegis_session=' + token },
     }),
-    env: { ...configuredEnv, MEMORY: { get: async () => '[]', put: async () => {}, delete: async () => { deletes += 1; } } },
+    env: { ...persistedEnv, MEMORY: { get: async () => '[]', put: async () => {}, delete: async () => { deletes += 1; } } },
   });
   assert.equal(response.status, 403);
   assert.equal(deletes, 0);
