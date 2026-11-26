@@ -93,6 +93,7 @@ export const ROUTE_POLICIES = Object.freeze([
       role: str(6, 4, { enum: ['owner', 'admin', 'member'] }),
       principalId: str(80, 3),
       status: str(9, 6, { enum: ['active', 'suspended', 'revoked'] }),
+      principalStatus: str(9, 6, { enum: ['active', 'suspended', 'revoked'] }),
     }, []),
     querySchema: obj({}, []),
     credentialFields: Object.freeze(['password']),

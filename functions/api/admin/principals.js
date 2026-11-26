@@ -81,7 +81,22 @@ export async function onRequestPatch({ request, env }) {
 
   let body;
   try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
-  if (typeof body.principalId !== "string" || (!body.role && !body.status)) return json({ error: "Invalid membership update." }, 400);
+  if (typeof body.principalId !== "string" ||
+      (!body.role && !body.status && !body.principalStatus)) return json({ error: "Invalid membership update." }, 400);
+  if (body.principalStatus) {
+    if (principal.principalId !== "usr-root" || principal.tenantId !== "org-root" || !principal.roles.includes("owner")) {
+      return json({ error: "Only the platform owner may change global principal status." }, 403);
+    }
+    if (!["active", "suspended", "revoked"].includes(body.principalStatus) ||
+        body.principalId === "usr-root") return json({ error: "Invalid principal lifecycle operation." }, 400);
+    try {
+      const result = await env.AEGIS_DB.prepare(
+        "UPDATE aegis_principals SET status = ? WHERE id = ?"
+      ).bind(body.principalStatus, body.principalId).run();
+      if (!result.meta?.changes) return json({ error: "Principal not found." }, 404);
+      return json({ principalId: body.principalId, principalStatus: body.principalStatus });
+    } catch { return json({ error: "Unable to update principal lifecycle." }, 503); }
+  }
   if (body.principalId === principal.principalId) return json({ error: "Self membership changes are not permitted." }, 403);
   if (body.role && !["owner", "admin", "member"].includes(body.role)) return json({ error: "Invalid role." }, 400);
   if (body.status && !["active", "suspended", "revoked"].includes(body.status)) return json({ error: "Invalid membership status." }, 400);
