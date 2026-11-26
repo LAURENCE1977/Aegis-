@@ -60,27 +60,32 @@ const loginDb = {
   },
 };
 const persistedEnv = { ...configuredEnv, AEGIS_DB: loginDb };
+async function issueStoredSession(now = Date.now()) {
+  const session = await createRevocableSessionToken(secret, now);
+  storedSessions.set(session.sessionId, { expires_at: session.expiresAt, revoked_at: null, principal_id: 'usr_root', tenant_id: 'org_root', roles_json: '[\"owner\"]' });
+  return session.token;
+}
 const throttledEnv = { ...configuredEnv, AEGIS_DB: loginDb };
 
 test('a newly created session token verifies before its expiry', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const { token } = await createRevocableSessionToken(secret, fixedNow);
   assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000), true);
 });
 
 test('an expired session token is rejected', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const { token } = await createRevocableSessionToken(secret, fixedNow);
   assert.equal(await verifySessionToken(token, secret, fixedNow + 12 * 60 * 60 * 1000 + 1), false);
 });
 
 test('a modified session token is rejected', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const { token } = await createRevocableSessionToken(secret, fixedNow);
   const [payload, signature] = token.split('.');
   const changedSignature = (signature[0] === 'A' ? 'B' : 'A') + signature.slice(1);
   assert.equal(await verifySessionToken(payload + '.' + changedSignature, secret, fixedNow), false);
 });
 
 test('session verification fails closed when the signing secret is missing', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const { token } = await createRevocableSessionToken(secret, fixedNow);
   assert.equal(await verifySessionToken(token, '', fixedNow), false);
 });
 
@@ -215,7 +220,7 @@ test('login rejects requests without an Origin header', async () => {
 });
 
 test('memory writes reject cross-origin requests before changing KV', async () => {
-  const token = await createSessionToken(secret);
+  const token = await issueStoredSession();
   let writes = 0;
   const response = await memoryPost({
     request: new Request('https://aegis.example/api/memory', {
@@ -305,6 +310,7 @@ test('logout revokes the D1 session and clears the browser cookie', async () => 
 test('a valid signed legacy token without sid is rejected even inside its former 12-hour window', async () => {
   const token = await createSessionToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
+  assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000), false);
   assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);
 });
 
