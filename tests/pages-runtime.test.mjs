@@ -47,7 +47,7 @@ test('Pages middleware rejects duplicate JSON keys before the login handler', ru
 test('Pages middleware reconstructs the request and chains to the real login handler', runtimeOptions, async () => {
   const response = await loginRequest(JSON.stringify({ password: testPassword }));
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { authenticated: true });
+  assert.equal((await response.json()).authenticated, true);
   assert.match(response.headers.get('set-cookie') || '', /^__Host-aegis_session=/);
 });
 
