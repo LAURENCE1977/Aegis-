@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createSessionToken,
   createRevocableSessionToken,
   verifySessionToken,
   readSessionToken,
@@ -60,6 +59,13 @@ const loginDb = {
   },
 };
 const persistedEnv = { ...configuredEnv, AEGIS_DB: loginDb };
+async function createLegacySignedToken(secret, now = Date.now()) {
+  const payload = Buffer.from(JSON.stringify({ exp: Math.floor(now / 1000) + 12 * 60 * 60 })).toString('base64url');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return payload + '.' + Buffer.from(signature).toString('base64url');
+}
+
 async function issueStoredSession(now = Date.now()) {
   const session = await createRevocableSessionToken(secret, now);
   storedSessions.set(session.sessionId, { expires_at: session.expiresAt, revoked_at: null, principal_id: 'usr-root', tenant_id: 'org-root', roles_json: '[\"owner\"]' });
@@ -308,7 +314,7 @@ test('logout revokes the D1 session and clears the browser cookie', async () => 
 });
 
 test('a valid signed legacy token without sid is rejected even inside its former 12-hour window', async () => {
-  const token = await createSessionToken(secret, fixedNow);
+  const token = await createLegacySignedToken(secret, fixedNow);
   const request = new Request('https://aegis.example/api/ask', { headers: { Cookie: '__Host-aegis_session=' + token } });
   assert.equal(await verifySessionToken(token, secret, fixedNow + 1_000), false);
   assert.equal(await isAuthorized(request, persistedEnv, fixedNow + 1_000), false);

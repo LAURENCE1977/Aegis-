@@ -23,8 +23,6 @@ export async function hashLoginIdentity(identity, secret) {
 
 export function authConfigAvailable(env) { return Boolean(env&&typeof env.AEGIS_PASSWORD==="string"&&env.AEGIS_PASSWORD.length>=12&&typeof env.AEGIS_SESSION_SECRET==="string"&&env.AEGIS_SESSION_SECRET.length>=32); }
 export function constantTimeEqual(left,right) { if(typeof left!=="string"||typeof right!=="string")return false; const length=Math.max(left.length,right.length); let difference=left.length^right.length; for(let i=0;i<length;i++)difference|=(left.charCodeAt(i)||0)^(right.charCodeAt(i)||0); return difference===0; }
-// Stateless tokens remain available for isolated/local tests. Pages login uses the revocable form below.
-export async function createSessionToken(secret,now=Date.now()) { if(typeof secret!=="string"||secret.length<32)throw new Error("A session signing secret of at least 32 characters is required."); return signClaims(secret,{exp:Math.floor(now/1000)+SESSION_TTL_SECONDS}); }
 export async function createRevocableSessionToken(secret,now=Date.now()) { if(typeof secret!=="string"||secret.length<32)throw new Error("A session signing secret of at least 32 characters is required."); const sessionId=crypto.randomUUID(); const expiresAt=Math.floor(now/1000)+SESSION_TTL_SECONDS; return {token:await signClaims(secret,{sid:sessionId,exp:expiresAt}),sessionId,expiresAt}; }
 export async function verifySessionToken(token, secret, now = Date.now()) {
   if (typeof secret !== "string" || secret.length < 32 || typeof token !== "string") return false;

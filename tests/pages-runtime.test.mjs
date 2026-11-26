@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
 
 const baseUrl = process.env.AEGIS_PAGES_RUNTIME_URL;
 const runtimeOptions = baseUrl ? {} : { skip: 'Set AEGIS_PAGES_RUNTIME_URL when Wrangler Pages Dev is running.' };
 const testPassword = process.env.AEGIS_RUNTIME_TEST_PASSWORD || 'aegis-pages-runtime-test-password';
 const testSessionSecret = 'aegis-pages-runtime-test-session-secret-32chars';
+async function createLegacySignedToken(secret) {
+  const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60 })).toString('base64url');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return payload + '.' + Buffer.from(signature).toString('base64url');
+}
 
 function loginRequest(body, contentType = 'application/json') {
   return fetch(baseUrl + '/api/login', {
@@ -184,7 +189,7 @@ test('Pages runtime rejects replay of a logged-out session across memories and a
 
 
 test('Pages runtime rejects a correctly signed legacy token without a D1 sid', runtimeOptions, async () => {
-  const token = await createSessionToken(testSessionSecret);
+  const token = await createLegacySignedToken(testSessionSecret);
   const response = await fetch(baseUrl + '/api/ask', {
     method: 'POST',
     headers: {
