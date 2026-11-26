@@ -151,7 +151,7 @@ run_migrations() {
   local stage="$1"
   local config="$2"
   log "Applying migration stage $stage locally."
-  "$WRANGLER_BIN" d1 migrations apply "$DB_NAME" \
+  CI=1 "$WRANGLER_BIN" d1 migrations apply "$DB_NAME" \
     --local \
     --config "$config" \
     --persist-to "$PERSIST_DIR"
