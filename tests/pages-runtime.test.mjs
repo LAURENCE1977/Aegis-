@@ -327,6 +327,10 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
     principalId: memberBId, status: 'suspended',
   });
   assert.equal(crossTenantMutation.status, 404);
+  const crossTenantPrincipalSuspend = await jsonRequest('/api/admin/principals', 'PATCH', adminACookie, {
+    principalId: memberBId, principalStatus: 'suspended',
+  });
+  assert.equal(crossTenantPrincipalSuspend.status, 403);
 
   const memberAdminDenied = await jsonRequest('/api/admin/principals', 'GET', memberBCookie);
   assert.equal(memberAdminDenied.status, 403);
@@ -340,6 +344,10 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   assert.ok(ownSessions.length >= 2);
   const firstSession = ownSessions.find(item => item.current === 1);
   assert.ok(firstSession);
+  const crossTenantSessionRevoke = await jsonRequest('/api/sessions', 'POST', adminACookie, {
+    sessionId: firstSession.sessionId,
+  });
+  assert.equal(crossTenantSessionRevoke.status, 404);
   const targetedRevoke = await jsonRequest('/api/sessions', 'POST', memberBCookie, { sessionId: firstSession.sessionId });
   assert.equal(targetedRevoke.status, 200);
   assert.equal((await jsonRequest('/api/sessions', 'GET', memberBCookie)).status, 401);
