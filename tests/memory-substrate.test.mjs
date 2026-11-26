@@ -71,11 +71,11 @@ test('search is isolated to the requested owner and personal/project scope', () 
     record({ id: 'project-memory', projectId: 'project-a' }),
     record({ id: 'other-project', projectId: 'project-b' }),
   ]);
-  assert.deepEqual(store.search({ ownerId: 'owner-1', query: 'storytelling' }).map((item) => item.id), [
+  assert.deepEqual(store.search({ ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', query: 'storytelling' }).map((item) => item.id), [
     'preferred-writing-style',
   ]);
   assert.deepEqual(store.search({
-    ownerId: 'owner-1', projectId: 'project-a', query: 'storytelling',
+    ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', projectId: 'project-a', query: 'storytelling',
   }).map((item) => item.id), ['project-memory']);
 });
 
@@ -99,25 +99,25 @@ test('search excludes candidate, retracted, superseded and expired memories by d
     record({ id: 'expired-memory', expiresAt: '2026-11-15T11:59:00.000Z' }),
   ]);
   assert.deepEqual(store.search({
-    ownerId: 'owner-1', query: 'storytelling', now,
+    ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', query: 'storytelling', now,
   }).map((item) => item.id), ['preferred-writing-style']);
 });
 
 test('store returns defensive copies and bounds result counts', () => {
   const store = createMemoryStore([record()]);
-  const first = store.get('preferred-writing-style', { ownerId: 'owner-1' });
+  const first = store.get('preferred-writing-style', { ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1' });
   first.tags.push('mutated');
-  assert.deepEqual(store.get('preferred-writing-style', { ownerId: 'owner-1' }).tags, ['writing', 'style']);
+  assert.deepEqual(store.get('preferred-writing-style', { ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1' }).tags, ['writing', 'style']);
   assert.throws(() => store.search({
-    ownerId: 'owner-1', query: 'writing', limit: 1000,
+    ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', query: 'writing', limit: 1000,
   }));
 });
 
 test('empty or invalid queries return no results without widening scope', () => {
   const store = createMemoryStore([record()]);
-  assert.deepEqual(store.search({ ownerId: 'owner-1', query: '' }), []);
+  assert.deepEqual(store.search({ ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', query: '' }), []);
   assert.deepEqual(store.search({ ownerId: '', query: 'writing' }), []);
-  assert.deepEqual(store.search({ ownerId: 'owner-1', query: 'writing', projectId: '*' }), []);
+  assert.deepEqual(store.search({ ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1', query: 'writing', projectId: '*' }), []);
 });
 
 class MemoryRepositoryD1 {
@@ -165,7 +165,7 @@ class MemoryRepositoryD1 {
         if (sql.includes('FROM aegis_memory_events') && sql.includes('WHERE memory_id = ?')) {
           return {results:db.events.filter(event=>event.memory_id===v[0] && event.tenant_id===v[1] && event.principal_id===v[2] && event.project_id===v[3]).slice(0,v[4]).map(event=>({...event}))};
         }
-        if (sql.includes('FROM aegis_memory_events') && sql.includes('WHERE owner_id = ?')) {
+        if (sql.includes('FROM aegis_memory_events') && sql.includes('WHERE tenant_id = ? AND principal_id = ? AND project_id = ?')) {
           return {results:db.events.filter(event=>event.tenant_id===v[0] && event.principal_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
         }
         let rows=[...db.rows.values()];
@@ -194,7 +194,7 @@ test('D1 repository persists a memory and reads it back only in its exact owner 
   const repository = createMemoryRepository(db);
   const saved = await repository.create(record());
   assert.equal(saved.source.trust, 'untrusted');
-  assert.deepEqual(await repository.get(saved.id, { ownerId:'owner-1' }), saved);
+  assert.deepEqual(await repository.get(saved.id, { ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1' }), saved);
   assert.equal(await repository.get(saved.id, { ownerId:'owner-2',principalId:'principal-2',tenantId:'tenant-2' }), null);
 });
 
@@ -205,8 +205,8 @@ test('D1 repository lists only accepted, unexpired records in exact project scop
   await repository.create(record());
   await repository.create(record({id:'candidate-record',status:'candidate'}));
   await repository.create(record({id:'project-record',projectId:'project-a'}));
-  const personal = await repository.list({ownerId:'owner-1',now,limit:20});
-  const project = await repository.list({ownerId:'owner-1',projectId:'project-a',now,limit:20});
+  const personal = await repository.list({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',now,limit:20});
+  const project = await repository.list({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',projectId:'project-a',now,limit:20});
   assert.deepEqual(personal.map(item=>item.id),['preferred-writing-style']);
   assert.deepEqual(project.map(item=>item.id),['project-record']);
 });
@@ -217,9 +217,9 @@ test('D1 repository searches all terms without crossing owner or project boundar
   const repository = createMemoryRepository(db);
   await repository.create(record());
   await repository.create(record({id:'other-owner-record',ownerId:'owner-2',principalId:'principal-2',tenantId:'tenant-2'}));
-  const results = await repository.search({ownerId:'owner-1',query:'concise storytelling',now});
+  const results = await repository.search({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',query:'concise storytelling',now});
   assert.deepEqual(results.map(item=>item.id),['preferred-writing-style']);
-  assert.deepEqual(await repository.search({ownerId:'owner-1',projectId:'project-a',query:'concise storytelling',now}),[]);
+  assert.deepEqual(await repository.search({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',projectId:'project-a',query:'concise storytelling',now}),[]);
 });
 
 
@@ -230,7 +230,7 @@ test('D1 memory retrieval ranks relevant terms after bounded candidate selection
   await repository.create(record({id:'full-match',content:'Concise storytelling creates a clear structure.',tags:['writing']}));
   await repository.create(record({id:'partial-match',content:'Storytelling keeps the narrative human.',tags:['narrative']}));
   await repository.create(record({id:'substring-only',content:'Partial artifice in the artist profile.',tags:['artwork']}));
-  const results = await repository.search({ownerId:'owner-1',query:'art concise storytelling',now});
+  const results = await repository.search({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',query:'art concise storytelling',now});
   assert.deepEqual(results.map(item=>item.id),['full-match','partial-match']);
 });
 
@@ -239,10 +239,10 @@ test('D1 repository only permits candidate memories to be reviewed into accepted
   const db = new MemoryRepositoryD1();
   const repository = createMemoryRepository(db);
   const candidate = await repository.create(record({status:'candidate'}));
-  assert.equal(await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'accepted',now}),true);
-  assert.equal((await repository.get(candidate.id,{ownerId:'owner-1'})).status,'accepted');
-  assert.equal(await repository.setStatus(candidate.id,{ownerId:'owner-2',status:'retracted',now}),false);
-  await assert.rejects(()=>repository.setStatus(candidate.id,{ownerId:'owner-1',status:'trusted',now}),/status/i);
+  assert.equal(await repository.setStatus(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',status:'accepted',now}),true);
+  assert.equal((await repository.get(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1'})).status,'accepted');
+  assert.equal(await repository.setStatus(candidate.id,{ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2',status:'retracted',now}),false);
+  await assert.rejects(()=>repository.setStatus(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',status:'trusted',now}),/status/i);
 });
 
 
@@ -250,15 +250,15 @@ test('D1 repository exposes append-only creation and lifecycle history in exact 
   const db = new MemoryRepositoryD1();
   const repository = createMemoryRepository(db);
   const candidate = await repository.create(record({status:'candidate'}));
-  await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'accepted',now});
-  await repository.setStatus(candidate.id,{ownerId:'owner-1',status:'retracted',now:now+1000});
-  const events = await repository.listEvents(candidate.id,{ownerId:'owner-1'});
+  await repository.setStatus(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',status:'accepted',now});
+  await repository.setStatus(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',status:'retracted',now:now+1000});
+  const events = await repository.listEvents(candidate.id,{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1'});
   assert.deepEqual(events.map(event=>[event.type,event.fromStatus,event.toStatus]),[
     ['created',null,'candidate'],
     ['status_changed','candidate','accepted'],
     ['status_changed','accepted','retracted'],
   ]);
-  assert.deepEqual(await repository.listEvents(candidate.id,{ownerId:'owner-2'}),[]);
+  assert.deepEqual(await repository.listEvents(candidate.id,{ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2'}),[]);
 });
 
 
@@ -266,8 +266,8 @@ test('D1 review listing can include candidates without changing normal retrieval
   const db = new MemoryRepositoryD1();
   const repository = createMemoryRepository(db);
   await repository.create(record({status:'candidate'}));
-  assert.deepEqual((await repository.list({ownerId:'owner-1',now})),[]);
-  assert.deepEqual((await repository.list({ownerId:'owner-1',now,includeCandidates:true})).map(item=>item.status),['candidate']);
+  assert.deepEqual((await repository.list({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',now})),[]);
+  assert.deepEqual((await repository.list({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',now,includeCandidates:true})).map(item=>item.status),['candidate']);
 });
 
 
@@ -276,7 +276,7 @@ test('D1 retrieval accepts partial-term matches but never returns restricted mem
   const repository = createMemoryRepository(db);
   await repository.create(record());
   await repository.create(record({id:'restricted-memory',sensitivity:'restricted',content:'private storytelling memory'}));
-  const results = await repository.search({ownerId:'owner-1',query:'storytelling unrelated',now});
+  const results = await repository.search({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',query:'storytelling unrelated',now});
   assert.deepEqual(results.map(item=>item.id),['preferred-writing-style']);
 });
 
@@ -285,9 +285,9 @@ test('D1 repository exposes project-scoped memory lifecycle events for the Proje
   const db=new MemoryRepositoryD1();
   const repository=createMemoryRepository(db);
   await repository.create(record({id:'project-memory',projectId:'project-a',status:'candidate'}));
-  await repository.setStatus('project-memory',{ownerId:'owner-1',projectId:'project-a',status:'accepted',now:now+1000});
-  const events=await repository.listProjectEvents({ownerId:'owner-1',projectId:'project-a',limit:20});
+  await repository.setStatus('project-memory',{ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',projectId:'project-a',status:'accepted',now:now+1000});
+  const events=await repository.listProjectEvents({ownerId: 'owner-1', principalId: 'principal-1', tenantId: 'tenant-1',projectId:'project-a',limit:20});
   assert.deepEqual(events.map(event=>event.type),['created','status_changed']);
   assert.ok(events.every(event=>event.projectId==='project-a'));
-  assert.deepEqual(await repository.listProjectEvents({ownerId:'owner-2',projectId:'project-a'}),[]);
+  assert.deepEqual(await repository.listProjectEvents({ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2',projectId:'project-a'}),[]);
 });
