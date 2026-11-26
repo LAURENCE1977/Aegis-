@@ -68,9 +68,11 @@ export const ROUTE_POLICIES = Object.freeze([
     profile: 'standard',
     schema: obj({
       question: str(4000, 1),
+      conversationId: str(128, 1),
       history: array(obj({
-        role: str(4, 4, { enum: ['user'] }),
+        role: str(9, 4, { enum: ['user', 'assistant'] }),
         content: str(4000, 1),
+        signature: str(64, 43),
       }, ['role', 'content']), 10),
     }, ['question']),
     credentialFields: Object.freeze([]), formFields: Object.freeze([]),
