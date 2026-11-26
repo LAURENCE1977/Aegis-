@@ -6,8 +6,6 @@
 -- Do not add tenant_id or principal_id here: those columns do not
 -- exist in the original pre-0014 schema.
 
-PRAGMA foreign_keys = ON;
-
 -- Legacy owner session. Migration 0014 adds and backfills identity columns.
 INSERT INTO auth_sessions (
   session_id,
@@ -98,7 +96,7 @@ INSERT INTO aegis_memories (
 );
 
 -- Fail if the fixture did not create exactly the expected records.
-CREATE TEMP TABLE __legacy_fixture_assertions (
+CREATE TABLE __legacy_fixture_assertions (
   passed INTEGER NOT NULL CHECK (passed = 1)
 );
 
