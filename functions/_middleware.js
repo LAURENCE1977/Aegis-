@@ -25,6 +25,7 @@ export const onRequest = [async (context) => {
     classification.path === '/api/admin/tenants' ||
     classification.path === '/api/sessions' ||
     classification.path === '/api/health' ||
+    classification.path === '/api/status' ||
     classification.path === '/api/account/password' ||
     classification.path === '/api/account/recovery' ||
     classification.path === '/api/tenants/invitations' ||
