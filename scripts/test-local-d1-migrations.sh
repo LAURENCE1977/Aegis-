@@ -13,10 +13,12 @@
 set -Eeuo pipefail
 
 readonly SCRIPT_NAME="${0##*/}"
-readonly REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   printf 'ERROR: run this script from inside the AEGIS Git repository.\n' >&2
   exit 2
 }
+readonly REPO_ROOT
+cd "$REPO_ROOT"
 readonly MIGRATIONS_DIR="$REPO_ROOT/migrations/production"
 readonly FIXTURE_SQL="$REPO_ROOT/scripts/legacy-fixture.sql"
 readonly ASSERT_SQL="$REPO_ROOT/scripts/production-legacy-owner-assert.sql"
