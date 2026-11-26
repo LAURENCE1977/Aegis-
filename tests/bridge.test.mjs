@@ -191,9 +191,10 @@ test('MCP endpoint rejects non-JSON content types', async () => {
 });
 
 test('MCP endpoint permits an authenticated AEGIS browser session as an alternative credential', async () => {
-  const { createSessionToken } = await import('../functions/lib/auth.mjs');
+  const { createRevocableSessionToken } = await import('../functions/lib/auth.mjs');
   const sessionSecret = 'test-only-session-secret-for-mcp-bridge-32chars';
-  const sessionToken = await createSessionToken(sessionSecret);
+  const session = await createRevocableSessionToken(sessionSecret);
+  const sessionToken = session.token;
   const requestBody = { jsonrpc: '2.0', id: 12, method: 'server/discover', params: { _meta: meta() } };
   const request = mcpRequest(requestBody, {
     authorization: '',
@@ -203,7 +204,7 @@ test('MCP endpoint permits an authenticated AEGIS browser session as an alternat
   headers.set('Cookie', '__Host-aegis_session=' + sessionToken);
   const response = await onRequestPost({
     request: new Request(request.url, { method: 'POST', headers, body: JSON.stringify(requestBody) }),
-    env: { AEGIS_SESSION_SECRET: sessionSecret },
+    env: { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: sessionSecret, AEGIS_DB: { prepare(sql) { return { bind(sid, now) { return { first: async () => sql.includes('FROM auth_sessions') && sid === session.sessionId ? { session_id: sid, principal_id: 'usr-root', tenant_id: 'org-root', roles_json: '[\"owner\"]', expires_at: session.expiresAt, revoked_at: null } : null }; } }; } } },
   });
   assert.equal(response.status, 200);
 });

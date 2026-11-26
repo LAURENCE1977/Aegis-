@@ -84,7 +84,7 @@ test('Forge blob reader rejects unknown fields and malformed object identifiers'
 test('Forge inspection and blob APIs stop reading oversized request bodies at the configured limit',async()=>{
   let fetchCalls=0;
   const oversized=async(path,body)=>{
-    const token=await createSessionToken(secret);
+    const token=await issueToken();
     return new Request('https://aegis.example'+path,{
       method:'POST',
       headers:{

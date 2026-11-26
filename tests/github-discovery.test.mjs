@@ -105,7 +105,7 @@ test('Forge discovery API rejects unauthenticated and cross-origin requests', as
 });
 
 test('Forge discovery API returns safe metadata for an authenticated same-origin request', async () => {
-  const token = await createSessionToken(secret);
+  const token = await issueToken();
   const response = await onRequestPost({
     request: new Request('https://aegis.example/api/forge/discover', {
       method: 'POST',

@@ -69,6 +69,8 @@ class MemoryD1 {
   }
 }
 
+async function issueToken(){const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});return session.token;}
+
 async function request(path, { method = 'GET', body, origin = 'https://aegis.example', authenticated = true } = {}) {
   const headers = {};
   if (authenticated) {
@@ -208,7 +210,7 @@ test('grant endpoints reject malformed JSON, extra fields and oversized bodies',
     method: 'POST',
     headers: {
       Origin: 'https://aegis.example',
-      Cookie: '__Host-aegis_session=' + await createSessionToken(secret),
+      Cookie: '__Host-aegis_session=' + await issueToken(),
       'Content-Type': 'application/json',
     },
     body: '{',
