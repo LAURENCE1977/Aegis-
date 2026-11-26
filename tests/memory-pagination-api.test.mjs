@@ -69,12 +69,13 @@ async function authenticatedRequest(path, principalId = 'usr-root', tenantId = '
   });
 }
 
-function env(db, secret = cursorSecret) {
+function env(db, secret) {
+  if (arguments.length < 2) secret = cursorSecret;
   return {
     AEGIS_PASSWORD:'test-password-long-enough',
     AEGIS_SESSION_SECRET:sessionSecret,
     AEGIS_DB:db,
-    ...(secret === undefined ? {} : { CURSOR_SIGNING_SECRET:secret }),
+    ...(typeof secret === 'string' ? { CURSOR_SIGNING_SECRET:secret } : {}),
   };
 }
 
@@ -87,7 +88,7 @@ test('memory pagination advances in updated_at DESC, id ASC order without gaps',
     request:await authenticatedRequest('/api/memories?limit=2'),
     env:env(db),
   });
-  assert.equal(first.status,200);
+  assert.equal(first.status,200,await first.clone().text());
   const firstBody = await first.json();
   assert.deepEqual(firstBody.memories.map(item=>item.id),['memory-a','memory-b']);
   assert.equal(firstBody.total,2);
@@ -135,7 +136,7 @@ test('memory pagination fails closed when more rows exist but signing secret is 
   const db = new PaginationD1([row('memory-a'),row('memory-b')]);
   const response = await onRequestGet({
     request:await authenticatedRequest('/api/memories?limit=1'),
-    env:env(db,undefined),
+    env:env(db,null),
   });
   assert.equal(response.status,503);
 });
