@@ -41,7 +41,7 @@ jobs:
       - name: Run Node.js test suite
         run: node --test tests/*.test.mjs
       - name: Install Wrangler for local D1 verification
-        run: npm install --global wrangler@4
+        run: npm install --global wrangler@4.168.0
       - name: Apply capability migrations to isolated local D1
         run: wrangler d1 migrations apply aegis-capabilities-test --local --config wrangler.d1-test.toml --persist-to .wrangler/test-capability-d1
       - name: Smoke-test all capability tables and constraints
@@ -99,6 +99,16 @@ jobs:
         run: wrangler d1 migrations apply aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages
       - name: Assert fresh production migration ledger, foreign keys and triggers
         run: wrangler d1 execute aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages --file scripts/production-empty-assert.sql
+      - name: Verify pinned Wrangler version before legacy migration test
+        shell: bash
+        run: |
+          version_output="$(wrangler --version)"
+          printf '%s\\n' "$version_output"
+          version="${version_output##* }"
+          if [[ "$version" != "4.168.0" ]]; then
+            echo "Expected Wrangler 4.168.0, got: $version_output"
+            exit 1
+          fi
       - name: Verify production migration chain against a legacy owner snapshot
         run: bash scripts/test-local-d1-migrations.sh
 
