@@ -100,6 +100,7 @@ export async function onRequestGet({ request, env }) {
     let nextCursor = null;
     if (hasMore) {
       if (typeof env.CURSOR_SIGNING_SECRET !== "string" ||
+          env.CURSOR_SIGNING_SECRET.trim().length === 0 ||
           new TextEncoder().encode(env.CURSOR_SIGNING_SECRET).byteLength < 32) {
         return jsonResponse({ error: "Memory pagination is not configured." }, 503);
       }
@@ -117,8 +118,7 @@ export async function onRequestGet({ request, env }) {
       next_cursor: nextCursor,
       has_more: hasMore,
     });
-  } catch (error) {
-    console.error("Memory pagination request failed:", error instanceof Error ? error.message : "unknown error");
+  } catch {
     return jsonResponse({ error: "Memory search is temporarily unavailable." }, 503);
   }
 }
