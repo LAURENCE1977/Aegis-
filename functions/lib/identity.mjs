@@ -8,6 +8,11 @@ const DUMMY_SALT = "YWVnaXMtZHVtbXktcGFzc3dvcmQtc2FsdA";
 function toBase64Url(bytes) { let binary=""; for (const byte of bytes) binary+=String.fromCharCode(byte); return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,""); }
 function fromBase64Url(value) { if(typeof value!=="string"||!/^[A-Za-z0-9_-]{20,128}$/.test(value))return null; try { const base64=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4); const binary=atob(base64); return Uint8Array.from(binary,c=>c.charCodeAt(0)); } catch{return null;} }
 function equalBytes(left,right) { const length=Math.max(left.length,right.length); let mismatch=left.length^right.length; for(let i=0;i<length;i++)mismatch|=(left[i]||0)^(right[i]||0); return mismatch===0; }
+export function isStrongPassword(value) {
+ if(typeof value!=="string"||value.length<12||value.length>1024||new Set(value).size<8)return false;
+ const classes=[/[a-z]/.test(value),/[A-Z]/.test(value),/[0-9]/.test(value),/[^A-Za-z0-9]/.test(value)];
+ return classes.filter(Boolean).length>=3;
+}
 export function normalizeLoginIdentifier(value) { if(typeof value!=="string")return null; const normalized=value.trim().toLowerCase(); if(normalized.length<3||normalized.length>254||!/^[a-z0-9][a-z0-9._+@-]*$/.test(normalized)||normalized.includes("..")||normalized.endsWith(".")||normalized.startsWith("."))return null; return normalized; }
 function pepperKeyring(env={}) {
  const keys=Object.create(null);
