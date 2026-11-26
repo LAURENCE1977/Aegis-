@@ -254,7 +254,7 @@ test('memory deletes reject cross-origin requests before changing KV', async () 
 
 
 test('chat rejects cross-origin requests before invoking the model', async () => {
-  const token = await createSessionToken(secret);
+  const token = await issueStoredSession();
   let modelCalls = 0;
   const response = await askPost({
     request: new Request('https://aegis.example/api/ask', {

@@ -120,7 +120,7 @@ export async function onRequestPost({ request, env }) {
     const memory = await repository.create(record);
     return jsonResponse({ memory, reviewRequired: true }, 201);
   } catch (error) {
-    if (error instanceof TypeError) { console.warn("Memory record validation rejected a request:", error.message); return jsonResponse({ error: "Memory record is invalid." }, 400); }
+    if (error instanceof TypeError) return jsonResponse({ error: "Memory record is invalid." }, 400);
     return jsonResponse({ error: "Memory could not be saved." }, 503);
   }
 }
