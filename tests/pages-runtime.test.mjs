@@ -435,7 +435,7 @@ test('Pages runtime provisions isolated tenant principals, enforces roles and re
   const forbiddenMembershipReactivation = await jsonRequest('/api/admin/principals', 'PATCH', rootB, {
     principalId: memberBId, status: 'active',
   });
-  assert.equal(forbiddenMembershipReactivation.status, 503);
+  assert.equal(forbiddenMembershipReactivation.status, 409);
 
   const suspendTenant = await jsonRequest('/api/admin/tenants', 'PATCH', rootCookie, {
     tenantId: tenantB, status: 'suspended',

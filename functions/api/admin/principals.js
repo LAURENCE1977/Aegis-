@@ -107,10 +107,17 @@ export async function onRequestPatch({ request, env }) {
 
   try {
     const target = await env.AEGIS_DB.prepare(`
-      SELECT role FROM aegis_tenant_memberships
-      WHERE principal_id = ? AND tenant_id = ?
+      SELECT m.role, p.status AS principal_status, t.status AS tenant_status
+      FROM aegis_tenant_memberships m
+      JOIN aegis_principals p ON p.id = m.principal_id
+      JOIN aegis_tenants t ON t.id = m.tenant_id
+      WHERE m.principal_id = ? AND m.tenant_id = ?
     `).bind(body.principalId, principal.tenantId).first();
     if (!target) return json({ error: "Principal not found in this tenant." }, 404);
+    if (body.status === "active" &&
+        (target.principal_status !== "active" || target.tenant_status !== "active")) {
+      return json({ error: "An inactive principal or tenant cannot have an active membership." }, 409);
+    }
     if (principal.roles.includes("admin") && (target.role !== "member" || (body.role && body.role !== "member"))) {
       return json({ error: "Admins may manage member accounts only." }, 403);
     }
