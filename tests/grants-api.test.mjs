@@ -74,9 +74,7 @@ async function issueToken(){const session=await createRevocableSessionToken(secr
 async function request(path, { method = 'GET', body, origin = 'https://aegis.example', authenticated = true } = {}) {
   const headers = {};
   if (authenticated) {
-    const session = await createRevocableSessionToken(secret);
-    sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});
-    const token = session.token;
+    const token = await issueToken();
     headers.Cookie = '__Host-aegis_session=' + token;
   }
   if (origin !== null) headers.Origin = origin;

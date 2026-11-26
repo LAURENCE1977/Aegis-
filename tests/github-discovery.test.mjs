@@ -136,7 +136,7 @@ test('Forge discovery API returns safe metadata for an authenticated same-origin
 
 
 test('Forge discovery API bounds streaming request reads before GitHub fetch', async () => {
-  const token = await createSessionToken(secret);
+  const token = await issueToken();
   let fetchCalls = 0;
   const response = await onRequestPost({
     request: new Request('https://aegis.example/api/forge/discover', {
