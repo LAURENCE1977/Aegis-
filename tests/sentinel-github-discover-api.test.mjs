@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost } from '../functions/api/sentinel/github-discover.js';
 
 const secret = 'sentinel-github-test-session-secret-with-enough-entropy';
+const sessionRows = new Map();
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
@@ -19,6 +20,7 @@ class MemoryD1 {
   prepare(sql) {
     this.prepareCalls += 1;
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row=sessionRows.get(sid); return row && row.expires_at>now && !row.revoked_at ? {session_id:sid,...row} : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -40,7 +42,7 @@ async function request(body = { sourceUrl: 'https://github.com/Example/Repo' }, 
   origin = 'https://aegis.example',
 } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
+  if (authenticated) { const session=await createRevocableSessionToken(secret); sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr_root',tenant_id:'org_root',roles_json:'[\"owner\"]'}); headers.Cookie='__Host-aegis_session='+session.token; }
   if (origin !== null) headers.Origin = origin;
   return new Request('https://aegis.example/api/sentinel/github-discover', {
     method: 'POST',
@@ -53,13 +55,13 @@ function activeGrant() {
   const now = Date.now();
   return {
     id: 'github-grant-1',
-    principal_id: 'owner',
+    principal_id: 'usr_root',
     capability_id: 'aegis-github-public-discovery',
     capability_version: '0.1.0',
     resource_id: 'github:public:Example/Repo',
     scopes_json: JSON.stringify(['github:public-metadata:read']),
     status: 'active',
-    created_by: 'owner',
+    created_by: 'usr_root',
     created_at: new Date(now - 1000).toISOString(),
     expires_at: new Date(now + 60_000).toISOString(),
     revoked_at: null,

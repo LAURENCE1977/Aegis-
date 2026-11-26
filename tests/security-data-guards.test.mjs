@@ -1,22 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scrubSensitiveData } from '../functions/lib/data-guards.mjs';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost } from '../functions/api/memories.js';
 
 const secret = 'data-guard-test-session-secret-with-enough-entropy';
 const envBase = { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: secret };
+const sessions = new Map();
 
 class MemoryD1 {
   constructor() { this.records = []; }
   prepare(sql) {
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row=sessions.get(sid); return row && row.expires_at>now && !row.revoked_at ? {session_id:sid,...row} : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
       async run() {
         if (sql.includes('INSERT INTO aegis_memories')) {
-          db.records.push({ content: this.values[4], source_type: this.values[5], source_attribution: this.values[7], status: this.values[11] });
+          db.records.push({ content: this.values[6], source_type: this.values[7], source_attribution: this.values[9], status: this.values[13] });
           return { meta: { changes: 1 } };
         }
         return { meta: { changes: 0 } };
@@ -30,7 +32,9 @@ class MemoryD1 {
 }
 
 async function ownerRequest(body) {
-  const token = await createSessionToken(secret);
+  const session = await createRevocableSessionToken(secret);
+  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr_root',tenant_id:'org_root',roles_json:'[\"owner\"]'});
+  const token = session.token;
   return new Request('https://aegis.example/api/memories', {
     method: 'POST',
     headers: {
