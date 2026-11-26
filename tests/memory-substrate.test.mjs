@@ -67,7 +67,7 @@ test('rejects oversized, blank, control-character and duplicate-tag content', ()
 test('search is isolated to the requested owner and personal/project scope', () => {
   const store = createMemoryStore([
     record(),
-    record({ id: 'other-owner', ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2', principalId: 'principal-2', tenantId: 'tenant-2' }),
+    record({ id: 'other-owner', ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2' }),
     record({ id: 'project-memory', projectId: 'project-a' }),
     record({ id: 'other-project', projectId: 'project-b' }),
   ]);
@@ -138,7 +138,7 @@ class MemoryRepositoryD1 {
             status:v[13], tags_json:v[14], created_at:v[15], updated_at:v[16],
             expires_at:v[17],
           });
-          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],project_id:v[2],event_type:'created',from_status:null,to_status:v[11],occurred_at:v[15]});
+          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],principal_id:v[2],tenant_id:v[3],project_id:v[4],event_type:'created',from_status:null,to_status:v[13],occurred_at:v[15]});
           return { meta:{changes:1} };
         }
         if (sql.includes('UPDATE aegis_memories')) {
@@ -146,7 +146,7 @@ class MemoryRepositoryD1 {
           if (!row || row.tenant_id!==v[3] || row.principal_id!==v[4] || row.project_id!==v[5]) return {meta:{changes:0}};
           const previous=row.status;
           row.status=v[0]; row.updated_at=v[1];
-          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
+          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,principal_id:row.principal_id,tenant_id:row.tenant_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
           return {meta:{changes:1}};
         }
         return {meta:{changes:0}};
