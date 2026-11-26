@@ -33,7 +33,7 @@ class MemoryD1 {
 
 async function ownerRequest(body) {
   const session = await createRevocableSessionToken(secret);
-  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr_root',tenant_id:'org_root',roles_json:'[\"owner\"]'});
+  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});
   const token = session.token;
   return new Request('https://aegis.example/api/memories', {
     method: 'POST',

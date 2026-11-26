@@ -18,7 +18,7 @@ test('ask scrubs PII and secrets from question, history and configured private v
           bind(...values) {
             return {
               first: async () => sql.includes('FROM auth_sessions') && values[0] === sessionId
-                ? { session_id: sessionId, principal_id: 'usr_root', tenant_id: 'org_root', roles_json: '[\"owner\"]' }
+                ? { session_id: sessionId, principal_id: 'usr-root', tenant_id: 'org-root', roles_json: '[\"owner\"]' }
                 : null,
               all: async () => ({ results: [] }),
             };
@@ -69,7 +69,7 @@ test('ask rejects fabricated assistant history before calling the AI provider', 
     AEGIS_DB: {
       prepare(sql) {
         return { bind(...values) { return { first: async () => sql.includes('FROM auth_sessions') && values[0] === sessionId
-          ? { session_id: sessionId, principal_id: 'usr_root', tenant_id: 'org_root', roles_json: '[\"owner\"]' } : null }; } };
+          ? { session_id: sessionId, principal_id: 'usr-root', tenant_id: 'org-root', roles_json: '[\"owner\"]' } : null }; } };
       },
     },
     AI: { run: async () => { providerCalls += 1; return { response: 'unsafe' }; } },

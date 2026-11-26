@@ -78,9 +78,9 @@ test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion'
   assert.equal(valid.status, 201, validText);
   const result = JSON.parse(validText);
   assert.equal(result.reviewRequired, true);
-  assert.equal(result.memory.ownerId, 'usr_root');
-  assert.equal(result.memory.principalId, 'usr_root');
-  assert.equal(result.memory.tenantId, 'org_root');
+  assert.equal(result.memory.ownerId, 'usr-root');
+  assert.equal(result.memory.principalId, 'usr-root');
+  assert.equal(result.memory.tenantId, 'org-root');
   assert.match(result.memory.content, /\[REDACTED_EMAIL\]/);
   assert.match(result.memory.content, /\[REDACTED_TOKEN\]/);
   assert.doesNotMatch(result.memory.content, /owner@example\.com|sk-abcdefghijklmnop/);

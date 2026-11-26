@@ -8,7 +8,7 @@ import {
   listWorkspaceEvents,
 } from '../functions/lib/project-spaces.mjs';
 
-const root = { principalId: 'usr_root', tenantId: 'org_root' };
+const root = { principalId: 'usr-root', tenantId: 'org-root' };
 const other = { principalId: 'usr_other', tenantId: 'org_other' };
 
 class MemoryD1 {
@@ -89,7 +89,7 @@ test('creates a named project space with an active status', async () => {
   assert.equal(space.name, 'AEGIS Forge');
   assert.equal(space.description, 'Research and build workspace');
   assert.equal(space.status, 'active');
-  assert.equal(db.spaces.get(space.id).owner_id, 'usr_root');
+  assert.equal(db.spaces.get(space.id).owner_id, 'usr-root');
 });
 
 test('rejects invalid workspace names and oversized descriptions', async () => {
