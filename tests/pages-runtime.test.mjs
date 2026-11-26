@@ -77,9 +77,14 @@ test('Pages runtime blocks memory owner spoofing and accepts valid D1 ingestion'
   const headers = {
     'content-type': 'application/json', origin: baseUrl, cookie,
     'x-owner-id': 'attacker', 'x-aegis-owner': 'attacker', 'x-user-id': 'attacker',
+    'x-principal-id': 'attacker', 'x-tenant-id': 'attacker', 'x-aegis-principal': 'attacker',
   };
   const spoof = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify({ ...payload, ownerId: 'attacker' }) });
   assert.equal(spoof.status, 400);
+  const spoofPrincipal = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify({ ...payload, principalId: 'attacker' }) });
+  assert.equal(spoofPrincipal.status, 400);
+  const spoofTenant = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify({ ...payload, tenantId: 'attacker' }) });
+  assert.equal(spoofTenant.status, 400);
   const valid = await fetch(baseUrl + '/api/memories', { method: 'POST', headers, body: JSON.stringify(payload) });
   const validText = await valid.text();
   assert.equal(valid.status, 201, validText);
