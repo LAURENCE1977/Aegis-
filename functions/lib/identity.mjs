@@ -9,15 +9,51 @@ function toBase64Url(bytes) { let binary=""; for (const byte of bytes) binary+=S
 function fromBase64Url(value) { if(typeof value!=="string"||!/^[A-Za-z0-9_-]{20,128}$/.test(value))return null; try { const base64=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4); const binary=atob(base64); return Uint8Array.from(binary,c=>c.charCodeAt(0)); } catch{return null;} }
 function equalBytes(left,right) { const length=Math.max(left.length,right.length); let mismatch=left.length^right.length; for(let i=0;i<length;i++)mismatch|=(left[i]||0)^(right[i]||0); return mismatch===0; }
 export function normalizeLoginIdentifier(value) { if(typeof value!=="string")return null; const normalized=value.trim().toLowerCase(); if(normalized.length<3||normalized.length>254||!/^[a-z0-9][a-z0-9._+@-]*$/.test(normalized)||normalized.includes("..")||normalized.endsWith(".")||normalized.startsWith("."))return null; return normalized; }
-function pepperConfig(env={}) { const pepper=env?.AEGIS_PASSWORD_PEPPER; if(pepper===undefined||pepper===null||pepper==="")return {pepper:"",version:"none"}; if(typeof pepper!=="string"||pepper.length<32||pepper.length>512)throw new TypeError("AEGIS_PASSWORD_PEPPER must contain between 32 and 512 characters."); const version=env.AEGIS_PASSWORD_PEPPER_VERSION??DEFAULT_PEPPER_VERSION; if(typeof version!=="string"||!/^[A-Za-z0-9._-]{1,32}$/.test(version)||version==="none")throw new TypeError("AEGIS_PASSWORD_PEPPER_VERSION is invalid."); return {pepper,version}; }
+function pepperKeyring(env={}) {
+ const keys=Object.create(null);
+ if(env.AEGIS_PASSWORD_PEPPER_KEYRING){let parsed;try{parsed=JSON.parse(env.AEGIS_PASSWORD_PEPPER_KEYRING);}catch{throw new TypeError("Invalid pepper keyring JSON.");}
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||Object.keys(parsed).length>8)throw new TypeError("Pepper keyring must contain at most eight versions.");
+  for(const [version,pepper] of Object.entries(parsed)){if(!/^[A-Za-z0-9._-]{1,32}$/.test(version)||version==="none"||typeof pepper!=="string"||pepper.length<32||pepper.length>512)throw new TypeError("Invalid pepper keyring entry.");keys[version]=pepper;}
+ }
+ const legacy=env.AEGIS_PASSWORD_PEPPER;
+ if(legacy){if(typeof legacy!=="string"||legacy.length<32||legacy.length>512)throw new TypeError("AEGIS_PASSWORD_PEPPER must contain 32-512 characters.");
+  const version=env.AEGIS_PASSWORD_PEPPER_VERSION??DEFAULT_PEPPER_VERSION;
+  if(!/^[A-Za-z0-9._-]{1,32}$/.test(version)||version==="none")throw new TypeError("Invalid pepper version.");
+  if(keys[version]&&keys[version]!==legacy)throw new TypeError("Conflicting pepper key material.");keys[version]=legacy;
+ }
+ const active=env.AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION??env.AEGIS_PASSWORD_PEPPER_VERSION??Object.keys(keys).sort().at(-1)??"none";
+ if(active!=="none"&&!Object.hasOwn(keys,active))throw new TypeError("Active pepper version is absent from keyring.");
+ return {keys,active};
+}
+function pepperConfig(env={}){const ring=pepperKeyring(env);return {pepper:ring.active==="none"?"":ring.keys[ring.active],version:ring.active};}
+export function passwordCredentialNeedsUpgrade(credential,env={}){try{return Boolean(credential&&credential.password_pepper_version!==pepperKeyring(env).active);}catch{return false;}}
 async function derivePassword(password,salt,iterations,pepper="") { let input=encoder.encode(password); if(pepper){const key=await crypto.subtle.importKey("raw",encoder.encode(pepper),{name:"HMAC",hash:"SHA-256"},false,["sign"]); input=new Uint8Array(await crypto.subtle.sign("HMAC",key,encoder.encode("aegis-password-credential-v1:"+password)));} const material=await crypto.subtle.importKey("raw",input,"PBKDF2",false,["deriveBits"]); return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations},material,256)); }
 export async function createPasswordCredential(password,env={}) { if(typeof password!=="string"||password.length<12||password.length>1024)throw new TypeError("Password must contain between 12 and 1024 characters."); const {pepper,version}=pepperConfig(env); const salt=crypto.getRandomValues(new Uint8Array(16)); const hash=await derivePassword(password,salt,ITERATIONS,pepper); return {passwordAlgorithm:HASH_ALGORITHM,passwordPepperVersion:version,passwordSalt:toBase64Url(salt),passwordHash:toBase64Url(hash),passwordIterations:ITERATIONS}; }
-export async function verifyPasswordCredential(password,credential,env={}) { if(typeof password!=="string"||password.length<1||password.length>1024)return false; const salt=fromBase64Url(credential?.password_salt??DUMMY_SALT); const expected=fromBase64Url(credential?.password_hash??toBase64Url(new Uint8Array(32))); const iterations=Number(credential?.password_iterations??ITERATIONS); const safeIterations=Number.isSafeInteger(iterations)&&iterations>=MIN_ITERATIONS&&iterations<=MAX_ITERATIONS?iterations:ITERATIONS; const algorithm=credential?.password_algorithm??HASH_ALGORITHM; const pepperVersion=credential?.password_pepper_version??"none"; let pepper="",pepperAvailable=pepperVersion==="none"; if(pepperVersion!=="none"){try{const configured=pepperConfig(env); pepperAvailable=configured.version===pepperVersion&&Boolean(configured.pepper); pepper=pepperAvailable?configured.pepper:"";}catch{pepperAvailable=false;}} const derived=await derivePassword(password,salt||fromBase64Url(DUMMY_SALT),safeIterations,pepper); const validShape=Boolean(credential&&salt&&expected&&safeIterations===iterations&&algorithm===HASH_ALGORITHM&&pepperAvailable); return validShape&&equalBytes(derived,expected); }
-export async function authenticatePrincipal(db,identity,password,env={}) { const normalized=normalizeLoginIdentifier(identity); let credential=null; if(normalized&&db&&typeof db.prepare==="function"){credential=await db.prepare(`
+export async function verifyPasswordCredential(password,credential,env={}) {
+ if(typeof password!=="string"||password.length<1||password.length>1024)return false;
+ const salt=fromBase64Url(credential?.password_salt??DUMMY_SALT),expected=fromBase64Url(credential?.password_hash??toBase64Url(new Uint8Array(32)));
+ const iterations=Number(credential?.password_iterations??ITERATIONS),safe=Number.isSafeInteger(iterations)&&iterations>=MIN_ITERATIONS&&iterations<=MAX_ITERATIONS?iterations:ITERATIONS;
+ const algorithm=credential?.password_algorithm??HASH_ALGORITHM,version=credential?.password_pepper_version??"none";let pepper="",available=version==="none";
+ try{if(version!=="none"){const ring=pepperKeyring(env);available=Object.hasOwn(ring.keys,version);pepper=available?ring.keys[version]:"";}}catch{available=false;}
+ const derived=await derivePassword(password,salt||fromBase64Url(DUMMY_SALT),safe,pepper);
+ return Boolean(credential&&salt&&expected&&safe===iterations&&algorithm===HASH_ALGORITHM&&available&&equalBytes(derived,expected));
+}
+export async function authenticatePrincipal(db,identity,password,env={}) {
+ const normalized=normalizeLoginIdentifier(identity);let credential=null;
+ if(normalized&&db&&typeof db.prepare==="function")credential=await db.prepare(`
  SELECT c.principal_id,c.password_salt,c.password_hash,c.password_iterations,c.password_algorithm,c.password_pepper_version
  FROM aegis_principal_credentials c JOIN aegis_principals p ON p.id=c.principal_id
  WHERE c.login_identifier=? AND p.status='active' LIMIT 1
- `).bind(normalized).first();} const passwordValid=await verifyPasswordCredential(password,credential,env); if(!credential||!passwordValid)return null; const memberships=await db.prepare(`
+ `).bind(normalized).first();
+ if(!credential||!(await verifyPasswordCredential(password,credential,env)))return null;
+ if(passwordCredentialNeedsUpgrade(credential,env)){
+  const next=await createPasswordCredential(password,env);
+  await db.prepare("UPDATE aegis_principal_credentials SET password_algorithm=?,password_pepper_version=?,password_salt=?,password_hash=?,password_iterations=?,updated_at=? WHERE principal_id=? AND password_salt=? AND password_hash=? AND password_pepper_version=?")
+   .bind(next.passwordAlgorithm,next.passwordPepperVersion,next.passwordSalt,next.passwordHash,next.passwordIterations,new Date().toISOString(),credential.principal_id,credential.password_salt,credential.password_hash,credential.password_pepper_version).run();
+ }
+ const memberships=await db.prepare(`
  SELECT m.tenant_id,m.role,t.name AS tenant_name FROM aegis_tenant_memberships m JOIN aegis_tenants t ON t.id=m.tenant_id
  WHERE m.principal_id=? AND m.status='active' AND t.status='active' ORDER BY m.tenant_id
- `).bind(credential.principal_id).all(); return {principalId:credential.principal_id,memberships:(memberships?.results||[]).map(row=>({tenantId:row.tenant_id,tenantName:row.tenant_name,role:row.role}))}; }
+ `).bind(credential.principal_id).all();
+ return {principalId:credential.principal_id,memberships:(memberships?.results||[]).map(row=>({tenantId:row.tenant_id,tenantName:row.tenant_name,role:row.role}))};
+}
