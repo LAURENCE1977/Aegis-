@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import {
   onRequestGet as listWorkspacesGet,
   onRequestPost as createWorkspacePost,
@@ -14,6 +14,7 @@ import {
 } from '../functions/api/workspaces/[id]/events.js';
 
 const secret = 'workspace-api-test-session-secret-with-enough-entropy';
+const sessions = new Map();
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
@@ -23,6 +24,7 @@ class MemoryD1 {
   constructor() { this.spaces = new Map(); this.events = new Map(); }
   prepare(sql) {
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row = sessions.get(sid); return row && row.expires_at > now && !row.revoked_at ? { session_id: sid, ...row } : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -30,23 +32,23 @@ class MemoryD1 {
         const v = this.values;
         if (sql.includes('INSERT INTO project_spaces')) {
           db.spaces.set(v[0], {
-            id: v[0], owner_id: v[1], name: v[2], description: v[3],
-            status: 'active', created_at: v[4], updated_at: v[5],
+            id: v[0], owner_id: v[1], principal_id: v[2], tenant_id: v[3], name: v[4], description: v[5],
+            status: 'active', created_at: v[6], updated_at: v[7],
           });
           return { meta: { changes: 1 } };
         }
         if (sql.includes('INSERT INTO project_space_events')) {
           const row = {
-            id: v[0], space_id: v[1], owner_id: v[2], event_type: v[3],
-            summary: v[4], content: v[5], created_at: v[6],
+            id: v[0], space_id: v[1], owner_id: v[2], principal_id: v[3], tenant_id: v[4], event_type: v[5],
+            summary: v[6], content: v[7], created_at: v[8],
           };
           db.events.set(row.id, row);
           return { meta: { changes: 1 } };
         }
         if (sql.includes('UPDATE project_spaces')) {
-          const [updatedAt, id, ownerId] = v;
+          const [updatedAt, id, tenantId, principalId] = v;
           const row = db.spaces.get(id);
-          if (!row || row.owner_id !== ownerId) return { meta: { changes: 0 } };
+          if (!row || row.tenant_id !== tenantId || row.principal_id !== principalId) return { meta: { changes: 0 } };
           row.updated_at = updatedAt;
           return { meta: { changes: 1 } };
         }
@@ -56,7 +58,7 @@ class MemoryD1 {
         const v = this.values;
         if (sql.includes('SELECT * FROM project_spaces')) {
           const row = db.spaces.get(v[0]);
-          return row && row.owner_id === v[1] ? { ...row } : null;
+          return row && row.tenant_id === v[1] && row.principal_id === v[2] ? { ...row } : null;
         }
         return null;
       },
@@ -64,13 +66,13 @@ class MemoryD1 {
         const v = this.values;
         if (sql.includes('FROM project_spaces')) {
           return { results: [...db.spaces.values()]
-            .filter(row => row.owner_id === v[0] && row.status === 'active')
+            .filter(row => row.tenant_id === v[0] && row.principal_id === v[1] && row.status === 'active')
             .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-            .slice(0, v[1]).map(row => ({ ...row })) };
+            .slice(0, v[3]).map(row => ({ ...row })) };
         }
         if (sql.includes('FROM project_space_events')) {
           return { results: [...db.events.values()]
-            .filter(row => row.owner_id === v[0] && row.space_id === v[1])
+            .filter(row => row.tenant_id === v[0] && row.principal_id === v[1] && row.space_id === v[2])
             .sort((a, b) => b.created_at.localeCompare(a.created_at))
             .slice(0, v[2]).map(row => ({ ...row })) };
         }
@@ -81,7 +83,9 @@ class MemoryD1 {
 }
 
 async function authenticatedRequest(path, { method = 'GET', body, origin = 'https://aegis.example' } = {}) {
-  const token = await createSessionToken(secret);
+  const session = await createRevocableSessionToken(secret);
+  sessions.set(session.sessionId, { expires_at: session.expiresAt, revoked_at: null, principal_id: 'usr_root', tenant_id: 'org_root', roles_json: '[\"owner\"]' });
+  const token = session.token;
   const headers = { Cookie: '__Host-aegis_session=' + token };
   if (origin !== null) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -104,7 +108,7 @@ test('workspace collection fails closed when the shared D1 binding is missing', 
     request: await authenticatedRequest('/api/workspaces'),
     env: envBase,
   });
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 401);
 });
 
 test('owner can create and list a project workspace', async () => {
