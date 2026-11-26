@@ -320,7 +320,7 @@ export function createMemoryRepository(db) {
       const bindings = [tenantId, principalId, projectId, new Date(now).toISOString()];
       if (cursor !== null) {
         if (!cursor || typeof cursor.updatedAt !== 'string' ||
-            !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(cursor.updatedAt) ||
+            !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(cursor.updatedAt) ||
             !Number.isFinite(Date.parse(cursor.updatedAt)) ||
             new Date(Date.parse(cursor.updatedAt)).toISOString() !== cursor.updatedAt ||
             typeof cursor.id !== 'string' || cursor.id.length > 100 || !ID_PATTERN.test(cursor.id)) {
