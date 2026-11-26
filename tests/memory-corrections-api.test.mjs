@@ -1,17 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost as createMemory } from '../functions/api/memories.js';
 import { onRequestPost as correctMemory } from '../functions/api/memories/[id]/corrections.js';
 import { onRequestPatch as reviewMemory } from '../functions/api/memories/[id].js';
 
 const secret='memory-correction-test-session-secret-long-enough';
+const sessions=new Map();
 const envBase={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
 
 class CorrectionD1 {
   constructor(){this.rows=new Map();this.events=[];}
   prepare(sql){
     const db=this;
+    if(sql.includes('FROM auth_sessions'))return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return row&&row.expires_at>now&&!row.revoked_at?{session_id:sid,...row}:null;}};}};
     return {
       values:[],
       bind(...values){this.values=values;return this;},
@@ -19,11 +21,11 @@ class CorrectionD1 {
         const v=this.values;
         if(sql.includes('INSERT INTO aegis_memories')){
           const row={
-            id:v[0],owner_id:v[1],project_id:v[2],kind:v[3],content:v[4],
-            source_type:v[5],source_url:v[6],source_attribution:v[7],
-            source_observed_at:v[8],confidence:v[9],sensitivity:v[10],
-            status:v[11],tags_json:v[12],created_at:v[13],updated_at:v[14],
-            expires_at:v[15],supersedes_id:v[16]??null,
+            id:v[0],owner_id:v[1],principal_id:v[2],tenant_id:v[3],project_id:v[4],kind:v[5],content:v[6],
+            source_type:v[7],source_url:v[8],source_attribution:v[9],
+            source_observed_at:v[10],confidence:v[11],sensitivity:v[12],
+            status:v[13],tags_json:v[14],created_at:v[15],updated_at:v[16],
+            expires_at:v[17],supersedes_id:v[18]??null,
           };
           if(row.supersedes_id){
             const old=db.rows.get(row.supersedes_id);
@@ -36,7 +38,7 @@ class CorrectionD1 {
         }
         if(sql.includes('UPDATE aegis_memories')){
           const row=db.rows.get(v[2]);
-          if(!row||row.owner_id!==v[3]||row.project_id!==v[4]||!['candidate','accepted'].includes(row.status))return {meta:{changes:0}};
+          if(!row||row.tenant_id!==v[3]||row.principal_id!==v[4]||row.project_id!==v[5]||!['candidate','accepted'].includes(row.status))return {meta:{changes:0}};
           const previous=row.status;row.status=v[0];row.updated_at=v[1];
           if(previous!==row.status)db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:row.status,occurred_at:row.updated_at});
           if(row.status==='accepted'&&row.supersedes_id){
@@ -54,16 +56,16 @@ class CorrectionD1 {
         const v=this.values;
         if(sql.includes('FROM aegis_memories')){
           const row=db.rows.get(v[0]);
-          return row&&row.owner_id===v[1]&&row.project_id===v[2]?{...row}:null;
+          return row&&row.tenant_id===v[1]&&row.principal_id===v[2]&&row.project_id===v[3]?{...row}:null;
         }
         if(sql.includes('FROM project_spaces')){
-          return {id:v[0],owner_id:v[1],status:'active'};
+          return {id:v[0],owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',status:'active'};
         }
         return null;
       },
       async all(){
         const v=this.values;
-        if(sql.includes('FROM aegis_memory_events'))return {results:db.events.filter(x=>x.memory_id===v[0]&&x.owner_id===v[1]&&x.project_id===v[2]).map(x=>({...x}))};
+        if(sql.includes('FROM aegis_memory_events'))return {results:db.events.filter(x=>x.memory_id===v[0]&&x.tenant_id===v[1]&&x.principal_id===v[2]&&x.project_id===v[3]).map(x=>({...x}))};
         return {results:[]};
       }
     };
@@ -71,7 +73,7 @@ class CorrectionD1 {
 }
 
 async function req(path,{method='GET',body}={}){
-  const token=await createSessionToken(secret);
+  const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});const token=session.token;
   return new Request('https://aegis.example'+path,{
     method,headers:{Origin:'https://aegis.example',Cookie:'__Host-aegis_session='+token,'Content-Type':'application/json'},
     ...(body===undefined?{}:{body:JSON.stringify(body)}),
