@@ -7,7 +7,7 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 ## Current functions
 
 - `estimateTokenCount(text)`: conservative UTF-8 byte-length heuristic (one token per four bytes, rounded up). This is for budgeting only, not an exact tokenizer. Actual provider usage must replace estimates when usage metadata is returned.
-- `selectModelRoute(...)`: selects a model from a trusted server-side catalogue using task compatibility, context window, output limit, estimated cost, priority and provider quota/availability.
+- `selectModelRoute(...)`: selects a model from a trusted server-side catalogue using task compatibility, context window, output limit, verified estimated cost, priority and provider quota/availability. Models with known prices rank ahead of otherwise eligible models with unknown prices; an unknown-price selection reports `estimatedCost: null`, never zero.
 - `fitMessagesToContext(messages, maxInputTokens)`: keeps the system instruction and newest complete messages that fit a supplied input budget. It never slices a message mid-text and fails if the system instruction or newest message cannot fit.
 
 ## Design boundaries
@@ -25,7 +25,7 @@ The first provider-independent planning slice is implemented in `functions/lib/i
 - No persistent token ledger, quota reservation, usage reconciliation, spend cap or cross-request budget enforcement.
 - No automatic retry/failover execution.
 - No new model providers, credentials or API calls.
-- No integration with the existing Workers AI / Qwen streaming adapter.
+- No integration with the existing Workers AI / Qwen streaming adapter. The provider registry and planner remain library-level helpers; the live AG-UI request path still uses explicit server environment provider selection.
 - No D1 migration, deployment or production change.
 
 ## Next implementation stages

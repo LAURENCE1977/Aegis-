@@ -63,3 +63,32 @@ test('rejects malformed model catalogues and message lists', () => {
   assert.throws(() => selectModelRoute({ models: [{ id: 'bad' }], task: 'simple', estimatedInputTokens: 1, requestedOutputTokens: 1 }), /model/i);
   assert.throws(() => fitMessagesToContext([{ role: 'tool', content: 'x' }], 10), /message/i);
 });
+
+test('ranks known model costs ahead of unknown prices and never reports unknown pricing as free', () => {
+  const candidates = [
+    { id: 'unknown-price', providerId: 'provider-a', contextTokens: 8192, maxOutputTokens: 1024, priority: 1 },
+    { id: 'known-price', providerId: 'provider-b', contextTokens: 8192, maxOutputTokens: 1024, inputCost: 0.01, outputCost: 0.02, priority: 10 },
+  ];
+  const route = selectModelRoute({
+    models: candidates,
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+  });
+  assert.equal(route.modelId, 'known-price');
+  assert.equal(route.estimatedCost, 3);
+});
+
+test('keeps selected model estimated cost unknown when no eligible model has verified pricing', () => {
+  const candidates = [
+    { id: 'unknown-price', providerId: 'provider-a', contextTokens: 8192, maxOutputTokens: 1024 },
+  ];
+  const route = selectModelRoute({
+    models: candidates,
+    task: 'chat',
+    estimatedInputTokens: 100,
+    requestedOutputTokens: 100,
+  });
+  assert.equal(route.modelId, 'unknown-price');
+  assert.equal(route.estimatedCost, null);
+});
