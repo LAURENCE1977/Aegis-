@@ -15,7 +15,11 @@ The objective is capability per unit of complexity, latency, memory and cost—n
 - Authenticated, no-store `GET /api/capabilities` catalogue endpoint.
 - Pure fail-closed capability policy evaluator in `functions/lib/capability-policy.mjs`, bound to exact registered manifest identity and checking supplied grant, resource, scope, connection, approval and budget snapshots.
 - Forge and Engineering Intelligence capability declarations remain `planned`.
-- No repository code is executed, no candidate/knowledge records are persisted yet, and no permissions are granted by the registry.
+- Forge now has owner-authenticated, same-origin GitHub inspection and pinned blob-read endpoints (`POST /api/forge/inspect`, `POST /api/forge/read`) in addition to metadata-only discovery.
+- Forge candidate records are persisted in D1 through `POST/GET /api/forge/candidates`, with pinned source tree identity, idempotent creation, owner scoping, and append-only candidate events. The current API uses the application's fixed owner principal; this is not a general multi-tenant identity system.
+- Candidate review is persisted separately and requires an explicit licence-review attestation before reuse, adaptation, combination or approval. GitHub SPDX metadata alone is not legal clearance.
+- Knowledge-record validation exists, but a persistent searchable knowledge store is not yet implemented.
+- No inspected repository code is installed, built or executed by Forge, and no permissions are granted by the descriptive capability registry.
 
 The GitHub discovery route requires a valid AEGIS session and same-origin POST. It accepts one HTTPS GitHub repository URL, blocks redirects, returns metadata only, and does not fetch source files. Private repositories require a separately authorised integration and are not supported by this public adapter.
 
