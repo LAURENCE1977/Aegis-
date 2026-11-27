@@ -91,7 +91,7 @@ test('AG-UI reports model startup failures as a first-event RUN_ERROR frame',asy
   assert.equal(response.status,502);
   assert.ok(response.headers.get('content-type').includes('text/event-stream'));
   const body=await response.text();
-  const firstFrame=body.split(/\\r?\\n\\r?\\n/)[0];
+  const firstFrame=body.split(/\r?\n\r?\n/)[0];
   const event=JSON.parse(firstFrame.slice(6));
   assert.equal(event.type,'RUN_ERROR');
   assert.equal(event.message,'The AI could not start this run. Please try again.');
@@ -422,5 +422,69 @@ test('AG-UI forwards Anthropic Messages content_block_delta text as normal assis
   const events = (await response.text()).trim().split('\n\n')
     .map(frame => JSON.parse(frame.slice(6)));
   assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Claude.'), JSON.stringify(events));
+  assert.equal(events.at(-1).type, 'RUN_FINISHED');
+});
+
+test('AG-UI marks Ollama as not ready when its private gateway configuration is incomplete', async () => {
+  let called = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AEGIS_MODEL_PROVIDER: 'ollama' },
+    fetchImpl: async () => { called = true; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/)
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'PROVIDER_NOT_READY');
+  assert.equal(frames[0].message, 'The configured Ollama gateway is not ready.');
+  assert.equal(called, false);
+});
+
+
+test('AG-UI marks Magnitude as not ready when its private inference gateway configuration is incomplete', async () => {
+  let called = false;
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: { ...envBase, AEGIS_MODEL_PROVIDER: 'magnitude' },
+    fetchImpl: async () => { called = true; throw new Error('must not fetch'); },
+  });
+  assert.equal(response.status, 503);
+  const frames = (await response.text()).trim().split(/\r?\n\r?\n/)
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.equal(frames[0].type, 'RUN_ERROR');
+  assert.equal(frames[0].code, 'PROVIDER_NOT_READY');
+  assert.equal(frames[0].message, 'The configured Magnitude gateway is not ready.');
+  assert.equal(called, false);
+});
+
+
+test('AG-UI streams Magnitude OpenAI-compatible inference text through the normal AEGIS event protocol', async () => {
+  const response = await onRequestPost({
+    request: await request(input()),
+    env: {
+      ...envBase,
+      AEGIS_MODEL_PROVIDER: 'magnitude',
+      AEGIS_MAGNITUDE_BASE_URL: 'https://magnitude-gateway.example.net',
+      AEGIS_MAGNITUDE_API_KEY: 'test-magnitude-network-key-long-enough',
+      AEGIS_MAGNITUDE_MODEL: 'qwen3.5-4b:gguf:q4',
+    },
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://magnitude-gateway.example.net/inference/v1/chat/completions');
+      assert.equal(options.headers.Authorization, 'Bearer test-magnitude-network-key-long-enough');
+      const frames = [
+        'data: {"choices":[{"delta":{"content":"Hello from Magnitude."}}]}\n\n',
+        'data: [DONE]\n\n',
+      ];
+      return new Response(modelSseStream(frames), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
+    },
+  });
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split(/\r?\n\r?\n/)
+    .map(frame => JSON.parse(frame.slice(6)));
+  assert.ok(events.some(event => event.type === 'TEXT_MESSAGE_CONTENT' && event.delta === 'Hello from Magnitude.'));
   assert.equal(events.at(-1).type, 'RUN_FINISHED');
 });
