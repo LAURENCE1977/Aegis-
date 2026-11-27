@@ -50,8 +50,12 @@ export function selectModelRoute({
   estimatedInputTokens,
   requestedOutputTokens,
   providerState,
+  costMode = 'free-only',
 }) {
   validateModels(models);
+  if (!['free-only', 'allow-paid'].includes(costMode)) {
+    throw new TypeError('Invalid model cost mode');
+  }
   if (!TASKS.has(task)) throw new TypeError('Invalid model task');
   requirePositiveInteger(estimatedInputTokens, 'estimated input tokens', { allowZero: true });
   requirePositiveInteger(requestedOutputTokens, 'requested output tokens');
@@ -64,11 +68,18 @@ export function selectModelRoute({
     if (model.tasks && !model.tasks.includes(task)) return false;
     if (model.contextTokens < estimatedInputTokens + requestedOutputTokens ||
         model.maxOutputTokens < requestedOutputTokens) return false;
-    if (providerState !== undefined) {
-      const state = providerState[model.providerId];
+
+    // Missing cost metadata is unknown, never implicitly free.
+    if (!Number.isFinite(model.inputCost) || !Number.isFinite(model.outputCost)) return false;
+    const isPaid = model.inputCost > 0 || model.outputCost > 0;
+    if (isPaid && costMode !== 'allow-paid') return false;
+
+    if (providerState !== undefined || isPaid) {
+      const state = providerState?.[model.providerId];
       if (!state || state.enabled !== true ||
           !Number.isSafeInteger(state.remainingTokens) ||
           state.remainingTokens < estimatedInputTokens + requestedOutputTokens) return false;
+      if (isPaid && state.paidFallbackApproved !== true) return false;
     }
     return true;
   });

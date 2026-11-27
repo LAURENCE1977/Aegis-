@@ -64,7 +64,7 @@ test('lists only enabled models with supported task and a recent verification', 
     id: 'provider-b', adapterId: 'future-adapter', displayName: 'Future',
     status: 'disabled', termsUrl: 'https://example.com/terms',
     verifiedAt: '2026-11-15T18:00:00.000Z',
-    models: [{ id: 'model-b', contextTokens: 1000000, maxOutputTokens: 1000, tasks: ['research'] }],
+    models: [{ id: 'model-b', contextTokens: 1000000, maxOutputTokens: 1000, tasks: ['research'], inputCost: 0, outputCost: 0 }],
   });
   const result = listEligibleModels(input, { task: 'chat', now: '2026-11-15T19:00:00.000Z', maxAgeMs: 86400000 });
   assert.deepEqual(result.map(model => model.id), ['model-a']);
@@ -76,4 +76,13 @@ test('fails closed for stale verification and malformed catalogue structure', ()
     task: 'chat', now: '2026-11-20T19:00:00.000Z', maxAgeMs: 86400000,
   }), []);
   assert.throws(() => validateProviderRegistry({ version: 1, providers: [] }), /providers/i);
+});
+
+test('requires explicit input and output cost metadata so unknown pricing is never marked free', () => {
+  const missingInput = registry();
+  delete missingInput.providers[0].models[0].inputCost;
+  assert.throws(() => validateProviderRegistry(missingInput), /cost/i);
+  const missingOutput = registry();
+  delete missingOutput.providers[0].models[0].outputCost;
+  assert.throws(() => validateProviderRegistry(missingOutput), /cost/i);
 });

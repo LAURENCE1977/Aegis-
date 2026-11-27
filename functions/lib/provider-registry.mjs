@@ -37,9 +37,8 @@ function validateModel(model, ids) {
     throw new TypeError('Invalid model task capabilities');
   }
   for (const key of ['inputCost', 'outputCost']) {
-    if (model[key] !== undefined &&
-        (typeof model[key] !== 'number' || !Number.isFinite(model[key]) || model[key] < 0)) {
-      throw new TypeError('Invalid model cost');
+    if (typeof model[key] !== 'number' || !Number.isFinite(model[key]) || model[key] < 0) {
+      throw new TypeError('Invalid or unknown model cost');
     }
   }
 }
@@ -102,8 +101,8 @@ export function listEligibleModels(registry, { task, now, maxAgeMs = 86400000 } 
         contextTokens: model.contextTokens,
         maxOutputTokens: model.maxOutputTokens,
         tasks: [...model.tasks],
-        inputCost: model.inputCost ?? 0,
-        outputCost: model.outputCost ?? 0,
+        inputCost: model.inputCost,
+        outputCost: model.outputCost,
         verifiedAt: provider.verifiedAt,
       }));
     }
