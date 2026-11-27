@@ -2,7 +2,7 @@
 
 Reviewed: 15 November 2026
 
-This is an evaluation register, not an integration claim. No external package, agent platform or service below has been installed or granted access to AEGIS.
+This is an evaluation register, not an integration claim. No external package, agent platform or service below has been installed or granted access to AEGIS. Each repository review should use [the Repository Adaptation Review Template](research/REPOSITORY_ADAPTATION_TEMPLATE.md) and distinguish README claims from code, tests and operational evidence.
 
 ## Priority assessment
 
@@ -21,6 +21,7 @@ This is an evaluation register, not an integration claim. No external package, a
 | Frontend Mentor | Realistic UI challenges and independent frontend quality benchmarks | Optional UI/UX acceptance-test inspiration |
 | v0 (assumed from “vo”) | Rapid UI prototypes and design exploration against GitHub branches | Optional prototyping tool; not a runtime dependency |
 | Blackbox AI | External coding-agent orchestration, sandboxed runs, multi-agent comparison and PR workflow | Potential optional Forge adapter; defer pending security, API and cost review |
+| LM Studio | Local inference through OpenAI-compatible endpoints; optional native model management | High-value provider reference; implement through one generic adapter after the live gateway exists; defer host activation until a supported machine and private network path are available |
 
 ## Vercel AI SDK and AI SDK UI
 
@@ -635,3 +636,37 @@ This is a read-only review of repositories visible under the AEGIS owner's GitHu
 ### Ongoing intake rule
 
 At each substantive AEGIS build stage, refresh the owner's repository inventory and open pull requests, inspect relevant new commits/branches, compare candidate file revisions against current `main`, and check licence/security/maintenance before proposing reuse. Prefer small AEGIS-native adaptations over importing whole runtimes. Keep a candidate pinned to an immutable commit/tree SHA and record the evidence and decision. Never merge a stale stacked PR just because its old CI was green; rerun against current `main` and inspect actual effect-level behaviour.
+
+
+## LM Studio
+
+Assessment: [LM Studio — AEGIS Adaptation Assessment](research/LM_STUDIO_AEGIS_ADAPTATION.md).
+
+Official sources:
+- https://lmstudio.ai/docs/developer/rest
+- https://lmstudio.ai/docs/developer/openai-compat
+- https://lmstudio.ai/docs/developer/core/authentication
+- https://lmstudio.ai/docs/developer/core/server/settings
+- https://lmstudio.ai/docs/developer/rest/list
+- https://lmstudio.ai/docs/developer/core/headless
+- https://github.com/lmstudio-ai/lmstudio-js
+- https://github.com/lmstudio-ai/lms
+
+Useful capabilities:
+- OpenAI-compatible chat, Responses, model-listing and embeddings endpoints.
+- Native REST API for stateful chat, model discovery and model lifecycle.
+- Model metadata for context length, quantisation, vision and tool-use hints.
+- Headless `llmster` service for supported desktop/server hosts.
+
+AEGIS decision:
+- Do not add an LM Studio-specific SDK for basic chat. Implement one generic OpenAI-compatible server-side adapter and configure LM Studio as an endpoint profile.
+- Keep native model management as an optional later adapter capability.
+- Require API-token authentication before network access; never expose the default local server port directly to the public internet.
+- Do not forward LM Studio MCP integrations around Sentinel. All consequential tool execution remains in AEGIS's own approved tool registry.
+- Treat model-reported capabilities as untrusted hints and verify them with contract tests.
+- Local inference avoids provider token charges but still consumes host hardware, electricity and availability.
+- LM Studio supports macOS, Windows and Linux, not iPadOS or Android. No suitable always-on host has been confirmed for this AEGIS project, so runtime activation is deferred.
+
+AEGIS code inspection:
+- The inspected Infinity Zero branch has a strict provider/model metadata registry and deterministic route policy, but these are not yet a live provider-execution adapter.
+- The correct integration order is provider gateway → generic OpenAI-compatible adapter → contract tests → endpoint profile → optional LM Studio capability discovery.
