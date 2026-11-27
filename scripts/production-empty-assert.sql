@@ -1,11 +1,11 @@
--- Assert the complete 0001-0017 chain on a fresh isolated local D1 database.
+-- Assert the complete 0001-0018 chain on a fresh isolated local D1 database.
 DROP TABLE IF EXISTS __aegis_migration_assertions;
 CREATE TABLE __aegis_migration_assertions (
   passed INTEGER NOT NULL CHECK (passed = 1)
 );
 INSERT INTO __aegis_migration_assertions (passed)
 SELECT
-  (SELECT COUNT(*) FROM d1_migrations) = 17
+  (SELECT COUNT(*) FROM d1_migrations) = 18
   AND NOT EXISTS (
     WITH expected(name) AS (VALUES
       ('capability_approvals'), ('capability_grants'), ('capability_connections'),
@@ -21,6 +21,7 @@ SELECT
       WHERE actual.type = 'table' AND actual.name = expected.name
     )
   )
+  AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='index' AND name='idx_aegis_memories_cursor_scope')
   AND NOT EXISTS (SELECT 1 FROM pragma_foreign_key_check)
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_auth_sessions_identity_insert')
   AND EXISTS (SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='trg_auth_sessions_identity_update')

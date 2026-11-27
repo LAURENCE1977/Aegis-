@@ -55,9 +55,10 @@ export const ROUTE_POLICIES = Object.freeze([
     }, ['kind', 'content', 'source']),
     querySchema: obj({
       projectId: str(100, 1),
-      limit: str(2, 1, { enum: Array.from({ length: 50 }, (_, i) => String(i + 1)) }),
+      limit: str(3, 1, { enum: Array.from({ length: 100 }, (_, i) => String(i + 1)) }),
       q: str(200, 1),
       review: str(1, 1, { enum: ['0', '1'] }),
+      cursor: str(512, 1),
     }, []),
     credentialFields: Object.freeze([]), formFields: Object.freeze([]),
     multiValuedFormFields: Object.freeze([]), allowDuplicateFormFields: false,

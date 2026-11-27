@@ -180,8 +180,13 @@ class MemoryRepositoryD1 {
             rows.sort((a,b)=>b.confidence-a.confidence || b.updated_at.localeCompare(a.updated_at));
             return {results:rows.slice(0,v[v.length-1]).map(row=>({...row}))};
           }
-          rows.sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
-          return {results:rows.slice(0,v[4]).map(row=>({...row}))};
+          if (sql.includes('updated_at < ?')) {
+            const [cursorUpdatedAt, tieUpdatedAt, cursorId] = v.slice(4,7);
+            rows = rows.filter(row => row.updated_at < cursorUpdatedAt ||
+              (row.updated_at === tieUpdatedAt && row.id > cursorId));
+          }
+          rows.sort((a,b)=>b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id));
+          return {results:rows.slice(0,v[v.length-1]).map(row=>({...row}))};
         }
         return {results:[]};
       },
@@ -291,4 +296,23 @@ test('D1 repository exposes project-scoped memory lifecycle events for the Proje
   assert.deepEqual(events.map(event=>event.type),['created','status_changed']);
   assert.ok(events.every(event=>event.projectId==='project-a'));
   assert.deepEqual(await repository.listProjectEvents({ownerId: 'owner-2', principalId: 'principal-2', tenantId: 'tenant-2',projectId:'project-a'}),[]);
+});
+
+
+test('D1 repository paginates by updated timestamp and ascending ID without duplicates', async () => {
+  const db = new MemoryRepositoryD1();
+  const repository = createMemoryRepository(db);
+  const sharedTime = '2026-11-15T11:00:00.000Z';
+  await repository.create(record({id:'memory-a',createdAt:sharedTime,updatedAt:sharedTime}));
+  await repository.create(record({id:'memory-b',createdAt:sharedTime,updatedAt:sharedTime}));
+  await repository.create(record({id:'memory-c',createdAt:sharedTime,updatedAt:sharedTime}));
+  await repository.create(record({id:'memory-d',createdAt:'2026-11-15T09:00:00.000Z',updatedAt:'2026-11-15T10:00:00.000Z'}));
+
+  const scope = {ownerId:'owner-1',principalId:'principal-1',tenantId:'tenant-1'};
+  const first = await repository.list({...scope,now,limit:3});
+  assert.deepEqual(first.map(item=>item.id),['memory-a','memory-b','memory-c']);
+  const second = await repository.list({
+    ...scope,now,limit:3,cursor:{updatedAt:first[2].updatedAt,id:first[2].id},
+  });
+  assert.deepEqual(second.map(item=>item.id),['memory-d']);
 });

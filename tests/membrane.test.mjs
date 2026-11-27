@@ -154,16 +154,17 @@ test('memories POST validates nested schema, blocks ownerId spoofing and forward
   assert.equal(response.status, 200); assert.deepEqual(await forwarded.json(), memoryInput);
 });
 
-test('memories GET sanitizes and validates query parameters and rejects duplicates', async () => {
-  for (const path of ['/api/memories?ownerId=attacker', '/api/memories?limit=10&limit=20', '/api/memories?review=yes', '/api/memories?limit=00']) {
+test('memories GET sanitizes pagination query parameters and rejects duplicates or out-of-range limits', async () => {
+  for (const path of ['/api/memories?ownerId=attacker', '/api/memories?limit=10&limit=20', '/api/memories?review=yes', '/api/memories?limit=00', '/api/memories?limit=101', '/api/memories?cursor=', '/api/memories?cursor='+ 'x'.repeat(513)]) {
     let reached = false;
     const response = await onRequest[0]({ request: new Request('https://aegis.test' + path), next: async () => { reached = true; return new Response('unsafe'); } });
     assert.equal(response.status, 400, path); assert.equal(reached, false);
   }
   let forwarded;
-  const response = await onRequest[0]({ request: new Request('https://aegis.test/api/memories?limit=10&review=1&q=project'), next: async (r) => { forwarded = r; return new Response('ok'); } });
+  const response = await onRequest[0]({ request: new Request('https://aegis.test/api/memories?limit=100&review=1&cursor=abc.def'), next: async (r) => { forwarded = r; return new Response('ok'); } });
   assert.equal(response.status, 200);
-  assert.equal(new URL(forwarded.url).searchParams.get('limit'), '10');
+  assert.equal(new URL(forwarded.url).searchParams.get('limit'), '100');
+  assert.equal(new URL(forwarded.url).searchParams.get('cursor'), 'abc.def');
 });
 
 test('ask POST enforces question and nested history descriptors', async () => {
