@@ -11,7 +11,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 - Cloudflare Workers AI binding for the current chat model
 - Optional Cloudflare KV binding for simple notes
 - Password sign-in with signed, expiring, HttpOnly browser sessions
-- AEGIS-native skills registry seeded with ten adapted Superpowers engineering skills
+- AEGIS-native skills registry with eighteen curated engineering skills adapted from two MIT-licensed sources
 - Contextual skill guidance injected into chat for relevant engineering and planning requests
 - Authenticated, no-store module and skills registry endpoints
 - AEGIS Forge capability declarations for universal source discovery, inspection, comparison, evaluation, planning and benchmarking

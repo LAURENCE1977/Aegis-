@@ -1,6 +1,6 @@
 # AEGIS Master Blueprint & Build Handover
 
-**Canonical project record.** Last refreshed: 15 November 2026.  
+**Canonical project record.** Last refreshed: 21 November 2026.  
 **Repository:** https://github.com/LAURENCE1977/Aegis-  
 **Purpose:** Let a fresh AI/engineering session resume AEGIS from repository evidence without depending on previous chat history.
 
@@ -115,8 +115,18 @@ README states the project is an early Cloudflare Pages prototype. It lists:
 - Cloudflare Pages Functions and Workers AI chat binding;
 - optional KV for simple notes;
 - password sign-in and signed expiring browser sessions;
-- ten adapted engineering skills with contextual guidance;
+- eighteen curated AEGIS-native engineering skills with contextual guidance, adapted from two MIT-licensed sources (obra/superpowers and addyosmani/agent-skills);
 - authenticated module/skills endpoints;
+
+### AEGIS skills expansion — PR #174 (21 November 2026)
+- Draft PR: https://github.com/LAURENCE1977/Aegis-/pull/174
+- Extends the AEGIS-owned guidance registry from 10 to 18 skills without importing an upstream runtime, plugin commands, scripts, hooks or dependencies.
+- Adds eight adaptations from `addyosmani/agent-skills`, pinned to source commit `8c99fa36d90068c82d547f7c12a9d67a3e95f4ee`: source-driven development, frontend UI engineering, security and hardening, accessibility engineering, performance optimization, observability and instrumentation, API/interface design, and CI/CD automation.
+- All 18 entries remain `guidance-only`, with empty permissions. The deterministic selector remains capped at four entries per chat context.
+- Regression tests were added before implementation; expected RED failures were reproduced against the original 10-skill registry in an isolated Node.js 22 harness.
+- Static inspection of the committed source confirmed 18 definitions, eight entries attributed to the new source, valid 40-character pinned commits, and representative selection for documentation, mobile UI/accessibility and security prompts.
+- The connected GitHub checks API returned no workflow runs or commit statuses for the PR head at the time of this update. The post-implementation focused tests and full repository suite remain unverified; PR #174 is draft and must not be merged until those checks are run and pass.
+- No production deployment, secrets, Cloudflare configuration, capability permissions or external execution behavior changed.
 - Forge capability declarations and engineering-intelligence record validators;
 - authenticated read-only public GitHub repository discovery.
 

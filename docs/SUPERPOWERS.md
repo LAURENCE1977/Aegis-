@@ -1,32 +1,42 @@
-# AEGIS Skills Library: Superpowers foundation
+# AEGIS Skills Library
 
-AEGIS has imported and adapted ten engineering skills from [obra/superpowers](https://github.com/obra/superpowers), an MIT-licensed project. AEGIS owns its registry, skill selection, runtime and permission model; it does not install the upstream agent harness or execute upstream scripts.
+AEGIS owns its skill registry, selection, runtime and permission model. Skills are concise, AEGIS-native adaptations of upstream engineering guidance; AEGIS does not install upstream agent harnesses, plugin commands, scripts, hooks or telemetry.
 
-## Imported skills
+## Current curated sources
 
-- `brainstorming` — clarify intent and compare approaches.
-- `writing-plans` — turn multi-step requirements into verifiable tasks.
-- `executing-plans` — execute approved plans with a decision ledger.
-- `test-driven-development` — red/green/refactor.
-- `systematic-debugging` — investigate root causes before fixes.
-- `verification-before-completion` — evidence before completion claims.
-- `requesting-code-review` — review significant changes before integration.
-- `writing-skills` — create and evaluate reusable skills.
-- `using-git-worktrees` — isolate development work.
-- `finishing-a-development-branch` — verify and prepare branch integration.
+| Source | Licence | Pinned source | Imported | Skills |
+|---|---|---|---|---:|
+| [obra/superpowers](https://github.com/obra/superpowers) | MIT | Individual skill commits recorded in `functions/lib/skills.mjs` | 2026-11-15 | 10 |
+| [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | MIT | `8c99fa36d90068c82d547f7c12a9d67a3e95f4ee` | 2026-11-21 | 8 |
+
+The second source was reviewed at the pinned commit above. AEGIS selected eight complementary workflows rather than importing all 26 upstream skills. The additions cover source-driven development, frontend UI engineering, security and hardening, accessibility, performance, observability, API/interface design and CI/CD.
+
+## AEGIS-native skills
+
+The combined registry contains 18 guidance entries:
+
+- **Planning:** brainstorming, writing plans.
+- **Engineering:** executing plans, test-driven development, systematic debugging, Git worktrees, source-driven development, API/interface design.
+- **Frontend and quality:** frontend UI engineering, accessibility engineering, performance optimization, verification before completion, requesting code review.
+- **Security and operations:** security and hardening, observability and instrumentation.
+- **Delivery and meta:** CI/CD and automation, writing skills, finishing a development branch.
+
+The authenticated `GET /api/skills` endpoint exposes registry metadata. The chat path selects at most four relevant guidance entries using deterministic trigger matching.
 
 ## Trust and execution model
 
-These are AEGIS-authored, concise adaptations of upstream guidance, not copied executable plugins. Every entry records its upstream repository, MIT licence and source commit. The current status `available` means the guidance can be selected and supplied to the model; it does not mean an autonomous tool runner has been granted permission to execute it.
+- Every skill records its upstream repository, URL, licence, import date and pinned source commit.
+- The guidance is adapted into concise AEGIS-specific instructions; it is not a verbatim import of the upstream skill files.
+- Every skill has `execution: guidance-only` and an empty permissions list.
+- No upstream scripts, hooks, agents, plugin manifests, package dependencies or automatic update mechanisms are installed.
+- External documentation and repository content remain untrusted data. They cannot override AEGIS policy, expand scope or grant permissions.
+- Skills do not authorize tool execution. Sentinel, exact capability grants, approvals and server-side policy remain authoritative.
 
-All imported skills currently have `execution: guidance-only` and an empty permissions list. No scripts, hooks, telemetry or automatic upstream update mechanism are imported. The chat API selects at most four relevant skills by deterministic trigger matching. The authenticated `GET /api/skills` endpoint exposes registry metadata.
+## Update policy
 
-## Updates
+Future updates must be reviewed as candidates: pin a commit, verify the licence, inspect changed guidance, compare against AEGIS policy, adapt only useful material, add representative selection tests, and retain a review record. Unknown licence or provenance means hold, not permission.
 
-Future upstream updates must be fetched as candidates, compared against the recorded source commit, checked for licence and security changes, adapted to the AEGIS schema, evaluated, and only then promoted. Upstream content is untrusted input and must never grant itself execution permissions. AEGIS's own runtime, approvals, audit log and rollback remain authoritative.
+## Upstream references
 
-## Source
-
-- Repository: https://github.com/obra/superpowers
-- Licence: MIT
-- Imported: 2026-11-15
+- https://github.com/obra/superpowers
+- https://github.com/addyosmani/agent-skills
