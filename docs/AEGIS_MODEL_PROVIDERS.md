@@ -13,6 +13,8 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 | Cloudflare Workers AI | default or AEGIS_MODEL_PROVIDER=workers-ai | env.AI binding | Workers AI text stream | No |
 | Anthropic | AEGIS_MODEL_PROVIDER=anthropic | ANTHROPIC_API_KEY, AEGIS_ANTHROPIC_MODEL | Anthropic Messages SSE, text deltas translated to AG-UI | No; fail closed |
 | Alibaba Qwen | AEGIS_MODEL_PROVIDER=alibaba-qwen | AEGIS_QWEN_API_KEY, workspace ID, region and model | OpenAI-compatible SSE | One bounded tool round only when explicitly enabled and Sentinel/D1 are ready |
+| AxForge | AEGIS_MODEL_PROVIDER=axforge | AEGIS_AXFORGE_API_KEY, AEGIS_AXFORGE_MODEL | OpenAI-compatible chat-completion SSE | Disabled; fail closed |
+| OpenRouter | AEGIS_MODEL_PROVIDER=openrouter | OPENROUTER_API_KEY, AEGIS_OPENROUTER_MODEL | OpenAI-compatible chat-completion SSE | Disabled; fail closed |
 
 ## Anthropic Messages adapter
 
@@ -23,6 +25,31 @@ Keep the interface provider-neutral where possible, but use a small native adapt
 - Uses bounded message sizes, a 60-second request timeout, redirect rejection and SSE content-type validation.
 - Parses only content_block_delta events whose delta type is text_delta; unknown event types are ignored and provider error events become generic user-safe errors.
 - Does not expose Anthropic tool use yet. Tool calls must be separately modelled through the AEGIS server-owned tool registry and Sentinel, not accepted directly from a provider response.
+
+
+## AxForge OpenAI-compatible adapter
+
+- Fixed endpoint: `https://api.axforge.ai/v1/chat/completions`; no browser-controlled or configurable destination.
+- Uses `Authorization: Bearer` with the server-side `AEGIS_AXFORGE_API_KEY` secret.
+- Requires an explicit `AEGIS_AXFORGE_MODEL`; AEGIS does not assume model availability, price or quota.
+- Uses bounded message validation, a 60-second request timeout, redirect rejection and SSE content-type validation.
+- Tool calling is disabled until model-specific tool support and the AEGIS governed tool loop have been verified together.
+- Provider failures are mapped to generic errors; upstream response bodies and credentials are not returned to the browser.
+- Activation requires `AEGIS_MODEL_PROVIDER=axforge`, `AEGIS_AXFORGE_API_KEY` as an encrypted Pages/Worker runtime secret, and `AEGIS_AXFORGE_MODEL` as a non-secret environment variable. Do not set these in the browser or commit them to GitHub.
+- This adapter does not provide a free-usage guarantee or silent fallback. Provider quota, pricing and model availability must be checked in the AxForge console before enabling it.
+
+
+
+## OpenRouter OpenAI-compatible adapter
+
+- Fixed endpoint: `https://openrouter.ai/api/v1/chat/completions`; no browser-controlled or configurable destination.
+- Uses `Authorization: Bearer` with the server-side `OPENROUTER_API_KEY` secret.
+- Requires an explicit `AEGIS_OPENROUTER_MODEL` in OpenRouter's provider/model identifier format. AEGIS does not silently choose a model.
+- Uses bounded message validation, a 60-second request timeout, redirect rejection and SSE content-type validation.
+- Tool calling is disabled until OpenRouter/model-specific tool behavior and the AEGIS governed tool loop have been verified together.
+- Provider failures are mapped to generic errors; upstream response bodies and credentials are not returned to the browser.
+- Activation requires `AEGIS_MODEL_PROVIDER=openrouter`, `OPENROUTER_API_KEY` as an encrypted Pages/Worker runtime secret, and `AEGIS_OPENROUTER_MODEL` as a non-secret environment variable.
+- OpenRouter may route to metered models. AEGIS does not guarantee free usage and does not enable paid fallback automatically; verify model pricing and account limits before activation.
 
 ## Runtime configuration
 
