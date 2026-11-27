@@ -1,8 +1,7 @@
-import { authorizeOwner, jsonResponse } from "../../../lib/owner-api.mjs";
+import { authorizePrincipal, jsonResponse } from "../../../lib/owner-api.mjs";
 import { createMemoryRepository } from "../../../lib/memory-substrate.mjs";
 import { getWorkspace } from "../../../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 
 function parseProjectId(value) {
   if (value === null || value === "") return null;
@@ -11,8 +10,9 @@ function parseProjectId(value) {
 }
 
 export async function onRequestGet({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
   }
@@ -31,15 +31,19 @@ export async function onRequestGet({ request, env, params }) {
 
   try {
     if (projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") {
         return jsonResponse({ error: "Memory history not found." }, 404);
       }
     }
     const repository = createMemoryRepository(env.AEGIS_DB);
-    const memory = await repository.get(id, { ownerId: OWNER_ID, projectId });
+    const memory = await repository.get(id, { ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId, projectId });
     if (!memory) return jsonResponse({ error: "Memory history not found." }, 404);
-    const events = await repository.listEvents(id, { ownerId: OWNER_ID, projectId, limit });
+    const events = await repository.listEvents(id, { ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId, projectId, limit });
     return jsonResponse({ events });
   } catch {
     return jsonResponse({ error: "Memory history is temporarily unavailable." }, 503);

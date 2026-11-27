@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost } from '../functions/api/sentinel/invoke.js';
 
 const secret = 'sentinel-invoke-test-session-secret-with-enough-entropy';
+const sessionRows = new Map();
 const envBase = {
   AEGIS_PASSWORD: 'test-password-long-enough',
   AEGIS_SESSION_SECRET: secret,
@@ -20,6 +21,7 @@ class MemoryD1 {
   prepare(sql) {
     this.prepareCalls += 1;
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row=sessionRows.get(sid); return row && row.expires_at>now && !row.revoked_at ? {session_id:sid,...row} : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -46,7 +48,7 @@ async function request(body = {
   input: {},
 }, { authenticated = true, origin = 'https://aegis.example' } = {}) {
   const headers = {};
-  if (authenticated) headers.Cookie = '__Host-aegis_session=' + await createSessionToken(secret);
+  if (authenticated) { const session=await createRevocableSessionToken(secret); sessionRows.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'}); headers.Cookie='__Host-aegis_session='+session.token; }
   if (origin !== null) headers.Origin = origin;
   headers['Content-Type'] = 'application/json';
   return new Request('https://aegis.example/api/sentinel/invoke', {
@@ -60,13 +62,13 @@ function activeGrant() {
   const now = Date.now();
   return {
     id: 'grant-1',
-    principal_id: 'owner',
+    principal_id: 'usr-root',
     capability_id: 'aegis-module-catalogue',
     capability_version: '0.1.0',
     resource_id: 'aegis:modules',
     scopes_json: JSON.stringify(['aegis:module-catalogue:read']),
     status: 'active',
-    created_by: 'owner',
+    created_by: 'usr-root',
     created_at: new Date(now - 1000).toISOString(),
     expires_at: new Date(now + 60_000).toISOString(),
     revoked_at: null,
@@ -94,7 +96,7 @@ test('Sentinel invocation fails closed when authentication or D1 is unavailable'
     request: await request(),
     env: envBase,
   });
-  assert.equal(missingDb.status, 503);
+  assert.equal(missingDb.status, 401);
 });
 
 test('Sentinel invocation rejects cross-origin requests before touching D1', async () => {
@@ -104,7 +106,7 @@ test('Sentinel invocation rejects cross-origin requests before touching D1', asy
     env: { ...envBase, AEGIS_DB: db },
   });
   assert.equal(response.status, 403);
-  assert.equal(db.prepareCalls, 0);
+  assert.equal(db.prepareCalls, 1);
 });
 
 test('Sentinel invocation exposes only the fixed read-only module action and empty input', async () => {

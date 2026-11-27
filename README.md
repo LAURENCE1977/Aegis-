@@ -8,6 +8,7 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 - Mobile-friendly chat interface for iPhone, iPad and Chromebook browsers
 - Cloudflare Pages Functions API
+- Selective AEGIS request membrane for `POST /api/login`, with canonical API-path screening, strict JSON schema validation, duplicate-key rejection and bounded request reconstruction
 - Cloudflare Workers AI binding for the current chat model
 - Optional Cloudflare KV binding for simple notes
 - Password sign-in with signed, expiring, HttpOnly browser sessions
@@ -24,16 +25,20 @@ AEGIS is an evolving project. The current repository is an early Cloudflare Page
 
 ## Security setup
 
-**Do not expose a deployment until both secrets are configured.**
+**Do not expose a deployment until the authentication configuration is complete.**
 
-In the Cloudflare dashboard, open the AEGIS Pages project and add these as encrypted secrets for the production environment (and separately for Preview if you use it):
+In the Cloudflare dashboard, open the AEGIS Pages project and configure these for the production environment (and separately for Preview if used):
 
-1. `AEGIS_PASSWORD` — a unique password of at least 12 characters.
-2. `AEGIS_SESSION_SECRET` — a cryptographically random secret of at least 32 characters. Do not reuse your AEGIS password.
+1. `AEGIS_SESSION_SECRET` — encrypted secret; a unique cryptographically random value of at least 32 characters.
+2. `AEGIS_PASSWORD` — encrypted secret; the root bootstrap password, at least 12 characters.
+3. `AEGIS_PASSWORD_PEPPER_KEYRING` — encrypted secret for named-principal credentials; a JSON object of version-to-secret mappings (for example `{"v1":"...32+ random characters...","v2":"...another 32+ random characters..."}`). Each pepper must be 32–512 characters; the keyring accepts at most eight versions.
+4. `AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION` — **plain environment variable, not a secret**; it must name a key present in the keyring.
 
-Redeploy after adding or changing secrets. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. The chat and memory APIs reject requests without a valid session. Never put either secret in `index.html`, browser storage, GitHub, or a public environment variable.
+Keep old keys in the keyring during rotation: existing credentials verify against their recorded version and are transparently rehashed with the active version after successful login. Never remove an old key until its credentials have migrated or affected users have completed a reset. The legacy `AEGIS_PASSWORD_PEPPER` plus `AEGIS_PASSWORD_PEPPER_VERSION` pair remains supported for a single-version deployment.
 
-If the login screen says security setup is unfinished, configure both secrets before using AEGIS.
+AI provider keys are optional and must be provisioned only when the corresponding server-side adapter is deliberately activated: `ANTHROPIC_API_KEY` for Anthropic and `AEGIS_QWEN_API_KEY` for Alibaba Qwen. Cloudflare Workers AI uses the `AI` binding and does not require a third-party provider key. Provider keys are never browser-visible; GitHub Actions secrets are not automatically available to Cloudflare runtime bindings.
+
+Redeploy after changing runtime secrets or configuration. The browser session lasts 12 hours and is stored in a Secure, HttpOnly, SameSite=Strict, host-only cookie. Never put secrets in `index.html`, browser storage, GitHub, or a public build variable. See [the production migration runbook](docs/PRODUCTION_MIGRATION_RUNBOOK.md) before any production database migration.
 
 ## Forge and engineering intelligence
 
@@ -123,3 +128,13 @@ AEGIS exposes an authenticated AG-UI 1.0 streaming endpoint. Text-only Workers A
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## Request membrane status
+
+The request membrane now explicitly governs login, memories, ask, tenant/principal administration, sessions, health, password changes, invitations and account recovery. Each migrated route has a closed schema, method allowlist and bounded request policy. Step 2.6.12 is implemented on `feature/production-migrations` at `3274431bec30886395aa1b6db6fc00dc70f16b8b` (not merged or deployed). Verified CI: 505 Node tests (489 passed, 0 failed, 16 conditional skips) and 16/16 Wrangler Pages runtime tests. This is application-layer middleware, not hardware or hypervisor isolation. Production D1 and deployments remain untouched. See the [master blueprint](docs/AEGIS_MASTER_BLUEPRINT.md) for scope and limitations.
+
+
+## Multi-tenant account governance — Step 2.6.12
+
+On the `feature/production-migrations` branch, AEGIS adds versioned pepper-keyring verification with login-time rehash, self-service password change, single-use tenant invitations, and administrator-issued one-hour recovery tokens. The D1 schema stores SHA-256 token digests only. The invitation and recovery APIs are membrane-registered, same-origin protected where authenticated, and scoped to the caller’s active tenant. Recovery completion is a bearer-token operation and restores only the target tenant membership; all existing principal sessions are revoked. The `usr-root` bootstrap password remains managed through the encrypted `AEGIS_PASSWORD` deployment secret and is intentionally not changed through the named-principal endpoint. These endpoints and migration are branch-only until reviewed and merged. Do not run migrations against production D1 before an approved deployment plan.

@@ -431,3 +431,58 @@ The AG-UI 1.0 endpoint supports authenticated streaming chat through the default
 ## Anthropic provider adapter
 
 The server-side AG-UI model gateway now has an optional Anthropic Messages SSE adapter. It uses the fixed Anthropic API endpoint, a server-side ANTHROPIC_API_KEY runtime secret and an explicitly configured AEGIS_ANTHROPIC_MODEL. Anthropic text deltas are translated into the existing AG-UI stream. Tool calling remains disabled for this adapter; the governed Qwen tool loop is separate. A GitHub Actions secret is not automatically available to Cloudflare runtime. See docs/AEGIS_MODEL_PROVIDERS.md.
+
+
+## AEGIS request membrane — Step 2.6.7 verified integration
+
+The selective Cloudflare Pages request membrane is integrated on `feature/production-migrations` at implementation commit `400021284b17d63c2ab7b8d8d069db5d4f1a76fc`. The four membrane modules live under `functions/lib/membrane/`; the existing `functions/lib/data-guards.mjs` remains intact because it is already used by memory-ingestion security controls.
+
+The root Pages middleware performs API path classification, rejects ambiguous encoded slash/backslash separators and URL-normalisation ambiguity, and applies the full request pipeline only to the existing `POST /api/login` contract. That route accepts JSON with exactly one required string property, `password`; duplicate JSON keys, unknown fields, unsupported media types, invalid UTF-8, invalid credentials and over-limit bodies fail before the handler. Valid credential strings are preserved exactly. Existing static assets, `GET /api/login` and other established API routes continue through their existing handlers and route-specific controls.
+
+**Verified on 25 November 2026:** GitHub Actions reports 464 Node tests (459 passed, 0 failed, 5 conditional runtime tests skipped in the default run), followed by a dedicated Wrangler Pages Dev run with 5/5 HTTP integration tests passing. The Pages Functions build, isolated local production D1 migration, and separate D1/Pages validation workflow also pass. See [AEGIS tests](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286973) and [D1/Pages validation](https://github.com/LAURENCE1977/Aegis-/actions/runs/45718286998).
+
+**Scope and limitations:** this is application-layer request validation in the Cloudflare Pages runtime, not a hypervisor, kernel, firmware or silicon-level firewall. A literal backslash may be canonicalised by the Fetch/URL parser before middleware receives `request.url`; rejecting the original raw request-target character requires an edge/WAF control before URL normalisation. URL-encoded `%2F` and `%5C` are covered by the runtime tests. No production deployment or production D1 mutation was performed. Other API routes are not yet migrated into the membrane; they retain their existing controls pending individual contract audits.
+
+
+## Step 2.6.11 — Multi-Principal Provisioning, Tenant Lifecycle & Session Governance
+
+**Verified implementation snapshot: 26 November 2026.** This work is on `feature/production-migrations` only. It is not merged into `main` and is not production-deployed.
+
+- Canonical repository: `LAURENCE1977/Aegis-`.
+- Branch implementation commit: `18738d389c8e7647de048c6ffc66d210ee36e8c1`.
+- Starting branch head inspected before implementation: `e681b6d4e75bb051dfdb36a10263de61166f5146`.
+- `0015_multi_principal_provisioning.sql` and the initial principal/session governance routes already existed on the branch. This milestone hardens and completes that in-progress slice rather than replacing it.
+- Additive migration: `0016_identity_credential_versioning.sql`. It adds PBKDF2 algorithm and pepper-version metadata, normalized email/username columns and uniqueness indexes, plus D1 guards that prevent inactive principals or tenants from retaining or regaining active memberships. Existing lifecycle/session triggers revoke sessions; session resolution continues to check active principal, tenant and membership on each request.
+- Named login accepts exactly one of `identity`, `identifier` or `email`. Existing `AEGIS_PASSWORD` root bootstrap remains available. Named credentials use WebCrypto PBKDF2-SHA256, a per-credential 16-byte random salt, 210,000 iterations and an optional HMAC pre-hash pepper. Pepper material is never stored in D1.
+- Tenant administration remains server-scoped to the caller's active tenant. Owner/admin session listing and revocation are restricted to that same tenant; members retain self-session management but cannot administer principals or tenants.
+- `GET /api/health` is unauthenticated, read-only and database-free. It is registered in the route policy and Pages middleware allowlist, with no-store response headers and strict method/query enforcement.
+- Adversarial tests cover independent tenant logins, memory and `/api/ask` context isolation, RBAC, cross-tenant principal/session boundaries, immediate revocation, credential pepper/version behavior and health routing.
+
+**Verified CI evidence on implementation commit `18738d389c8e7647de048c6ffc66d210ee36e8c1`:**
+
+- GitHub Actions `AEGIS tests`, run `45843334241`: success; 500 Node tests, 484 passed, 0 failed, 16 conditionally skipped; dedicated Wrangler Pages runtime suite 16/16 passed.
+- GitHub Actions `Validate D1 Migrations and Pages Status`, run `45843334248`: success.
+- Wrangler applied the production migration set only to isolated local D1 for CI. No remote or production D1 migration was run.
+- Pages Functions bundle built successfully and local Wrangler Pages Dev runtime checks passed.
+
+**Deployment and governance boundary:** main was still `37fb54bbb396c8ca0fded245c680f70d8af9ab01` when checked; both main and the feature branch are unprotected, and the implementation commits are unsigned. No PR was merged, no deployment was made, and no production D1, secrets or Cloudflare settings were changed.
+
+**Credential operations note:** credentials created without a pepper retain the `none` version and continue to verify if a pepper is later configured. The current implementation supports one active pepper version; rotating an already-used pepper requires a coordinated password reset/rehash or a future multi-version keyring before rotation.
+
+
+## Step 2.6.12 — Multi-Tenant Invitation, Account Recovery & Credential Rotation Governance
+
+**Final implementation snapshot: 26 November 2026.** Implementation commit: `3274431bec30886395aa1b6db6fc00dc70f16b8b`. Subsequent commits update documentation only. This work remains on `feature/production-migrations`; it is not merged into `main` and is not production-deployed.
+
+- Additive migration: `migrations/production/0017_invitations_and_credential_rotation.sql`. It creates D1-backed tenant invitation and account recovery tables. Both persist only SHA-256 token digests, never raw bearer tokens, and use bounded expiry plus accepted-at single-use state.
+- Password pepper keyring: `AEGIS_PASSWORD_PEPPER_KEYRING` stores up to eight versioned secrets in an encrypted Pages secret; `AEGIS_PASSWORD_PEPPER_ACTIVE_VERSION` selects the active key. Legacy `AEGIS_PASSWORD_PEPPER` / `AEGIS_PASSWORD_PEPPER_VERSION` remains supported. Verification uses the credential's recorded version. After successful authentication, an old-version credential is conditionally rehashed using a fresh 16-byte salt and the active pepper. Unknown or missing historical keys fail closed.
+- Self-service password change: `POST /api/account/password` verifies the current password, enforces length and character-class/uniqueness bounds, updates the PBKDF2 credential and revokes every other active session for the principal.
+- Invitations: `POST /api/tenants/invitations` is owner/admin-gated and issues a 7-day random token returned once. Acceptance requires an authenticated existing principal whose normalized login identity exactly matches the invitation. D1 batches consume the token and add the tenant membership; replay and duplicate membership attempts are rejected. Tenant and role authority are derived server-side.
+- Account recovery: tenant owner/admin can issue a one-hour recovery token only for a suspended principal or membership inside the caller's active tenant. Admins can recover member accounts only; platform-root targeting is denied outside `org-root`. `POST /api/account/recovery` consumes the token once, rotates the credential, restores only the target tenant membership, reactivates a suspended principal and revokes all of the principal's sessions. The root bootstrap password remains deployment-secret-managed; the named-principal self-service endpoint rejects `usr-root` with `409` rather than implying it can update Cloudflare secrets.
+- Invitation acceptance accepts only the token field; mixed create/accept payloads are rejected. Expired and replayed invitations return `409`; a wrong principal receives `403`; malformed tokens receive `400`. Acceptance also fails closed if the target tenant is no longer active.
+- New routes are registered in `functions/lib/membrane/route-policy.mjs` and explicitly dispatched through `functions/_middleware.js`. Schemas reject unrecognized fields. Authenticated write endpoints enforce same-origin requests. Responses are no-store.
+- Tests cover multi-version pepper verification, transparent login-time rehash, unknown-version rejection, password strength policy, invitation single-use and identity matching, password change, recovery completion/replay, cross-tenant admin boundaries and membrane route registration.
+
+**Verified CI on implementation commit `3274431bec30886395aa1b6db6fc00dc70f16b8b`:** GitHub Actions `AEGIS tests` run `45852681182` succeeded: 505 Node tests, 489 passed, 0 failed, 16 conditionally skipped; Wrangler Pages runtime 16/16 passed. Migration/Pages validation run `45852681017` succeeded. Later README/blueprint edits do not change executable code. The complete production migration chain was applied only to isolated local D1 in CI, and the Pages Functions bundle built successfully. No production D1 was touched.
+
+**Outstanding release gates:** run final CI against the latest documentation/security-hardening commit; conduct a human security review of token issuance/consumption, recovery operations and key rotation; verify production and Preview secrets are provisioned only after approval; confirm key-retention and user password-reset procedures; enable branch protection, required checks and signed commits; review the complete feature-to-main diff and open PR topology. No PR was merged and no deployment or remote D1 migration was performed.

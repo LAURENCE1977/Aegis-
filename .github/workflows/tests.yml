@@ -25,6 +25,14 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Enforce Cloudflare-only repository boundary
+        shell: bash
+        run: |
+          needle="re""plit"
+          if git grep -ni "$needle" -- .; then
+            echo "Retired hosting references are not permitted in the AEGIS repository."
+            exit 1
+          fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,3 +87,80 @@ jobs:
             exit 1
           fi
           wrangler d1 execute aegis-forge-test --local --config wrangler.forge-d1-test.toml --persist-to .wrangler/test-forge-d1 --file scripts/forge-d1-assert.sql
+      - name: Build Pages Functions bundle
+        run: wrangler pages functions build
+      - name: Prepare isolated Pages runtime credentials
+        shell: bash
+        run: |
+          printf 'AEGIS_PASSWORD=%s\n' 'aegis-pages-runtime-test-password' > .dev.vars
+          printf 'AEGIS_SESSION_SECRET=%s\n' 'aegis-pages-runtime-test-session-secret-32chars' >> .dev.vars
+      - name: Apply production Pages schema to isolated local D1
+        run: wrangler d1 migrations apply aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages
+      - name: Assert fresh production migration ledger, foreign keys and triggers
+        run: wrangler d1 execute aegis-production --local --config wrangler.toml --persist-to .wrangler/test-pages --file scripts/production-empty-assert.sql
+      - name: Verify production migration chain against a legacy owner snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .wrangler/migrations-pre14 .wrangler/migrations-post13
+          for migration in migrations/production/*.sql; do
+            filename="$(basename "$migration")"
+            if [[ "$filename" < "0014" ]]; then
+              cp "$migration" .wrangler/migrations-pre14/
+            else
+              cp "$migration" .wrangler/migrations-post13/
+            fi
+          done
+
+          cat > wrangler.production-legacy-test.toml <<'EOF'
+          name = "aegis-production-legacy-migration-test"
+          pages_build_output_dir = "public"
+          compatibility_date = "2026-11-25"
+
+          [[d1_databases]]
+          binding = "AEGIS_DB"
+          database_name = "aegis-production-legacy-test"
+          database_id = "00000000-0000-0000-0000-000000000000"
+          migrations_dir = ".wrangler/migrations-pre14"
+          EOF
+
+          wrangler d1 migrations apply aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy
+          wrangler d1 execute aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy --file scripts/production-legacy-owner-seed.sql
+
+          cat > wrangler.production-legacy-test.toml <<'EOF'
+          name = "aegis-production-legacy-migration-test"
+          pages_build_output_dir = "public"
+          compatibility_date = "2026-11-25"
+
+          [[d1_databases]]
+          binding = "AEGIS_DB"
+          database_name = "aegis-production-legacy-test"
+          database_id = "00000000-0000-0000-0000-000000000000"
+          migrations_dir = ".wrangler/migrations-post13"
+          EOF
+
+          wrangler d1 migrations apply aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy
+          wrangler d1 execute aegis-production-legacy-test --local --config wrangler.production-legacy-test.toml --persist-to .wrangler/test-production-legacy --file scripts/production-legacy-owner-assert.sql
+
+      - name: Start local Cloudflare Pages runtime
+        shell: bash
+        run: |
+          nohup wrangler pages dev public --d1 AEGIS_DB=44e524ef-c248-4232-93df-05220040f4bb --ip 127.0.0.1 --port 8788 --persist-to .wrangler/test-pages --log-level warn > /tmp/aegis-pages-dev.log 2>&1 &
+          echo $! > /tmp/aegis-pages-dev.pid
+          for attempt in $(seq 1 45); do
+            if curl --silent --fail http://127.0.0.1:8788/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/aegis-pages-dev.log
+          exit 1
+      - name: Verify Pages middleware, request reconstruction and static assets
+        env:
+          AEGIS_PAGES_RUNTIME_URL: http://127.0.0.1:8788
+          AEGIS_RUNTIME_TEST_PASSWORD: aegis-pages-runtime-test-password
+        run: node --test tests/pages-runtime.test.mjs
+      - name: Stop local Pages runtime and remove test credentials
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/aegis-pages-dev.pid ]; then kill "$(cat /tmp/aegis-pages-dev.pid)" || true; fi
+          rm -f .dev.vars

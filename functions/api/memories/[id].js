@@ -1,5 +1,5 @@
 import {
-  authorizeOwner,
+  authorizePrincipal,
   isOwnerWriteRequest,
   jsonResponse,
   readJsonRequest,
@@ -7,7 +7,6 @@ import {
 import { createMemoryRepository } from "../../lib/memory-substrate.mjs";
 import { getWorkspace } from "../../lib/project-spaces.mjs";
 
-const OWNER_ID = "owner";
 
 function parseProjectId(value) {
   if (value === null || value === "") return null;
@@ -16,8 +15,9 @@ function parseProjectId(value) {
 }
 
 export async function onRequestGet({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
   }
@@ -29,11 +29,13 @@ export async function onRequestGet({ request, env, params }) {
   if (projectId === undefined) return jsonResponse({ error: "Invalid project scope." }, 400);
   try {
     if (projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") return jsonResponse({ error: "Memory not found." }, 404);
     }
     const memory = await createMemoryRepository(env.AEGIS_DB).get(id, {
-      ownerId: OWNER_ID, projectId,
+      ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId, projectId,
     });
     return memory
       ? jsonResponse({ memory })
@@ -44,8 +46,9 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestPatch({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!isOwnerWriteRequest(request)) return jsonResponse({ error: "Invalid request origin." }, 403);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
@@ -67,15 +70,19 @@ export async function onRequestPatch({ request, env, params }) {
   if (projectId === undefined) return jsonResponse({ error: "Invalid project scope." }, 400);
   try {
     if (projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") return jsonResponse({ error: "Memory not found." }, 404);
     }
     const repository = createMemoryRepository(env.AEGIS_DB);
     const changed = await repository.setStatus(id, {
-      ownerId: OWNER_ID, projectId, status: body.status,
+      ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId, projectId, status: body.status,
     });
     if (!changed) return jsonResponse({ error: "Memory not found or lifecycle is already closed." }, 404);
-    const memory = await repository.get(id, { ownerId: OWNER_ID, projectId });
+    const memory = await repository.get(id, { ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId, projectId });
     return jsonResponse({ memory });
   } catch {
     return jsonResponse({ error: "Memory review could not be saved." }, 503);
@@ -84,8 +91,9 @@ export async function onRequestPatch({ request, env, params }) {
 
 
 export async function onRequestDelete({ request, env, params }) {
-  const denied = await authorizeOwner(request, env);
-  if (denied) return denied;
+  const auth = await authorizePrincipal(request, env);
+  if (auth.response) return auth.response;
+  const { principal } = auth;
   if (!isOwnerWriteRequest(request)) return jsonResponse({ error: "Invalid request origin." }, 403);
   if (!env.AEGIS_DB || typeof env.AEGIS_DB.prepare !== "function") {
     return jsonResponse({ error: "Memory storage is not configured." }, 503);
@@ -107,11 +115,13 @@ export async function onRequestDelete({ request, env, params }) {
   if (projectId === undefined) return jsonResponse({ error: "Invalid project scope." }, 400);
   try {
     if (projectId !== null) {
-      const project = await getWorkspace(env.AEGIS_DB, OWNER_ID, projectId);
+      const project = await getWorkspace(env.AEGIS_DB, principal, projectId);
       if (!project || project.status !== "active") return jsonResponse({ error: "Memory not found." }, 404);
     }
     const purged = await createMemoryRepository(env.AEGIS_DB).purge(id, {
-      ownerId: OWNER_ID,
+      ownerId: principal.principalId,
+        principalId: principal.principalId,
+        tenantId: principal.tenantId,
       projectId,
     });
     if (!purged) return jsonResponse({ error: "Memory not found." }, 404);

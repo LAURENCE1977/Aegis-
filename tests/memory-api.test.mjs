@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestGet, onRequestPost } from '../functions/api/memories.js';
 import { onRequestGet as memoryEventsGet } from '../functions/api/memories/[id]/events.js';
 import {
@@ -10,11 +10,13 @@ import {
 
 const secret = 'memory-api-test-session-secret-with-enough-entropy';
 const envBase = { AEGIS_PASSWORD: 'test-password-long-enough', AEGIS_SESSION_SECRET: secret };
+const sessions = new Map();
 
 class MemoryD1 {
   constructor() { this.memories = new Map(); this.projects = new Map(); this.events = []; }
   prepare(sql) {
     const db = this;
+    if (sql.includes('FROM auth_sessions')) return { bind(sid, now) { return { first: async () => { const row = sessions.get(sid); return row && row.expires_at > now && !row.revoked_at ? { session_id: sid, ...row } : null; } }; } };
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
@@ -22,21 +24,21 @@ class MemoryD1 {
         const v = this.values;
         if (sql.includes('INSERT INTO aegis_memories')) {
           db.memories.set(v[0], {
-            id:v[0], owner_id:v[1], project_id:v[2], kind:v[3], content:v[4],
-            source_type:v[5], source_url:v[6], source_attribution:v[7],
-            source_observed_at:v[8], confidence:v[9], sensitivity:v[10],
-            status:v[11], tags_json:v[12], created_at:v[13], updated_at:v[14], expires_at:v[15],
+            id:v[0], owner_id:v[1], principal_id:v[2], tenant_id:v[3], project_id:v[4], kind:v[5], content:v[6],
+            source_type:v[7], source_url:v[8], source_attribution:v[9],
+            source_observed_at:v[10], confidence:v[11], sensitivity:v[12],
+            status:v[13], tags_json:v[14], created_at:v[15], updated_at:v[16], expires_at:v[17],
           });
-          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],project_id:v[2],event_type:'created',from_status:null,to_status:v[11],occurred_at:v[13]});
+          db.events.push({id:'event-'+db.events.length,memory_id:v[0],owner_id:v[1],principal_id:v[2],tenant_id:v[3],project_id:v[4],event_type:'created',from_status:null,to_status:v[13],occurred_at:v[15]});
           return {meta:{changes:1}};
         }
         if (sql.includes('UPDATE aegis_memories')) {
           const row=db.memories.get(v[2]);
-          if (!row || row.owner_id!==v[3] || row.project_id!==v[4] ||
+          if (!row || row.tenant_id!==v[3] || row.principal_id!==v[4] || row.project_id!==v[5] ||
               !['candidate','accepted'].includes(row.status)) return {meta:{changes:0}};
           const previous=row.status;
           row.status=v[0]; row.updated_at=v[1];
-          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
+          if (previous!==v[0]) db.events.push({id:'event-'+db.events.length,memory_id:row.id,owner_id:row.owner_id,principal_id:row.principal_id,tenant_id:row.tenant_id,project_id:row.project_id,event_type:'status_changed',from_status:previous,to_status:v[0],occurred_at:v[1]});
           return {meta:{changes:1}};
         }
         return {meta:{changes:0}};
@@ -45,23 +47,23 @@ class MemoryD1 {
         const v=this.values;
         if (sql.includes('FROM aegis_memories')) {
           const row=db.memories.get(v[0]);
-          return row && row.owner_id===v[1] && row.project_id===v[2] ? {...row} : null;
+          return row && row.tenant_id===v[1] && row.principal_id===v[2] && row.project_id===v[3] ? {...row} : null;
         }
         if (sql.includes('FROM project_spaces')) {
           const row=db.projects.get(v[0]);
-          return row && row.owner_id===v[1] ? {...row} : null;
+          return row && row.tenant_id===v[1] && row.principal_id===v[2] ? {...row} : null;
         }
         return null;
       },
       async all() {
         const v=this.values;
-        if (sql.includes('FROM aegis_memory_events')) return {results:db.events.filter(event=>event.memory_id===v[0] && event.owner_id===v[1] && event.project_id===v[2]).slice(0,v[3]).map(event=>({...event}))};
+        if (sql.includes('FROM aegis_memory_events')) return {results:db.events.filter(event=>event.memory_id===v[0] && event.tenant_id===v[1] && event.principal_id===v[2] && event.project_id===v[3]).slice(0,v[4]).map(event=>({...event}))};
         if (!sql.includes('FROM aegis_memories')) return {results:[]};
         let rows=[...db.memories.values()].filter(row=>
-          row.owner_id===v[0] && row.project_id===v[1] && (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) && row.sensitivity!=='restricted' &&
-          (!row.expires_at || row.expires_at>v[2]));
+          row.tenant_id===v[0] && row.principal_id===v[1] && row.project_id===v[2] && (row.status==='accepted' || (sql.includes("'accepted', 'candidate'") && row.status==='candidate')) && row.sensitivity!=='restricted' &&
+          (!row.expires_at || row.expires_at>v[3]));
         if (sql.includes('LIKE')) {
-          const terms=v.slice(3,-1);
+          const terms=v.slice(4,-1);
           rows=rows.filter(row=>terms.some(term=>
             (row.content+' '+row.kind+' '+row.tags_json).toLowerCase()
               .includes(term.slice(1,-1).toLowerCase())));
@@ -69,14 +71,16 @@ class MemoryD1 {
           return {results:rows.slice(0,v[v.length-1]).map(row=>({...row}))};
         }
         rows.sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
-        return {results:rows.slice(0,v[3]).map(row=>({...row}))};
+        return {results:rows.slice(0,v[4]).map(row=>({...row}))};
       },
     };
   }
 }
 
-async function request(path, {method='GET',body,origin='https://aegis.example'}={}) {
-  const token=await createSessionToken(secret);
+async function request(path, {method='GET',body,origin='https://aegis.example',principalId='usr-root',tenantId='org-root'}={}) {
+  const session=await createRevocableSessionToken(secret);
+  sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:principalId,tenant_id:tenantId,roles_json:'[\"owner\"]'});
+  const token=session.token;
   const headers={Cookie:'__Host-aegis_session='+token};
   if (origin!==null) headers.Origin=origin;
   if (body!==undefined) headers['Content-Type']='application/json';
@@ -108,7 +112,7 @@ test('new memories enter candidate review and become searchable only after owner
     request:await request('/api/memories',{method:'POST',body:memoryInput}),
     env:{...envBase,AEGIS_DB:db},
   });
-  assert.equal(created.status,201);
+  assert.equal(created.status,201,await created.clone().text());
   const {memory,reviewRequired}=await created.json();
   assert.equal(reviewRequired,true);
   assert.equal(memory.status,'candidate');
@@ -155,7 +159,7 @@ test('project memories require an existing active owner workspace', async()=>{
   assert.equal(db.memories.size,0);
 
   db.projects.set('project-a',{
-    id:'project-a',owner_id:'owner',name:'Project A',description:'',
+    id:'project-a',owner_id:'usr-root',principal_id:'usr-root',tenant_id:'org-root',name:'Project A',description:'',
     status:'active',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),
   });
   const valid=await onRequestPost({
@@ -251,4 +255,61 @@ test('owner review queue includes candidates but normal memory reads do not', as
     env:{...envBase,AEGIS_DB:db},
   });
   assert.equal((await review.json()).memories[0].id,memory.id);
+});
+
+
+test('memory API isolates two active D1 principals across GET and POST project scope', async () => {
+  const db = new MemoryD1();
+  db.projects.set('project-b', {
+    id: 'project-b', owner_id: 'usr-b', principal_id: 'usr-b', tenant_id: 'org-b',
+    name: 'Private B', description: '', status: 'active',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  });
+  db.memories.set('memory-b', {
+    id: 'memory-b', owner_id: 'usr-b', principal_id: 'usr-b', tenant_id: 'org-b',
+    project_id: 'project-b', kind: 'fact', content: 'Tenant B private record',
+    source_type: 'user-stated', source_url: 'https://aegis.example/b',
+    source_attribution: 'Tenant B', source_observed_at: new Date().toISOString(),
+    confidence: 1, sensitivity: 'private', status: 'accepted',
+    tags_json: '[]', created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(), expires_at: null,
+  });
+
+  const principalAList = await onRequestGet({
+    request: await request('/api/memories?q=private', { principalId: 'usr-a', tenantId: 'org-a' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAList.status, 200);
+  assert.equal((await principalAList.json()).total, 0);
+
+  const principalAProject = await onRequestGet({
+    request: await request('/api/memories?projectId=project-b', { principalId: 'usr-a', tenantId: 'org-a' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAProject.status, 404);
+
+  const principalAAttach = await onRequestPost({
+    request: await request('/api/memories', {
+      method: 'POST', principalId: 'usr-a', tenantId: 'org-a',
+      body: { ...memoryInput, projectId: 'project-b' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalAAttach.status, 404);
+
+  const principalBRead = await onRequestGet({
+    request: await request('/api/memories?projectId=project-b', { principalId: 'usr-b', tenantId: 'org-b' }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalBRead.status, 200);
+  assert.equal((await principalBRead.json()).memories[0].id, 'memory-b');
+
+  const principalBWrite = await onRequestPost({
+    request: await request('/api/memories', {
+      method: 'POST', principalId: 'usr-b', tenantId: 'org-b',
+      body: { ...memoryInput, projectId: 'project-b' },
+    }),
+    env: { ...envBase, AEGIS_DB: db },
+  });
+  assert.equal(principalBWrite.status, 201, await principalBWrite.clone().text());
 });

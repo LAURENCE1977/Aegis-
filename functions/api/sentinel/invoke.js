@@ -1,11 +1,10 @@
-import { authConfigAvailable, isAuthorized, isSameOriginRequest } from '../../lib/auth.mjs';
+import { authConfigAvailable, resolveSessionPrincipal, isSameOriginRequest } from '../../lib/auth.mjs';
 import { readJsonRequest, jsonResponse } from '../../lib/owner-api.mjs';
 import { getCapabilityManifest } from '../../lib/capability-registry.mjs';
 import { runSentinelInvocation } from '../../lib/sentinel.mjs';
 import { createSentinelDependencies } from '../../lib/sentinel-composition.mjs';
 import { createBuiltinAdapterRegistry } from '../../lib/sentinel-adapters.mjs';
 
-const OWNER_ID = 'owner';
 const CAPABILITY_ID = 'aegis-module-catalogue';
 const ACTION_ID = 'list';
 const RESOURCE_ID = 'aegis:modules';
@@ -32,7 +31,8 @@ export async function onRequestPost({ request, env }) {
   if (!authConfigAvailable(env)) {
     return jsonResponse({ error: 'Authentication is not configured.' }, 503);
   }
-  if (!(await isAuthorized(request, env))) {
+  const principal = await resolveSessionPrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: 'Authentication required.' }, 401);
   }
   if (!isSameOriginRequest(request)) {
@@ -66,7 +66,7 @@ export async function onRequestPost({ request, env }) {
     const invocationId = crypto.randomUUID();
     const result = await runSentinelInvocation({
       invocationId,
-      principalId: OWNER_ID,
+      principalId: principal.principalId,
       manifest,
       actionId: ACTION_ID,
       resourceId: RESOURCE_ID,

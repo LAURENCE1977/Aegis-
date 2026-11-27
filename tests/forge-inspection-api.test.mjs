@@ -1,15 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionToken } from '../functions/lib/auth.mjs';
+import { createRevocableSessionToken } from '../functions/lib/auth.mjs';
 import { onRequestPost as inspect } from '../functions/api/forge/inspect.js';
 import { onRequestPost as read } from '../functions/api/forge/read.js';
 
 const secret='forge-inspection-test-session-secret-long-enough';
-const env={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret};
+const sessions=new Map();
+const env={AEGIS_PASSWORD:'test-password-long-enough',AEGIS_SESSION_SECRET:secret,
+  AEGIS_DB:{prepare(sql){return {bind(sid,now){return {first:async()=>{const row=sessions.get(sid);return sql.includes('FROM auth_sessions')&&row&&row.expires_at>now?{session_id:sid,...row}:null;}};}};}}};
+async function issueToken(){const session=await createRevocableSessionToken(secret);sessions.set(session.sessionId,{expires_at:session.expiresAt,revoked_at:null,principal_id:'usr-root',tenant_id:'org-root',roles_json:'[\"owner\"]'});return session.token;}
 
 async function request(path,body,{authenticated=true,origin='https://aegis.example'}={}){
   const headers={'Content-Type':'application/json',Origin:origin};
-  if(authenticated) headers.Cookie='__Host-aegis_session='+await createSessionToken(secret);
+  if(authenticated) headers.Cookie='__Host-aegis_session='+await issueToken();
   return new Request('https://aegis.example'+path,{method:'POST',headers,body:JSON.stringify(body)});
 }
 
@@ -81,7 +84,7 @@ test('Forge blob reader rejects unknown fields and malformed object identifiers'
 test('Forge inspection and blob APIs stop reading oversized request bodies at the configured limit',async()=>{
   let fetchCalls=0;
   const oversized=async(path,body)=>{
-    const token=await createSessionToken(secret);
+    const token=await issueToken();
     return new Request('https://aegis.example'+path,{
       method:'POST',
       headers:{
